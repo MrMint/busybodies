@@ -68,7 +68,8 @@ describe("frame budgets", () => {
 		const c = await measure(page, 2000);
 		expect(c.tickerRunning).toBe(true);
 		expect(c.maxFPS).toBe(30);
-		expect(c.renders).toBeGreaterThan(20); // it is animating
+		// It is animating. Only a floor: a 2-core CI runner rendering in software manages ~6 fps.
+		expect(c.renders).toBeGreaterThan(2);
 		expect(c.renders).toBeLessThanOrEqual(64); // 30 fps over 2 s, plus slack for timer edges
 		await page.close();
 	}, T);
