@@ -74,8 +74,13 @@ brief in `docs/briefs/` with acceptance checks an agent can run.
   - Signs and tallies are driven by counters, and background gags by idle time (the wilting
     plant).
 - **S6. Polish and ship**
-  - The compact floating window, a tray icon and an app icon.
-  - A release build, a README GIF, and the first tagged release.
+  - The compact floating window and a tray icon.
+  - A README GIF, and the first tagged release, on top of R1.
+
+**R1. Releases** (`docs/briefs/R1-releases.md`) runs alongside the streams. It builds unsigned
+Apple Silicon builds on a tag, a one-line `install.sh` (curl downloads aren't quarantined), the
+updater wired to GitHub Releases, and the app icon. Signing waits for an Apple Developer
+account.
 
 ## Instrumentation, alongside
 
