@@ -121,3 +121,15 @@ scene should cache static rooms and redraw only what moves. How it was measured:
 cost 0.3% (`BUSYBODIES_SCENE_QUERY=blank`).
 
 The plan for measuring from here on is `docs/instrumentation.md`.
+
+## 2026-11-21: office layout and body shape
+
+**The office is the open floor (round-2 layout F).** Rooms have depth, so a busy project fills
+several rows of desks, and a hallway and lobby make it feel walked through. The cost is that
+people in front can hide people behind, and a very large day needs a second floor or a longer
+hallway.
+
+**Characters are mochi-shaped.** Soft, squishy round bodies on the jointed cut-paper puppet rig,
+picked over gumdrop, bean, chibi and pear in a side-by-side comparison. The next design round
+also pushes the sass much further: sarcastic bubbles tied to real events, office signage and
+background gags, and characters reacting to each other.
