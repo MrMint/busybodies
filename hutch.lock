@@ -10,6 +10,7 @@
       "devDependencies": {
         "@types/bun": "latest",
         "concurrently": "^9.2.5",
+        "playwright-core": "1.64.1",
         "typescript": "~5.9.3",
         "vite": "^7.3.7",
       },
@@ -189,6 +190,8 @@
     "picomatch": ["picomatch@4.0.7", "https://registry.npmjs.org/picomatch/-/picomatch-4.0.7.tgz", {}, "sha512-qcJu88Q2IWqJsDD529JKMdwGm/dvInW4HvQnRwiH9JtihJvzGOscDtHE3x1pBKeUOTysQ8kVmLnJ2kJu7yhcGA=="],
 
     "pixi.js": ["pixi.js@8.23.0", "https://registry.npmjs.org/pixi.js/-/pixi.js-8.23.0.tgz", {"dependencies": {"colord": "^2.11.0", "earcut": "^3.0.2", "tiny-lru": "^11.4.7", "gifuct-js": "^2.1.2", "ismobilejs": "^1.1.1", "@types/earcut": "^3.0.0", "@webgpu/types": "^0.1.69", "eventemitter3": "^5.0.1", "@xmldom/xmldom": "^0.8.15", "parse-svg-path": "^0.2.0"}}, "sha512-RkWSwo+mAR0d7MKnJ20IjKkWGPdFh1C0adBRYYLa+SGdxTfbrr6RnQyZZRwjBaG/bDAIQqgBcTBbiNsN6iKFVQ=="],
+
+    "playwright-core": ["playwright-core@1.64.1", "https://registry.npmjs.org/playwright-core/-/playwright-core-1.64.1.tgz", {"bin": {"playwright-core": "cli.js"}}, "sha512-BC4s8y6SEVA6Q1rSxZTto8hI1KUI3xXlHGZgvGqP4IqPdI/a6FX9H29IDNz7vKo9l21b6LfYosScPL6M3xxyDQ=="],
 
     "postcss": ["postcss@8.5.31", "https://registry.npmjs.org/postcss/-/postcss-8.5.31.tgz", {"dependencies": {"nanoid": "^3.3.20", "picocolors": "^1.1.1", "source-map-js": "^1.2.2"}}, "sha512-YUbWYCgErwnMAVkjUnYa+KlMBzGpHwiIt/DE7f0G33AuX2LH9UcTk6KgWxd3zRU+pN3u/C+Xl3EnMLM4Hea7Sg=="],
 

@@ -19,16 +19,13 @@ code showed it. A test that counts animation frames would have caught it on day 
 | `?demo`, `?demo=idle` | An invented office (busy, or after hours) that runs in any browser through Vite |
 | `?blank`, `?blank&norpc` | The app without the scene, to separate Electrobun's own cost from ours |
 | `BUSYBODIES_SCENE_QUERY` | Passes any of these modes to the app's window |
+| `window.__busybodies` | The inspector (dev builds, or `?inspect`): snapshot, characters, frame counters, `freeze()` and `step(n)` |
+| `bun test e2e/` | Frame budgets in headless Chrome, in CI: idle makes zero frames, busy renders at 30 fps or less, and a frozen scene steps identically |
 
 ## Planned, in order
 
-1. **A dev inspector, `window.__busybodies`.** It exposes the current snapshot, each entity with
-   its position, mood and pose, ticker state, frames rendered, and `step(n)` to advance the scene
-   a set number of frames on a frozen clock. Agents read the scene as JSON through the browser
-   pane instead of from pixels.
-2. **Frame-budget tests in CI.** Headless Chromium against `?demo=idle` asserts zero animation
-   frames over two seconds; `?demo` asserts at most 30 renders a second. The idle-cost bug becomes
-   a failing test, not a profiling discovery.
+Items 1 (the inspector) and 2 (frame-budget tests) are built; see above.
+
 3. **A perf HUD (`?hud`, or a key).** Shows fps, renders per second, draw calls, display-object
    and texture counts, snapshot rate, the watcher's build time (p50/p95) and file events per
    second, RPC payload size, and both processes' memory. The Bun side reports its numbers over

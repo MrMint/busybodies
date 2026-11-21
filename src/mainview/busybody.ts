@@ -13,13 +13,17 @@ export class Busybody extends Container {
 	#face = new Graphics();
 	#zzz = new Text({ text: "z z", style: { fill: INK, fontSize: 14, fontWeight: "700" } });
 	#mood?: Mood;
-	#phase = Math.random() * Math.PI * 2;
+	#phase: number;
 
+	/** `phase` offsets the animation so a crowd doesn't bounce in step. Pass a value derived from
+	 * the character's id, not a random one, so the same scene always renders the same frames. */
 	constructor(
 		readonly colour: number,
 		readonly size: number,
+		phase = 0,
 	) {
 		super();
+		this.#phase = phase;
 		const s = size;
 		this.#body
 			.roundRect(-s * 0.42, -s, s * 0.84, s, s * 0.38)

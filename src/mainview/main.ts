@@ -4,6 +4,7 @@ import { Electroview } from "electrobun/view";
 import { Application, Ticker } from "pixi.js";
 import type { BusybodiesRPC } from "../shared/rpc";
 import type { Snapshot } from "../watcher/model";
+import { installInspector } from "./inspector";
 import { Office } from "./office";
 
 const params = new URLSearchParams(location.search);
@@ -50,22 +51,31 @@ function blank(): void {
 		if (!office.animating) app.ticker.stop();
 	});
 
-	const redraw = () => {
-		if (office.animating) {
-			if (!app.ticker.started) app.ticker.start();
-		} else {
-			app.render();
-		}
+	const scene = {
+		current: undefined as Snapshot | undefined,
+		/** Set by the inspector: the clock is stopped and only step() moves the scene. */
+		frozen: false,
+		redraw() {
+			if (office.animating && !scene.frozen) {
+				if (!app.ticker.started) app.ticker.start();
+			} else {
+				app.render();
+			}
+		},
+		show(snapshot: Snapshot) {
+			scene.current = snapshot;
+			office.show(snapshot, app.screen.width, app.screen.height);
+			scene.redraw();
+			if (inspector) inspector.ready = true;
+			if (import.meta.env.DEV) {
+				const count = (l: Snapshot["sessions"]): number => l.reduce((n, s) => n + 1 + count(s.children), 0);
+				console.info(`[busybodies] drew ${count(snapshot.sessions)} sessions; animating: ${office.animating}`);
+			}
+		},
 	};
-
-	const show = (snapshot: Snapshot) => {
-		office.show(snapshot, app.screen.width, app.screen.height);
-		redraw();
-		if (import.meta.env.DEV) {
-			const count = (l: Snapshot["sessions"]): number => l.reduce((n, s) => n + 1 + count(s.children), 0);
-			console.info(`[busybodies] drew ${count(snapshot.sessions)} sessions; animating: ${office.animating}`);
-		}
-	};
+	const show = scene.show;
+	const redraw = scene.redraw;
+	const inspector = import.meta.env.DEV || params.has("inspect") ? installInspector(app, office, scene) : undefined;
 
 	app.renderer.on("resize", (w, h) => {
 		office.layout(w, h);

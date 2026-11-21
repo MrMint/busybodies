@@ -43,6 +43,14 @@ export class Office extends Container {
 		return false;
 	}
 
+	/** Every character on screen, for the inspector: its key, mood, size and global position. */
+	entities(): { key: string; mood: string; size: number; x: number; y: number; lift: number }[] {
+		return [...this.#people].map(([key, p]) => {
+			const at = p.getGlobalPosition();
+			return { key, mood: p.mood ?? "none", size: Math.round(p.size), x: Math.round(at.x), y: Math.round(at.y), lift: Math.round(-p.rig.y * 100) / 100 };
+		});
+	}
+
 	tick(dt: number): void {
 		for (const p of this.#people.values()) p.tick(dt);
 	}
@@ -142,7 +150,7 @@ export class Office extends Container {
 		let p = this.#people.get(key);
 		if (!p || Math.abs(p.size - size) > 0.5) {
 			p?.destroy({ children: true });
-			p = new Busybody(colour, size);
+			p = new Busybody(colour, size, (hash(key) % 628) / 100);
 			this.#people.set(key, p);
 		}
 		p.setMood(mood);

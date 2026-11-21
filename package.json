@@ -7,7 +7,8 @@
 		"@types/bun": "latest",
 		"concurrently": "^9.2.5",
 		"typescript": "~5.9.3",
-		"vite": "^7.3.7"
+		"vite": "^7.3.7",
+		"playwright-core": "1.64.1"
 	},
 	"dependencies": {
 		"pixi.js": "8.23.0"

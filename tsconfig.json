@@ -10,6 +10,6 @@
 		"skipLibCheck": true,
 		"forceConsistentCasingInFileNames": true
 	},
-	"include": ["src", "tools", "test"],
+	"include": ["src", "tools", "test", "e2e"],
 	"exclude": ["node_modules", "dist", "build", "../../package/dist"]
 }
