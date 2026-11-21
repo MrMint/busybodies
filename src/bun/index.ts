@@ -18,6 +18,7 @@ async function mainViewUrl(): Promise<string> {
 }
 
 const watcher = new Watcher();
+console.info(`[busybodies] watching ${watcher.builder.roots.home}`);
 
 const rpc = BrowserView.defineRPC<BusybodiesRPC>({
 	handlers: {
@@ -27,9 +28,12 @@ const rpc = BrowserView.defineRPC<BusybodiesRPC>({
 	},
 });
 
+// BUSYBODIES_SCENE_QUERY passes scene modes through to the view, e.g. "demo" or "blank".
+const query = process.env.BUSYBODIES_SCENE_QUERY ? `?${process.env.BUSYBODIES_SCENE_QUERY}` : "";
+
 new BrowserWindow({
 	title: "Busybodies",
-	url: await mainViewUrl(),
+	url: (await mainViewUrl()) + query,
 	frame: { width: 1280, height: 800, x: 120, y: 80 },
 	rpc,
 });

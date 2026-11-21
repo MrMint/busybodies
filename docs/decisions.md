@@ -102,3 +102,22 @@ sessions. This is the seed of the fixture-replay harness.
 two sessions were busy. That compares with 0.5% for the watcher alone. Profile this before
 calling it cheap. The scene runs at the display's full frame rate whenever anyone is busy; a
 lower rate for ambient motion is an easy cut.
+
+## 2026-11-21: first profile
+
+**An idle scene cost ~5% of a core in Bun and ~4% in the webview, because of Pixi's global
+tickers.** `Ticker.shared` and `Ticker.system` each run a 60 fps requestAnimationFrame loop from
+load, even with the app's ticker stopped. The cost shows up in the Bun process too, because the
+native window, and its compositing, lives there. Both tickers are now stopped at startup. Idle
+dropped to 0.4% (Bun) and 0.1% (webview), the same as a blank page.
+
+**Ambient motion is capped at 30 fps** (`app.ticker.maxFPS`). The display ran the loop at
+120 Hz.
+
+**Measured on a fake home, after the fixes:** busy scenes cost about 2.5–3.3% in Bun and
+4.5–8.3% in the webview. The placeholder scene re-renders the whole canvas every frame. The real
+scene should cache static rooms and redraw only what moves. How it was measured:
+`tools/profile.sh` against `tools/fake-home.ts`. The Electrobun runtime plus the watcher and RPC
+cost 0.3% (`BUSYBODIES_SCENE_QUERY=blank`).
+
+The plan for measuring from here on is `docs/instrumentation.md`.

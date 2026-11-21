@@ -56,3 +56,10 @@ export const demoSnapshot: Snapshot = {
 		session("Recipe parser", "pantry", "busy", { agents: [agent("general-purpose", "Parse fractions")] }),
 	],
 };
+
+/** The same office after hours: every session idle, every agent finished. */
+export const asleep = (snap: Snapshot): Snapshot => {
+	const rest = (a: Agent): Agent => ({ ...a, status: "finished", activity: undefined, children: a.children.map(rest) });
+	const nap = (s: Session): Session => ({ ...s, state: "idle", activity: undefined, agents: s.agents.map(rest), children: s.children.map(nap) });
+	return { ...snap, sessions: snap.sessions.map(nap) };
+};

@@ -23,7 +23,8 @@ v7-era APIs that look right and silently draw the wrong thing. Update it only wi
 - **Art licences:** CC0 or our own work only. No CC-BY-SA, GPL or LPC art, and no raw
   AI-generated images. See `docs/decisions.md`.
 - **Render on demand.** The ticker runs only while something animates. A scene where nothing is
-  happening must cost near-zero CPU.
+  happening must cost near-zero CPU. Pixi's global tickers stay stopped: drive any
+  `AnimatedSprite` from the app ticker. Check with `tools/profile.sh idle --busy 0 --rate 0`.
 - **Drive PixiJS directly.** Use imperative scene code, not `@pixi/react`.
 - **Use WebGL2.** Keep `preference: "webgl"`; WebGPU is opt-in later.
 - **No GSAP.** Tweens and springs come from our own small helper.
@@ -44,6 +45,8 @@ v7-era APIs that look right and silently draw the wrong thing. Update it only wi
 | `src/mainview/` | The scene, drawn with PixiJS in the webview |
 | `test/` | `bun test`. Fixtures are built in a temp folder from invented data |
 | `tools/watch-tree.ts` | Prints the live session/agent tree in a terminal |
+| `tools/fake-home.ts`, `tools/profile.sh` | Synthetic load, and CPU per process under it |
+| `docs/instrumentation.md` | How to measure and check the app, and what's planned |
 | `docs/decisions.md` | Why things are the way they are |
 | `docs/research/` | Feasibility research (dated, with sources) |
 | `.claude/skills/pixijs/` | The vendored official PixiJS skill (MIT) |
