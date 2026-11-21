@@ -1,0 +1,288 @@
+// The floor plan: which room each project gets and which desk each session gets. It remembers its
+// past assignments, so a snapshot that adds or removes one session moves nobody else. The rules
+// (also in docs/decisions.md):
+//
+// - A hallway runs left to right. Rooms sit in two bands, above and below it, and each room is
+//   anchored at the hallway: a room above grows upward, a room below grows downward. So a room
+//   gaining a row of desks never moves anyone.
+// - The common areas come first in each band: the meeting room above; the lobby and kitchen below.
+// - A new project takes a vacant room it fits in, or else a new room at the end of the shorter
+//   band. Its width (2 to 4 desk columns) is set once, from its sessions when it arrives; rooms
+//   never change width, so no room ever slides along the hallway.
+// - A session takes the first free desk in its room, row by row from the hallway side; a side
+//   session takes the free desk nearest the session that started it. A full room adds a row.
+// - When a session ends its desk is freed, not compacted. Empty back rows are trimmed (never below
+//   two). A room whose last session ends stays as a vacant room until a new project needs it.
+import type { Session, Snapshot } from "../../watcher/model";
+import {
+	type Area,
+	type Band,
+	CELL_W,
+	COMMON_W,
+	type Desk,
+	type Fixture,
+	FRONT,
+	HALL,
+	MAX_COLS,
+	MIN_ROWS,
+	ROW,
+	type Rect,
+	SIDE,
+	type SignSlot,
+	type Slot,
+	WALL,
+	type WallItem,
+	type World,
+	roomHeight,
+	roomWidth,
+} from "./world";
+
+interface Room {
+	/** Stable for the room's life: "meeting", "lobby", "kitchen", or "room-<n>". */
+	key: string;
+	kind: Area["kind"];
+	band: Band;
+	width: number;
+	cols: number;
+	/** Occupant per cell, row-major; null is a free desk. Its length is always cols * rows. */
+	cells: (string | null)[];
+	project?: string;
+}
+
+/** A session in reading order, with the session that started it. */
+interface Seat {
+	session: Session;
+	parent?: string;
+}
+
+const byStart = (a: Session, b: Session) => a.startedAt - b.startedAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+
+/** Every session, parents before the side sessions they started, oldest first at each level. */
+export function seats(sessions: Session[], parent?: string): Seat[] {
+	return [...sessions].sort(byStart).flatMap((s) => [{ session: s, parent }, ...seats(s.children, s.id)]);
+}
+
+export class FloorPlan {
+	#bands: Record<Band, Room[]> = { top: [], bottom: [] };
+	#rooms = new Map<string, Room>(); // by project
+	#next = 0;
+
+	constructor() {
+		this.#bands.top.push(common("meeting", "top"));
+		this.#bands.bottom.push(common("lobby", "bottom"), common("kitchen", "bottom"));
+	}
+
+	/** Fold a snapshot into the plan and return the world it gives. */
+	update(snapshot: Snapshot): World {
+		const all = seats(snapshot.sessions);
+		const live = new Set(all.map((s) => s.session.id));
+
+		// Free the desks of sessions that ended, and vacate rooms left empty.
+		for (const room of this.#allRooms()) {
+			if (room.kind !== "project") continue;
+			room.cells = room.cells.map((id) => (id && live.has(id) ? id : null));
+			if (room.cells.every((c) => c === null)) {
+				this.#rooms.delete(room.project!);
+				room.kind = "vacant";
+				room.project = undefined;
+			}
+		}
+
+		// Give new projects a room: sized by their sessions, in a vacant room that fits or a new one.
+		const byProject = new Map<string, Seat[]>();
+		for (const s of all) byProject.set(s.session.project, [...(byProject.get(s.session.project) ?? []), s]);
+		for (const [project, list] of byProject) {
+			if (this.#rooms.has(project)) continue;
+			const cols = Math.min(MAX_COLS, Math.max(2, Math.ceil(list.length / 2)));
+			const room = this.#vacantFor(cols) ?? this.#newRoom(cols);
+			room.kind = "project";
+			room.project = project;
+			room.cells = Array(room.cols * Math.max(MIN_ROWS, Math.ceil(list.length / room.cols))).fill(null);
+			this.#rooms.set(project, room);
+		}
+
+		// Seat new sessions.
+		const deskOf = new Map<string, { room: Room; index: number }>();
+		for (const room of this.#rooms.values()) room.cells.forEach((id, index) => id && deskOf.set(id, { room, index }));
+		for (const { session, parent } of all) {
+			if (deskOf.has(session.id)) continue;
+			const room = this.#rooms.get(session.project)!;
+			const near = parent ? deskOf.get(parent) : undefined;
+			const index = near?.room === room ? nearestFree(room, near.index) : firstFree(room);
+			room.cells[index] = session.id;
+			deskOf.set(session.id, { room, index });
+		}
+
+		// Trim empty back rows.
+		for (const room of this.#rooms.values()) {
+			while (room.cells.length > room.cols * MIN_ROWS && room.cells.slice(-room.cols).every((c) => c === null)) {
+				room.cells.length -= room.cols;
+			}
+		}
+
+		return this.#world();
+	}
+
+	#allRooms(): Room[] {
+		return [...this.#bands.top, ...this.#bands.bottom];
+	}
+
+	#vacantFor(cols: number): Room | undefined {
+		const fits = this.#allRooms().filter((r) => r.kind === "vacant" && r.cols >= cols);
+		fits.sort((a, b) => a.cols - b.cols);
+		return fits[0];
+	}
+
+	#newRoom(cols: number): Room {
+		const end = (band: Band) => this.#bands[band].reduce((x, r) => x + r.width, 0);
+		const band: Band = end("top") <= end("bottom") ? "top" : "bottom";
+		const room: Room = { key: `room-${++this.#next}`, kind: "vacant", band, width: roomWidth(cols), cols, cells: [] };
+		this.#bands[band].push(room);
+		return room;
+	}
+
+	#world(): World {
+		const areas: Area[] = [];
+		const desks = new Map<string, Desk>();
+		const signs: SignSlot[] = [];
+		let right = 0;
+		for (const band of ["top", "bottom"] as Band[]) {
+			let x = 0;
+			for (const room of this.#bands[band]) {
+				const area = build(room, x);
+				areas.push(area);
+				for (const d of area.desks) desks.set(d.id, d);
+				for (const w of area.wall) if (w.slot) signs.push({ id: w.slot, kind: w.kind as SignSlot["kind"], areaId: area.id, rect: w.rect });
+				x += room.width;
+			}
+			right = Math.max(right, x);
+		}
+		const hallway = { x: 0, y: 0, w: right, h: HALL };
+		const top = Math.min(0, ...areas.map((a) => a.rect.y));
+		const bottom = Math.max(HALL, ...areas.map((a) => a.rect.y + a.rect.h));
+		return { bounds: { x: 0, y: top, w: right, h: bottom - top }, hallway, areas, desks, signs };
+	}
+}
+
+function common(kind: "meeting" | "lobby" | "kitchen", band: Band): Room {
+	return { key: kind, kind, band, width: COMMON_W[kind], cols: 0, cells: [] };
+}
+
+function firstFree(room: Room): number {
+	const i = room.cells.indexOf(null);
+	if (i >= 0) return i;
+	room.cells.push(...Array(room.cols).fill(null));
+	return room.cells.length - room.cols;
+}
+
+function nearestFree(room: Room, from: number): number {
+	const fc = from % room.cols;
+	const fr = Math.floor(from / room.cols);
+	let best = -1;
+	let bestD = Infinity;
+	room.cells.forEach((id, i) => {
+		if (id !== null) return;
+		const d = Math.abs((i % room.cols) - fc) + Math.abs(Math.floor(i / room.cols) - fr);
+		if (d < bestD) [best, bestD] = [i, d];
+	});
+	return best >= 0 ? best : firstFree(room);
+}
+
+// --- Geometry ---------------------------------------------------------------------------------
+
+const NAMES = { meeting: "meeting room", lobby: "lobby", kitchen: "kitchen" } as const;
+
+function build(room: Room, x: number): Area {
+	const rows = room.cols ? room.cells.length / room.cols : MIN_ROWS;
+	const h = roomHeight(rows);
+	const y = room.band === "top" ? -h : HALL;
+	const rect = { x, y, w: room.width, h };
+	const floorY = y + WALL;
+	const id = room.kind === "project" ? `room:${room.project}` : room.kind === "vacant" ? `vacant:${room.key}` : room.key;
+	const name = room.kind === "project" ? room.project! : room.kind === "vacant" ? "vacant" : NAMES[room.kind];
+	const area: Area = { id, kind: room.kind, name, band: room.band, rect, floorY, cols: room.cols, rows, cells: [], desks: [], fixtures: [], wall: [], spots: {} };
+
+	if (room.kind === "project" || room.kind === "vacant") {
+		room.cells.forEach((occupant, i) => {
+			const cell = cellRect(room, x, i);
+			area.cells.push(cell);
+			if (occupant) area.desks.push(desk(occupant, id, room, i, cell));
+		});
+		dressRoom(area);
+	} else if (room.kind === "meeting") meeting(area);
+	else if (room.kind === "lobby") lobby(area);
+	else kitchen(area);
+	return area;
+}
+
+/** A desk cell. Row 0 is beside the hallway; above it, rows climb up; below it, they go down. */
+function cellRect(room: Room, x: number, i: number): Rect {
+	const col = i % room.cols;
+	const row = Math.floor(i / room.cols);
+	const cx = x + SIDE + col * CELL_W;
+	const cy = room.band === "top" ? -FRONT - (row + 1) * ROW : HALL + WALL + row * ROW;
+	return { x: cx, y: cy, w: CELL_W, h: ROW };
+}
+
+function desk(id: string, areaId: string, room: Room, i: number, cell: Rect): Desk {
+	const at = { x: cell.x + CELL_W / 2, y: cell.y + 78 };
+	const lead: Slot = { x: at.x - 12, y: cell.y + 58, depth: cell.y + 58, facing: 1 };
+	const chair: Fixture = { kind: "chair", x: lead.x, y: cell.y + 50, depth: cell.y + 50 };
+	return { id, areaId, col: i % room.cols, row: Math.floor(i / room.cols), cell, at, lead, chair };
+}
+
+const slot = (x: number, y: number, facing: 1 | -1 = 1): Slot => ({ x, y, depth: y, facing });
+const fixture = (kind: Fixture["kind"], x: number, y: number): Fixture => ({ kind, x, y, depth: y });
+
+/** Back-wall dressing for a project room, from its width alone, so it never shuffles. */
+function dressRoom(a: Area): void {
+	const { x, y, w } = a.rect;
+	const wy = y + 14;
+	const key = a.id;
+	a.wall.push({ kind: "sign", rect: { x: x + 18, y: wy + 4, w: 132, h: 62 }, slot: `${key}:sign` });
+	let at = x + 168;
+	const items: WallItem["kind"][] = ["window", "whiteboard", "window", "window"];
+	for (const kind of items) {
+		const ww = kind === "whiteboard" ? 150 : 116;
+		if (at + ww > x + w - (a.band === "bottom" ? 90 : 18)) break;
+		a.wall.push({ kind, rect: { x: at, y: kind === "whiteboard" ? wy - 2 : wy + 4, w: ww, h: kind === "whiteboard" ? 84 : 74 }, slot: kind === "whiteboard" ? `${key}:board` : undefined });
+		at += ww + 26;
+	}
+	if (a.band === "bottom") a.wall.push({ kind: "door", rect: { x: x + w - 82, y: y + 14, w: 60, h: WALL - 14 } });
+	const front = a.band === "top" ? y + a.rect.h - FRONT - 4 : y + a.rect.h - FRONT - 4;
+	a.fixtures.push(fixture("plant", x + w - 26, front));
+	if (a.cols >= 3) a.fixtures.push(fixture("lamp", x + 14, a.floorY + 70));
+}
+
+function meeting(a: Area): void {
+	const { x, w } = a.rect;
+	const f = a.floorY;
+	a.wall.push({ kind: "sign", rect: { x: x + 16, y: a.rect.y + 16, w: 128, h: 62 }, slot: "meeting:sign" });
+	a.wall.push({ kind: "whiteboard", rect: { x: x + 160, y: a.rect.y + 12, w: 160, h: 86 }, slot: "meeting:board" });
+	a.fixtures.push(fixture("chair", x + 130, f + 92), fixture("chair", x + 210, f + 92), fixture("table", x + w / 2, f + 150));
+	a.fixtures.push(fixture("plant", x + w - 28, f + 270));
+	a.spots.seat = [slot(x + 130, f + 104), slot(x + 210, f + 104, -1), slot(x + 62, f + 200), slot(x + w - 62, f + 200, -1)];
+}
+
+function lobby(a: Area): void {
+	const { x, w } = a.rect;
+	const f = a.floorY;
+	a.wall.push({ kind: "frame", rect: { x: x + 14, y: a.rect.y + 12, w: 140, h: 88 }, slot: "lobby:frame" });
+	a.wall.push({ kind: "door", rect: { x: x + 172, y: a.rect.y + 14, w: 64, h: WALL - 14 } });
+	a.fixtures.push(fixture("pod", x + w / 2, f + 140), fixture("sofa", x + 100, f + 270), fixture("plant", x + w - 28, f + 260));
+	a.spots.nap = [slot(x + w / 2 - 8, f + 118)];
+	a.spots.sofa = [slot(x + 70, f + 262), slot(x + 130, f + 262, -1)];
+	a.spots.door = [slot(x + 204, f + 30, -1)];
+}
+
+function kitchen(a: Area): void {
+	const { x } = a.rect;
+	const f = a.floorY;
+	a.wall.push({ kind: "door", rect: { x: x + 376, y: a.rect.y + 14, w: 64, h: WALL - 14 } });
+	a.wall.push({ kind: "sign", rect: { x: x + 196, y: a.rect.y + 12, w: 160, h: 66 }, slot: "kitchen:sign" });
+	a.fixtures.push(fixture("fridge", x + 70, f + 50), fixture("counter", x + 200, f + 56), fixture("cooler", x + 320, f + 56));
+	a.fixtures.push(fixture("sofa", x + 110, f + 270), fixture("plant", x + 430, f + 274));
+	a.spots.queue = [0, 1, 2, 3, 4].map((i) => slot(x + 214 + i * 40, f + 100 + i * 30, -1));
+	a.spots.cooler = [slot(x + 300, f + 92), slot(x + 356, f + 104, -1)];
+	a.spots.sofa = [slot(x + 80, f + 262), slot(x + 140, f + 262, -1)];
+}
