@@ -88,6 +88,15 @@ function blank(): void {
 		return;
 	}
 
+	if (params.has("replay")) {
+		// A recorded day from fixtures/ (tools/record.ts), played instead of the watcher.
+		const [{ loadFixture, fixtureNames }, { parseRecording, replay }] = await Promise.all([import("./fixtures"), import("../watcher/replay")]);
+		const text = await loadFixture(params.get("replay") ?? "");
+		if (!text) throw new Error(`no fixture "${params.get("replay")}"; have: ${fixtureNames().join(", ")}`);
+		replay(parseRecording(text), show, { speed: Number(params.get("speed") ?? 1), loop: params.has("loop") });
+		return;
+	}
+
 	const rpc = Electroview.defineRPC<BusybodiesRPC>({
 		handlers: { messages: { snapshot: show } },
 	});

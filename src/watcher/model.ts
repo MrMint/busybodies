@@ -8,6 +8,90 @@ export interface Activity {
 	at: number;
 }
 
+/** What a shell command was for, guessed from its text. Only the kind leaves the watcher. */
+export type CommandKind = "test" | "build" | "install" | "git" | "other";
+
+/** A tool call that has started and not returned yet. */
+export interface RunningTool {
+	tool: string;
+	/** Epoch ms the call was made. How long it has run is `Snapshot.at - since`. */
+	since: number;
+	/** For a shell command: what it is for. */
+	kind?: CommandKind;
+}
+
+/** The last shell command that finished. */
+export interface CommandResult {
+	kind: CommandKind;
+	/** 0 for success. */
+	exitCode: number;
+	/** Epoch ms of the result. */
+	at: number;
+	/** From the call to its result, when both were seen. */
+	durationMs?: number;
+}
+
+/** Shell commands in one transcript, as counters the jokes can read. */
+export interface Commands {
+	last?: CommandResult;
+	/** Commands that failed in a row, ending with the last one. 0 after a success. */
+	failStreak: number;
+	/** Times the last command ran in a row with the same text. 1 means no retry. */
+	repeats: number;
+	/** Failed commands seen in this transcript, and how many of those were test runs. */
+	failed: number;
+	testsFailed: number;
+}
+
+/** A pull request the session opened or linked. */
+export interface PullRequest {
+	number: number;
+	url: string;
+	repo?: string;
+	/** "OPEN", "MERGED", "CLOSED", when the desktop index knows it. */
+	state?: string;
+	/** Epoch ms of the transcript's PR-link record; absent when only the desktop index has it. */
+	at?: number;
+}
+
+/** The session squeezing its context. */
+export interface Compactions {
+	count: number;
+	/** Epoch ms of the last one. */
+	lastAt?: number;
+	/** "auto" or "manual", as the tool reports it. */
+	trigger?: string;
+}
+
+export interface Cost {
+	/**
+	 * Dollars, from the tool's own cost record. It writes one when a session exits, so a live
+	 * session shows its cost up to its last resume, or nothing.
+	 */
+	usd?: number;
+	/** Output tokens counted from the transcript's API responses: grows live. */
+	outputTokens: number;
+}
+
+/** The API call is being retried after an error. */
+export interface ApiRetry {
+	attempt: number;
+	max?: number;
+	/** Epoch ms of the error. */
+	at: number;
+}
+
+export type WaitingReason = "permission" | "question" | "plan" | "other";
+
+/** The session is stopped until the person answers. */
+export interface Waiting {
+	reason: WaitingReason;
+	/** Epoch ms it started waiting. */
+	since: number;
+	/** "hook" (opt-in, reliable), "transcript" (a question or plan tool is open). */
+	source: "hook" | "transcript";
+}
+
 export type AgentStatus = "running" | "finished" | "stopped" | "stalled";
 
 export interface Agent {
@@ -23,6 +107,8 @@ export interface Agent {
 	/** Epoch ms of the agent's last transcript write. */
 	lastWriteAt: number;
 	activity?: Activity;
+	running?: RunningTool;
+	commands?: Commands;
 	children: Agent[];
 }
 
@@ -42,6 +128,14 @@ export interface Session {
 	stateSince: number;
 	startedAt: number;
 	activity?: Activity;
+	running?: RunningTool;
+	commands?: Commands;
+	waiting?: Waiting;
+	/** The new fields are optional so snapshots built by hand (the demo, older recordings) still fit. */
+	prs?: PullRequest[];
+	compactions?: Compactions;
+	cost?: Cost;
+	apiRetry?: ApiRetry;
 	agents: Agent[];
 	/** Sessions this one started (side sessions and forks) that are still running. */
 	children: Session[];

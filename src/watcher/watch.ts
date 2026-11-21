@@ -2,10 +2,19 @@
 // timer catches what file events can't see, such as a process exiting. Listeners hear about a
 // snapshot only when its content changed.
 import { type FSWatcher, watch } from "node:fs";
-import { join } from "node:path";
+import { basename, join, sep } from "node:path";
 import type { Snapshot } from "./model";
 import { SnapshotBuilder } from "./snapshot";
-import { type Roots, defaultRoots } from "./sources";
+import { HOOK_DIR, HOOK_EVENTS, type Roots, defaultRoots } from "./sources";
+
+/**
+ * Whether a file event under projects/ can change the snapshot: only files in a folder that holds
+ * a live session's transcript can. A new session shows up through the registry first.
+ */
+export function isLiveProjectFile(file: string, liveDirs: ReadonlySet<string>): boolean {
+	if (!(file.endsWith(".jsonl") || file.endsWith(".meta.json"))) return false;
+	return liveDirs.has(file.split(sep)[0]!);
+}
 
 export interface WatcherOptions {
 	roots?: Roots;
@@ -17,17 +26,20 @@ export interface WatcherOptions {
 
 export interface WatcherStats {
 	rebuilds: number;
+	/** File events that were dropped because no live session could be affected. */
+	ignoredEvents: number;
 	changes: number;
 	lastBuildMs: number;
 }
 
 export class Watcher {
 	readonly builder: SnapshotBuilder;
-	readonly stats: WatcherStats = { rebuilds: 0, changes: 0, lastBuildMs: 0 };
+	readonly stats: WatcherStats = { rebuilds: 0, ignoredEvents: 0, changes: 0, lastBuildMs: 0 };
 	snapshot?: Snapshot;
 
 	#listeners = new Set<(s: Snapshot) => void>();
 	#fsWatchers: FSWatcher[] = [];
+	#hookWatch = false;
 	#timer?: ReturnType<typeof setTimeout>;
 	#poll?: ReturnType<typeof setInterval>;
 	#building = false;
@@ -50,9 +62,15 @@ export class Watcher {
 	async start(): Promise<Snapshot> {
 		const { home, desktopIndex } = this.builder.roots;
 		this.#watch(join(home, "sessions"), false);
-		this.#watch(join(home, "projects"), true, (f) => f.endsWith(".jsonl") || f.endsWith(".meta.json"));
-		if (desktopIndex) this.#watch(desktopIndex, true, (f) => f.endsWith(".json"));
-		this.#poll = setInterval(() => this.#schedule(0), this.#pollMs);
+		this.#watch(join(home, "projects"), true, (f) => isLiveProjectFile(f, this.builder.liveProjectDirs));
+		if (desktopIndex)
+			this.#watch(desktopIndex, true, (f) => f.endsWith(".json") && this.builder.liveHostIds.has(basename(f, ".json")));
+		this.#hookWatch = this.#watch(join(home, HOOK_DIR), false, (f) => f === HOOK_EVENTS);
+		this.#poll = setInterval(() => {
+			// Hooks installed after start: watch their folder once it exists.
+			this.#hookWatch ||= this.#watch(join(home, HOOK_DIR), false, (f) => f === HOOK_EVENTS);
+			this.#schedule(0);
+		}, this.#pollMs);
 		await this.#rebuild();
 		return this.snapshot!;
 	}
@@ -64,15 +82,18 @@ export class Watcher {
 		clearInterval(this.#poll);
 	}
 
-	#watch(path: string, recursive: boolean, keep: (file: string) => boolean = () => true): void {
+	#watch(path: string, recursive: boolean, keep: (file: string) => boolean = () => true): boolean {
 		try {
 			const w = watch(path, { recursive, persistent: true }, (_event, file) => {
 				if (!file || keep(String(file))) this.#schedule(this.#debounceMs);
+				else this.stats.ignoredEvents++;
 			});
 			w.on("error", () => w.close());
 			this.#fsWatchers.push(w);
+			return true;
 		} catch {
 			// The folder doesn't exist (yet): the poll still picks up changes.
+			return false;
 		}
 	}
 

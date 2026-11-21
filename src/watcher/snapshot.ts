@@ -1,14 +1,19 @@
 // Builds a Snapshot from the files on disk. Reads only what the live sessions need: the registry,
 // each live session's transcript tail and subagent metadata, and its desktop index entry.
 import { readdir } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { FileCache } from "./files";
-import type { Agent, AgentStatus, Session, Snapshot } from "./model";
+import { TranscriptLedger } from "./ledger";
+import type { Agent, AgentStatus, PullRequest, RunningTool, Session, Snapshot, Waiting } from "./model";
 import {
 	type AgentMeta,
 	type DesktopEntry,
+	HOOK_DIR,
+	HOOK_EVENTS,
+	type HookEvent,
 	type RegistryEntry,
 	type Roots,
+	hookEvents,
 	lastToolCall,
 	projectOf,
 	projectSlug,
@@ -20,6 +25,9 @@ export const STALL_MS = 30 * 60 * 1000;
 export const LINGER_MS = 2 * 60 * 1000;
 /** A stalled agent is dropped once it has been quiet this long: by then it is surely dead. */
 export const ABANDON_MS = 2 * 60 * 60 * 1000;
+
+/** Tools that stop and wait for the person while they run. */
+const WAITING_TOOLS: Record<string, Waiting["reason"]> = { AskUserQuestion: "question", ExitPlanMode: "plan" };
 
 export function isAlive(pid: number): boolean {
 	try {
@@ -34,6 +42,14 @@ export class SnapshotBuilder {
 	readonly files = new FileCache();
 	#desktopDirs?: string[];
 	#transcripts = new Map<string, string>();
+	#ledgers = new Map<string, TranscriptLedger>();
+	#ledgersUsed = new Set<string>();
+	#hooks = new Map<string, HookEvent>();
+
+	/** Folders (relative to projects/) that hold a live transcript, for narrowing the file watch. */
+	liveProjectDirs = new Set<string>();
+	/** Desktop index ids of live sessions. */
+	liveHostIds = new Set<string>();
 
 	constructor(
 		readonly roots: Roots,
@@ -46,6 +62,10 @@ export class SnapshotBuilder {
 		const dir = join(this.roots.home, "sessions");
 		const names = (await readdir(dir).catch(() => [] as string[])).filter((n) => n.endsWith(".json"));
 		const entries = await Promise.all(names.map((n) => this.files.json<RegistryEntry>(join(dir, n))));
+		this.#hooks =
+			(await this.files.fromTail(join(this.roots.home, HOOK_DIR, HOOK_EVENTS), hookEvents, [64 * 1024])) ?? new Map();
+		this.liveProjectDirs = new Set();
+		this.liveHostIds = new Set();
 
 		const byHost = new Map<string, Session>();
 		const parentHost = new Map<Session, string>();
@@ -55,7 +75,10 @@ export class SnapshotBuilder {
 			const desk = e.hostSessionId ? await this.#desktop(e.hostSessionId) : undefined;
 			const s = await this.#session(e, desk, at);
 			sessions.push(s);
-			if (e.hostSessionId) byHost.set(e.hostSessionId, s);
+			if (e.hostSessionId) {
+				byHost.set(e.hostSessionId, s);
+				this.liveHostIds.add(e.hostSessionId);
+			}
 			const parent = desk?.spawnedFrom?.sessionId ?? desk?.forkedFromSessionId;
 			if (parent) parentHost.set(s, parent);
 		}
@@ -73,6 +96,8 @@ export class SnapshotBuilder {
 		};
 		sortTree(roots);
 		this.files.sweep();
+		for (const p of this.#ledgers.keys()) if (!this.#ledgersUsed.has(p)) this.#ledgers.delete(p);
+		this.#ledgersUsed.clear();
 		return { at, sessions: roots };
 	}
 
@@ -80,6 +105,10 @@ export class SnapshotBuilder {
 		const cwd = e.cwd!;
 		const transcript = await this.#transcript(e.sessionId!, cwd);
 		const activity = transcript ? await this.files.fromTail(transcript, lastToolCall) : undefined;
+		const ledger = transcript ? await this.#ledger(transcript) : new TranscriptLedger();
+		if (transcript) this.liveProjectDirs.add(relative(join(this.roots.home, "projects"), dirname(transcript)));
+		const running = ledger.running;
+		const mtime = transcript ? await this.files.mtime(transcript) : undefined;
 		return {
 			id: e.sessionId!,
 			pid: e.pid!,
@@ -92,9 +121,25 @@ export class SnapshotBuilder {
 			stateSince: e.statusUpdatedAt ?? e.startedAt ?? at,
 			startedAt: e.startedAt ?? at,
 			activity,
+			...(running ? { running } : {}),
+			...(ledger.commands.repeats > 0 ? { commands: ledger.commands } : {}),
+			...optional("waiting", waiting(this.#hooks.get(e.sessionId!), running, mtime)),
+			prs: mergePrs(ledger.prs, desk?.prs),
+			compactions: ledger.compactions,
+			cost: { ...(ledger.costUSD !== undefined ? { usd: ledger.costUSD } : {}), outputTokens: ledger.outputTokens },
+			...(ledger.apiRetry ? { apiRetry: ledger.apiRetry } : {}),
 			agents: transcript ? await this.#agents(transcript.replace(/\.jsonl$/, ""), at) : [],
 			children: [],
 		};
+	}
+
+	async #ledger(path: string): Promise<TranscriptLedger> {
+		let l = this.#ledgers.get(path);
+		if (!l) this.#ledgers.set(path, (l = new TranscriptLedger()));
+		this.#ledgersUsed.add(path);
+		const s = await this.files.stat(path);
+		if (s) await l.update(path, s).catch(() => {});
+		return l;
 	}
 
 	/** The session's transcript: under its cwd's project folder, or wherever a search finds it. */
@@ -139,6 +184,8 @@ export class SnapshotBuilder {
 			const quiet = at - lastWriteAt;
 			if (status === "stalled" ? quiet > ABANDON_MS : status !== "running" && quiet > LINGER_MS) continue;
 			const activity = status === "running" ? await this.files.fromTail(log, lastToolCall) : undefined;
+			const ledger = status === "running" ? await this.#ledger(log) : undefined;
+			const running = ledger?.running;
 			const agent: Agent = {
 				id,
 				role: meta.agentType ?? "agent",
@@ -148,6 +195,8 @@ export class SnapshotBuilder {
 				status,
 				lastWriteAt,
 				activity,
+				...(running ? { running } : {}),
+				...(ledger && ledger.commands.repeats > 0 ? { commands: ledger.commands } : {}),
 				children: [],
 			};
 			byId.set(id, agent);
@@ -192,4 +241,39 @@ async function nestedDirs(root: string, depth: number): Promise<string[]> {
 		level = next;
 	}
 	return level;
+}
+
+const optional = <K extends string, V>(key: K, value: V | undefined) =>
+	(value === undefined ? {} : { [key]: value }) as { [P in K]?: V };
+
+/**
+ * Waiting on the person: the hook's last word for this session was a prompt that nothing has
+ * answered yet (the transcript hasn't moved since), or a tool that asks the person is open.
+ */
+export function waiting(hook: HookEvent | undefined, running: RunningTool | undefined, transcriptMtime: number | undefined): Waiting | undefined {
+	if (hook?.event === "Notification" && hook.kind !== "idle") {
+		// The hook's clock has whole seconds: a transcript write in the same second still counts as before.
+		const answered = transcriptMtime !== undefined && transcriptMtime >= hook.at + 1000;
+		if (!answered) {
+			const reason = hook.kind === "permission" || hook.kind === "question" ? hook.kind : "other";
+			return { reason, since: hook.at, source: "hook" };
+		}
+	}
+	const reason = running ? WAITING_TOOLS[running.tool] : undefined;
+	return reason && running ? { reason, since: running.since, source: "transcript" } : undefined;
+}
+
+/** PR links from the transcript, then any the desktop index adds; the index knows their state. */
+function mergePrs(fromTranscript: PullRequest[], fromDesk: DesktopEntry["prs"]): PullRequest[] {
+	const out = fromTranscript.map((p) => ({ ...p }));
+	for (const d of Array.isArray(fromDesk) ? fromDesk : []) {
+		if (typeof d?.url !== "string" || typeof d.prNumber !== "number") continue;
+		const known = out.find((p) => p.url === d.url);
+		if (known) {
+			if (typeof d.state === "string") known.state = d.state;
+		} else {
+			out.push({ number: d.prNumber, url: d.url, ...(typeof d.repo === "string" ? { repo: d.repo } : {}), ...(typeof d.state === "string" ? { state: d.state } : {}) });
+		}
+	}
+	return out;
 }

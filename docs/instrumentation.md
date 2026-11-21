@@ -44,6 +44,9 @@ Items 1 (the inspector) and 2 (frame-budget tests) are built; see above.
    every title, path, branch and id with invented names (deterministic, so the structure
    survives). `?replay=<fixture>&speed=8` plays it back. Real busy days become shareable fixtures,
    and `scan-private` checks them on the way in.
+   *Landed with S3:* `bun tools/record.ts --out fixtures/<name>.ndjson [--drop-idle]`, then
+   `?replay=<name>&speed=8[&loop]`. `fixtures/busy-release.ndjson` is the first one, and
+   `e2e/replay.test.ts` plays it.
 8. **Dev menu in the app.** Toggle the HUD, switch fixtures, reload the scene, and open the
    metrics log.
 

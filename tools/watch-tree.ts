@@ -3,7 +3,7 @@
 //   bun tools/watch-tree.ts --once    print one snapshot and exit
 //   bun tools/watch-tree.ts --json    print one snapshot as JSON and exit
 // Output shows your real session titles: keep it in your terminal, never in the repo.
-import type { Agent, Session, Snapshot } from "../src/watcher/model";
+import type { Agent, Commands, RunningTool, Session, Snapshot } from "../src/watcher/model";
 import { Watcher } from "../src/watcher/watch";
 
 const ago = (now: number, t: number) => {
@@ -14,13 +14,32 @@ const ago = (now: number, t: number) => {
 const STATE: Record<string, string> = { busy: "🔨", idle: "💤" };
 const STATUS: Record<Agent["status"], string> = { running: "🏃", finished: "✅", stopped: "✋", stalled: "🥱" };
 
+const runningText = (now: number, r?: RunningTool) => (r ? ` · ⏳ ${r.tool}${r.kind ? `(${r.kind})` : ""} for ${ago(now, r.since)}` : "");
+const commandsText = (c?: Commands) => {
+	if (!c?.last) return "";
+	const last = c.last.exitCode === 0 ? `✓ ${c.last.kind}` : `✗ ${c.last.kind} exit ${c.last.exitCode}`;
+	const streak = c.failStreak > 1 ? ` ×${c.failStreak} in a row` : "";
+	const retry = c.repeats > 1 ? ` · retry ${c.repeats}` : "";
+	return ` · ${last}${streak}${retry} · ${c.failed} failed (${c.testsFailed} tests)`;
+};
+
+function signalsLine(now: number, s: Session): string {
+	const bits: string[] = [];
+	if (s.waiting) bits.push(`🙋 waiting on you (${s.waiting.reason}, ${s.waiting.source}) ${ago(now, s.waiting.since)}`);
+	if (s.apiRetry) bits.push(`🔁 API retry ${s.apiRetry.attempt}${s.apiRetry.max ? `/${s.apiRetry.max}` : ""}`);
+	if (s.prs?.length) bits.push(`🏆 PRs ${s.prs.map((p) => `#${p.number}${p.state ? ` ${p.state.toLowerCase()}` : ""}`).join(", ")}`);
+	if (s.compactions?.count) bits.push(`🗜 compacted ${s.compactions.count}× (last ${ago(now, s.compactions.lastAt ?? now)} ago)`);
+	if (s.cost) bits.push(`💸 ${s.cost.usd !== undefined ? `$${s.cost.usd.toFixed(2)} · ` : ""}${(s.cost.outputTokens / 1000).toFixed(1)}k out`);
+	return bits.join("  ");
+}
+
 function render(snap: Snapshot, w: Watcher): string {
 	const out: string[] = [];
 	const now = snap.at;
 	const agentLines = (agents: Agent[], pad: string) => {
 		for (const a of agents) {
 			const doing = a.activity ? ` · ${a.activity.tool} ${ago(now, a.activity.at)} ago` : "";
-			out.push(`${pad}${STATUS[a.status]} ${a.role}: ${a.task}${a.model ? ` (${a.model})` : ""}${doing}`);
+			out.push(`${pad}${STATUS[a.status]} ${a.role}: ${a.task}${a.model ? ` (${a.model})` : ""}${doing}${runningText(now, a.running)}${commandsText(a.commands)}`);
 			agentLines(a.children, `${pad}   `);
 		}
 	};
@@ -28,7 +47,9 @@ function render(snap: Snapshot, w: Watcher): string {
 		for (const s of list) {
 			const where = [s.project, s.worktree, s.branch].filter(Boolean).join(" · ");
 			const doing = s.activity ? ` · last ${s.activity.tool} ${ago(now, s.activity.at)} ago` : "";
-			out.push(`${pad}${STATE[s.state] ?? "❔"} ${s.title}  [${where}]  ${s.state} ${ago(now, s.stateSince)}${doing}`);
+			out.push(`${pad}${STATE[s.state] ?? "❔"} ${s.title}  [${where}]  ${s.state} ${ago(now, s.stateSince)}${doing}${runningText(now, s.running)}${commandsText(s.commands)}`);
+			const sig = signalsLine(now, s);
+			if (sig) out.push(`${pad}    ${sig}`);
 			agentLines(s.agents, `${pad}    `);
 			sessionLines(s.children, `${pad}  ↳ `);
 		}

@@ -1,6 +1,7 @@
 // Cached file reads. Each read stats the file first and re-reads only when its mtime moved, so a
 // rebuild over unchanged files costs a handful of stat calls. A file caught mid-write (bad JSON)
 // keeps its last good value.
+import type { Stats } from "node:fs";
 import { open, readFile, stat } from "node:fs/promises";
 
 type Entry<T> = { mtimeMs: number; value: T };
@@ -40,11 +41,21 @@ export class FileCache {
 	}
 
 	async mtime(path: string): Promise<number | undefined> {
-		return (await stat(path).catch(() => undefined))?.mtimeMs;
+		return (await this.stat(path))?.mtimeMs;
 	}
+
+	/** A file's stats, taken at most once between sweeps: one rebuild sees one moment per file. */
+	stat(path: string): Promise<Stats | undefined> {
+		let s = this.#stats.get(path);
+		if (!s) this.#stats.set(path, (s = stat(path).catch(() => undefined)));
+		return s;
+	}
+
+	#stats = new Map<string, Promise<Stats | undefined>>();
 
 	/** Forget files not read since the last sweep, so the cache can't outgrow the live set. */
 	sweep(): void {
+		this.#stats.clear();
 		for (const p of this.#entries.keys()) if (!this.#touched.has(p)) this.#entries.delete(p);
 		this.#touched.clear();
 	}
@@ -53,7 +64,7 @@ export class FileCache {
 
 	async #load<T>(path: string, load: (size: number) => Promise<T>): Promise<T | undefined> {
 		this.#touched.add(path);
-		const s = await stat(path).catch(() => undefined);
+		const s = await this.stat(path);
 		if (!s) {
 			this.#entries.delete(path);
 			return undefined;
