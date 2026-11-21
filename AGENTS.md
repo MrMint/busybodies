@@ -29,15 +29,21 @@ v7-era APIs that look right and silently draw the wrong thing. Update it only wi
 - **No GSAP.** Tweens and springs come from our own small helper.
 - **The watcher only reads.** It never writes to the agent tool's files or changes its config.
   Hooks are opt-in, user-installed, and must never block the agent.
-- **Check types before you call it done:** `hutch pm exec -- tsc --noEmit`. Vite builds do not
-  type-check.
+- **Check before you call it done:** `bun test` and `hutch pm exec -- tsc --noEmit`. Vite builds
+  do not type-check.
+- **Parse the agent tool's files defensively.** Its formats are internal and change between
+  versions. Every field is optional, unknown records are skipped, and a torn write keeps the last
+  good value.
 
 ## Layout
 
 | Path | What |
 |---|---|
-| `src/bun/` | The Electrobun main process: windows, and later the watcher |
+| `src/bun/` | The Electrobun main process: windows |
+| `src/watcher/` | Capture: reads the agent tool's files into a `Snapshot` (`model.ts` is the contract) |
 | `src/mainview/` | The scene, drawn with PixiJS in the webview |
+| `test/` | `bun test`. Fixtures are built in a temp folder from invented data |
+| `tools/watch-tree.ts` | Prints the live session/agent tree in a terminal |
 | `docs/decisions.md` | Why things are the way they are |
 | `docs/research/` | Feasibility research (dated, with sources) |
 | `.claude/skills/pixijs/` | The vendored official PixiJS skill (MIT) |

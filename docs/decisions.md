@@ -60,3 +60,29 @@ springy motion. The asks for the next round: make it much cuter and more express
 world an office you can walk around in, with depth, rooms and furniture, where characters work
 frantically when busy and slack off comically when idle. Pixel art read as too pixely and not
 cute enough; clay was not liked.
+
+## 2026-11-21: watcher spike
+
+**The watcher works on file reads alone, and costs almost nothing.** Over 60 s of live data (9
+sessions, two of them busy, one with a running subagent), it used 0.53% of one core and 41 MB.
+Each rebuild took about 3 ms. There were 58 rebuilds, and only 2 changes reached listeners.
+
+How it reads:
+- The session registry gives liveness (checked against the process id), busy/idle and the title.
+- The transcript's tail gives the last tool call. It is matched as text, because one record can
+  be megabytes. The tail grows from 64 KB to 4 MB until a call appears.
+- Subagent metadata gives role, task, model, depth and parent. Nesting comes from
+  `parentAgentId`.
+- The desktop index gives branch and lineage (`spawnedFrom`, `forkedFromSessionId`).
+
+Every read is cached by mtime.
+
+**Agents have four statuses:** running; stalled (unfinished, with a quiet transcript for 30 min);
+finished; stopped. Finished and stopped agents linger for 2 min, so the scene can show them
+leaving. Stalled agents are dropped after 2 h of quiet. Agents are sorted by id, so the order
+stays stable.
+
+**Gaps the files don't cover yet:** "waiting on you" (a permission prompt or a question) shows up
+only as idle. The desktop index has hints, and the `Notification` hook is the reliable signal.
+Rebuilds also fire on every transcript write in any project; narrowing the watch to live
+sessions' folders would cut them.

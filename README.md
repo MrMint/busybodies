@@ -4,7 +4,8 @@ A desktop app that turns your AI coding agents into a little office full of busy
 running coding-agent session gets a desk, every subagent it spawns gets a tiny colleague, and you
 can watch them work frantically, slack off shamelessly, and wave at you when they need you.
 
-Early days: the app currently opens a window with a placeholder scene.
+Early days: the app opens a window with a placeholder scene. The watcher already sees your live
+sessions and agents. Try `bun tools/watch-tree.ts` for a live tree in your terminal.
 
 ## Run it
 
