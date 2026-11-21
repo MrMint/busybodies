@@ -130,11 +130,12 @@ describe("layout stability", () => {
 
 	test("a side session sits next to the session that started it", () => {
 		const plan = new FloorPlan();
-		const list = Array.from({ length: 6 }, () => session("lanternfish"));
-		plan.update(snap(list)); // 3 columns: [0 1 2] [3 4 5]
-		const parent = list[4]!;
-		// Free the first desk (far from the parent) and the one beside it.
-		const rest = list.filter((_, i) => i !== 0 && i !== 5);
+		const list = Array.from({ length: 9 }, () => session("lanternfish"));
+		const cols = plan.update(snap(list)).areas.find((a) => a.name === "lanternfish")!.cols;
+		expect(cols).toBe(3);
+		const parent = list[cols + 1]!; // row 1, column 1
+		// Free the first desk (far from the parent) and the one beside the parent.
+		const rest = list.filter((_, i) => i !== 0 && i !== cols + 2);
 		const side = session("lanternfish");
 		parent.children = [side];
 		const w = plan.update(snap(rest));
@@ -162,7 +163,7 @@ describe("layout scaling", () => {
 			checkSane(world, list);
 			// Two bands keep the office roughly screen-shaped: never a thin strip.
 			const aspect = world.bounds.w / world.bounds.h;
-			expect(aspect).toBeGreaterThan(0.8);
+			expect(aspect).toBeGreaterThan(0.7);
 			expect(aspect).toBeLessThan(4.2);
 		});
 	}

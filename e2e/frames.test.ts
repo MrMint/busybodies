@@ -79,17 +79,80 @@ describe("frame budgets", () => {
 		await page.evaluate(() => {
 			const b = window.__busybodies!;
 			const s = structuredClone(b.snapshot()!);
-			type A = (typeof s.sessions)[number]["agents"][number];
+			type S = (typeof s.sessions)[number];
+			type A = S["agents"][number];
 			const rest = (a: A): A => ({ ...a, status: "finished", children: a.children.map(rest) });
-			for (const x of s.sessions) {
+			const nap = (x: S): void => {
 				x.state = "idle";
 				x.agents = x.agents.map(rest);
-			}
+				x.children.forEach(nap);
+			};
+			s.sessions.forEach(nap);
 			b.show(s);
 		});
 		const c = await measure(page);
 		expect(c.tickerRunning).toBe(false);
 		expect(c.animationFrames).toBe(0);
+		await page.close();
+	}, T);
+});
+
+describe("camera", () => {
+	test("a move runs the ticker at 60 fps only while moving, then the idle office goes quiet", async () => {
+		const page = await open("demo=idle");
+		const during = await page.evaluate(() => {
+			const b = window.__busybodies!;
+			b.goTo({ kind: "room", id: "room:lanternfish" });
+			return b.counters();
+		});
+		expect(during.tickerRunning).toBe(true);
+		expect(during.maxFPS).toBe(60);
+		await page.waitForFunction(() => !window.__busybodies!.camera().moving, undefined, { timeout: 10_000 });
+		const c = await measure(page);
+		expect(c.tickerRunning).toBe(false);
+		expect(c.animationFrames).toBe(0);
+		const cam = await page.evaluate(() => window.__busybodies!.camera());
+		expect(cam.stop).toEqual({ kind: "room", id: "room:lanternfish" });
+		// Static layers were re-baked at the zoomed-in scale.
+		expect(cam.bake).toBeGreaterThan(1);
+		await page.close();
+	}, T);
+
+	test("keys step between rooms and back to the whole office", async () => {
+		const page = await open("demo=idle");
+		await page.keyboard.press("n");
+		await page.waitForFunction(() => !window.__busybodies!.camera().moving);
+		const first = await page.evaluate(() => window.__busybodies!.camera().stop);
+		expect(first).toEqual({ kind: "room", id: "meeting" });
+		await page.keyboard.press("n");
+		await page.waitForFunction(() => !window.__busybodies!.camera().moving);
+		expect(await page.evaluate(() => window.__busybodies!.camera().stop)).toEqual({ kind: "room", id: "room:lanternfish" });
+		await page.keyboard.press("Escape");
+		await page.waitForFunction(() => !window.__busybodies!.camera().moving);
+		expect(await page.evaluate(() => window.__busybodies!.camera().stop)).toEqual({ kind: "office" });
+		await page.close();
+	}, T);
+
+	test("clicking a room zooms to it, and a desk in it zooms to the desk", async () => {
+		const page = await open("demo=idle");
+		const target = await page.evaluate(() => {
+			const b = window.__busybodies!;
+			const desk = b.layout()!.areas.find((a) => a.name === "orbit-kit")!.desks[0]!;
+			const v = b.camera();
+			return { id: desk.id, x: (desk.cell.x + desk.cell.w / 2) * v.scale + v.x, y: (desk.cell.y + 40) * v.scale + v.y };
+		});
+		await page.mouse.click(target.x, target.y);
+		await page.waitForFunction(() => !window.__busybodies!.camera().moving);
+		expect(await page.evaluate(() => window.__busybodies!.camera().stop)).toEqual({ kind: "room", id: "room:orbit-kit" });
+		const again = await page.evaluate((id) => {
+			const b = window.__busybodies!;
+			const desk = b.layout()!.areas.flatMap((a) => a.desks).find((d) => d.id === id)!;
+			const v = b.camera();
+			return { x: (desk.cell.x + desk.cell.w / 2) * v.scale + v.x, y: (desk.cell.y + 40) * v.scale + v.y };
+		}, target.id);
+		await page.mouse.click(again.x, again.y);
+		await page.waitForFunction(() => !window.__busybodies!.camera().moving);
+		expect(await page.evaluate(() => window.__busybodies!.camera().stop)).toEqual({ kind: "desk", id: target.id });
 		await page.close();
 	}, T);
 });
@@ -100,7 +163,7 @@ describe("inspector", () => {
 		const moods = await page.evaluate(() =>
 			window.__busybodies!.entities().reduce<Record<string, number>>((m, e) => ((m[e.mood] = (m[e.mood] ?? 0) + 1), m), {}),
 		);
-		expect(moods).toEqual({ busy: 15, idle: 3, stalled: 1, done: 1 });
+		expect(moods).toEqual({ busy: 18, idle: 4, stalled: 2, done: 4 });
 		await page.close();
 	}, T);
 

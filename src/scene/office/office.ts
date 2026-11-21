@@ -1,0 +1,578 @@
+// The office, drawn: the open floor from design/boards/FloorBusy. Layers, back to front:
+//   slab     the dark base the rooms sit on
+//   floor    each room's floor, walls and wall items: cached as one texture per room
+//   depth    desks, furniture and characters, sorted by their feet (zIndex = y)
+//   bubbles  speech bubbles
+//   labels   room name tabs and counts
+// Furniture is drawn once per kind and baked into a texture that every desk shares, so a busy frame
+// redraws characters and bubbles over a handful of cached textures. Baked things are re-baked at
+// the camera's scale when the camera settles at a new stop, so they stay sharp when zoomed in.
+import { Container, Graphics, Rectangle, type Renderer, Sprite, Text, type Texture } from "pixi.js";
+import type { Session, Snapshot } from "../../watcher/model";
+import { CameraMove, type Stop, type View, type Viewport, viewFor } from "./camera";
+import { FloorPlan } from "./layout";
+import {
+	COMMON_COLOURS,
+	type FurnitureKind,
+	INK,
+	ROOM_COLOURS,
+	SLAB,
+	type SignText,
+	door,
+	drawFurniture,
+	hallway,
+	nameTab,
+	pill,
+	roomShell,
+	signboard,
+	text,
+	windowPane,
+} from "./paper";
+import { Placement, crewOf } from "./placement";
+import type { Character, CharacterFactory } from "./slot";
+import type { Area, Desk, Rect, World } from "./world";
+
+/** Default text for the common areas' signs. The sass engine (S5) replaces these through setSign. */
+const DEFAULT_SIGNS: Record<string, SignText> = {
+	"meeting:sign": { title: "THIS MEETING", body: "could have been a diff." },
+	"kitchen:sign": { title: "1 CUP PER GREEN BUILD", body: "Finished? Close your own session." },
+	"lobby:frame": { title: "EMPLOYEE OF THE MONTH", body: "Nobody. Again." },
+};
+
+const COMMON_SUBS: Record<string, string> = { meeting: "reviews", lobby: "in and out", kitchen: "idle, finished and sent home", vacant: "for lease" };
+
+/** Bake resolutions: the smallest one at or above what the camera needs is used. */
+const STEPS = [0.5, 0.75, 1, 1.5, 2, 3, 4, 6, 8];
+const MAX_TEXTURE = 4096;
+const HALL_CHUNK = 640;
+
+const hash = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
+
+/** A sprite showing one of the baked furniture textures; re-pointed when they are re-baked. */
+class Baked extends Sprite {
+	constructor(readonly kind: FurnitureKind) {
+		super();
+	}
+}
+
+interface Item {
+	view: Container;
+	/** What it was built from; rebuilt only when this changes. */
+	sig: string;
+}
+
+export interface OfficeOptions {
+	renderer: Renderer;
+	characters: CharacterFactory;
+	/** Ask for a render, or frames if something started moving (a camera move, a sign changed). */
+	wake: () => void;
+}
+
+export class Office extends Container {
+	readonly world = new Container({ isRenderGroup: true });
+	#slab = new Graphics();
+	#floor = new Container();
+	#depth = new Container({ sortableChildren: true });
+	#bubbles = new Container();
+	#labels = new Container();
+
+	#plan = new FloorPlan();
+	#placement = new Placement();
+	#data?: World;
+	#snapshot?: Snapshot;
+
+	#areas = new Map<string, Item>();
+	#halls: Container[] = [];
+	#items = new Map<string, Item>();
+	#tabs = new Map<string, Item>();
+	#people = new Map<string, Character>();
+	#bubbleFor = new Map<string, Item>();
+	#signs = new Map<string, SignText>(Object.entries(DEFAULT_SIGNS));
+
+	#textures = new Map<FurnitureKind, Texture>();
+	#anchors = new Map<FurnitureKind, { x: number; y: number }>();
+	#res = 0;
+
+	#stop: Stop = { kind: "office" };
+	#view: View = { scale: 1, x: 0, y: 0 };
+	#move?: CameraMove;
+	#screen = { w: 1, h: 1 };
+	#opts: OfficeOptions;
+
+	constructor(opts: OfficeOptions) {
+		super();
+		this.#opts = opts;
+		this.world.addChild(this.#slab, this.#floor, this.#depth, this.#bubbles, this.#labels);
+		this.world.interactiveChildren = false;
+		this.addChild(this.world);
+	}
+
+	// --- State for the app and the inspector ---------------------------------------------------
+
+	get animating(): boolean {
+		if (this.#move) return true;
+		for (const p of this.#people.values()) if (p.animating) return true;
+		return false;
+	}
+
+	/** True while the camera is moving: the app raises the frame rate for it. */
+	get moving(): boolean {
+		return this.#move !== undefined;
+	}
+
+	get stop(): Stop {
+		return this.#stop;
+	}
+
+	get layoutData(): World | undefined {
+		return this.#data;
+	}
+
+	get view(): View {
+		return { ...this.#view };
+	}
+
+	get bakeResolution(): number {
+		return this.#res;
+	}
+
+	/** Every character: its key, global position, and whatever the character reports. */
+	entities(): ({ key: string; x: number; y: number } & Record<string, string | number>)[] {
+		return [...this.#people].map(([key, p]) => {
+			const at = p.view.getGlobalPosition();
+			return { key, x: Math.round(at.x), y: Math.round(at.y), ...p.inspect() };
+		});
+	}
+
+	tick(dt: number): void {
+		if (this.#move) {
+			const v = this.#move.step(dt * (1000 / 60), this.#centre());
+			this.#apply(v);
+			if (this.#move.done) {
+				this.#move = undefined;
+				this.#rebake();
+			}
+		}
+		for (const p of this.#people.values()) p.tick(dt);
+	}
+
+	// --- Input ---------------------------------------------------------------------------------
+
+	/** The area (and desk) under a screen point. */
+	hit(x: number, y: number): { area?: Area; desk?: Desk } {
+		const w = this.#data;
+		if (!w) return {};
+		const p = { x: (x - this.#view.x) / this.#view.scale, y: (y - this.#view.y) / this.#view.scale };
+		const inside = (r: Rect) => p.x >= r.x && p.x < r.x + r.w && p.y >= r.y && p.y < r.y + r.h;
+		const area = w.areas.find((a) => inside(a.rect));
+		const desk = area?.desks.find((d) => inside(d.cell));
+		return { area, desk };
+	}
+
+	/** A click: zoom into the room under it, or the desk if already in that room. */
+	click(x: number, y: number): void {
+		const { area, desk } = this.hit(x, y);
+		if (!area) return this.goTo({ kind: "office" });
+		const inRoom = (this.#stop.kind === "room" && this.#stop.id === area.id) || this.#stop.kind === "desk";
+		if (desk && inRoom) this.goTo({ kind: "desk", id: desk.id });
+		else this.goTo({ kind: "room", id: area.id });
+	}
+
+	/** Step to the next (or previous) room in reading order: the top band, then the bottom one. */
+	nextRoom(dir: 1 | -1 = 1): void {
+		const areas = this.#data?.areas ?? [];
+		if (areas.length === 0) return;
+		const current =
+			this.#stop.kind === "room"
+				? areas.findIndex((a) => a.id === (this.#stop as { id: string }).id)
+				: this.#stop.kind === "desk"
+					? areas.findIndex((a) => a.id === this.#data!.desks.get((this.#stop as { id: string }).id)?.areaId)
+					: dir > 0
+						? -1
+						: 0;
+		const next = areas[(current + dir + areas.length) % areas.length]!;
+		this.goTo({ kind: "room", id: next.id });
+	}
+
+	goTo(stop: Stop, animate = true): void {
+		if (!this.#data) return;
+		const to = viewFor(this.#data, stop, this.#viewport());
+		if (!to) return this.goTo({ kind: "office" }, animate);
+		this.#stop = stop;
+		if (!animate) {
+			this.#move = undefined;
+			this.#apply(to);
+			this.#rebake();
+			return;
+		}
+		this.#move = new CameraMove(this.#view, to);
+		this.#opts.wake();
+	}
+
+	// --- Signs ---------------------------------------------------------------------------------
+
+	/** The named sign, whiteboard and frame slots, with what they say now. */
+	signs(): { id: string; kind: string; area: string; text?: SignText }[] {
+		return (this.#data?.signs ?? []).map((s) => ({ id: s.id, kind: s.kind, area: s.areaId, text: this.#signs.get(s.id) }));
+	}
+
+	/** Write on a sign slot (or clear it with undefined). Only that room is re-baked. */
+	setSign(id: string, value: SignText | undefined): void {
+		if (value) this.#signs.set(id, value);
+		else this.#signs.delete(id);
+		if (this.#data) this.#drawFloor(this.#data);
+		this.#opts.wake();
+	}
+
+	// --- Drawing -------------------------------------------------------------------------------
+
+	show(snapshot: Snapshot, width: number, height: number): void {
+		this.#snapshot = snapshot;
+		this.#data = this.#plan.update(snapshot);
+		this.#screen = { w: width, h: height };
+		const first = this.#res === 0;
+		if (first) this.#bake(this.#targetRes(viewFor(this.#data, this.#stop, this.#viewport())!.scale));
+		this.#draw(this.#data, snapshot);
+		// Keep the camera on its stop as rooms grow; fall back to the whole office if it vanished.
+		const to = viewFor(this.#data, this.#stop, this.#viewport());
+		if (!to) this.goTo({ kind: "office" }, false);
+		else if (this.#move) this.#move = new CameraMove(this.#view, to, Math.max(200, this.#move.ms / 2));
+		else if (first || differs(to, this.#view)) this.goTo(this.#stop, false);
+	}
+
+	/** The window changed size: re-fit the current stop. */
+	layout(width: number, height: number): void {
+		this.#screen = { w: width, h: height };
+		if (this.#data) this.goTo(this.#stop, false);
+	}
+
+	#viewport(): Viewport {
+		const top = 64;
+		return { x: 8, y: top, w: Math.max(1, this.#screen.w - 16), h: Math.max(1, this.#screen.h - top - 8) };
+	}
+
+	#centre() {
+		const vp = this.#viewport();
+		return { x: vp.x + vp.w / 2, y: vp.y + vp.h / 2 };
+	}
+
+	#apply(v: View): void {
+		this.#view = v;
+		this.world.scale.set(v.scale);
+		this.world.position.set(v.x, v.y);
+	}
+
+	#draw(world: World, snapshot: Snapshot): void {
+		const b = world.bounds;
+		this.#slab.clear().roundRect(b.x - 14, b.y - 14, b.w + 28, b.h + 28, 18).fill(SLAB);
+		this.#drawFloor(world);
+		this.#drawFurniture(world, snapshot);
+		this.#drawPeople(world, snapshot);
+		this.#drawLabels(world, snapshot);
+	}
+
+	/** Rooms' floors, walls and wall items: one cached texture per room, rebuilt when it changes. */
+	#drawFloor(world: World): void {
+		const seen = new Set<string>();
+		for (const a of world.areas) {
+			const texts = a.wall.filter((w) => w.slot).map((w) => this.#signs.get(w.slot!) ?? null);
+			const sig = JSON.stringify([a.rect, a.floorY, a.kind, a.hue, a.wall, texts]);
+			seen.add(a.id);
+			const had = this.#areas.get(a.id);
+			if (had?.sig === sig) continue;
+			had?.view.destroy({ children: true });
+			const view = this.#area(a);
+			this.#floor.addChild(view);
+			this.#areas.set(a.id, { view, sig });
+			this.#cache(view, a.rect);
+		}
+		for (const [id, item] of this.#areas) {
+			if (seen.has(id)) continue;
+			item.view.destroy({ children: true });
+			this.#areas.delete(id);
+		}
+		// The hallway, in chunks so each cached texture stays small enough to zoom into.
+		const h = world.hallway;
+		const chunks = Math.ceil(h.w / HALL_CHUNK);
+		if (this.#halls.length !== chunks) {
+			for (const c of this.#halls) c.destroy({ children: true });
+			this.#halls = [];
+			for (let i = 0; i < chunks; i++) {
+				const r = { x: h.x + i * HALL_CHUNK, y: h.y, w: Math.min(HALL_CHUNK, h.w - i * HALL_CHUNK), h: h.h };
+				const g = new Graphics();
+				hallway(g, r);
+				const c = new Container();
+				c.addChild(g);
+				this.#floor.addChildAt(c, 0);
+				this.#halls.push(c);
+				this.#cache(c, r);
+			}
+		}
+	}
+
+	#area(a: Area): Container {
+		const c = new Container({ label: a.id });
+		const g = new Graphics();
+		c.addChild(g);
+		const [wall, floor] =
+			a.kind === "project" ? ROOM_COLOURS[a.hue % ROOM_COLOURS.length]! : COMMON_COLOURS[a.kind as keyof typeof COMMON_COLOURS];
+		roomShell(g, a.rect, a.floorY, wall, floor, a.kind === "kitchen");
+		const seed = hash(a.id);
+		for (const [i, w] of a.wall.entries()) {
+			if (w.kind === "window") windowPane(g, w.rect, seed + i);
+			else if (w.kind === "door") door(g, w.rect);
+			else c.addChild(signboard(w.kind, w.rect, w.slot ? this.#signs.get(w.slot) : undefined, seed + i));
+		}
+		return c;
+	}
+
+	/** Cache a static container as a texture at the current bake resolution. */
+	#cache(c: Container, r: Rect): void {
+		const res = Math.min(this.#res, MAX_TEXTURE / Math.max(r.w + 20, r.h + 20));
+		for (const t of texts(c)) t.resolution = res;
+		c.cacheAsTexture({ resolution: res, antialias: true });
+	}
+
+	/** Desks (with their screens and name cards), chairs and floor furniture: depth-sorted. */
+	#drawFurniture(world: World, snapshot: Snapshot): void {
+		const sessions = new Map(flat(snapshot.sessions).map((s) => [s.id, s]));
+		const seen = new Set<string>();
+		const put = (key: string, sig: string, x: number, y: number, depth: number, make: () => Container) => {
+			seen.add(key);
+			let item = this.#items.get(key);
+			if (item?.sig !== sig) {
+				item?.view.destroy({ children: true });
+				item = { view: make(), sig };
+				this.#items.set(key, item);
+				this.#depth.addChild(item.view);
+			}
+			item.view.position.set(x, y);
+			item.view.zIndex = depth;
+		};
+		for (const a of world.areas) {
+			// Free desks stay furnished in rows where someone still works; empty rows are bare floor.
+			const taken = new Set(a.desks.map((d) => `${d.cell.x},${d.cell.y}`));
+			const rows = new Set(a.desks.map((d) => d.cell.y));
+			for (const cell of a.cells) {
+				if (taken.has(`${cell.x},${cell.y}`) || !rows.has(cell.y)) continue;
+				const x = cell.x + cell.w / 2;
+				const y = cell.y + 78;
+				put(`empty:${cell.x},${cell.y}`, "empty", x, y, y, () => this.#desk(undefined));
+				put(`echair:${cell.x},${cell.y}`, "chair", x - 26, cell.y + 32, cell.y + 32, () => this.#baked("chair"));
+			}
+			for (const d of a.desks) {
+				const s = sessions.get(d.id)!;
+				const card = deskCard(s);
+				put(`desk:${d.id}`, `${s.state === "busy"}|${card.join("|")}`, d.at.x, d.at.y, d.at.y, () => this.#desk(s));
+				put(`chair:${d.id}`, "chair", d.chair.x, d.chair.y, d.chair.depth, () => this.#baked("chair"));
+			}
+			for (const [i, f] of a.fixtures.entries()) put(`fx:${a.id}:${i}:${f.kind}`, f.kind, f.x, f.y, f.depth, () => this.#baked(f.kind));
+		}
+		for (const [key, item] of this.#items) {
+			if (seen.has(key)) continue;
+			item.view.destroy({ children: true });
+			this.#items.delete(key);
+		}
+	}
+
+	#desk(s: Session | undefined): Container {
+		const c = new Container();
+		c.addChild(this.#baked("desk"));
+		const screen = this.#baked(s?.state === "busy" ? "screen-lit" : "screen-off");
+		screen.position.set(46, -64);
+		c.addChild(screen);
+		if (s) {
+			const [title, sub] = deskCard(s);
+			const card = new Container();
+			const t = text(title, 13, { fontWeight: "800" });
+			clip(t, 128);
+			const d = text(sub, 9.5, { fontWeight: "600" });
+			clip(d, 128);
+			const w = Math.max(t.width, d.width) + 14;
+			const g = new Graphics()
+				.roundRect(0, 0, w, 34, 7)
+				.fill(s.state === "busy" ? 0xffffff : 0xe6ebf5)
+				.stroke({ width: 2.5, color: INK });
+			t.position.set(7, 3);
+			d.position.set(7, 19);
+			card.addChild(g, t, d);
+			card.position.set(-w / 2, -40);
+			card.rotation = -0.02;
+			c.addChild(card);
+			for (const x of texts(card)) x.resolution = this.#res;
+		}
+		return c;
+	}
+
+	#baked(kind: FurnitureKind): Baked {
+		const s = new Baked(kind);
+		s.texture = this.#textures.get(kind)!;
+		const a = this.#anchors.get(kind)!;
+		s.anchor.set(a.x, a.y);
+		return s;
+	}
+
+	/** Draw every furniture kind into a texture at `res`. */
+	#bake(res: number): void {
+		this.#res = res;
+		const old = [...this.#textures.values()];
+		const kinds: FurnitureKind[] = ["desk", "chair", "plant", "counter", "cooler", "fridge", "sofa", "table", "cabinet", "pod", "lamp", "screen-lit", "screen-off"];
+		for (const kind of kinds) {
+			const g = drawFurniture(kind);
+			const b = g.getLocalBounds();
+			const frame = new Rectangle(Math.floor(b.x) - 3, Math.floor(b.y) - 3, Math.ceil(b.width) + 6, Math.ceil(b.height) + 6);
+			const tex = this.#opts.renderer.generateTexture({ target: g, frame, resolution: res, antialias: true });
+			this.#textures.set(kind, tex);
+			this.#anchors.set(kind, { x: -frame.x / frame.width, y: -frame.y / frame.height });
+			g.destroy();
+		}
+		for (const item of this.#items.values()) {
+			for (const s of baked(item.view)) s.texture = this.#textures.get(s.kind)!;
+		}
+		for (const t of old) t.destroy(true);
+	}
+
+	#targetRes(scale: number): number {
+		const want = scale * (this.#opts.renderer.resolution || 1);
+		return STEPS.find((s) => s >= want * 0.95) ?? STEPS[STEPS.length - 1]!;
+	}
+
+	/** After a camera move: re-bake everything static at the new scale, if it changed. */
+	#rebake(): void {
+		const res = this.#targetRes(this.#view.scale);
+		if (res === this.#res || !this.#data) return;
+		this.#bake(res);
+		for (const [id, item] of this.#areas) this.#cache(item.view, this.#data.areas.find((a) => a.id === id)!.rect);
+		for (const c of this.#halls) this.#cache(c, { x: 0, y: 0, w: HALL_CHUNK, h: this.#data.hallway.h });
+		for (const item of [...this.#items.values(), ...this.#tabs.values(), ...this.#bubbleFor.values()]) {
+			for (const t of texts(item.view)) t.resolution = res;
+		}
+	}
+
+	#drawPeople(world: World, snapshot: Snapshot): void {
+		const placed = this.#placement.place(snapshot, world);
+		const seen = new Set<string>();
+		const bubbles = new Set<string>();
+		const sessions = new Map(flat(snapshot.sessions).map((s) => [s.id, s]));
+		for (const { who, slot, desk } of placed) {
+			seen.add(who.key);
+			let p = this.#people.get(who.key);
+			if (!p) {
+				p = this.#opts.characters(who);
+				this.#people.set(who.key, p);
+				this.#depth.addChild(p.view);
+			} else p.update(who);
+			p.place(slot);
+			p.view.zIndex = slot.depth;
+			// A busy lead says what it is doing. The sass engine (S5) will have better lines.
+			const s = who.kind === "lead" && desk ? sessions.get(desk) : undefined;
+			if (s?.state === "busy" && s.activity) {
+				const label = s.activity.tool.replace(/^mcp__[^_]+__/, "");
+				bubbles.add(who.key);
+				let b = this.#bubbleFor.get(who.key);
+				if (b?.sig !== label) {
+					b?.view.destroy({ children: true });
+					b = { view: bubble(label), sig: label };
+					for (const t of texts(b.view)) t.resolution = this.#res;
+					this.#bubbleFor.set(who.key, b);
+					this.#bubbles.addChild(b.view);
+				}
+				b.view.position.set(slot.x + 14, slot.y - who.size - 8);
+			}
+		}
+		for (const [key, p] of this.#people) {
+			if (seen.has(key)) continue;
+			p.destroy();
+			this.#people.delete(key);
+		}
+		for (const [key, b] of this.#bubbleFor) {
+			if (bubbles.has(key)) continue;
+			b.view.destroy({ children: true });
+			this.#bubbleFor.delete(key);
+		}
+	}
+
+	/** Room name tabs and their counts, above everything. */
+	#drawLabels(world: World, snapshot: Snapshot): void {
+		const byProject = new Map<string, Session[]>();
+		for (const s of flat(snapshot.sessions)) byProject.set(s.project, [...(byProject.get(s.project) ?? []), s]);
+		const seen = new Set<string>();
+		for (const a of world.areas) {
+			let sub = COMMON_SUBS[a.kind] ?? "";
+			if (a.kind === "project") {
+				const list = byProject.get(a.name) ?? [];
+				const out = list.reduce((n, s) => n + crewOf(s.agents).filter((x) => x.status === "running").length, 0);
+				sub = `${list.length} session${list.length === 1 ? "" : "s"}${out ? ` · ${out} agent${out === 1 ? "" : "s"} out` : ""}`;
+			}
+			const sig = `${a.name}|${sub}`;
+			seen.add(a.id);
+			let item = this.#tabs.get(a.id);
+			if (item?.sig !== sig) {
+				item?.view.destroy({ children: true });
+				const c = new Container();
+				const tab = nameTab(a.name);
+				const p = pill(sub, 15);
+				p.position.set(tab.width + 6, 8);
+				c.addChild(tab, p);
+				for (const t of texts(c)) t.resolution = this.#res;
+				item = { view: c, sig };
+				this.#tabs.set(a.id, item);
+				this.#labels.addChild(c);
+			}
+			item.view.position.set(a.rect.x + 14, a.rect.y - 22);
+		}
+		for (const [id, item] of this.#tabs) {
+			if (seen.has(id)) continue;
+			item.view.destroy({ children: true });
+			this.#tabs.delete(id);
+		}
+	}
+}
+
+// --- Helpers ----------------------------------------------------------------------------------
+
+const differs = (a: View, b: View) => Math.abs(a.scale - b.scale) > 1e-4 || Math.abs(a.x - b.x) > 0.5 || Math.abs(a.y - b.y) > 0.5;
+
+const flat = (list: Session[]): Session[] => list.flatMap((s) => [s, ...flat(s.children)]);
+
+function* walk(c: Container): Generator<Container> {
+	yield c;
+	for (const child of c.children) yield* walk(child);
+}
+const texts = (c: Container) => [...walk(c)].filter((x): x is Text => x instanceof Text);
+const baked = (c: Container) => [...walk(c)].filter((x): x is Baked => x instanceof Baked);
+
+/** A desk's name card: the session's title, and a line of facts. */
+function deskCard(s: Session): [string, string] {
+	const out = crewOf(s.agents).filter((a) => a.status === "running").length;
+	const facts = [s.state, s.branch ?? s.worktree, out ? `${out} out` : ""].filter(Boolean);
+	return [s.title || "untitled", facts.join(" · ")];
+}
+
+function clip(t: Text, max: number): void {
+	if (t.width <= max) return;
+	let s = t.text;
+	while (s.length > 1 && t.width > max) {
+		s = s.slice(0, -1);
+		t.text = `${s}…`;
+	}
+}
+
+function bubble(value: string): Container {
+	const t = text(value, 12, { fontWeight: "700" });
+	const c = new Container();
+	const w = t.width + 14;
+	const h = t.height + 8;
+	c.addChild(
+		new Graphics()
+			.roundRect(0, -h, w, h, 9)
+			.fill(0xffffff)
+			.stroke({ width: 2.5, color: INK })
+			.poly([8, -1.5, 18, -1.5, 6, 8])
+			.fill(0xffffff)
+			.stroke({ width: 2.5, color: INK }),
+		t,
+	);
+	t.position.set(7, -h + 4);
+	return c;
+}

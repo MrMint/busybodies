@@ -7,8 +7,8 @@
 //   gaining a row of desks never moves anyone.
 // - The common areas come first in each band: the meeting room above; the lobby and kitchen below.
 // - A new project takes a vacant room it fits in, or else a new room at the end of the shorter
-//   band. Its width (2 to 4 desk columns) is set once, from its sessions when it arrives; rooms
-//   never change width, so no room ever slides along the hallway.
+//   band. Its width (2 to 4 desk columns, about √n for n sessions) is set once, from its sessions
+//   when it arrives; rooms never change width, so no room ever slides along the hallway.
 // - A session takes the first free desk in its room, row by row from the hallway side; a side
 //   session takes the free desk nearest the session that started it. A full room adds a row.
 // - When a session ends its desk is freed, not compacted. Empty back rows are trimmed (never below
@@ -93,7 +93,7 @@ export class FloorPlan {
 		for (const s of all) byProject.set(s.session.project, [...(byProject.get(s.session.project) ?? []), s]);
 		for (const [project, list] of byProject) {
 			if (this.#rooms.has(project)) continue;
-			const cols = Math.min(MAX_COLS, Math.max(2, Math.ceil(list.length / 2)));
+			const cols = Math.min(MAX_COLS, Math.max(2, Math.ceil(Math.sqrt(list.length))));
 			const room = this.#vacantFor(cols) ?? this.#newRoom(cols);
 			room.kind = "project";
 			room.project = project;
@@ -200,7 +200,8 @@ function build(room: Room, x: number): Area {
 	const floorY = y + WALL;
 	const id = room.kind === "project" ? `room:${room.project}` : room.kind === "vacant" ? `vacant:${room.key}` : room.key;
 	const name = room.kind === "project" ? room.project! : room.kind === "vacant" ? "vacant" : NAMES[room.kind];
-	const area: Area = { id, kind: room.kind, name, band: room.band, rect, floorY, cols: room.cols, rows, cells: [], desks: [], fixtures: [], wall: [], spots: {} };
+	const hue = room.key.startsWith("room-") ? Number(room.key.slice(5)) - 1 : -1;
+	const area: Area = { id, kind: room.kind, name, band: room.band, hue, rect, floorY, cols: room.cols, rows, cells: [], desks: [], fixtures: [], wall: [], spots: {} };
 
 	if (room.kind === "project" || room.kind === "vacant") {
 		room.cells.forEach((occupant, i) => {
@@ -226,8 +227,9 @@ function cellRect(room: Room, x: number, i: number): Rect {
 
 function desk(id: string, areaId: string, room: Room, i: number, cell: Rect): Desk {
 	const at = { x: cell.x + CELL_W / 2, y: cell.y + 78 };
-	const lead: Slot = { x: at.x - 12, y: cell.y + 58, depth: cell.y + 58, facing: 1 };
-	const chair: Fixture = { kind: "chair", x: lead.x, y: cell.y + 50, depth: cell.y + 50 };
+	// The lead stands behind the desk, its face just above the desk top, beside the screen.
+	const lead: Slot = { x: at.x - 26, y: cell.y + 36, depth: cell.y + 36, facing: 1 };
+	const chair: Fixture = { kind: "chair", x: lead.x, y: cell.y + 32, depth: cell.y + 32 };
 	return { id, areaId, col: i % room.cols, row: Math.floor(i / room.cols), cell, at, lead, chair };
 }
 
@@ -270,7 +272,8 @@ function lobby(a: Area): void {
 	a.wall.push({ kind: "frame", rect: { x: x + 14, y: a.rect.y + 12, w: 140, h: 88 }, slot: "lobby:frame" });
 	a.wall.push({ kind: "door", rect: { x: x + 172, y: a.rect.y + 14, w: 64, h: WALL - 14 } });
 	a.fixtures.push(fixture("pod", x + w / 2, f + 140), fixture("sofa", x + 100, f + 270), fixture("plant", x + w - 28, f + 260));
-	a.spots.nap = [slot(x + w / 2 - 8, f + 118)];
+	// In the pod's window: drawn over the pod, so deeper than its base.
+	a.spots.nap = [{ x: x + w / 2 - 36, y: f + 128, depth: f + 141, facing: 1 }];
 	a.spots.sofa = [slot(x + 70, f + 262), slot(x + 130, f + 262, -1)];
 	a.spots.door = [slot(x + 204, f + 30, -1)];
 }

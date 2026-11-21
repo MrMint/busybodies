@@ -73,6 +73,8 @@ export interface Area {
 	/** The project's name, or the common area's. */
 	name: string;
 	band: Band;
+	/** A project room's colour, fixed for the room's life (it follows the room, not the project). */
+	hue: number;
 	rect: Rect;
 	/** Where the back wall ends and the floor begins. */
 	floorY: number;
@@ -99,7 +101,7 @@ export interface World {
 
 // Sizes, from the FloorBusy board.
 export const CELL_W = 220;
-export const ROW = 140;
+export const ROW = 170;
 export const WALL = 110;
 export const SIDE = 20;
 export const FRONT = 10;
@@ -112,20 +114,20 @@ export const roomWidth = (cols: number) => SIDE * 2 + cols * CELL_W;
 export const roomHeight = (rows: number) => WALL + rows * ROW + FRONT;
 
 /**
- * Crew positions around a desk, relative to the desk front's centre: two staggered rows in front,
- * then one each side of the desk. Index order is fill order, so the first few look natural.
+ * Crew positions around a desk, relative to the desk front's centre: a row in front, one each side
+ * of the desk, then a second row. They stand well forward, so the desk's name card stays readable. Index order is fill order, so the first few look natural.
  */
 const CREW: [number, number][] = [
-	[-62, 26],
-	[0, 32],
-	[62, 26],
-	[-31, 56],
-	[31, 56],
-	[-93, 54],
-	[93, 54],
-	[-102, -6],
-	[102, -6],
-	[0, 62],
+	[-60, 46],
+	[0, 52],
+	[60, 46],
+	[-100, 10],
+	[100, 10],
+	[-30, 80],
+	[30, 80],
+	[-88, 76],
+	[88, 76],
+	[0, 88],
 ];
 export const CREW_SLOTS = CREW.length;
 
@@ -137,7 +139,7 @@ export function crewSlot(desk: Desk, i: number): Slot {
 	else {
 		const k = i - CREW.length;
 		dx = -88 + (k % 8) * 25 + (Math.floor(k / 8) % 2) * 12;
-		dy = 44 + (Math.floor(k / 8) % 3) * 8;
+		dy = 62 + (Math.floor(k / 8) % 3) * 8;
 	}
 	const x = desk.at.x + dx;
 	const y = desk.at.y + dy;
