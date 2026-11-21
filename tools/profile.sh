@@ -16,7 +16,8 @@ FH=$!
 sleep 1
 before=$(pgrep -f "com.apple.WebKit.WebContent" | sort -n | tr '\n' ' ')
 BUSYBODIES_AGENT_HOME="$S/fh" BUSYBODIES_DESKTOP_INDEX= ~/.hutch/bin/hutch electrobun dev > "$S/app-$label.log" 2>&1 &
-for i in $(seq 1 120); do APP=$(pgrep -f "Busybodies-dev.app/Contents/MacOS/bun" | head -1); [ -n "$APP" ] && break; sleep 0.5; done
+# The launcher is also a bun under Contents/MacOS; the app is the one running Resources/main.js.
+for i in $(seq 1 120); do APP=$(pgrep -f "Busybodies-dev.app/Contents/MacOS/../Resources/main.js" | head -1); [ -n "$APP" ] && break; sleep 0.5; done
 sleep 3
 WC=""
 for p in $(pgrep -f "com.apple.WebKit.WebContent" | sort -n); do case " $before " in *" $p "*) ;; *) WC=$p;; esac; done

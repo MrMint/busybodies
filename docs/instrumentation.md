@@ -19,12 +19,15 @@ code showed it. A test that counts animation frames would have caught it on day 
 | `?demo`, `?demo=idle` | An invented office (busy, or after hours) that runs in any browser through Vite |
 | `?blank`, `?blank&norpc` | The app without the scene, to separate Electrobun's own cost from ours |
 | `BUSYBODIES_SCENE_QUERY` | Passes any of these modes to the app's window |
-| `window.__busybodies` | The inspector (dev builds, or `?inspect`): snapshot, characters, frame counters, `freeze()` and `step(n)` |
-| `bun test e2e/` | Frame budgets in headless Chrome, in CI: idle makes zero frames, busy renders at 30 fps or less, and a frozen scene steps identically |
+| `window.__busybodies` | The inspector (dev builds, or `?inspect`): snapshot, characters, frame counters, `freeze()` and `step(n)`, the office `layout()`, `camera()` and `goTo(stop)`, and the sign slots |
+| `bun test e2e/` | Frame budgets in headless Chrome, in CI: idle makes zero frames, busy renders at 30 fps or less, camera moves run at 60 only while moving, and a frozen scene steps identically |
+| `bun tools/shoot.ts` | Named scene states (fixture, camera stop, size) to PNGs plus a contact sheet, from a frozen clock; `--check` renders each twice and fails on any difference |
+| `?frozen` | Starts the scene with its clock stopped; only the inspector's `step(n)` moves it |
 
 ## Planned, in order
 
-Items 1 (the inspector) and 2 (frame-budget tests) are built; see above.
+Items 1 (the inspector), 2 (frame-budget tests) and 5 (deterministic screenshots) are built; see
+above.
 
 3. **A perf HUD (`?hud`, or a key).** Shows fps, renders per second, draw calls, display-object
    and texture counts, snapshot rate, the watcher's build time (p50/p95) and file events per

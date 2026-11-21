@@ -60,8 +60,9 @@ function blank(): void {
 
 	const scene = {
 		current: undefined as Snapshot | undefined,
-		/** Set by the inspector: the clock is stopped and only step() moves the scene. */
-		frozen: false,
+		/** The clock is stopped and only the inspector's step() moves the scene. Set by the inspector,
+		 * or from load with ?frozen (for deterministic screenshots: tools/shoot.ts). */
+		frozen: params.has("frozen"),
 		redraw() {
 			if (office.animating && !scene.frozen) {
 				if (office.moving) app.ticker.maxFPS = MOVING_FPS;
