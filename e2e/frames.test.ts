@@ -87,6 +87,8 @@ describe("frame budgets", () => {
 			}
 			b.show(s);
 		});
+		// Characters that go idle while we watch play a slacking habit through, then settle.
+		await page.waitForFunction(() => !window.__busybodies!.counters().tickerRunning, undefined, { timeout: 15_000 });
 		const c = await measure(page);
 		expect(c.tickerRunning).toBe(false);
 		expect(c.animationFrames).toBe(0);

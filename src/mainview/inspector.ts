@@ -3,14 +3,37 @@
 // builds and whenever the URL has ?inspect.
 import type { Application } from "pixi.js";
 import type { Snapshot } from "../watcher/model";
-import type { Office } from "./office";
+
+/** One character, as the inspector reports it. */
+export interface Entity {
+	key: string;
+	mood: string;
+	size: number;
+	x: number;
+	y: number;
+	lift: number;
+	/** From the rig: costume, the pose playing, and which of its frames shows. */
+	role?: string;
+	pose?: string;
+	frame?: number;
+	frames?: number;
+	/** The current frame's parts that differ from rest. */
+	params?: Record<string, string>;
+}
+
+/** What the inspector drives: the office, or a rig test scene. */
+export interface InspectedScene {
+	entities(): Entity[];
+	tick(dt: number): void;
+}
 
 export interface Inspector {
 	/** True once the first snapshot has been drawn. */
 	ready: boolean;
 	snapshot(): Snapshot | undefined;
-	/** Every character: key, mood, size, position and how high it is bouncing right now. */
-	entities(): ReturnType<Office["entities"]>;
+	/** Every character: key, mood, size, position, how high it is bouncing right now, and its role,
+	 * pose and frame. */
+	entities(): Entity[];
 	/** Frame accounting since load (or since resetCounters). */
 	counters(): { renders: number; animationFrames: number; tickerRunning: boolean; maxFPS: number };
 	resetCounters(): void;
@@ -31,7 +54,7 @@ declare global {
 
 export function installInspector(
 	app: Application,
-	office: Office,
+	office: InspectedScene,
 	scene: { show(s: Snapshot): void; frozen: boolean; redraw(): void; current?: Snapshot },
 ): Inspector {
 	let renders = 0;

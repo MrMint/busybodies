@@ -50,10 +50,12 @@ v7-era APIs that look right and silently draw the wrong thing. Update it only wi
 | `src/bun/` | The Electrobun main process: windows |
 | `src/watcher/` | Capture: reads the agent tool's files into a `Snapshot` (`model.ts` is the contract) |
 | `src/mainview/` | The scene, drawn with PixiJS in the webview |
+| `src/scene/rig/` | The mochi character rig: parts atlas, springs, frames and poses (`?sheet`, `?crowd=200`) |
 | `test/` | Unit tests (`bun test test/`). Fixtures are built in a temp folder from invented data |
 | `e2e/` | Scene tests in headless Chrome (`bun test e2e/`) |
 | `tools/watch-tree.ts` | Prints the live session/agent tree in a terminal |
 | `tools/fake-home.ts`, `tools/profile.sh` | Synthetic load, and CPU per process under it |
+| `tools/pose-dump.ts`, `tools/pose-sheet.ts` | Every pose as text, and as one PNG (`docs/rig/pose-sheet.png`) |
 | `docs/instrumentation.md` | How to measure and check the app, and what's planned |
 | `docs/plan.md` | The build plan: world model, streams, how work lands |
 | `design/` | The chosen look: boards, line bank, renders (`design/README.md`) |

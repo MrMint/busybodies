@@ -4,6 +4,7 @@ import { Electroview } from "electrobun/view";
 import { Application, Ticker } from "pixi.js";
 import type { BusybodiesRPC } from "../shared/rpc";
 import type { Snapshot } from "../watcher/model";
+import { Atlas, Crowd, buildPoseSheet, paperTheme } from "../scene/rig";
 import { installInspector } from "./inspector";
 import { Office } from "./office";
 
@@ -40,7 +41,24 @@ function blank(): void {
 		t.stop();
 	}
 
-	const office = new Office();
+	// The rig's parts, painted once and baked into one texture (src/scene/rig/atlas.ts).
+	const atlas = Atlas.build(app.renderer, paperTheme());
+
+	// ?sheet: every pose's frames, drawn once and left on screen (tools/pose-sheet.ts shoots it).
+	if (params.has("sheet")) {
+		const { sheet, width, height } = buildPoseSheet(atlas);
+		app.resizeTo = undefined as unknown as HTMLElement;
+		app.renderer.resize(width, height);
+		app.stage.addChild(sheet);
+		app.render();
+		Object.assign(window, { __sheet: { width, height, ready: true } });
+		return;
+	}
+
+	// ?crowd=N: N puppets on a grid, the rig's load test (e2e/rig.test.ts). Add &idle for a crowd
+	// with nothing to do.
+	const crowdSize = Number(params.get("crowd") ?? 0);
+	const office = crowdSize > 0 ? new Crowd(atlas, crowdSize, params.has("idle")) : new Office(atlas);
 	app.stage.addChild(office);
 
 	// Ambient motion doesn't need the display's full rate (120 Hz on ProMotion screens). Raise this
@@ -64,7 +82,7 @@ function blank(): void {
 		},
 		show(snapshot: Snapshot) {
 			scene.current = snapshot;
-			office.show(snapshot, app.screen.width, app.screen.height);
+			if (office instanceof Office) office.show(snapshot, app.screen.width, app.screen.height);
 			scene.redraw();
 			if (inspector) inspector.ready = true;
 			if (import.meta.env.DEV) {
@@ -81,6 +99,13 @@ function blank(): void {
 		office.layout(w, h);
 		redraw();
 	});
+
+	if (office instanceof Crowd) {
+		office.layout(app.screen.width, app.screen.height);
+		redraw();
+		if (inspector) inspector.ready = true;
+		return;
+	}
 
 	if (params.has("demo")) {
 		const { demoSnapshot, asleep } = await import("./demo");

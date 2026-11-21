@@ -2,13 +2,15 @@
 // and its agents gathered around. It is rebuilt on each snapshot, but characters are kept by id so
 // a busybody doesn't restart its bounce whenever anything changes.
 import { Container, Graphics, Text } from "pixi.js";
+import { type Atlas, type Role, roleFor } from "../scene/rig";
 import type { Agent, Session, Snapshot } from "../watcher/model";
 import { Busybody, type Mood } from "./busybody";
 
 const INK = 0x2b2340;
 const FLOOR = 0xfffaf2;
 const WALL = 0xf0e1cc;
-const PALETTE = [0xff8fab, 0x8fd3ff, 0xffd166, 0x9be7a0, 0xc3a6ff, 0xffb38a, 0x7fe0d4, 0xf5a3e0];
+// Project accents: the lead's tie and headset.
+const PALETTE = [0xff8a1f, 0x19b87a, 0x3d7dff, 0xff5c9a, 0x8c5cff];
 
 const hash = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
 const colourFor = (key: string) => PALETTE[hash(key) % PALETTE.length]!;
@@ -33,7 +35,7 @@ export class Office extends Container {
 	#layer = new Container();
 	#snapshot?: Snapshot;
 
-	constructor() {
+	constructor(readonly atlas: Atlas) {
 		super();
 		this.addChild(this.#layer);
 	}
@@ -43,11 +45,25 @@ export class Office extends Container {
 		return false;
 	}
 
-	/** Every character on screen, for the inspector: its key, mood, size and global position. */
-	entities(): { key: string; mood: string; size: number; x: number; y: number; lift: number }[] {
+	/** Every character on screen, for the inspector: its key, mood, size, global position, and the
+	 * rig's role, pose and frame. */
+	entities() {
 		return [...this.#people].map(([key, p]) => {
 			const at = p.getGlobalPosition();
-			return { key, mood: p.mood ?? "none", size: Math.round(p.size), x: Math.round(at.x), y: Math.round(at.y), lift: Math.round(-p.rig.y * 100) / 100 };
+			const s = p.state();
+			return {
+				key,
+				mood: p.mood ?? "none",
+				size: Math.round(p.size),
+				x: Math.round(at.x),
+				y: Math.round(at.y),
+				lift: Math.round(p.puppet.lift * 100) / 100,
+				role: s.role,
+				pose: s.pose,
+				frame: s.frame,
+				frames: s.frames,
+				params: s.params,
+			};
 		});
 	}
 
@@ -119,7 +135,7 @@ export class Office extends Container {
 		const deskX = 16 + lead * 0.7;
 		const deskY = h - 18;
 		room.addChild(this.#desk(deskX + lead * 0.55, deskY, lead, busy));
-		room.addChild(this.#person(`s:${s.id}`, colourFor(s.project), lead, sessionMood(s), deskX, deskY, seen));
+		room.addChild(this.#person(`s:${s.id}`, "lead", lead, sessionMood(s), deskX, deskY, seen, colourFor(s.project)));
 
 		if (busy && s.activity) {
 			const bubble = this.#bubble(s.activity.tool);
@@ -137,7 +153,7 @@ export class Office extends Container {
 			const size = small * (a.depth > 1 ? 0.8 : 1);
 			const x = areaX + (i % perRow) * small * 1.15 + small * 0.5;
 			const y = h - 14 - Math.floor(i / perRow) * small * 1.35;
-			room.addChild(this.#person(`a:${s.id}:${a.id}`, colourFor(a.role), size, agentMood(a), x, y, seen));
+			room.addChild(this.#person(`a:${s.id}:${a.id}`, roleFor(a.role), size, agentMood(a), x, y, seen));
 		});
 		const counts = label(`${agents.filter((a) => a.status === "running").length} busy · ${agents.length} on the crew`, 11, "400", 0.55);
 		counts.position.set(14, 10 + title.height + 2 + where.height + 2);
@@ -145,12 +161,12 @@ export class Office extends Container {
 		room.addChild(counts);
 	}
 
-	#person(key: string, colour: number, size: number, mood: Mood, x: number, y: number, seen: Set<string>): Busybody {
+	#person(key: string, role: Role, size: number, mood: Mood, x: number, y: number, seen: Set<string>, accent?: number): Busybody {
 		seen.add(key);
 		let p = this.#people.get(key);
-		if (!p || Math.abs(p.size - size) > 0.5) {
+		if (!p || Math.abs(p.size - size) > 0.5 || p.role !== role) {
 			p?.destroy({ children: true });
-			p = new Busybody(colour, size, (hash(key) % 628) / 100);
+			p = new Busybody(this.atlas, key, role, size, accent);
 			this.#people.set(key, p);
 		}
 		p.setMood(mood);
