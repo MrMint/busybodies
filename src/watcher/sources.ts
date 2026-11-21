@@ -55,6 +55,7 @@ export interface DesktopEntry {
 	isArchived?: boolean;
 	spawnedFrom?: { sessionId?: string };
 	forkedFromSessionId?: string;
+	prs?: { prNumber?: number; url?: string; repo?: string; state?: string }[];
 }
 
 /** The tool names a project folder after its cwd, with every character but [A-Za-z0-9-] as "-". */
@@ -90,4 +91,31 @@ export function lastToolCall(text: string): { tool: string; at: number } | undef
 		if (Number.isFinite(at)) return { tool: m[1]!, at };
 	}
 	return undefined;
+}
+
+/** Where the opt-in hook (tools/hooks.ts) appends its events, under the agent home. */
+export const HOOK_DIR = "busybodies";
+export const HOOK_EVENTS = "events.log";
+
+/** The newest hook event per session. */
+export interface HookEvent {
+	event: string;
+	/** Epoch ms, to the second: the hook stamps it with `date +%s`. */
+	at: number;
+	/** For a Notification: "permission", "question", "idle" or "other". */
+	kind?: string;
+}
+
+/**
+ * Parses hook lines, "<epoch seconds> <event> <session id> [kind]", newest last. A line cut by a
+ * torn tail, or with fields we don't expect, is skipped.
+ */
+export function hookEvents(text: string): Map<string, HookEvent> {
+	const out = new Map<string, HookEvent>();
+	for (const line of text.split("\n")) {
+		const m = /^(\d{9,11}) ([A-Za-z]+) ([A-Za-z0-9_-]+)(?: ([a-z_]+))?$/.exec(line.trim());
+		if (!m) continue;
+		out.set(m[3]!, { event: m[2]!, at: Number(m[1]) * 1000, ...(m[4] ? { kind: m[4] } : {}) });
+	}
+	return out;
 }

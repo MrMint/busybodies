@@ -133,3 +133,58 @@ hallway.
 picked over gumdrop, bean, chibi and pear in a side-by-side comparison. The next design round
 also pushes the sass much further: sarcastic bubbles tied to real events, office signage and
 background gags, and characters reacting to each other.
+
+## 2026-11-21: richer capture (S3)
+
+**A per-transcript ledger reads each transcript once, then only what was appended**
+(`src/watcher/ledger.ts`). The first read of a transcript goes back at most 32 MB; a line over
+8 MB is skipped. Plain response records are matched as text; only records that carry a signal are
+parsed. A file that shrinks was replaced, and its ledger starts over. Each signal, its source, and
+how far to trust it:
+
+| Signal | `Snapshot` field | Source | Known unreliability |
+|---|---|---|---|
+| Running tool and how long | `running` (`since`, epoch ms) | The newest `tool_use` with no `tool_result` yet | A call cut off by a crash stays "running" until the next prompt or compaction clears it. A permission prompt also looks like a running call. Background shell commands return at once, so they never look long |
+| Failed commands and tests | `commands.last`, `failStreak`, `failed`, `testsFailed` | Shell `tool_result`s: `is_error` plus an "Exit code N" prefix; the kind (`test`, `build`, `install`, `git`, `other`) is guessed from the command's text | Kinds are a regex guess. Refused, interrupted and backgrounded calls are not counted. Only the kind leaves the watcher, never the command text |
+| Retries of the same command | `commands.repeats` | The same command text (whitespace aside) run again in a row | A retry with a changed flag counts as a new command |
+| API retries | `apiRetry` | `system`/`api_error` records with `retryAttempt` | Cleared by the next response record |
+| PRs opened | `prs` | `pr-link` records, merged with the desktop index's `prs` (which adds `state`) | Index-only PRs have no time |
+| Cost | `cost.usd`, `cost.outputTokens` | `cost-state` records; output tokens summed from responses, once per request id | The tool writes `cost-state` when a session exits, so a live session shows its cost up to its last resume, or none. Tokens are live but only output, and only from what the ledger read |
+| Compaction | `compactions` (`count`, `lastAt`, `trigger`) | `system`/`compact_boundary` records | Counted from the first read only: older compactions in a >32 MB transcript are missed. There is no record while a compaction runs, only when it ends |
+| Waiting on you | `waiting` (`reason`, `since`, `source`) | The opt-in hook's `events.log`, else an open `AskUserQuestion`/`ExitPlanMode` call | See below |
+
+**Waiting on you comes from an opt-in hook** (`tools/hooks.ts install|uninstall|status`). It
+registers a 20-line shell script for `Notification`, `UserPromptSubmit` and `Stop`. The script
+appends `<epoch s> <event> <session id> [kind]` to `<agent home>/busybodies/events.log`, with
+no prompt text and no paths, and exits 0 whatever happens (measured well under 50 ms, even when
+the file can't be written; the agent's own timeout caps it at 2 s). The file starts over past
+256 KB at the end of a turn. A session is waiting when its newest hook event is a non-idle
+`Notification` and its transcript hasn't been written since. The hook's clock has whole
+seconds, so a write in the same second still counts as before. Install backs the settings file
+up, and uninstall takes out only our entries. If nothing else changed in between, it puts back
+the original bytes. Unverified: whether every `Notification` payload carries
+`notification_type` (the script falls back to the message's wording), and whether the desktop
+app's own permission UI fires the hook at all. The desktop index showed no reliable waiting flag:
+`interruptedAwaitingPerson` was always null in the sample, so it isn't used.
+
+**Without the hook, waiting shows only for questions and plans,** from the open tool call. A
+permission prompt without the hook still looks like a running tool.
+
+**The file watch is narrowed to live sessions.** Events under `projects/` count only in a folder
+that holds a live transcript, and desktop index events only for a live session's id. New
+sessions arrive through the registry first. Dropped events are counted in
+`WatcherStats.ignoredEvents`.
+
+**One stat per file per rebuild.** `FileCache.stat` takes a file's stats at most once between
+sweeps, so the cache, the tail reads and the ledgers share them. Without that, the ledger's
+extra stats made the watcher about 30% more expensive under the heavy fake home.
+
+**Recordings are anonymized at write time** (`tools/record.ts`, `src/watcher/anonymize.ts`).
+Raw snapshots are never written. Names come from fixed word lists, in order of first appearance,
+so a recording is deterministic and keeps its structure. Times are shifted so it starts at
+2030-01-07 09:00 UTC. MCP tool names become `mcp`, because they name the servers someone uses.
+Custom agent roles get invented ones. `?replay=<name>&speed=8[&loop]` plays `fixtures/<name>.ndjson`
+in the scene. Every time in a frame moves by the same amount, so durations stay as recorded.
+
+**New `Snapshot` fields are optional,** so hand-built snapshots (the demo, the other streams'
+tests) and older recordings still type-check.
