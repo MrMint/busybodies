@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Putty, notes</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="notes.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&amp;family=Nunito:wght@400;700&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="nt n-pt">
+<div>
+<h1>C · Putty</h1>
+<p>A tabletop of clay trays shot like stop motion: every project is a tray, every session a desk with a googly-eyed lead, every agent a ball of clay pinched off it. It is the warmest and most toy-like of the three, the one you would leave on a second screen just to watch.</p>
+<p>Characters are a clay rig (board C6): two balls, sausage limbs, googly eyes. Frames snap at about eight a second with no easing, baked into an atlas at startup.</p>
+<h2>What stands for what</h2>
+<table>
+<tr><th>Data</th><th>Office (shown)</th><th>Space station</th></tr>
+<tr><td>Project</td><td>A tray in its own clay colour</td><td>A module in its own hull colour</td></tr>
+<tr><td>Session</td><td>A desk and its cream lead</td><td>A console and its suited lead</td></tr>
+<tr><td>Subagent</td><td>A ball of clay, colour is the role</td><td>A drone, shell colour is the role</td></tr>
+<tr><td>Depth 2, 3</td><td>Orbits its parent; its child orbits it</td><td>Same orbits, now literal</td></tr>
+<tr><td>Busy, idle</td><td>Types, eyes darting; head sinks, z</td><td>Works the console; floats asleep</td></tr>
+<tr><td>Needs you</td><td>Tray lifts with a yellow rim, glowing "!" block, lead waves a sign</td><td>Module rim lights yellow, beacon block</td></tr>
+<tr><td>Compacting</td><td>The lead squares itself into a cube</td><td>Folds into a cargo crate</td></tr>
+<tr><td>Error, done</td><td>Flops over, red tag; green rosette on an empty desk</td><td>Tumbles, red tag; green docking light</td></tr>
+<tr><td>Origin</td><td>Blue screen, green screen, clay cloud by the desk</td><td>Bridge screen, engine screen, relay dish</td></tr>
+<tr><td>Model</td><td>Text on the name slab</td><td>Text on the hatch slab</td></tr>
+<tr><td>Cost</td><td>The lead's girth: it grows a size at $5, $20, $40</td><td>Same girth, a rounder suit</td></tr>
+<tr><td>Tool call</td><td>Dark tag pops by the ball: edit, read, browser</td><td>Same tags</td></tr>
+<tr><td>Tests</td><td>Green or red tag; lead panics on red</td><td>Same</td></tr>
+<tr><td>PR opened</td><td>Trophy lap with clay crumbs</td><td>Lap with a tiny flag</td></tr>
+<tr><td>Spawn, finish</td><td>Pinched off the lead with a parcel; pressed back in</td><td>Undocks with a canister; docks again</td></tr>
+<tr><td>Sass</td><td>A nature-documentary narrator card</td><td>Mission control, same deadpan</td></tr>
+</table>
+<h2>A second theme</h2>
+<p>A theme is a set of sculpted parts and five tray colours. The stop-motion timing, the clay shading and the reserved yellow and red stay. For the rig, a theme re-sculpts each part (helmet ball, mitten hands, a wrench for the trophy) under the same part names, re-bakes the atlas, and every pose carries over.</p>
+</div>
+<div>
+<h2 style="margin-top: 0">Sass bank · the narrator</h2>
+<div class="q"><span>The shell command enters its fortieth minute. Scientists believe it is hibernating.</span><span>Shell command over 40 min</span></div>
+<div class="q"><span>A third test fails. The verifier puffs up, as verifiers do when embarrassed.</span><span>Third test failure in a row</span></div>
+<div class="q"><span>Here we see a rare sight: a builder, orbited by a scout, orbited by an explorer. Nature is delegating.</span><span>Subagent reaches depth 3</span></div>
+<div class="q"><span>The session has asked a question and now waits, patient as moss. Ten minutes so far.</span><span>Prompt waiting 10 min</span></div>
+<div class="q"><span>Twenty dollars in. The session grows visibly rounder.</span><span>Session cost passes $20</span></div>
+<div class="q"><span>At forty dollars, it is the largest specimen we have recorded today.</span><span>Session cost passes $40</span></div>
+<div class="q"><span>And off it goes. A young pull request, leaving the tray for the first time.</span><span>PR opened</span></div>
+<div class="q"><span>The tests pass. A brief, beautiful calm settles over the tray.</span><span>Pass after a failure streak</span></div>
+<div class="q"><span>To survive, it must forget. The session rolls itself into a tidy cube.</span><span>Compaction starts</span></div>
+<div class="q"><span>It has fallen over. This is normal. It will pretend it meant to.</span><span>Session errors</span></div>
+<div class="q"><span>Ten agents on one tray. The tray was built for six.</span><span>10 agents running in a session</span></div>
+<div class="q"><span>With nothing to do, the session softens at the edges.</span><span>Session idle 30 min</span></div>
+<div class="q"><span>Removed by a careful hand. The others do not ask questions.</span><span>You stop a subagent</span></div>
+<div class="q"><span>The scout returns after twenty-two seconds, carrying what it insists is the answer.</span><span>Subagent done in under 30 s</span></div>
+<div class="q"><span>A new builder is pinched from the lead. It is already busy.</span><span>Subagent spawned</span></div>
+<div class="q"><span>Night on the tabletop. One lamp, one sleepy lump. All is well.</span><span>Late night, one idle session</span></div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1100,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

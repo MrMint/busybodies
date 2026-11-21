@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Putty, compact window</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="rig.css">
+<link rel="stylesheet" href="putty.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&amp;family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,700&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="pt wall" style="width: 520px; height: 400px">
+<div class="ghost" style="left: 20px; top: 20px; width: 330px; height: 210px">your editor, minding its own business</div>
+
+<div class="dish" style="left: 168px; top: 186px; width: 336px; height: 188px; background: #fff7ea; box-shadow: inset 0 3px 0 rgba(255,255,255,.4), 0 12px 0 #cfc3a8, 0 24px 22px rgba(10,8,30,.45)">
+<span class="ball c-lan bz" style="left: 14px; top: 62px"></span>
+<span class="ball c-lan bz" style="left: 48px; top: 62px; animation-delay: -.3s"></span>
+<span class="ball c-lan nap" style="left: 82px; top: 62px"></span>
+<div class="rig sm c-bre {{wait}}" style="left: 112px; top: 32px; font-size: 3px"><span class="sh"></span><span class="core"><span class="legL"></span><span class="legR"></span><span class="bod"></span><span class="head"><span class="browL"></span><span class="browR"></span><span class="eyeL"></span><span class="eyeR"></span><span class="mouth"></span></span><span class="armL"></span><span class="armR"></span><span class="prop"></span><span class="fx"></span></span></div>
+<span class="ball c-orb bz" style="left: 176px; top: 62px; animation-delay: -.5s"></span>
+<span class="ball c-orb" style="left: 210px; top: 64px; transform: rotate(168deg)"></span>
+<span class="ball c-mos" style="left: 244px; top: 62px; border-radius: 24%"></span>
+<span class="ball c-mos" style="left: 278px; top: 62px; opacity: .35"></span>
+<span class="ball c-ket nap" style="left: 304px; top: 62px"></span>
+<div class="plate hot" style="left: 14px; top: 102px; max-width: 308px"><strong>Crumb cache needs you</strong>"May I run rm -rf dist?" · 10 min</div>
+<div style="position: absolute; left: 16px; right: 14px; bottom: 10px; display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 12px; color: #3a2f5c"><span>3 busy · $63.20</span><span style="flex: 1"></span><a class="btn on" href="PuttyBusy.dc.html" style="padding: 2px 11px; font-size: 12px">Full tabletop</a></div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":520,"height":400}}'>
+class Component extends DCLogic {
+componentDidMount() {
+this.iv = setInterval(() => {
+const t = (this.state && this.state.t) || 0;
+this.setState({ t: t + 1 });
+}, 130);
+}
+componentWillUnmount() {
+clearInterval(this.iv);
+}
+renderVals() {
+const t = (this.state && this.state.t) || 0;
+const W = 'e-cam m-flat ar-up p-sign';
+const frames = [[3, W], [2, W + ' f-tapR'], [2, W], [2, W + ' f-tapR'], [2, 'e-cam m-flat ar-diag p-sign2'], [2, W], [4, 'e-right b-one m-small ar-up p-sign f-tapR'], [5, 'e-cam b-up ar-up p-sign']];
+const total = frames.reduce((s, f) => s + f[0], 0);
+let k = t % total;
+let i = 0;
+while (k >= frames[i][0]) { k -= frames[i][0]; i += 1; }
+return { wait: frames[i][1] };
+}
+}
+</script>
+</body>
+</html>

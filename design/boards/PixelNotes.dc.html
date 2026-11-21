@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pixel Tower, notes</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="notes.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="nt n-px">
+<div>
+<h1>A · Pixel Tower</h1>
+<p>A cutaway tower in chunky pixel art: every project is a floor, every session a room, every agent a tiny bot with a job. It reads like a retro management game you happen to be winning, and it is the cheapest of the three to animate.</p>
+<p>Built as sprites on one canvas. Characters are a 16 by 19 px rig acted frame by frame (board A6): each frame is a small object of part names, baked into an atlas at startup. Motion is 2 to 12 frames a second and stops between events.</p>
+<h2>What stands for what</h2>
+<table>
+<tr><th>Data</th><th>Office (shown)</th><th>Space station</th></tr>
+<tr><td>Project</td><td>A floor with its own wallpaper and sign</td><td>A deck with its own hull colour</td></tr>
+<tr><td>Session</td><td>A room: desk, monitor, big lead bot</td><td>A cabin: console, suited lead</td></tr>
+<tr><td>Subagent</td><td>Small bot, body colour is the role</td><td>Crew bot, suit stripe is the role</td></tr>
+<tr><td>Depth 2, 3</td><td>Smaller bots trail their parent in a line</td><td>Spacewalkers on one tether</td></tr>
+<tr><td>Busy, idle</td><td>Lit and typing; dim with a z</td><td>Console lit; cabin on night cycle</td></tr>
+<tr><td>Needs you</td><td>Beacon, amber outline, "!" bubble</td><td>Airlock alarm, same amber</td></tr>
+<tr><td>Compacting</td><td>Paper fed into a crusher</td><td>Cargo into the trash compactor</td></tr>
+<tr><td>Error, done</td><td>Red lamp and smoke; dark room, green flag</td><td>Klaxon and sparks; docked pod, green light</td></tr>
+<tr><td>Origin</td><td>Blue monitor, green terminal, cloud over desk</td><td>Bridge console, engine terminal, relay dish</td></tr>
+<tr><td>Model</td><td>Text on the room plate</td><td>Text on the cabin plate</td></tr>
+<tr><td>Cost</td><td>Coin stack on the desk, a coin per $5</td><td>Fuel cells by the console</td></tr>
+<tr><td>Tool call</td><td>Word bubble: edit, read, browser</td><td>Same bubbles</td></tr>
+<tr><td>Tests</td><td>Green or red bubble</td><td>Same</td></tr>
+<tr><td>PR opened</td><td>Capsule up the tube to the roof sign</td><td>Probe leaves the top dock</td></tr>
+<tr><td>Spawn, finish</td><td>Rides the lift up; walks out the lobby</td><td>Arrives by shuttle; leaves by airlock</td></tr>
+<tr><td>Sass</td><td>Roof billboard</td><td>Ship PA scroller</td></tr>
+</table>
+<h2>A second theme</h2>
+<p>A theme is one sprite sheet and one palette. The grid, the motion rules and the two reserved colours (amber for needs you, red for error) stay put. A village turns the floors into a street of houses, so the cutaway scrolls sideways instead of stacking. For the rig, a theme redraws each part's blocks (helmet, glove, wrench for trophy) under the same part names, so every pose carries over.</p>
+</div>
+<div>
+<h2 style="margin-top: 0">Sass bank · the building's PA system</h2>
+<div class="q"><span>That shell command has run 40 minutes. It has a pension now.</span><span>Shell command over 40 min</span></div>
+<div class="q"><span>COMBO x3! Tests failed again. The flask is filing a complaint.</span><span>Third test failure in a row</span></div>
+<div class="q"><span>A builder hired a scout, who hired an explorer. That is not a team, that is a conga line.</span><span>Subagent reaches depth 3</span></div>
+<div class="q"><span>Room 4 has held the door for 10 minutes. No rush. It has started a podcast.</span><span>Prompt waiting 10 min</span></div>
+<div class="q"><span>INSERT COIN. Release 2.4 just passed $20.</span><span>Session cost passes $20</span></div>
+<div class="q"><span>The coin stack on 5 now wants its own desk.</span><span>Session cost passes $40</span></div>
+<div class="q"><span>Tests pass! Nobody touch anything.</span><span>Pass after a failure streak</span></div>
+<div class="q"><span>PR #219 has left the building. Godspeed, little capsule.</span><span>PR opened</span></div>
+<div class="q"><span>Scout back in 22 seconds. Either brilliant or it read one file.</span><span>Subagent done in under 30 s</span></div>
+<div class="q"><span>Docs sweep is compacting. Memories go in, vibes come out.</span><span>Compaction starts</span></div>
+<div class="q"><span>Rename everything renamed something it should not have. Classic.</span><span>Session errors</span></div>
+<div class="q"><span>10 agents on one floor. Fire code says 8. Fire code is a suggestion.</span><span>10 agents running in a session</span></div>
+<div class="q"><span>Webhook spike has stared at the wall for 30 minutes. Deep work.</span><span>Session idle 30 min</span></div>
+<div class="q"><span>You pulled the plug on a builder. It saw it coming.</span><span>You stop a subagent</span></div>
+<div class="q"><span>LEVEL UP: 100 agents hired today. HR has left the chat.</span><span>100th subagent of the day</span></div>
+<div class="q"><span>02:47. One light on. Go to bed, we will hold the fort.</span><span>Late night, one idle session</span></div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1100,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

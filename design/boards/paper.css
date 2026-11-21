@@ -1,0 +1,215 @@
+/* Busybodies pilots, style B "Cut Paper".
+   Layout: a top-down floor map. Paper zones are projects, round tables are sessions, blobs are agents.
+   Look: flat fills, one ink outline weight, no shading. Motion: springs that overshoot, squash and stretch. */
+.pp{--ink:#1b2140;--ground:#e6ebf5;--sun:#ffe500;--red:#ff6b6b;--green:#2fcf83;
+  position:relative;overflow:hidden;color:var(--ink);font-family:"DM Sans",system-ui,sans-serif;font-size:13px;line-height:1.3;
+  background:radial-gradient(rgba(27,33,64,.13) 1.5px,transparent 1.7px) 0 0/24px 24px var(--ground)}
+.pp *,.pp *::before,.pp *::after{box-sizing:border-box}
+.pp .disp{font-family:"Bricolage Grotesque","DM Sans",system-ui,sans-serif}
+
+/* top bar */
+.top{position:absolute;left:0;right:0;top:0;height:76px;display:flex;align-items:center;gap:10px;padding:0 32px;z-index:6}
+.mark{font:800 28px/1 "Bricolage Grotesque","DM Sans",sans-serif;background:var(--ink);color:#fff;padding:5px 14px 8px;border-radius:14px;transform:rotate(-3deg);margin-right:6px}
+.pill{background:#fff;color:var(--ink);border:3px solid var(--ink);border-radius:999px;padding:4px 12px;font-weight:700;text-decoration:none;white-space:nowrap}
+.pill.hot{background:var(--sun);animation:hop 2.2s cubic-bezier(.34,1.56,.64,1) infinite}
+.pp .btn{font:700 13px "DM Sans",system-ui,sans-serif;background:#fff;color:var(--ink);border:3px solid var(--ink);border-radius:999px;padding:6px 14px;box-shadow:2px 3px 0 var(--ink);text-decoration:none;cursor:pointer;white-space:nowrap}
+.pp .btn:hover,.pp .btn:focus-visible{transform:translate(1px,2px);box-shadow:1px 1px 0 var(--ink);outline:0}
+.pp .btn.on{background:var(--ink);color:#fff}
+
+/* zones and tables */
+.zone{position:absolute;border:3px solid var(--ink);border-radius:30px;background:var(--z);color:var(--ink)}
+.z-lan{--z:#ffb25b}.z-bre{--z:#9be3c3}.z-orb{--z:#9ccbff}.z-mos{--z:#ffb3d1}.z-ket{--z:#cdb8ff}
+.zone h2{position:absolute;left:22px;top:12px;margin:0;font:800 34px/1 "Bricolage Grotesque","DM Sans",sans-serif;letter-spacing:-.5px}
+.zone .sub{position:absolute;left:24px;top:52px;font-weight:600;white-space:nowrap}
+.tbl{position:absolute;display:block;border-radius:50%;background:#fff;border:3px solid var(--ink)}
+a.tbl{transition:transform .25s cubic-bezier(.34,1.56,.64,1)}
+a.tbl:hover,a.tbl:focus-visible{transform:scale(1.05) rotate(-3deg);outline:0}
+.tbl.off{background:transparent;border-style:dashed}
+.lap{position:absolute;width:28px;height:19px;border:3px solid var(--ink);border-radius:4px;background:#bfd3ff}
+.lap.tty{background:var(--ink)}
+.lap.tty::after{content:"";position:absolute;left:3px;top:4px;width:9px;height:3px;background:#5dffa0}
+.cl{position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:11px 4px 0 -1px #fff,-9px 5px 0 -2px #fff,11px 4px 0 2px var(--ink),-9px 5px 0 1px var(--ink),0 0 0 3px var(--ink)}
+.cup{position:absolute;width:14px;height:14px;border-radius:50%;background:#8a5a3c;border:3px solid var(--ink);box-shadow:inset 0 0 0 2px #fff}
+.dash{position:absolute;height:0;border-top:3px dashed var(--ink);transform-origin:0 50%}
+
+/* blobs */
+.blob{--c:#6f8cff;position:absolute;display:block;width:30px;height:28px;background:var(--c);border:3px solid var(--ink);border-radius:50% 50% 44% 44%/62% 62% 38% 38%;transform-origin:50% 100%}
+.blob::before{content:"";position:absolute;left:5px;top:8px;width:4px;height:5px;border-radius:50%;background:var(--ink);box-shadow:10px 0 0 var(--ink);animation:blinkp 4.6s infinite}
+@keyframes blinkp{0%,93%,100%{transform:scaleY(1)}96%{transform:scaleY(.1)}}
+.r-bu{--c:#6f8cff}.r-sc{--c:#39d98a}.r-rv{--c:#b18cff}.r-ve{--c:#33d1c7}.r-de{--c:#ff7ab8}.r-ex{--c:#d99a5b}
+.p-lan{--c:#ffb25b}.p-bre{--c:#9be3c3}.p-orb{--c:#9ccbff}.p-mos{--c:#ffb3d1}.p-ket{--c:#cdb8ff}
+/* hats: the role, a second time, in shape */
+.r-bu::after{content:"";position:absolute;left:1px;top:-9px;width:22px;height:10px;background:#fff;border:3px solid var(--ink);border-radius:12px 12px 2px 2px}
+.r-sc::after{content:"";position:absolute;left:4px;top:-13px;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:12px solid var(--ink)}
+.r-rv::after{content:"";position:absolute;left:11px;top:4px;width:11px;height:11px;border:2.5px solid var(--ink);border-radius:50%}
+.r-ve::after{content:"";position:absolute;right:-10px;bottom:1px;width:10px;height:13px;background:#fff;border:2.5px solid var(--ink);border-radius:2px}
+.r-de::after{content:"";position:absolute;left:0;top:-7px;width:20px;height:9px;background:var(--ink);border-radius:60% 60% 40% 40%;transform:rotate(-12deg)}
+.r-ex::after{content:"";position:absolute;left:-5px;top:-4px;width:34px;height:7px;background:#fff;border:2.5px solid var(--ink);border-radius:6px}
+.nohat::after{display:none}
+/* sizes */
+.big{width:56px;height:52px}
+.big::before{left:13px;top:17px;width:6px;height:8px;box-shadow:20px 0 0 var(--ink)}
+.xl{width:96px;height:88px;border-width:4px}
+.xl::before{left:25px;top:28px;width:10px;height:13px;box-shadow:34px 0 0 var(--ink)}
+.lead{--c:#fff}
+.lead.big::after{content:"";position:absolute;left:20px;top:30px;width:11px;height:6px;border:3px solid var(--ink);border-top:0;border-radius:0 0 10px 10px}
+.lead.xl::after{content:"";position:absolute;left:36px;top:50px;width:18px;height:9px;border:4px solid var(--ink);border-top:0;border-radius:0 0 14px 14px}
+/* stacks: a child rides on its parent's head */
+.blob>.blob{left:50%;top:auto;bottom:calc(100% - 7px);margin-left:-11px;width:22px;height:20px}
+.blob>.blob::before{left:3px;top:5px;width:3px;height:4px;box-shadow:7px 0 0 var(--ink)}
+.big>.blob{width:40px;height:37px;margin-left:-20px;bottom:calc(100% - 9px)}
+.big>.blob::before{left:8px;top:11px;width:4px;height:6px;box-shadow:14px 0 0 var(--ink)}
+.big>.blob>.blob{width:28px;height:26px;margin-left:-14px}
+.big>.blob>.blob::before{left:5px;top:7px;width:3px;height:5px;box-shadow:9px 0 0 var(--ink)}
+/* postures */
+.busy{animation:jig .5s ease-in-out infinite alternate}
+@keyframes jig{from{transform:rotate(-3deg)}to{transform:rotate(3deg) translateY(-1px)}}
+.hop{animation:hop 2.8s cubic-bezier(.34,1.56,.64,1) infinite}
+@keyframes hop{0%,70%,100%{transform:translateY(0) scale(1)}76%{transform:translateY(0) scale(1.15,.8)}85%{transform:translateY(-12px) scale(.9,1.12)}93%{transform:translateY(0) scale(1.1,.88)}}
+.wob{animation:wob 2.2s ease-in-out infinite alternate}
+@keyframes wob{from{transform:rotate(-6deg)}to{transform:rotate(6deg)}}
+.wait{animation:bighop .9s cubic-bezier(.3,1.4,.6,1) infinite}
+@keyframes bighop{0%,100%{transform:translateY(0) scale(1.1,.9)}45%{transform:translateY(-22px) scale(.92,1.1)}}
+.idle{transform:scale(1.25,.62);animation:breathe 4s ease-in-out infinite}
+@keyframes breathe{0%,100%{transform:scale(1.25,.62)}50%{transform:scale(1.2,.68)}}
+.idle::before{height:2px;top:12px;border-radius:2px;animation:none}
+.big.idle::before{top:22px;height:3px}
+.lead.idle::after{display:none}
+.squish{animation:squish 1.4s cubic-bezier(.34,1.56,.64,1) infinite}
+@keyframes squish{0%,100%{transform:scale(1,1)}40%{transform:scale(1.3,.5)}60%{transform:scale(.8,1.15)}}
+.err{--c:#ffb0b0;transform-origin:50% 50%;animation:wobx 1.2s ease-in-out infinite}
+@keyframes wobx{0%,100%{transform:rotate(172deg)}50%{transform:rotate(188deg)}}
+.still,.still::before{animation:none}
+
+/* signals */
+.paddle{position:absolute;right:-22px;top:-36px;width:32px;height:32px;border-radius:50%;background:var(--sun);border:3px solid var(--ink);font:800 20px/25px "Bricolage Grotesque","DM Sans",sans-serif;text-align:center}
+.paddle::after{content:"";position:absolute;left:11px;top:100%;width:4px;height:14px;background:var(--ink)}
+.ring{position:absolute;border:5px solid var(--sun);border-radius:50%;box-shadow:0 0 0 2px var(--ink),inset 0 0 0 2px var(--ink);animation:ring 2.4s ease-out infinite}
+@keyframes ring{from{transform:scale(.6);opacity:1}to{transform:scale(1.55);opacity:0}}
+.ask{position:absolute;z-index:4;background:var(--sun);border:3px solid var(--ink);border-radius:16px;padding:10px 12px 12px;box-shadow:4px 5px 0 var(--ink);transform:rotate(2deg);display:flex;flex-direction:column;align-items:flex-start;gap:6px;font-weight:600}
+.ask strong{font:800 18px/1.15 "Bricolage Grotesque","DM Sans",sans-serif}
+.ask.plain{background:#fff}
+.stk{position:absolute;z-index:4;background:#fff;border:3px solid var(--ink);border-radius:999px;padding:2px 9px;font-weight:700;font-size:12px;white-space:nowrap;box-shadow:2px 3px 0 var(--ink);animation:popin 5s cubic-bezier(.34,1.56,.64,1) infinite}
+.stk.good{background:#b9f6cf}.stk.bad{background:#ff9d9d}
+@keyframes popin{0%{transform:scale(0) rotate(-12deg);opacity:0}7%,72%{transform:scale(1) rotate(-3deg);opacity:1}80%,100%{transform:scale(0) rotate(6deg);opacity:0}}
+.lab{position:absolute;z-index:3;background:#fff;border:3px solid var(--ink);border-radius:12px;padding:5px 10px 6px;transform:rotate(-1.5deg);max-width:200px;font-size:12px;font-weight:500}
+.lab strong{display:block;font:700 15px/1.15 "Bricolage Grotesque","DM Sans",sans-serif}
+.lab.hot{background:var(--sun)}.lab.bad{background:#ff9d9d}.lab.off{background:transparent;border-style:dashed}
+.lab.wide{max-width:300px;transform:none}
+.lab .ln{display:flex;gap:6px;align-items:baseline;padding:1px 0}
+.dot{display:inline-block;flex:none;width:10px;height:10px;border-radius:50%;border:2px solid var(--ink);background:var(--c)}
+.zs{position:absolute;z-index:3;font:800 16px/1 "Bricolage Grotesque","DM Sans",sans-serif;animation:zf2 3.4s ease-in infinite}
+@keyframes zf2{from{transform:translate(0,0) scale(.6);opacity:0}20%{opacity:1}to{transform:translate(14px,-26px) scale(1.2);opacity:0}}
+.oops{position:absolute;z-index:3;width:58px;height:58px;background:var(--red);color:var(--ink);font:800 13px/58px "Bricolage Grotesque","DM Sans",sans-serif;text-align:center;
+  clip-path:polygon(50% 0,61% 22%,85% 12%,80% 37%,100% 50%,80% 63%,85% 88%,61% 78%,50% 100%,39% 78%,15% 88%,20% 63%,0 50%,20% 37%,15% 12%,39% 22%);animation:wob 1s ease-in-out infinite alternate}
+.flagp{position:absolute;width:3px;height:36px;background:var(--ink)}
+.flagp::after{content:"";position:absolute;left:3px;top:0;width:24px;height:16px;background:var(--green);border:3px solid var(--ink);border-left:0;border-radius:0 4px 4px 0}
+.wad{position:absolute;width:11px;height:11px;border-radius:50%;background:#fff;border:2.5px solid var(--ink);animation:toss 1.4s cubic-bezier(.3,1.3,.6,1) infinite}
+@keyframes toss{0%{transform:translate(0,0) scale(.4);opacity:0}20%{opacity:1}100%{transform:translate(48px,22px) scale(1);opacity:0}}
+.bin{position:absolute;width:24px;height:24px;border:3px solid var(--ink);border-radius:4px 4px 9px 9px;background:#fff}
+
+/* pinboard, panels, lists */
+.panel{position:absolute;background:#fff;border:3px solid var(--ink);border-radius:18px;padding:14px 16px}
+.panel h3{margin:0 0 8px;font:800 18px/1 "Bricolage Grotesque","DM Sans",sans-serif}
+.note{flex:none;background:var(--ink);color:#fff;border-radius:6px;padding:12px 14px;transform:rotate(-2.5deg);font:600 15px/1.3 "Bricolage Grotesque","DM Sans",sans-serif}
+.note small{display:block;font:700 11px "DM Sans",system-ui,sans-serif;letter-spacing:.07em;text-transform:uppercase;margin-bottom:6px;color:#ffe500}
+.tick{display:flex;gap:8px;padding:4px 0;border-top:2px dotted var(--ink)}
+.tick time{font-weight:700;flex:none}
+.trow{position:relative;display:flex;gap:10px;align-items:center;padding:5px 0}
+.trow .blob{position:relative;flex:none;animation:none}
+.trow.t2{margin-left:30px}.trow.t3{margin-left:60px}.trow.t4{margin-left:90px}
+.trow.t2::before,.trow.t3::before,.trow.t4::before{content:"";position:absolute;left:-18px;top:-10px;width:12px;height:30px;border-left:3px dotted var(--ink);border-bottom:3px dotted var(--ink);border-radius:0 0 0 10px}
+.dim{color:#4a5380}
+.dots{width:536px;height:8px;background:radial-gradient(circle,var(--ink) 0 2.6px,transparent 3px) 0 0/8px 8px}
+
+/* night */
+.pp.night{--ground:#141a36;color:#e6ebf5;background:radial-gradient(rgba(230,235,245,.1) 1.5px,transparent 1.7px) 0 0/24px 24px var(--ground)}
+.zone.dark{--z:#1d2548;border-color:#46518c;border-style:dashed;color:#9aa6da}
+.zone.dark .tbl{background:transparent;border-color:#46518c;border-style:dashed}
+.glow{position:absolute;border-radius:50%;background:radial-gradient(rgba(255,246,196,.95),rgba(255,246,196,0) 68%)}
+.moonp{position:absolute;width:72px;height:72px;border-radius:50%;background:#fff3b0;box-shadow:inset -16px -8px 0 #e3d083}
+
+/* compact */
+.pp.wall{background:#46536f}
+.ghost{position:absolute;border:2px solid rgba(255,255,255,.16);color:rgba(255,255,255,.5);padding:8px 10px;font-size:11px}
+.shelf{position:absolute;background:#fff;border:3px solid var(--ink);border-radius:22px;box-shadow:4px 6px 0 rgba(10,8,30,.35)}
+.shelf .line{position:absolute;left:14px;right:14px;height:3px;background:var(--ink);border-radius:2px}
+
+@media (prefers-reduced-motion:reduce){.pp *,.pp *::before,.pp *::after{animation:none!important}}
+
+/* acted rig, paper skin: one bean, noodle limbs, flat fills, one ink outline.
+   Each part is its own cut-out; the frame object sets its angle and the part springs there. */
+.pp.ps h1{font:800 28px/1.1 "Bricolage Grotesque","DM Sans",sans-serif}
+.pp .stage{border:3px solid var(--ink);border-radius:22px;background:linear-gradient(transparent calc(100% - 30px),rgba(27,33,64,.14) 0) #ffb25b}
+.pp .cell h3{font-family:"Bricolage Grotesque","DM Sans",sans-serif;font-weight:800}
+.pp .cell .code{background:#fff;border:2px solid var(--ink);border-radius:10px}
+.pp .cell .meta{color:#3c4570}
+.pp .bub{background:#fff;border:3px solid var(--ink);border-radius:14px 14px 14px 4px;font-weight:700}
+.pp .rig{width:16em;height:20em;font-size:6px;--c:#fff;transition:transform .22s cubic-bezier(.34,1.56,.64,1)}
+.pp .rig.kid{font-size:4px;--c:#7be0a4}
+.pp .rig .core,.pp .rig .armL,.pp .rig .armR,.pp .rig .legL,.pp .rig .legR,.pp .rig .head,.pp .rig .bod,.pp .rig .prop,.pp .rig .browL,.pp .rig .browR{transition:transform .17s cubic-bezier(.34,1.56,.64,1)}
+.pp .rig .sh{left:2em;bottom:-.6em;width:12em;height:2em;border-radius:50%;background:rgba(27,33,64,.2)}
+.pp .rig .bod{left:2em;top:2em;width:12em;height:14em;background:var(--c);border:.5em solid var(--ink);border-radius:6em 6em 5em 5em/7em 7em 5em 5em;transform-origin:50% 100%}
+.pp .rig .head{left:2em;top:2em;width:12em;height:10em}
+/* eyes */
+.pp .rig .eyeL,.pp .rig .eyeR{top:3.6em;width:1.6em;height:2.2em;border-radius:50%;background:var(--ink)}
+.pp .rig .eyeL{left:3.2em}.pp .rig .eyeR{left:7.2em}
+.pp .e-wide .eyeL,.pp .e-wide .eyeR{width:2.8em;height:2.8em;margin:-.4em 0 0 -.6em;border:.4em solid var(--ink);background:radial-gradient(circle,var(--ink) 0 .45em,#fff .5em)}
+.pp .e-shine .eyeL,.pp .e-shine .eyeR{width:2.6em;height:3em;margin:-.5em 0 0 -.5em;background:radial-gradient(circle at 36% 30%,#fff 0 .5em,transparent .55em),radial-gradient(circle at 68% 72%,#fff 0 .26em,transparent .3em),var(--ink)}
+.pp .e-closed .eyeL,.pp .e-closed .eyeR{top:4.6em;width:2.2em;height:.5em;margin-left:-.3em;border-radius:.3em}
+.pp .e-happy .eyeL,.pp .e-happy .eyeR{width:2.4em;height:1.4em;margin-left:-.4em;background:none;border-top:.55em solid var(--ink);border-radius:50% 50% 0 0}
+.pp .e-left .eyeL,.pp .e-left .eyeR{transform:translateX(-.8em)}
+.pp .e-right .eyeL,.pp .e-right .eyeR{transform:translateX(.8em)}
+.pp .e-cam .eyeL,.pp .e-cam .eyeR{width:2.2em;height:2.8em;margin:-.3em 0 0 -.3em;background:radial-gradient(circle at 50% 34%,#fff 0 .34em,transparent .38em),var(--ink)}
+/* brows */
+.pp .rig .browL,.pp .rig .browR{top:2em;width:2.4em;height:.5em;border-radius:.3em;background:var(--ink)}
+.pp .rig .browL{left:2.8em}.pp .rig .browR{left:6.8em}
+.pp .b-up .browL,.pp .b-up .browR{transform:translateY(-.9em)}
+.pp .b-worry .browL{transform:rotate(-20deg)}.pp .b-worry .browR{transform:rotate(20deg)}
+.pp .b-angry .browL{transform:translateY(.5em) rotate(22deg)}.pp .b-angry .browR{transform:translateY(.5em) rotate(-22deg)}
+.pp .b-one .browL{transform:translateY(-1em) rotate(-10deg)}
+/* mouth */
+.pp .rig .mouth{left:4.7em;top:6.4em;width:2.6em;height:1.3em;border-bottom:.5em solid var(--ink);border-radius:0 0 2em 2em}
+.pp .m-flat .mouth{top:7em;height:.5em;border:0;border-radius:.3em;background:var(--ink)}
+.pp .m-open .mouth{left:5em;top:6.3em;width:2em;height:2.4em;border:0;border-radius:50%;background:var(--ink)}
+.pp .m-grin .mouth{left:4.1em;top:6.3em;width:3.8em;height:2em;border:0;border-radius:.4em .4em 2em 2em;background:radial-gradient(circle at 50% 110%,#ff6b6b 0 1em,transparent 1.05em),var(--ink)}
+.pp .m-wobble .mouth{left:4.3em;top:6.5em;width:3.4em;height:1.6em;border:.4em solid var(--ink);border-radius:.7em;background:repeating-linear-gradient(90deg,#fff 0 .6em,var(--ink) .6em .8em);transform:rotate(-6deg)}
+.pp .m-small .mouth{left:5.5em;top:6.9em;width:1em;height:1em;border:0;border-radius:50%;background:var(--ink)}
+/* limbs: the shared angles in rig.css turn these */
+.pp .rig .armL,.pp .rig .armR{top:8.6em;width:1em;height:6em;border-radius:.5em;background:var(--ink);transform-origin:50% .5em;z-index:2}
+.pp .rig .armL{left:1.9em}.pp .rig .armR{left:13.1em}
+.pp .rig .armL::after,.pp .rig .armR::after{content:"";position:absolute;left:-.6em;bottom:-.7em;width:2.2em;height:2.2em;border-radius:50%;background:var(--c);border:.5em solid var(--ink)}
+.pp .rig .legL,.pp .rig .legR{top:15em;width:1em;height:4.2em;border-radius:.5em;background:var(--ink);transform-origin:50% 0}
+.pp .rig .legL{left:5.2em}.pp .rig .legR{left:9.8em}
+.pp .rig .legL::after,.pp .rig .legR::after{content:"";position:absolute;bottom:-.3em;width:2.8em;height:1.3em;border-radius:1em 1em .3em .3em;background:var(--ink)}
+.pp .rig .legL::after{left:-1.5em}.pp .rig .legR::after{left:-.3em}
+.pp .bd-low .legL,.pp .bd-low .legR{height:2em}
+.pp .bd-slump .bod{transform:scale(1.06,.9)}
+/* props */
+.pp .rig .prop{z-index:3}
+.pp .p-sign .prop,.pp .p-sign2 .prop{display:block;left:12.4em;top:-6.8em;width:6em;height:6em;border-radius:50%;background:var(--sun);border:.5em solid var(--ink);transform-origin:50% 190%}
+.pp .p-sign .prop::before,.pp .p-sign2 .prop::before{content:"";position:absolute;left:2.2em;top:100%;margin-top:.4em;width:.6em;height:5.4em;background:var(--ink);border-radius:.3em}
+.pp .p-sign .prop::after,.pp .p-sign2 .prop::after{content:"!";position:absolute;inset:0;font:800 4.2em/1.2 "Bricolage Grotesque","DM Sans",sans-serif;text-align:center;color:var(--ink)}
+.pp .p-sign2 .prop{transform:rotate(16deg)}
+.pp .p-pls .prop{display:block;left:-1em;top:-3.4em;width:18em;height:6.4em;border-radius:1.2em;background:#fff;border:.5em solid var(--ink);transform:rotate(-3deg)}
+.pp .p-pls .prop::after{content:"please?";position:absolute;inset:0;font:800 3.2em/1.65 "Bricolage Grotesque","DM Sans",sans-serif;text-align:center;color:var(--ink)}
+.pp .p-trophy .prop,.pp .p-trophy2 .prop{display:block;left:11.8em;top:-4.2em;width:6.4em;height:5.4em;background:#ffd23f;border:.5em solid var(--ink);border-radius:.6em .6em 3.2em 3.2em}
+.pp .p-trophy2 .prop{transform:translateY(-1.6em) rotate(8deg)}
+.pp .p-trophy .prop::before,.pp .p-trophy2 .prop::before{content:"";position:absolute;left:2.2em;top:100%;width:1em;height:2em;background:var(--ink)}
+.pp .p-trophy .prop::after,.pp .p-trophy2 .prop::after{content:"";position:absolute;left:.4em;top:100%;margin-top:1.6em;width:4.6em;height:1.3em;background:#ffd23f;border:.4em solid var(--ink);border-radius:.4em}
+.pp .p-box .prop,.pp .p-give .prop{display:block;left:10.4em;top:9em;width:7.6em;height:6.4em;background:#f2c078;border:.5em solid var(--ink);border-radius:.8em;transform:rotate(-4deg)}
+.pp .p-give .prop{left:16.6em;top:7.4em;transform:rotate(6deg)}
+.pp .p-box .prop::after,.pp .p-give .prop::after{content:"";position:absolute;left:1.2em;top:1.3em;width:3.4em;height:.5em;border-radius:.3em;background:var(--ink);box-shadow:0 1.3em 0 var(--ink),0 2.6em 0 var(--ink)}
+.pp .p-desk .prop{display:block;left:-3em;top:12.4em;width:22em;height:8em;background:#fff;border:.5em solid var(--ink);border-radius:1.6em 1.6em .8em .8em}
+/* fx */
+.pp .rig .fx{z-index:4}
+.pp .x-sweat1 .fx,.pp .x-sweat2 .fx{display:block;left:-1.2em;top:2em;width:1.3em;height:1.9em;border-radius:50%/65% 65% 35% 35%;background:#4fc3ff;box-shadow:17.4em -1em 0 #4fc3ff,16.6em 4.6em 0 #4fc3ff,-.6em 5.4em 0 #4fc3ff}
+.pp .x-sweat2 .fx{left:-2em;top:3.6em;box-shadow:19em -.4em 0 #4fc3ff,18.2em 5em 0 #4fc3ff,-.2em 6em 0 #4fc3ff}
+.pp .x-conf1 .fx,.pp .x-conf2 .fx,.pp .x-conf3 .fx{display:block;left:0;top:0;width:1.4em;height:.9em;border-radius:.15em;transform:rotate(18deg)}
+.pp .x-conf1 .fx{box-shadow:-3em -4em 0 #ff6b6b,2em -8em 0 #2fcf83,8em -6em 0 #3d5afe,20em -6em 0 #ff8ad1,18em 2em 0 #fff,-4em 4em 0 #3d5afe}
+.pp .x-conf2 .fx{transform:rotate(-14deg);box-shadow:-4em -1em 0 #ff6b6b,1em -5em 0 #2fcf83,7em -9em 0 #3d5afe,21em -3em 0 #ff8ad1,19em 5em 0 #fff,-3em 8em 0 #3d5afe,10em -4em 0 #ffe500}
+.pp .x-conf3 .fx{transform:rotate(30deg);box-shadow:-5em 2em 0 #ff6b6b,0 -2em 0 #2fcf83,6em -7em 0 #3d5afe,22em 0 0 #ff8ad1,20em 8em 0 #fff,-2em 11em 0 #3d5afe,11em -8em 0 #ffe500}
+.pp .x-pop .fx{display:block;left:7.4em;top:8em;width:1em;height:1em;border-radius:50%;box-shadow:-10em -6em 0 .3em var(--sun),10em -6em 0 .3em var(--sun),0 -11.5em 0 .3em var(--sun),-11.5em 3em 0 0 #fff,11.5em 3em 0 0 #fff}
+.pp .x-z1 .fx,.pp .x-z2 .fx{display:block;left:12.5em;top:-2.5em}
+.pp .x-z1 .fx::after{content:"z";font:800 3.4em/1 "Bricolage Grotesque","DM Sans",sans-serif;color:var(--ink)}
+.pp .x-z2 .fx::after{content:"Z";font:800 4.8em/1 "Bricolage Grotesque","DM Sans",sans-serif;color:var(--ink)}

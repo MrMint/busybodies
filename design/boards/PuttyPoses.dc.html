@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Putty, acted poses</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="rig.css">
+<link rel="stylesheet" href="putty.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&amp;family=Nunito:wght@400;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="ps pt">
+<h1>C · Putty · acted poses</h1>
+<p class="lede">The same six poses and the same frame objects as the other two styles; only the part art differs. Here the parts are clay: two balls, sausage limbs, googly eyes, a thumbed-in mouth. Frames snap with no easing, about eight a second, like stop motion shot on twos. At startup each distinct frame is rendered once (parts drawn with soft shading and a thumbprint texture) into a sprite atlas and played as a PixiJS AnimatedSprite; the engine adds squash on landing, clay crumbs and the narrator card on top. A theme re-sculpts the parts (helmet ball, mitten hands, a wrench for the trophy) and keeps every frame.</p>
+<p class="vocab">eyes open wide shine closed left right cam happy · brows flat up worry angry one · mouth smile flat open grin wobble small · armL/armR down out up diag low fwd · feet stand tapR kick runL runR · body hop low slump shakeL shakeR · props sign pls trophy box desk · fx sweat conf z pop</p>
+<div class="grid">
+<sc-for list="{{poses}}" as="p" hint-placeholder-count="6">
+<div class="cell">
+<div class="stage">
+<div class="{{p.bub}}">{{p.say}}</div>
+<div class="rig sm {{p.a}}" style="left: 36px; bottom: 26px">
+<span class="sh"></span>
+<span class="core">
+<span class="legL"></span><span class="legR"></span>
+<span class="bod"></span>
+<span class="head"><span class="browL"></span><span class="browR"></span><span class="eyeL"></span><span class="eyeR"></span><span class="mouth"></span></span>
+<span class="armL"></span><span class="armR"></span>
+<span class="prop"></span>
+<span class="fx"></span>
+</span>
+</div>
+<div class="rig sm kid {{p.b}}" style="left: 150px; bottom: 26px">
+<span class="sh"></span>
+<span class="core">
+<span class="legL"></span><span class="legR"></span>
+<span class="bod"></span>
+<span class="head"><span class="browL"></span><span class="browR"></span><span class="eyeL"></span><span class="eyeR"></span><span class="mouth"></span></span>
+<span class="armL"></span><span class="armR"></span>
+<span class="prop"></span>
+<span class="fx"></span>
+</span>
+</div>
+</div>
+<h3>{{p.name}}<span>frame {{p.n}}</span></h3>
+<div class="meta">{{p.trigger}}</div>
+<div class="meta">May say: {{p.lines}}</div>
+<div class="code">{{p.code}}</div>
+</div>
+</sc-for>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1100,"height":900}}'>
+class Component extends DCLogic {
+componentDidMount() {
+this.iv = setInterval(() => {
+const t = (this.state && this.state.t) || 0;
+this.setState({ t: t + 1 });
+}, 130);
+}
+componentWillUnmount() {
+clearInterval(this.iv);
+}
+renderVals() {
+const t = (this.state && this.state.t) || 0;
+const wait = { eyes: 'cam', mouth: 'flat', armR: 'up', props: ['sign'] };
+const panic = { eyes: 'wide', brows: 'worry', mouth: 'wobble' };
+const flailA = { ...panic, armL: 'up', armR: 'out', body: 'shakeL', fx: ['sweat1'] };
+const flailB = { ...panic, armL: 'out', armR: 'up', body: 'shakeR', fx: ['sweat2'] };
+const cheer = { eyes: 'shine', brows: 'up', mouth: 'grin', armL: 'up', armR: 'up' };
+const carry = { armL: 'fwd', armR: 'fwd', props: ['box'] };
+const snoreA = { eyes: 'closed', mouth: 'small', body: 'slump', props: ['desk'], fx: ['z1'] };
+const snoreB = { eyes: 'closed', mouth: 'open', body: 'slump', props: ['desk'], fx: ['z2'] };
+const beg = { eyes: 'shine', brows: 'worry', mouth: 'small', body: 'low', armL: 'up', armR: 'up', props: ['pls'] };
+const POSES = [
+{ name: 'Waiting on you', trigger: 'Trigger: a permission prompt or question is raised. Loops until you answer.', lines: '"Whenever you are ready." "No rush. Some rush."', frames: [
+{ d: 3, a: wait }, { d: 2, a: { ...wait, feet: 'tapR' } }, { d: 2, a: wait }, { d: 2, a: { ...wait, feet: 'tapR' } },
+{ d: 2, a: { ...wait, armR: 'diag', props: ['sign2'] } }, { d: 2, a: wait },
+{ d: 4, a: { ...wait, eyes: 'right', brows: 'one', mouth: 'small', feet: 'tapR' } },
+{ d: 5, a: { ...wait, brows: 'up', mouth: 'smile' }, say: 'Whenever you are ready.' } ] },
+{ name: 'Failed test', trigger: 'Trigger: a test run fails. The third failure in a row plays it at double speed.', lines: '"It passed on my machine." "Again."', frames: [
+{ d: 3, a: { eyes: 'wide', brows: 'up', mouth: 'open' } },
+{ d: 1, a: flailA }, { d: 1, a: flailB }, { d: 1, a: flailA }, { d: 1, a: flailB }, { d: 1, a: flailA }, { d: 1, a: flailB },
+{ d: 4, a: { eyes: 'closed', brows: 'worry', mouth: 'flat', armL: 'low', armR: 'low', body: 'low', fx: ['sweat1'] } },
+{ d: 5, a: { eyes: 'cam', brows: 'angry', mouth: 'flat' }, say: 'Again.' } ] },
+{ name: 'PR opened', trigger: 'Trigger: a pull request is opened. A trophy lap of the room, then a pose for the camera.', lines: '"PR #219. Frame it." "Ship it before it changes its mind."', frames: [
+{ d: 2, a: { ...cheer, props: ['trophy'], feet: 'runL', fx: ['conf1'] } },
+{ d: 2, a: { ...cheer, props: ['trophy2'], feet: 'runR', body: 'hop', fx: ['conf2'] } },
+{ d: 2, a: { ...cheer, props: ['trophy'], feet: 'runL', fx: ['conf3'] } },
+{ d: 2, a: { ...cheer, eyes: 'happy', props: ['trophy2'], feet: 'runR', body: 'hop', fx: ['conf1'] } },
+{ d: 5, a: { ...cheer, eyes: 'cam', armL: 'out', props: ['trophy2'], feet: 'kick', fx: ['conf2'] }, say: 'PR #219. Frame it.' } ] },
+{ name: 'Spawning a subagent', trigger: 'Trigger: a subagent is spawned. The lead hands over the task; the new one waddles to its own spot.', lines: '"One job. Find saveDraft." "Bring it back in one piece."', frames: [
+{ d: 3, a: { ...carry, eyes: 'right' }, b: { at: 'off' } },
+{ d: 2, a: { ...carry, eyes: 'right', brows: 'up', mouth: 'open' }, b: { eyes: 'wide', mouth: 'small', fx: ['pop'] } },
+{ d: 4, a: { eyes: 'right', armL: 'fwd', armR: 'out', props: ['give'] }, b: { eyes: 'left', mouth: 'open', armL: 'out' }, say: 'One job. Find saveDraft.' },
+{ d: 2, a: { eyes: 'right' }, b: { ...carry, eyes: 'shine', mouth: 'grin' } },
+{ d: 2, a: { eyes: 'right', mouth: 'grin', armR: 'diag' }, b: { ...carry, eyes: 'right', feet: 'runL', at: 'step1' } },
+{ d: 2, a: { eyes: 'right', mouth: 'grin', armR: 'up' }, b: { ...carry, eyes: 'right', feet: 'runR', at: 'step2' } },
+{ d: 2, a: { eyes: 'right', mouth: 'grin', armR: 'diag' }, b: { ...carry, eyes: 'right', feet: 'runL', at: 'far' } },
+{ d: 6, a: { eyes: 'cam', brows: 'one' }, b: { ...carry, eyes: 'closed', mouth: 'flat', at: 'far' } } ] },
+{ name: 'Asleep at the desk', trigger: 'Trigger: the session has been idle for 10 minutes. Bonus pose.', lines: '"zzz" "I was resting my context."', frames: [
+{ d: 6, a: snoreA }, { d: 6, a: snoreB }, { d: 6, a: snoreA }, { d: 6, a: snoreB },
+{ d: 2, a: { eyes: 'wide', brows: 'up', mouth: 'flat', props: ['desk'] } },
+{ d: 5, a: { eyes: 'left', brows: 'one', mouth: 'small', props: ['desk'] }, say: 'I was resting my context.' } ] },
+{ name: 'Waiting, rare variant', trigger: 'Rare: 1 time in 20 this replaces the waiting pose. Same trigger.', lines: '"I will name a variable after you."', frames: [
+{ d: 3, a: beg },
+{ d: 4, a: { ...beg, mouth: 'wobble', armL: 'diag' }, say: 'I will name a variable after you.' },
+{ d: 2, a: { ...beg, eyes: 'closed' } } ] }
+];
+const order = [['eyes', 'e'], ['brows', 'b'], ['mouth', 'm'], ['armL', 'al'], ['armR', 'ar'], ['feet', 'f'], ['body', 'bd'], ['at', 'at']];
+const cls = (f) => {
+if (!f) return 'at-off';
+const o = [];
+order.forEach((k) => { if (f[k[0]]) o.push(k[1] + '-' + f[k[0]]); });
+(f.props || []).forEach((x) => o.push('p-' + x));
+(f.fx || []).forEach((x) => o.push('x-' + x));
+return o.join(' ');
+};
+const show = (f) => '{ ' + Object.keys(f).map((k) => k + ': ' + (Array.isArray(f[k]) ? "['" + f[k].join("', '") + "']" : "'" + f[k] + "'")).join(', ') + ' }';
+return { poses: POSES.map((p) => {
+const total = p.frames.reduce((s, f) => s + f.d, 0);
+let k = t % total;
+let i = 0;
+while (k >= p.frames[i].d) { k -= p.frames[i].d; i += 1; }
+const f = p.frames[i];
+return { name: p.name, trigger: p.trigger, lines: p.lines, a: cls(f.a), b: cls(f.b), n: (i + 1) + ' of ' + p.frames.length,
+code: f.b ? 'lead ' + show(f.a) + '\nnew  ' + show(f.b) : show(f.a), say: f.say || '', bub: f.say ? 'bub' : 'bub hide' };
+}) };
+}
+}
+</script>
+</body>
+</html>

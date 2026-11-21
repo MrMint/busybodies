@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pixel Tower, one session</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="pixel.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&amp;family=Silkscreen&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="px in" style="width: 1440px; height: 900px">
+
+<div class="hud">
+<a class="btn" href="Main.dc.html">&lt; Tower</a>
+<span class="chip">lanternfish / release/2.4</span>
+<span class="chip" style="background: #2b8f96; font-weight: 700">Ship release 2.4</span>
+<span class="chip">Opus · desktop</span>
+<span class="chip">since 09:12 · 5 h 20 min</span>
+<span style="flex-grow: 1"></span>
+<span class="chip">$41.20</span>
+<span class="chip" style="color: #58e08f">+3,412</span>
+<span class="chip" style="color: #ff9aa5">-1,208</span>
+<span class="chip">2 PRs</span>
+</div>
+
+<div class="zroom f-lan" style="left: 28px; top: 76px; width: 876px; height: 580px">
+<div class="plate"><span style="font-size: 16px">Busy: 8 agents out, 3 deep</span></div>
+<div class="say" style="left: 16px; top: 56px">Three deep. If the explorer hires anyone, I am calling HR.</div>
+
+<i class="bot lead type" style="left: 40px"></i>
+<div class="tag" style="left: 40px; bottom: 142px"><b>Lead · Opus</b>waiting on 8 agents</div>
+<div class="desk" style="left: 150px; bottom: 24px; transform: scale(3); transform-origin: 0 100%"><i class="mon"></i></div>
+<i class="coins" style="left: 262px; bottom: 84px; height: 32px; transform: scale(3); transform-origin: 0 100%"></i>
+
+<span class="squad" style="left: 316px"><i class="bot k3 r-ex step"></i><i class="bot k2 r-sc step"></i><i class="bot r-bu carry step"></i></span>
+<div class="tag d3" style="left: 316px; bottom: 194px"><b>Explorer · Haiku · depth 3</b>grep legacy/ for saveDraft</div>
+<div class="tag d2" style="left: 364px; bottom: 150px"><b>Scout · Haiku · depth 2</b>find callers of saveDraft</div>
+<div class="tag" style="left: 420px; bottom: 106px"><b>Builder · Opus · own worktree</b>migrate settings screen</div>
+
+<span class="squad" style="left: 590px"><i class="bot k2 r-ve step"></i><i class="bot r-bu carry step"></i></span>
+<div class="tag d2" style="left: 590px; bottom: 150px"><b>Verifier · Sonnet · depth 2</b>run export tests</div>
+<div class="tag" style="left: 646px; bottom: 106px"><b>Builder · Sonnet · own worktree</b>new export endpoint</div>
+
+<div class="plat"></div>
+<div class="ladder" style="left: 820px"></div>
+<div class="wb" style="left: 452px; bottom: 380px; transform: scale(2); transform-origin: 0 100%"></div>
+<i class="bot r-rv type up" style="left: 450px"></i>
+<div class="tag d2" style="left: 450px; bottom: 460px"><b>Reviewer · Opus</b>read diff for PR #212</div>
+<i class="bot r-de type up" style="left: 590px; animation-delay: -.2s"></i>
+<div class="tag d3" style="left: 590px; bottom: 513px"><b>Designer · Opus</b>empty state for exports</div>
+<i class="bot r-ve step up" style="left: 690px"></i>
+<div class="tag" style="left: 690px; bottom: 398px"><b>Verifier · Sonnet</b>walkthrough on staging</div>
+<span class="pop" style="left: 760px; bottom: 352px">browser</span>
+</div>
+
+<div class="col" style="left: 28px; top: 676px; width: 876px; flex-direction: row">
+<div class="card" style="width: 580px">
+<h3>ALUMNI WALL</h3>
+<span>143 hired today: 8 working, 134 finished, 1 stopped by you.</span>
+<div class="alum"></div>
+<div class="alum"></div>
+<div class="row"><i class="sw" style="background: #8d88a8"></i><span class="dim">one square per finished agent</span><i class="sw" style="background: #ff5263"></i><span class="dim">stopped by you: builder, "rewrite the router"</span></div>
+</div>
+<div class="card" style="flex-grow: 1">
+<h3>SESSION</h3>
+<span>PRs: #212 in review, #214 opened 14:24</span>
+<span>Passed $40 at 14:27</span>
+<span>Forked: "Fork: slow CI?" (idle, next door)</span>
+<span class="dim">Last compacted 13:05</span>
+</div>
+</div>
+
+<div class="col" style="left: 928px; top: 76px; width: 484px">
+<div class="card">
+<h3>WHO HIRED WHOM</h3>
+<div class="trow"><i class="bot lead" style="font-size: 3px"></i><div><strong>Lead</strong> Ship release 2.4<br><span class="dim">Opus · desktop</span></div></div>
+<div class="trow t2"><i class="bot r-bu"></i><div><strong>Builder</strong> migrate settings screen<br><span class="dim">Opus · own worktree · editing settings/Panel.tsx</span></div></div>
+<div class="trow t3"><i class="bot r-sc"></i><div><strong>Scout</strong> find callers of saveDraft<br><span class="dim">Haiku · searching</span></div></div>
+<div class="trow t3" style="margin-left: 84px"><i class="bot r-ex"></i><div><strong>Explorer</strong> grep legacy/ for saveDraft<br><span class="dim">Haiku · spawned 14:32</span></div></div>
+<div class="trow t2"><i class="bot r-bu"></i><div><strong>Builder</strong> new export endpoint<br><span class="dim">Sonnet · own worktree · editing api/export.ts</span></div></div>
+<div class="trow t3"><i class="bot r-ve"></i><div><strong>Verifier</strong> run export tests<br><span class="dim">Sonnet · running tests</span></div></div>
+<div class="trow t2"><i class="bot r-rv"></i><div><strong>Reviewer</strong> read diff for PR #212<br><span class="dim">Opus · reading, 14 files so far</span></div></div>
+<div class="trow t2"><i class="bot r-de"></i><div><strong>Designer</strong> empty state for exports<br><span class="dim">Opus · editing</span></div></div>
+<div class="trow t2"><i class="bot r-ve"></i><div><strong>Verifier</strong> walkthrough on staging<br><span class="dim">Sonnet · browser open</span></div></div>
+</div>
+<div class="card">
+<h3>JUST NOW</h3>
+<div class="row"><time>14:32</time><span>Scout spawned an explorer. That makes 3 deep.</span></div>
+<div class="row"><time>14:31</time><span>Builder edited settings/Panel.tsx <span class="up">+48</span> <span class="dn">-12</span></span></div>
+<div class="row"><time>14:31</time><span>Verifier ran export tests: 212 pass</span></div>
+<div class="row"><time>14:29</time><span>Reviewer read 14 files for PR #212</span></div>
+<div class="row"><time>14:27</time><span>Cost passed $40</span></div>
+<div class="row"><time>14:24</time><span>PR #214 opened</span></div>
+<div class="row"><time>14:20</time><span>Builder finished "move feature flags" in 6 min</span></div>
+<div class="row"><time>14:11</time><span>You stopped a builder: "rewrite the router"</span></div>
+</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

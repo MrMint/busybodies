@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pixel Tower, busy day</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="rig.css">
+<link rel="stylesheet" href="pixel.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&amp;family=Silkscreen&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="px day" style="width: 1440px; height: 900px">
+
+<i class="cloud" style="top: 92px; animation-delay: -12s"></i>
+<i class="cloud" style="top: 214px; animation-delay: -50s"></i>
+<i class="cloud" style="top: 430px; animation-delay: -78s"></i>
+<div class="street"></div>
+
+<div class="hud">
+<span class="logo">BUSYBODIES</span>
+<span class="chip">14:32</span>
+<span class="chip">9 sessions</span>
+<span class="chip">3 busy</span>
+<span class="chip">12 agents out</span>
+<a class="chip hot" href="#needs">1 needs you</a>
+<span style="flex-grow: 1"></span>
+<button class="btn on" type="button">All floors</button>
+<a class="btn" href="PixelCompact.dc.html">Compact</a>
+</div>
+
+<div class="bill"><div class="mq">ATTENTION TOWER: a builder on 5 hired a scout, who hired an explorer. That is not a team, that is a conga line. /// COMBO x3! Flaky login failed again. The flask is filing a complaint. /// INSERT COIN: Release 2.4 just passed $40. The coin stack wants its own desk. ///</div></div>
+<i class="leg" style="left: 300px"></i>
+<i class="leg" style="left: 852px"></i>
+<div class="mail">PRs out: 4</div>
+
+<div class="tower">
+
+<div class="floor f-lan">
+<div class="shaft"></div>
+<div class="sign"><strong>lanternfish</strong><span>release/2.4 +1 branch</span><span>3 sessions · 9 agents</span></div>
+<div class="rooms">
+<a class="room busy" href="PixelZoom.dc.html" style="width: 464px">
+<div class="plate"><span>Ship release 2.4</span><b>Opus · desktop · $41.20</b></div>
+<b class="hint">Click to zoom</b>
+<i class="bot lead type" style="left: 8px"></i>
+<div class="desk" style="left: 44px"><i class="mon"></i></div>
+<i class="coins" style="left: 82px; height: 32px"></i>
+<span class="squad walk w3" style="left: 104px; animation-duration: 11s"><i class="bot k3 r-ex"></i><i class="bot k2 r-sc"></i><i class="bot r-bu carry"></i></span>
+<span class="squad walk w2" style="left: 130px; animation-duration: 8s; animation-delay: -3s"><i class="bot k2 r-ve"></i><i class="bot r-bu carry"></i></span>
+<i class="bot r-ve step" style="left: 322px"></i>
+<span class="pop" style="left: 310px; bottom: 42px">browser</span>
+<div class="wb" style="left: 366px"></div>
+<i class="bot r-rv type" style="left: 382px"></i>
+<span class="pop" style="left: 372px; bottom: 84px; animation-delay: -1.5s">read x14</span>
+<i class="bot r-de type" style="left: 430px; animation-delay: -.2s"></i>
+<span class="pop" style="left: 420px; bottom: 42px; animation-delay: -2.6s">edit</span>
+</a>
+<div class="room idle" style="width: 144px">
+<div class="plate"><span>Fork: slow CI?</span><b>Sonnet · $1.30</b></div>
+<i class="door"></i>
+<i class="bot lead zz" style="left: 20px"></i>
+<span class="z" style="left: 52px; bottom: 46px">z</span>
+<div class="desk" style="left: 64px"><i class="mon off"></i></div>
+</div>
+<div class="room busy" style="width: 176px">
+<div class="plate"><span>Flaky login test</span><b>Sonnet · terminal · $3.10</b></div>
+<div class="rig {{fail}}" style="left: 8px; bottom: 8px; font-size: 2px"><span class="sh"></span><span class="core"><span class="legL"></span><span class="legR"></span><span class="bod"></span><span class="head"><span class="browL"></span><span class="browR"></span><span class="eyeL"></span><span class="eyeR"></span><span class="mouth"></span></span><span class="armL"></span><span class="armR"></span><span class="prop"></span><span class="fx"></span></span></div>
+<div class="desk" style="left: 44px"><i class="mon tty"></i></div>
+<span class="pop bad" style="left: 50px; bottom: 60px; animation-duration: 2.4s">test fail x3</span>
+<i class="bot r-ve step" style="left: 132px"></i>
+</div>
+</div>
+<div class="tube"></div>
+</div>
+
+<div class="floor f-bre">
+<div class="shaft"></div>
+<div class="sign"><strong>breadbox</strong><span>fix/crumb-cache</span><span>1 session · needs you</span></div>
+<div class="rooms">
+<div class="room wait" id="needs" style="width: 320px">
+<div class="plate"><span>Crumb cache rewrite</span><b class="hot">Waiting on you · 10 min</b></div>
+<i class="beacon"></i>
+<div class="rig {{wait}}" style="left: 152px; bottom: 8px; font-size: 2px"><span class="sh"></span><span class="core"><span class="legL"></span><span class="legR"></span><span class="bod"></span><span class="head"><span class="browL"></span><span class="browR"></span><span class="eyeL"></span><span class="eyeR"></span><span class="mouth"></span></span><span class="armL"></span><span class="armR"></span><span class="prop"></span><span class="fx"></span></span></div>
+<div class="desk" style="left: 192px"><i class="mon tty"></i></div>
+<span class="bang" style="left: 78px; bottom: 50px">! May I run rm -rf dist?</span>
+<i class="bot r-sc zz" style="left: 276px"></i>
+</div>
+<div class="room" style="width: 472px">
+<div class="plate"><span>Break room</span><b>No session here</b></div>
+<i class="sofa" style="left: 36px"></i>
+<i class="coffee" style="left: 128px"></i>
+<i class="plant" style="left: 168px"></i>
+<div class="poster" style="left: 216px">TESTS TODAY<br>212 pass · 9 fail</div>
+<div class="poster" style="left: 340px">DAYS WITHOUT A<br>FLAKY TEST: 0</div>
+</div>
+</div>
+<div class="tube"></div>
+</div>
+
+<div class="floor f-orb">
+<div class="shaft"></div>
+<div class="sign"><strong>orbit-kit</strong><span>feat/pagination +1 branch</span><span>2 sessions · 3 agents</span></div>
+<div class="rooms">
+<div class="room busy" style="width: 400px">
+<div class="plate"><span>Pagination for /orbits</span><b>Sonnet · desktop · $6.75</b></div>
+<div class="rig {{pr}}" style="left: 8px; bottom: 8px; font-size: 2px"><span class="sh"></span><span class="core"><span class="legL"></span><span class="legR"></span><span class="bod"></span><span class="head"><span class="browL"></span><span class="browR"></span><span class="eyeL"></span><span class="eyeR"></span><span class="mouth"></span></span><span class="armL"></span><span class="armR"></span><span class="prop"></span><span class="fx"></span></span></div>
+<div class="desk" style="left: 44px"><i class="mon"></i></div>
+<i class="coins" style="left: 82px; height: 4px"></i>
+<span class="pop good" style="left: 96px; bottom: 44px; animation-delay: -1s">PR #219 out</span>
+<span class="squad walk w2" style="left: 112px; animation-duration: 7s"><i class="bot r-bu carry"></i></span>
+<span class="squad walk w1" style="left: 250px; animation-duration: 6s; animation-delay: -2s"><i class="bot r-sc"></i></span>
+<i class="bot r-ve step" style="left: 356px"></i>
+<span class="pop good" style="left: 332px; bottom: 42px; animation-delay: -3s">tests ok</span>
+</div>
+<div class="room err" style="width: 392px">
+<div class="plate"><span>Rename everything</span><b class="bad">Error · Sonnet · terminal · $2.40</b></div>
+<i class="bot lead dizzy" style="left: 60px"></i>
+<div class="desk" style="left: 100px"><i class="mon bad"></i></div>
+<i class="smoke" style="left: 116px; bottom: 56px"></i>
+<i class="smoke" style="left: 126px; bottom: 60px; animation-delay: -.6s"></i>
+<i class="smoke" style="left: 120px; bottom: 52px; animation-delay: -1.2s"></i>
+<i class="paper" style="left: 170px"></i>
+<i class="paper" style="left: 196px"></i>
+<i class="paper" style="left: 240px"></i>
+<span class="pop bad" style="left: 168px; bottom: 44px; animation-duration: 6s">214 lines in, 214 out</span>
+</div>
+</div>
+<div class="tube"></div>
+</div>
+
+<div class="floor f-mos">
+<div class="shaft"></div>
+<div class="sign"><strong>mossy-docs</strong><span>main +1 branch</span><span>2 sessions</span></div>
+<div class="rooms">
+<div class="room busy" style="width: 392px">
+<div class="plate"><span>Docs sweep</span><b class="cmp">Compacting · Haiku · cloud · $0.85</b></div>
+<i class="ocloud" style="left: 86px; top: 50px"></i>
+<i class="bot lead type" style="left: 40px"></i>
+<div class="desk" style="left: 76px"><i class="mon"></i></div>
+<i class="scrap" style="left: 132px"></i>
+<i class="scrap" style="left: 132px; animation-delay: -.8s"></i>
+<i class="crusher" style="left: 240px"></i>
+</div>
+<div class="room done" style="width: 400px">
+<div class="plate"><span>Changelog draft</span><b class="ok">Done · PR #218 · Haiku · $0.65</b></div>
+<div class="desk" style="left: 40px"><i class="mon off"></i></div>
+<i class="flag" style="left: 78px"></i>
+</div>
+</div>
+<div class="tube"></div>
+</div>
+
+<div class="floor f-ket">
+<div class="shaft"></div>
+<div class="sign"><strong>kettle-api</strong><span>spike/webhooks</span><span>1 session · idle</span></div>
+<div class="rooms">
+<div class="room idle" style="width: 320px">
+<div class="plate"><span>Webhook spike</span><b>Idle 31 min · Fable · cloud · $1.05</b></div>
+<i class="ocloud" style="left: 96px; top: 50px"></i>
+<i class="bot lead zz" style="left: 40px"></i>
+<span class="z" style="left: 72px; bottom: 46px">z</span>
+<span class="z" style="left: 72px; bottom: 46px; animation-delay: -1.5s">z</span>
+<div class="desk" style="left: 84px"><i class="mon off"></i></div>
+</div>
+<div class="room" style="width: 472px">
+<div class="plate"><span>For lease</span><b>Room for one more session</b></div>
+<i class="plant" style="left: 60px"></i>
+<i class="plant" style="left: 400px"></i>
+</div>
+</div>
+<div class="tube"></div>
+</div>
+
+<div class="lobby">
+<div class="shaft"></div>
+<div class="sign" style="background: #241c44"><strong>lobby</strong><span>archive</span></div>
+<div class="hall">
+14 sessions clocked out today. Finished rooms go dark, then the bot takes the lift down.
+<i class="exit"></i>
+<span class="squad walk w4" style="left: 300px; animation-duration: 14s"><i class="bot gone"></i></span>
+</div>
+<div class="tube"></div>
+</div>
+
+<div class="car"><i class="bot r-bu"></i></div>
+<i class="cap"></i>
+</div>
+
+<div class="side">
+<div class="card need">
+<h3>1 NEEDS YOU</h3>
+<strong>Crumb cache rewrite</strong>
+<span class="dim">breadbox · fix/crumb-cache · Opus</span>
+<span>Asks: may I run <code>rm -rf dist</code>?</span>
+<span>Waiting 10 min</span>
+<div class="row"><button class="btn" type="button">Go to session</button></div>
+</div>
+<div class="card">
+<h3>LOG</h3>
+<div class="row"><time>14:32</time><span>Release 2.4: scout spawned an explorer (3 deep)</span></div>
+<div class="row"><time>14:31</time><span>Flaky login: tests failed, third time running</span></div>
+<div class="row"><time>14:30</time><span>Pagination: PR #219 opened</span></div>
+<div class="row"><time>14:29</time><span>Docs sweep: compacting memory</span></div>
+<div class="row"><time>14:27</time><span>Release 2.4: passed $40</span></div>
+<div class="row"><time>14:26</time><span>Rename everything: errored</span></div>
+<div class="row"><time>14:24</time><span>Changelog draft: finished, PR #218</span></div>
+</div>
+<div class="card">
+<h3>TODAY</h3>
+<div class="row"><span>$63.20</span><span class="up">+5,034</span><span class="dn">-1,940</span></div>
+<span class="dim">4 PRs · 163 agents hired · 12 out now</span>
+</div>
+<div class="card">
+<h3>ROOM KEY</h3>
+<div class="key">
+<span><i class="sw"></i>Lit: busy</span>
+<span><i class="sw" style="background: #6a6488"></i>Dim: idle</span>
+<span><i class="sw" style="background: #ffcf3f"></i>Beacon: needs you</span>
+<span><i class="sw" style="background: #c9a7ff"></i>Crusher: compacting</span>
+<span><i class="sw" style="background: #ff5263"></i>Red: error</span>
+<span><i class="sw" style="background: #58e08f"></i>Flag: finished</span>
+</div>
+</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+componentDidMount() {
+this.iv = setInterval(() => {
+const t = (this.state && this.state.t) || 0;
+this.setState({ t: t + 1 });
+}, 130);
+}
+componentWillUnmount() {
+clearInterval(this.iv);
+}
+renderVals() {
+const t = (this.state && this.state.t) || 0;
+const play = (frames) => {
+const total = frames.reduce((s, f) => s + f[0], 0);
+let k = t % total;
+let i = 0;
+while (k >= frames[i][0]) { k -= frames[i][0]; i += 1; }
+return frames[i][1];
+};
+const W = 'e-cam m-flat ar-up p-sign';
+const A = 'e-wide b-worry m-wobble al-up ar-out bd-shakeL x-sweat1';
+const B = 'e-wide b-worry m-wobble al-out ar-up bd-shakeR x-sweat2';
+const C = 'e-shine b-up m-grin al-up ar-up';
+return {
+wait: play([[3, W], [2, W + ' f-tapR'], [2, W], [2, W + ' f-tapR'], [2, 'e-cam m-flat ar-diag p-sign2'], [2, W], [4, 'e-right b-one m-small ar-up p-sign f-tapR'], [5, 'e-cam b-up ar-up p-sign']]),
+fail: play([[3, 'e-wide b-up m-open'], [1, A], [1, B], [1, A], [1, B], [1, A], [1, B], [4, 'e-closed b-worry m-flat al-low ar-low bd-low x-sweat1'], [5, 'e-cam b-angry m-flat'], [14, 'e-right b-worry m-wobble ar-fwd'], [14, 'e-right b-worry m-flat ar-fwd bd-low']]),
+pr: play([[2, C + ' p-trophy f-runL x-conf1'], [2, C + ' p-trophy2 f-runR bd-hop x-conf2'], [2, C + ' p-trophy f-runL x-conf3'], [2, 'e-happy b-up m-grin al-up ar-up p-trophy2 f-runR bd-hop x-conf1'], [6, 'e-cam b-up m-grin al-out ar-up p-trophy2 f-kick x-conf2'], [20, 'e-right m-grin ar-fwd'], [20, 'e-happy m-grin ar-fwd bd-low']])
+};
+}
+}
+</script>
+</body>
+</html>

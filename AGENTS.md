@@ -55,6 +55,8 @@ v7-era APIs that look right and silently draw the wrong thing. Update it only wi
 | `tools/watch-tree.ts` | Prints the live session/agent tree in a terminal |
 | `tools/fake-home.ts`, `tools/profile.sh` | Synthetic load, and CPU per process under it |
 | `docs/instrumentation.md` | How to measure and check the app, and what's planned |
+| `docs/plan.md` | The build plan: world model, streams, how work lands |
+| `design/` | The chosen look: boards, line bank, renders (`design/README.md`) |
 | `docs/decisions.md` | Why things are the way they are |
 | `docs/research/` | Feasibility research (dated, with sources) |
 | `.claude/skills/pixijs/` | The vendored official PixiJS skill (MIT) |

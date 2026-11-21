@@ -1,0 +1,365 @@
+{
+ "v": 3,
+ "createdOnFiles": {
+  "v": 1,
+  "at": "2026-11-21T18:00:00Z"
+ },
+ "title": "Agent Visualizer Pilots",
+ "launch": {
+  "view": "canvas"
+ },
+ "pages": [],
+ "boards": {
+  "Main.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 1440,
+   "h": 900,
+   "title": "A1 Pixel Tower · busy day",
+   "is_interactive": true
+  },
+  "PixelZoom.dc.html": {
+   "x": 1520,
+   "y": 0,
+   "w": 1440,
+   "h": 900,
+   "title": "A2 Pixel Tower · one session",
+   "is_interactive": true
+  },
+  "PixelNight.dc.html": {
+   "x": 3040,
+   "y": 0,
+   "w": 1440,
+   "h": 900,
+   "title": "A3 Pixel Tower · 02:47, one idle session"
+  },
+  "PixelCompact.dc.html": {
+   "x": 4560,
+   "y": 0,
+   "w": 520,
+   "h": 400,
+   "title": "A4 Pixel Tower · compact window",
+   "is_interactive": true
+  },
+  "PixelNotes.dc.html": {
+   "x": 5160,
+   "y": 0,
+   "w": 1100,
+   "h": 900,
+   "title": "A5 Pixel Tower · notes"
+  },
+  "PixelPoses.dc.html": {
+   "x": 6340,
+   "y": 0,
+   "w": 1100,
+   "h": 900,
+   "title": "A6 Pixel Tower · acted poses"
+  },
+  "PaperBusy.dc.html": {
+   "x": 0,
+   "y": 1300,
+   "w": 1440,
+   "h": 900,
+   "title": "B1 Cut Paper · busy day",
+   "is_interactive": true
+  },
+  "PaperZoom.dc.html": {
+   "x": 1520,
+   "y": 1300,
+   "w": 1440,
+   "h": 900,
+   "title": "B2 Cut Paper · one session",
+   "is_interactive": true
+  },
+  "PaperNight.dc.html": {
+   "x": 3040,
+   "y": 1300,
+   "w": 1440,
+   "h": 900,
+   "title": "B3 Cut Paper · 02:47, one idle session"
+  },
+  "PaperCompact.dc.html": {
+   "x": 4560,
+   "y": 1300,
+   "w": 520,
+   "h": 400,
+   "title": "B4 Cut Paper · compact window",
+   "is_interactive": true
+  },
+  "PaperNotes.dc.html": {
+   "x": 5160,
+   "y": 1300,
+   "w": 1100,
+   "h": 900,
+   "title": "B5 Cut Paper · notes"
+  },
+  "PaperPoses.dc.html": {
+   "x": 6340,
+   "y": 1300,
+   "w": 1100,
+   "h": 900,
+   "title": "B6 Cut Paper · acted poses"
+  },
+  "PuttyBusy.dc.html": {
+   "x": 0,
+   "y": 2600,
+   "w": 1440,
+   "h": 900,
+   "title": "C1 Putty · busy day",
+   "is_interactive": true
+  },
+  "PuttyZoom.dc.html": {
+   "x": 1520,
+   "y": 2600,
+   "w": 1440,
+   "h": 900,
+   "title": "C2 Putty · one session",
+   "is_interactive": true
+  },
+  "PuttyNight.dc.html": {
+   "x": 3040,
+   "y": 2600,
+   "w": 1440,
+   "h": 900,
+   "title": "C3 Putty · 02:47, one idle session"
+  },
+  "PuttyCompact.dc.html": {
+   "x": 4560,
+   "y": 2600,
+   "w": 520,
+   "h": 400,
+   "title": "C4 Putty · compact window",
+   "is_interactive": true
+  },
+  "PuttyNotes.dc.html": {
+   "x": 5160,
+   "y": 2600,
+   "w": 1100,
+   "h": 900,
+   "title": "C5 Putty · notes"
+  },
+  "PuttyPoses.dc.html": {
+   "x": 6340,
+   "y": 2600,
+   "w": 1100,
+   "h": 900,
+   "title": "C6 Putty · acted poses"
+  },
+  "Cast.dc.html": {
+   "x": 0,
+   "y": 4000,
+   "w": 1440,
+   "h": 900,
+   "title": "D1 Busybodies · the cast",
+   "is_interactive": true
+  },
+  "Acting.dc.html": {
+   "x": 1520,
+   "y": 4000,
+   "w": 1440,
+   "h": 1440,
+   "title": "D2 Busybodies · acted poses",
+   "is_interactive": true
+  },
+  "SideBusy.dc.html": {
+   "x": 0,
+   "y": 5760,
+   "w": 1440,
+   "h": 900,
+   "title": "E1 Layout 1 · Cutaway · busy day",
+   "is_interactive": true
+  },
+  "SideRoom.dc.html": {
+   "x": 1520,
+   "y": 5760,
+   "w": 1440,
+   "h": 900,
+   "title": "E2 Layout 1 · Cutaway · zoomed room",
+   "is_interactive": true
+  },
+  "FloorBusy.dc.html": {
+   "x": 0,
+   "y": 6960,
+   "w": 1440,
+   "h": 900,
+   "title": "F1 Layout 2 · Open floor · busy day (round 3: sass, mochi cast)",
+   "is_interactive": true
+  },
+  "FloorRoom.dc.html": {
+   "x": 1520,
+   "y": 6960,
+   "w": 1440,
+   "h": 900,
+   "title": "F2 Layout 2 · Open floor · zoomed room (round 3: sass, mochi cast)",
+   "is_interactive": true
+  },
+  "Lines.dc.html": {
+   "x": 3640,
+   "y": 6960,
+   "w": 1440,
+   "h": 1120,
+   "title": "F3 Layout 2 · Open floor · the line bank"
+  },
+  "Shapes.dc.html": {
+   "x": 0,
+   "y": 8420,
+   "w": 1440,
+   "h": 900,
+   "title": "G1 Body shapes · mochi chosen",
+   "is_interactive": true
+  }
+ },
+ "order": [
+  "Main.dc.html",
+  "PixelZoom.dc.html",
+  "PixelNight.dc.html",
+  "PixelCompact.dc.html",
+  "PixelNotes.dc.html",
+  "PixelPoses.dc.html",
+  "PaperBusy.dc.html",
+  "PaperZoom.dc.html",
+  "PaperNight.dc.html",
+  "PaperCompact.dc.html",
+  "PaperNotes.dc.html",
+  "PaperPoses.dc.html",
+  "PuttyBusy.dc.html",
+  "PuttyZoom.dc.html",
+  "PuttyNight.dc.html",
+  "PuttyCompact.dc.html",
+  "PuttyNotes.dc.html",
+  "PuttyPoses.dc.html",
+  "Cast.dc.html",
+  "Acting.dc.html",
+  "SideBusy.dc.html",
+  "SideRoom.dc.html",
+  "FloorBusy.dc.html",
+  "FloorRoom.dc.html",
+  "Lines.dc.html",
+  "Shapes.dc.html"
+ ],
+ "notes": {
+  "titleA": {
+   "x": 0,
+   "y": -260,
+   "text": "A · Pixel Tower (round 1, dropped)",
+   "kind": "title1",
+   "maxW": 1440
+  },
+  "titleB": {
+   "x": 0,
+   "y": 1040,
+   "text": "B · Cut Paper (round 1, the favourite)",
+   "kind": "title1",
+   "maxW": 1440
+  },
+  "titleC": {
+   "x": 0,
+   "y": 2340,
+   "text": "C · Putty (round 1, dropped)",
+   "kind": "title1",
+   "maxW": 1440
+  },
+  "intro": {
+   "x": -640,
+   "y": 0,
+   "w": 520,
+   "fill": "blue",
+   "size": "m",
+   "text": "Busybodies · style pilots\n\nRound 1. Three rendering styles, one invented day: 9 sessions in 5 projects at 14:32, one of them waiting on you. Every name and number is made up.\n\nEach row: busy day, one session zoomed, late night, compact window, notes, acted poses.\n\nPress Play on a busy board. Click the session \"Ship release 2.4\" to zoom in. \"Compact\" opens the floating window, and its expand button comes back.\n\nThe acted-poses board at the end of each row is the character rig: six poses played frame by frame from frame objects, with the live frame printed under each stage. The same pose data drives all three styles.\n\nAll three use an office theme so only the style differs. Each notes board says how a second theme swaps in."
+  },
+  "howA": {
+   "x": 4560,
+   "y": 480,
+   "w": 520,
+   "fill": "gray",
+   "text": "Pixel Tower interactions\n\nHover a room: white outline. Click: zoom into the session.\nNeeds you: the room's beacon and outline flash, the lead holds up a sign and taps its foot, the HUD chip flashes, and the side card names the question.\nAll projects: always on screen, one floor each.\nCompact: one lit window per session, floors still mean projects.\nActed leads on the busy board: Crumb cache (waiting), Flaky login test (failed test), Pagination (PR opened). The other bots are still the simple placeholders."
+  },
+  "howB": {
+   "x": 4560,
+   "y": 1780,
+   "w": 520,
+   "fill": "gray",
+   "text": "Cut Paper interactions\n\nHover a table: it lifts and tilts. Click: zoom into the session.\nNeeds you: the lead waves a yellow paddle and taps its foot, rings pulse off its table, the ask card names the question, and the top pill bounces.\nAll projects: the floor map shows every project as a paper zone.\nCompact: one blob per session on a shelf, coloured by project.\nActed leads on the busy board: Crumb cache, Flaky login test, Pagination. On the zoom board the lead hands a task to a new blob every few seconds."
+  },
+  "howC": {
+   "x": 4560,
+   "y": 3080,
+   "w": 520,
+   "fill": "gray",
+   "text": "Putty interactions\n\nHover the release lead: its spot lights up. Click: zoom into the session.\nNeeds you: the tray lifts with a yellow rim, a glowing \"!\" block bobs over it, the lead waves a sign, and the top pill glows.\nAll projects: every project is a tray on the tabletop.\nCompact: one dish, one lump per session; the waiting one stands up and waves.\nEvery lead on the busy board is the acted rig. On the zoom board the lead pinches off a new agent every few seconds."
+  },
+  "titleD": {
+   "x": 0,
+   "y": 3740,
+   "text": "D · Round 2 · Cut Paper characters, pushed",
+   "kind": "title1",
+   "maxW": 2960
+  },
+  "titleE": {
+   "x": 0,
+   "y": 5500,
+   "text": "E · Office layout 1 · Cutaway (not chosen)",
+   "kind": "title1",
+   "maxW": 2960
+  },
+  "titleF": {
+   "x": 0,
+   "y": 6700,
+   "text": "F · Office layout 2 · Open floor (the direction)",
+   "kind": "title1",
+   "maxW": 2960
+  },
+  "intro2": {
+   "x": -640,
+   "y": 4000,
+   "w": 520,
+   "fill": "blue",
+   "size": "m",
+   "text": "Busybodies · round 2\n\nCut Paper won. Rows D to F answer the two asks: characters that can act, and an office you can walk around in.\n\nRow D: the cast (every role, hard at it and slacking) and nine acted poses.\nRows E and F: the same invented day at 14:32, in two office layouts. Each has a busy day and a zoomed room.\n\nPress Play on any board. On a busy day: click a room to walk the camera into it, click the release desk for the closest view, \"Whole office\" to pull back, \"Next room\" to tour. The top-right button swaps to the other layout.\n\nWhat to look for: breadbox has had its hand up for 10 minutes (yellow paddle, pulsing room, fridge note). lanternfish and orbit-kit are in a frenzy. kettle-api is asleep on the keyboard and the kitchen is full of people who have finished.\n\nEvery name and number is made up."
+  },
+  "howD": {
+   "x": 3040,
+   "y": 4000,
+   "w": 520,
+   "fill": "gray",
+   "text": "How the puppet works\n\nEach character is about 18 paper parts: body, two eyes, pupils, brows, cheeks, mouth, two arms, two held items, feet, hat or glasses, and a few effects. In the app each part is one sprite in a container, all from one sheet.\n\nA pose is a list of frames. A frame only names what each part does (eyes wide, brows worried, left arm up, holding a sign). Parts spring to the new frame, so motion stays smooth and bouncy instead of stepping. The live frame is printed under each stage on D2.\n\nRole is costume, not shape: lead wears the project tie, builder a hard hat, scout binoculars, reviewer glasses and a clipboard, verifier a visor and a magnifier, designer a beret, explorer a pith helmet and a torch. Depth is size: a subagent's subagent is smaller.\n\nA new pose is a new list of frames. A new costume is one or two new parts."
+  },
+  "howE": {
+   "x": 3040,
+   "y": 5760,
+   "w": 520,
+   "fill": "gray",
+   "text": "Layout 1 · Cutaway\n\nA building with the front wall off, seen side-on. One room per project, a meeting room for reviews, a kitchen for the idle and the finished, a dispatch desk on the roof.\n\nFor: reads as a building at once. Characters and rooms share one flat viewpoint, so nothing cheats. Walking between rooms is simple.\nAgainst: everyone stands on one floor line, so a busy project gets wide, not deep. lanternfish needed a second floor. More floors means smaller characters.\n\nIn the app: drag to pan, wheel to zoom, click a room or desk to move in. These boards use fixed camera stops instead."
+  },
+  "howF": {
+   "x": 3040,
+   "y": 6960,
+   "w": 520,
+   "fill": "gray",
+   "text": "Layout 2 · Open floor\n\nOne office floor seen from above and in front. Back walls with windows and whiteboards, a hallway through the middle, a lobby with the day's tally.\n\nFor: rooms have depth, so a busy project fills two or three rows of desks. The hallway and lobby make it feel walked through. Characters are about 13% bigger at whole-office zoom.\nAgainst: people in front can cover people behind, so labels need more care. A very large day needs a second floor or a longer hallway.\n\nHow to read either office: the screen on a desk shows where the session started (desktop, terminal, cloud). Coffee cups are cost. A bonsai means its own worktree. Yellow paddle and a pulsing room mean it needs you. The kitchen holds the idle, the finished and the sent home.\n\nRound 3: F1 and F2 are redrawn with mochi bodies and the jokes. In the build each bubble comes from the line bank (F3), picked by the event that just happened; signs and tallies read live numbers."
+  },
+  "titleG": {
+   "x": 0,
+   "y": 8160,
+   "text": "G · Body shapes (mochi chosen)",
+   "kind": "title1",
+   "maxW": 2960
+  },
+  "intro3": {
+   "x": -640,
+   "y": 6960,
+   "w": 520,
+   "fill": "blue",
+   "size": "m",
+   "text": "Round 3. The open floor (row F) is the direction, and the mochi body is locked in.\n\nF1 and F2 are redrawn with the mochi cast and a lot more attitude: speech and thought bubbles that react to what an agent is doing, wall signs, whiteboard tallies, sticky notes, a nap pod, a coffee queue, a wilting plant in the idle room, a high five on a PR and a reviewer saying no twice.\n\nBubbles take turns so the office never shouts all at once. Press Play and give it ten seconds. Click a room to zoom: the longer lines and the joke name tags only show up close.\n\nF3 is the line bank: 81 lines in 16 groups, one group per thing that can happen to an agent.\n\nG1 keeps the body-shape comparison for the record.\n\nRows A to E are unchanged and still use the round-2 body."
+  },
+  "howG": {
+   "x": 1520,
+   "y": 8420,
+   "w": 520,
+   "fill": "gray",
+   "text": "How the body shapes work.\n\nSix bodies, one rig. A shape is one body cut-out plus a short list of where the face, hat, neck, arms and legs attach. Every pose frame, costume and face is shared, so switching shape is cheap and can stay switchable in the build.\n\nMochi is the chosen one. It wobbles all the time and squashes further on landings and runs. A still cannot show that: press Play on G1 or F1.\n\nWhat mochi costs: its arms start wide of its face, so a mug meets the cheek and not the mouth. It has no chest, so ties and vests shrink to a badge and roles read from hats and props. Hats and the headset are stretched wider to fit.\n\nStill to do in mochi: the cast and acted-poses boards (row D), and a retune of the hand-to-face poses."
+  }
+ },
+ "designSystems": []
+}

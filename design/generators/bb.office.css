@@ -1,0 +1,58 @@
+
+/* ---------- office extras ---------- */
+.rm-mtg{--wall:#f1f3fa;--fl:#cfd6ea}
+.v-side{--top:8px;--fd:96px}
+.v-34{--top:24px;--fd:290px}
+.v-34 .room .sub{left:20px;right:auto;top:62px}
+.v-34 .room::before,.v-34 .room::after{top:100px}
+.bb.side-app{--ground:#d5ecff}
+.bb.floor-app{--ground:#d3ead6}
+.lawn{background:#d3ead6}
+.sky{background:linear-gradient(#bfe6ff,#e6f5ff)}
+.tag{position:absolute;z-index:79;background:#fff;border:2px solid var(--ink);border-radius:8px;padding:1px 6px 2px;font-size:11px;font-weight:600;white-space:nowrap}
+.lab{cursor:zoom-in}
+.lab .d{display:block}
+.c-all .tag,.c-all .lab .d{display:none}
+.c-all .lab strong{font-size:24px}
+.dway{position:absolute;z-index:100;width:16px;height:181px;background:#f3efe2;border-top:5px solid var(--ink);border-radius:8px 8px 0 0}
+.door{position:absolute;top:4px;width:64px;height:96px;z-index:2;background:#46536f;border:5px solid var(--ink);border-bottom:0;border-radius:32px 32px 0 0}
+.door::after{content:"";position:absolute;right:8px;top:48px;width:8px;height:8px;border-radius:50%;background:var(--sun)}
+.flip{position:absolute;inset:0;animation:wflip 10s linear infinite}
+.flip.rv{animation-name:wflipr}
+@keyframes wflip{0%,45%{transform:scaleX(1)}50%,95%{transform:scaleX(-1)}100%{transform:scaleX(1)}}
+@keyframes wflipr{0%,45%{transform:scaleX(-1)}50%,95%{transform:scaleX(1)}100%{transform:scaleX(-1)}}
+.mon.cld{background:#fff}
+.mon.cld::before{content:"";position:absolute;left:9px;top:15px;width:30px;height:13px;border-radius:8px;background:#7fd0f5;box-shadow:8px -7px 0 -1px #7fd0f5}
+.hint{font-size:12.5px;font-weight:600;opacity:.8;white-space:nowrap}
+.sidep .meta{font-size:12.5px;line-height:1.35;margin-top:2px}
+.sidep h4{margin:9px 0 3px;font:800 15px/1.1 "Bricolage Grotesque","DM Sans",sans-serif}
+.c-rel .sidep{display:block}
+.c-rel .tix{display:none}
+.board{position:absolute}
+.it.board::after{content:"";position:absolute;left:20px;right:20px;top:100%;height:14px;border-left:5px solid var(--ink);border-right:5px solid var(--ink)}
+
+.rhead{position:absolute;left:14px;top:-24px;z-index:90;display:flex;align-items:center;gap:8px}
+.room .rhead .name,.room .rhead .sub{position:static}
+.room .rhead .sub{background:#fff;border:3px solid var(--ink);border-radius:999px;padding:2px 11px 3px;font-size:15px;white-space:nowrap}
+.lab{width:max-content;max-width:270px}
+.lab .d{white-space:normal;line-height:1.25}
+.fnote{width:370px;font-size:14.5px;padding:9px 13px 10px}
+.fnote small{margin-bottom:3px}
+.ask{width:430px;flex-direction:row;align-items:center;gap:12px;padding:8px 12px 9px;font-size:13px;line-height:1.3}
+.ask strong{display:block;font-size:17px}
+.tix{font-size:12.5px;line-height:1.4;padding:8px 13px}
+.dock{bottom:14px}
+
+.v-34 .rhead{top:-38px}
+.tag{font-size:10.5px;line-height:1.2;font-weight:500}
+.tag b{font-weight:700}
+.it.board{font-size:12.5px}
+.it.board b{font-size:16px}
+.roofb .disp{top:-24px}
+
+.app:not(.c-all) .lab{transform:scale(.68) rotate(-1.5deg);transform-origin:0 100%}
+.app:not(.c-all) .lab.lb{transform-origin:0 0}
+.app:not(.c-all) .rhead{transform:scale(.62);transform-origin:0 100%}
+.app:not(.c-all) .tag{transform:scale(.86);transform-origin:0 0}
+
+.trow .pup{margin-right:7px}

@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Putty, late night</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="rig.css">
+<link rel="stylesheet" href="putty.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&amp;family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,700&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="pt night" style="width: 1440px; height: 900px">
+
+<div class="bar">
+<span class="logo">Busybodies</span>
+<span class="pil">02:47</span>
+<span class="pil">1 session, asleep</span>
+<span class="pil">0 agents out</span>
+<span class="pil">nothing needs you</span>
+</div>
+
+<div class="tray dark" style="left: 40px; top: 100px; width: 740px; height: 430px">
+<h2>lanternfish</h2>
+<div class="sub">3 sessions put away at 19:40 · release 2.4 shipped</div>
+<span class="dsk off" style="left: 296px; top: 182px"></span>
+<span class="dsk off" style="left: 596px; top: 124px"></span>
+<span class="dsk off" style="left: 596px; top: 318px"></span>
+</div>
+
+<div class="tray dark" style="left: 820px; top: 100px; width: 580px; height: 190px">
+<h2>breadbox</h2>
+<div class="sub">answered at 14:41, done by 16:05</div>
+<span class="dsk off" style="left: 192px; top: 106px"></span>
+</div>
+
+<div class="tray dark" style="left: 820px; top: 340px; width: 580px; height: 190px">
+<h2>orbit-kit</h2>
+<div class="sub">2 sessions put away</div>
+<span class="dsk off" style="left: 172px; top: 106px"></span>
+<span class="dsk off" style="left: 396px; top: 106px"></span>
+</div>
+
+<div class="tray dark" style="left: 40px; top: 590px; width: 560px; height: 200px">
+<h2>mossy-docs</h2>
+<div class="sub">2 sessions put away</div>
+<span class="dsk off" style="left: 168px; top: 112px"></span>
+<span class="dsk off" style="left: 404px; top: 112px"></span>
+</div>
+
+<span class="lampg" style="left: 600px; top: 500px; width: 420px; height: 420px"></span>
+<div class="tray t-ket" style="left: 640px; top: 590px; width: 300px; height: 200px">
+<h2>kettle-api</h2>
+<div class="sub">1 session · the only lamp on</div>
+<div class="rig sm {{z}}" style="left: 166px; top: 40px; font-size: 4.2px"><span class="sh"></span><span class="core"><span class="legL"></span><span class="legR"></span><span class="bod"></span><span class="head"><span class="browL"></span><span class="browR"></span><span class="eyeL"></span><span class="eyeR"></span><span class="mouth"></span></span><span class="armL"></span><span class="armR"></span><span class="prop"></span><span class="fx"></span></span></div>
+<span class="cld" style="left: 136px; top: 72px"></span>
+<div class="plate" style="left: 24px; top: 150px"><strong>Webhook spike</strong>idle since 23:35 · Fable · cloud · $1.45</div>
+</div>
+
+<div class="card" style="left: 980px; top: 590px; width: 420px; height: 200px">
+<h3>The narrator, whispering</h3>
+<div class="say">Night on the tabletop. One lamp, one sleepy lump. All is well.</div>
+<div style="position: absolute; left: 20px; right: 20px; bottom: 14px; display: flex; align-items: baseline; gap: 10px; font-weight: 700"><span class="big">$1.45</span><span>since midnight · 0 lines · 0 PRs · 0 pinched off</span></div>
+</div>
+
+<div style="position: absolute; left: 40px; right: 40px; top: 836px; display: flex; gap: 22px; font-weight: 700; color: #9d92c9">
+<span>Quiet mode: one breath every second and a half, nothing else moves.</span>
+<span>23:35 Webhook spike went idle</span>
+<span>19:40 release 2.4 shipped, everyone was pressed back in</span>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+componentDidMount() {
+this.iv = setInterval(() => {
+const t = (this.state && this.state.t) || 0;
+this.setState({ t: t + 1 });
+}, 750);
+}
+componentWillUnmount() {
+clearInterval(this.iv);
+}
+renderVals() {
+const t = (this.state && this.state.t) || 0;
+return { z: t % 2 ? 'e-closed m-open bd-slump p-desk x-z2' : 'e-closed m-small bd-slump p-desk x-z1' };
+}
+}
+</script>
+</body>
+</html>

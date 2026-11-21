@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pixel Tower, compact window</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="pixel.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&amp;family=Silkscreen&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="px wall" style="width: 520px; height: 400px">
+
+<div class="ghost" style="left: 20px; top: 20px; width: 300px; height: 200px">Your other windows. The mini tower floats on top, in a corner, about 300 by 230.</div>
+
+<div class="mini" style="right: 20px; bottom: 20px">
+<i class="bot lead hop" style="left: 196px; bottom: 100%"></i>
+<span class="bang" style="left: 150px; bottom: 100%; margin-bottom: 44px">! Crumb cache needs you</span>
+<span class="squad walk w2" style="left: 8px; bottom: 100%; animation-duration: 12s"><i class="bot r-bu"></i></span>
+<div class="bar"><span>BUSYBODIES</span><a class="btn" href="Main.dc.html">Full screen</a></div>
+<div class="mrow f-lan"><span>lanternfish</span><i class="w busy" style="width: 46px"></i><i class="w idle"></i><i class="w busy" style="width: 25px"></i></div>
+<div class="mrow f-bre"><span>breadbox</span><i class="w wait">!</i></div>
+<div class="mrow f-orb"><span>orbit-kit</span><i class="w busy" style="width: 31px"></i><i class="w err"></i></div>
+<div class="mrow f-mos"><span>mossy-docs</span><i class="w cmp"></i><i class="w done"></i></div>
+<div class="mrow f-ket"><span>kettle-api</span><i class="w idle"></i></div>
+<div class="foot">
+<span style="color: #ffcf3f">Room 4 has held the door 10 min. No rush.</span>
+<span>3 busy · 1 needs you · 12 agents · $63.20</span>
+</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":520,"height":400}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Cut Paper, notes</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="notes.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&amp;family=DM+Sans:opsz,wght@9..40,400;9..40,700&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="nt n-pp">
+<div>
+<h1>B · Cut Paper</h1>
+<p>A floor map made of paper cut-outs: every project is a coloured zone, every session a round table, every agent a blob with a face. Flat fills, one ink outline and springy motion make it read at a glance from across the room, like a board game mid-turn.</p>
+<p>Characters are a cut-out rig (board B6): one bean, noodle limbs, a face, a prop. Each part is a sprite; a frame object sets its angle and the engine springs it there.</p>
+<h2>What stands for what</h2>
+<table>
+<tr><th>Data</th><th>Office (shown)</th><th>Village</th></tr>
+<tr><td>Project</td><td>A paper zone in its own colour</td><td>A field with its own crop colour</td></tr>
+<tr><td>Session</td><td>A round table with a white lead</td><td>A cottage with its keeper outside</td></tr>
+<tr><td>Subagent</td><td>Small blob, colour and hat are the role</td><td>Villager, apron colour and tool are the role</td></tr>
+<tr><td>Depth 2, 3</td><td>Rides on its parent's head, up to 3 high</td><td>Rides piggyback</td></tr>
+<tr><td>Busy, idle</td><td>Jiggles at the laptop; melts flat, z</td><td>Hoes the plot; naps on a hay bale</td></tr>
+<tr><td>Needs you</td><td>Yellow paddle, pulsing rings, yellow ask card</td><td>Yellow lantern and bell, same yellow</td></tr>
+<tr><td>Compacting</td><td>Squishes down, throws paper wads in a bin</td><td>Bales hay</td></tr>
+<tr><td>Error, done</td><td>Flips upside down, red burst; dashed table, green flag</td><td>Cart tips over; shutters closed, green flag</td></tr>
+<tr><td>Origin</td><td>Blue laptop, dark terminal, cloud beside the table</td><td>Workbench, forge, weather vane</td></tr>
+<tr><td>Model</td><td>Text on the table label</td><td>Text on the door sign</td></tr>
+<tr><td>Cost</td><td>Coffee cups on the table, one per $10</td><td>Loaves on the sill</td></tr>
+<tr><td>Tool call</td><td>Sticker pops by the blob: edit, read, browser</td><td>Same stickers</td></tr>
+<tr><td>Tests</td><td>Green or red sticker; lead panics on red</td><td>Same</td></tr>
+<tr><td>PR opened</td><td>Trophy lap, confetti, green sticker</td><td>Prize pumpkin lap</td></tr>
+<tr><td>Spawn, finish</td><td>Lead hands over a task card; blob waves and pops</td><td>Keeper hands over a basket; villager walks home</td></tr>
+<tr><td>Sass</td><td>A note on the fridge</td><td>A notice on the well</td></tr>
+</table>
+<h2>A second theme</h2>
+<p>A theme is a sheet of cut-outs and five zone colours. Ink weight, springs and the reserved yellow and red stay. For the rig, a theme swaps each part's cut-out (straw hat on the bean, mitten hands, a pumpkin for the trophy) under the same part names, so every pose carries over untouched.</p>
+</div>
+<div>
+<h2 style="margin-top: 0">Sass bank · notes left on the fridge</h2>
+<div class="q"><span>To whoever left a shell command running since 1:52: it's still running. We checked. We keep checking.</span><span>Shell command over 40 min</span></div>
+<div class="q"><span>Third failed test in a row. We're not mad. The tests are a little mad.</span><span>Third test failure in a row</span></div>
+<div class="q"><span>A builder is carrying a scout who is carrying an explorer. Please stack responsibly.</span><span>Subagent reaches depth 3</span></div>
+<div class="q"><span>Crumb cache has had its hand up for 10 minutes. It's fine. Its arm is tired, but it's fine.</span><span>Prompt waiting 10 min</span></div>
+<div class="q"><span>Release 2.4 has spent $20. That's four fancy coffees it will never drink.</span><span>Session cost passes $20</span></div>
+<div class="q"><span>PR #219 has left the building. Please clap.</span><span>PR opened</span></div>
+<div class="q"><span>All green. Whoever fixed it, pretend it was on purpose.</span><span>Pass after a failure streak</span></div>
+<div class="q"><span>Docs sweep is tidying its desk. It will remember less and feel great.</span><span>Compaction starts</span></div>
+<div class="q"><span>Rename everything fell over. A moment of silence, then a retry.</span><span>Session errors</span></div>
+<div class="q"><span>Ten agents at one table. Bring your own chair.</span><span>10 agents running in a session</span></div>
+<div class="q"><span>Webhook spike is "thinking". So is the plant.</span><span>Session idle 30 min</span></div>
+<div class="q"><span>You stopped a builder mid-sentence. Bold. Correct, probably.</span><span>You stop a subagent</span></div>
+<div class="q"><span>The scout came back in 22 seconds with a full report. Suspicious.</span><span>Subagent done in under 30 s</span></div>
+<div class="q"><span>The reviewer has read 40 files and has opinions about all of them.</span><span>Reviewer passes 40 reads</span></div>
+<div class="q"><span>Someone is searching the web. Everyone act natural.</span><span>Web tool call</span></div>
+<div class="q"><span>It's 2:47. One blob left and it's asleep. You should take the hint.</span><span>Late night, one idle session</span></div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1100,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>
