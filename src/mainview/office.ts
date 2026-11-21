@@ -67,6 +67,11 @@ export class Office extends Container {
 		});
 	}
 
+	/** Every character back to the start of its pose (the inspector's freeze). */
+	rewind(): void {
+		for (const p of this.#people.values()) p.puppet.rewind();
+	}
+
 	tick(dt: number): void {
 		for (const p of this.#people.values()) p.tick(dt);
 	}

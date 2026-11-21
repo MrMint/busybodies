@@ -1,6 +1,6 @@
 // The rig's Pixi-free core: frames, pose timing, springs, interpolation and the atlas layout.
 import { describe, expect, test } from "bun:test";
-import { pack } from "../src/scene/rig/atlas";
+import { pack } from "../src/scene/rig/pack";
 import { CHANNELS, REST, channels, describe as describeFrame, diff, parseFrame } from "../src/scene/rig/frame";
 import { FEEL, Spring, SpringSet, SUBSTEP_S, Tween, ease, lerp } from "../src/scene/rig/motion";
 import { choosePose, frameAt, hash, unit } from "../src/scene/rig/player";

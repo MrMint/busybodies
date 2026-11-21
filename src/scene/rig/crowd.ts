@@ -50,6 +50,10 @@ export class Crowd extends Container {
 		return false;
 	}
 
+	rewind(): void {
+		for (const p of this.puppets) p.rewind();
+	}
+
 	tick(dt: number): void {
 		for (const p of this.puppets) p.tick(dt);
 	}

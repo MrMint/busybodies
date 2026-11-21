@@ -79,6 +79,7 @@ export class Puppet extends Container {
 	#holding = true;
 	#frame: Frame = REST;
 	#legsUp = false;
+	#played?: { pose: Pose; opts: PlayOptions };
 
 	// Parts, back to front.
 	#shadow: Sprite;
@@ -209,6 +210,7 @@ export class Puppet extends Container {
 		if (!p) throw new Error(`no pose "${pose}"`);
 		const as = opts.as ?? "lead";
 		const frames = as === "partner" && p.partner ? p.partner.frames : p.frames;
+		this.#played = { pose: p, opts };
 		this.#pose = p;
 		this.#as = as;
 		this.#frames = frames;
@@ -221,6 +223,13 @@ export class Puppet extends Container {
 		this.#advance(0);
 		if (opts.snap || opts.at === "end") this.snap();
 		this.#apply();
+	}
+
+	/** Replay the current pose from its start, settled in place: the inspector's freeze() uses this
+	 * so step(n) after it gives the same frames however long the page ran before. */
+	rewind(): void {
+		if (this.#played) this.play(this.#played.pose, { ...this.#played.opts, snap: true });
+		else this.snap();
 	}
 
 	/** Show one frame and hold it (the pose sheet's cells). */

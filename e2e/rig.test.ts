@@ -85,9 +85,10 @@ describe("200 puppets", () => {
 		await page.close();
 	}, T);
 
-	test("a frozen crowd steps to the same frame every time", async () => {
-		const frame = async () => {
+	test("a frozen crowd steps to the same frame every time, however long it ran first", async () => {
+		const frame = async (ranMs: number) => {
 			const page = await open("crowd=200");
+			await page.waitForTimeout(ranMs);
 			const snap = await page.evaluate(() => {
 				const b = window.__busybodies!;
 				b.freeze();
@@ -97,7 +98,7 @@ describe("200 puppets", () => {
 			await page.close();
 			return snap;
 		};
-		expect(await frame()).toEqual(await frame());
+		expect(await frame(0)).toEqual(await frame(1500));
 	}, T);
 });
 

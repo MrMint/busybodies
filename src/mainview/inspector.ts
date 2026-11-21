@@ -25,6 +25,8 @@ export interface Entity {
 export interface InspectedScene {
 	entities(): Entity[];
 	tick(dt: number): void;
+	/** Every character back to the start of its pose, settled. */
+	rewind?(): void;
 }
 
 export interface Inspector {
@@ -37,7 +39,8 @@ export interface Inspector {
 	/** Frame accounting since load (or since resetCounters). */
 	counters(): { renders: number; animationFrames: number; tickerRunning: boolean; maxFPS: number };
 	resetCounters(): void;
-	/** Stop the clock: the ticker halts and nothing animates until unfreeze(). */
+	/** Stop the clock: the ticker halts and nothing animates until unfreeze(). Every character
+	 * rewinds to the start of its pose, so step(n) from here is the same on every load. */
 	freeze(): void;
 	unfreeze(): void;
 	/** Advance a frozen scene by n frames of 1/60 s each, then render once. */
@@ -85,6 +88,7 @@ export function installInspector(
 			animationFrames = 0;
 		},
 		freeze: () => {
+			if (!scene.frozen) office.rewind?.();
 			scene.frozen = true;
 			app.ticker.stop();
 		},
