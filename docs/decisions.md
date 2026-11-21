@@ -179,6 +179,12 @@ sessions arrive through the registry first. Dropped events are counted in
 sweeps, so the cache, the tail reads and the ledgers share them. Without that, the ledger's
 extra stats made the watcher about 30% more expensive under the heavy fake home.
 
+**Measured, watcher alone, 30 s windows against the fake home** (`main` vs this branch, % of one
+core): heavy load (`--sessions 12 --agents 8 --busy 0.75 --rate 20`) 3.2–4.2% vs 3.6–3.9%, level
+within noise. With 20 writes/s to a project with no live session (`--noise 20`): 2.1–2.5% vs
+1.6–1.8%, with rebuilds down from 118 to 76 and ~560 events ignored. The first build reads each
+live transcript in full (166 ms for 12 real sessions); later rebuilds took about 2 ms.
+
 **Recordings are anonymized at write time** (`tools/record.ts`, `src/watcher/anonymize.ts`).
 Raw snapshots are never written. Names come from fixed word lists, in order of first appearance,
 so a recording is deterministic and keeps its structure. Times are shifted so it starts at
