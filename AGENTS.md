@@ -14,8 +14,10 @@ v7-era APIs that look right and silently draw the wrong thing. Update it only wi
 ## Rules
 
 - **Never commit real session data.** Fixtures and screenshots use invented projects, branches,
-  titles and people. No real usernames, home paths, or transcript text. This repo is meant to be
-  public.
+  titles and people. No real usernames, home paths, or transcript text. This repo is public, and a
+  pushed object can't be taken back. `tools/scan-private.sh` enforces this in CI and as a pre-push
+  hook: run `git config core.hooksPath .githooks` once per clone, and list your own username and
+  real project names in a gitignored `.private-words` file.
 - **No vendor branding in the art.** No logos, wordmarks or brand marks of any AI vendor. Model
   names as plain text labels are fine.
 - **Art licences:** CC0 or our own work only. No CC-BY-SA, GPL or LPC art, and no raw
