@@ -86,3 +86,19 @@ stays stable.
 only as idle. The desktop index has hints, and the `Notification` hook is the reliable signal.
 Rebuilds also fire on every transcript write in any project; narrowing the watch to live
 sessions' folders would cut them.
+
+## 2026-11-21: watcher in the app
+
+**The Bun process owns the watcher and pushes snapshots to the scene over Electrobun's typed RPC**
+(`src/shared/rpc.ts`). The scene asks for the current snapshot when it loads, and gets a
+`snapshot` message on every change. It keeps characters by id between snapshots, and runs the
+frame loop only while someone is busy.
+
+**`?demo` loads an invented snapshot instead of the watcher** (`src/mainview/demo.ts`). The scene
+then runs in any browser through Vite, which is how agents can check scene work without real
+sessions. This is the seed of the fixture-replay harness.
+
+**Measured in the dev app:** the Bun process used about 5% of one core and 177 MB over 20 s while
+two sessions were busy. That compares with 0.5% for the watcher alone. Profile this before
+calling it cheap. The scene runs at the display's full frame rate whenever anyone is busy; a
+lower rate for ambient motion is an easy cut.

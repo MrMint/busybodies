@@ -1,23 +1,10 @@
-// Placeholder scene: proves PixiJS boots inside the Electrobun webview and that the frame loop
-// stops when nothing moves. Click a busybody to toggle it between busy (bouncing) and idle (still).
-// The real scene, rig and theme system replace this; see docs/decisions.md.
-import { Application, Container, Graphics } from "pixi.js";
-
-const INK = 0x2b2340;
-const COLOURS = [0xff8fab, 0x8fd3ff, 0xffd166];
-
-type Busybody = { view: Container; busy: boolean; phase: number };
-
-function drawBusybody(colour: number): Container {
-	const view = new Container();
-	const body = new Graphics().roundRect(-40, -90, 80, 90, 36).fill(colour).stroke({ width: 4, color: INK });
-	const eyes = new Graphics().circle(-14, -58, 6).circle(14, -58, 6).fill(INK);
-	const mouth = new Graphics().arc(0, -42, 10, 0.2, Math.PI - 0.2).stroke({ width: 4, color: INK });
-	view.addChild(body, eyes, mouth);
-	view.eventMode = "static";
-	view.cursor = "pointer";
-	return view;
-}
+// The scene: listens for snapshots from the Bun process and draws them as an office. Rendering is
+// on demand: the ticker runs only while someone is busy; otherwise the last frame just stays up.
+import { Electroview } from "electrobun/view";
+import { Application } from "pixi.js";
+import type { BusybodiesRPC } from "../shared/rpc";
+import type { Snapshot } from "../watcher/model";
+import { Office } from "./office";
 
 (async () => {
 	const app = new Application();
@@ -32,40 +19,46 @@ function drawBusybody(colour: number): Container {
 	});
 	document.getElementById("stage")!.appendChild(app.canvas);
 
-	const wake = () => {
-		if (!app.ticker.started) app.ticker.start();
+	const office = new Office();
+	app.stage.addChild(office);
+
+	app.ticker.add((t) => {
+		office.tick(t.deltaTime);
+		if (!office.animating) app.ticker.stop();
+	});
+
+	const redraw = () => {
+		if (office.animating) {
+			if (!app.ticker.started) app.ticker.start();
+		} else {
+			app.render();
+		}
 	};
 
-	const crowd: Busybody[] = COLOURS.map((colour, i) => {
-		const bb = { view: drawBusybody(colour), busy: i === 0, phase: i * 1.3 };
-		app.stage.addChild(bb.view);
-		bb.view.on("pointertap", () => {
-			bb.busy = !bb.busy;
-			wake();
-		});
-		return bb;
-	});
-
-	const layout = (w: number, h: number) =>
-		crowd.forEach((bb, i) => bb.view.position.set((w * (i + 1)) / (crowd.length + 1), h * 0.6));
-	app.renderer.on("resize", (w, h) => {
-		layout(w, h);
-		app.render();
-	});
-	layout(app.screen.width, app.screen.height);
-
-	// Render on demand: the ticker runs only while someone is busy, and the last frame it
-	// draws has every idle busybody at rest.
-	app.ticker.add((t) => {
-		for (const bb of crowd) {
-			bb.phase += 0.12 * t.deltaTime;
-			const bounce = bb.busy ? Math.abs(Math.sin(bb.phase)) : 0;
-			bb.view.pivot.y = bounce * 18;
-			bb.view.scale.set(1 + bounce * 0.04, 1 - bounce * 0.04);
+	const show = (snapshot: Snapshot) => {
+		office.show(snapshot, app.screen.width, app.screen.height);
+		redraw();
+		if (import.meta.env.DEV) {
+			const count = (l: Snapshot["sessions"]): number => l.reduce((n, s) => n + 1 + count(s.children), 0);
+			console.info(`[busybodies] drew ${count(snapshot.sessions)} sessions; animating: ${office.animating}`);
 		}
-		if (!crowd.some((bb) => bb.busy)) app.ticker.stop();
+	};
+
+	app.renderer.on("resize", (w, h) => {
+		office.layout(w, h);
+		redraw();
 	});
 
-	app.render();
-	if (crowd.some((bb) => bb.busy)) wake();
+	if (new URLSearchParams(location.search).has("demo")) {
+		show((await import("./demo")).demoSnapshot);
+		return;
+	}
+
+	const rpc = Electroview.defineRPC<BusybodiesRPC>({
+		handlers: { messages: { snapshot: show } },
+	});
+	new Electroview({ rpc });
+
+	const first = await rpc.request.snapshot();
+	if (first) show(first);
 })();
