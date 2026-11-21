@@ -1,0 +1,17 @@
+{
+	"name": "busybodies",
+	"version": "0.0.1",
+	"type": "module",
+	"description": "A cute, sassy desktop scene of your AI coding agents at work",
+	"devDependencies": {
+		"@types/bun": "latest",
+		"concurrently": "^9.2.5",
+		"typescript": "~5.9.3",
+		"vite": "^7.3.7"
+	},
+	"dependencies": {
+		"pixi.js": "8.23.0"
+	},
+	"private": true,
+	"license": "MIT"
+}
