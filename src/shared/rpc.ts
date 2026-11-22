@@ -37,6 +37,8 @@ export type BusybodiesRPC = {
 			snapshot: Snapshot;
 			/** Show the About screen (from the tray menu). */
 			about: undefined;
+			/** Switch the scene theme (from the tray's Theme menu): `office` or `factory`. */
+			theme: { id: string };
 		};
 	}>;
 };

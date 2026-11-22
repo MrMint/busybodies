@@ -3,10 +3,12 @@
 // Quit is in the tray menu.
 import { existsSync } from "node:fs";
 import { BrowserView, BrowserWindow, GlobalShortcut, Updater, Utils } from "electrobun/main";
+import type { ThemeId } from "../scene/theme/id";
 import type { AppStatus, BusybodiesRPC } from "../shared/rpc";
 import type { Snapshot } from "../watcher/model";
 import { Watcher } from "../watcher/watch";
 import { compactFrame } from "./compact";
+import { readSettings, settingsFile, writeSettings } from "./settings";
 import { installTray } from "./tray";
 import { startUpdates } from "./updates";
 
@@ -34,8 +36,12 @@ const version = (await Updater.getLocalInfo()).version;
 const baseUrl = await mainViewUrl();
 // BUSYBODIES_SCENE_QUERY passes scene modes through to the view, e.g. "demo" or "blank".
 const extra = process.env.BUSYBODIES_SCENE_QUERY ?? "";
+/** The tray's choices, saved in the app's data folder (settings.ts). */
+const SETTINGS = settingsFile(Utils.paths.userData);
+let theme: ThemeId = readSettings(SETTINGS).theme;
+// A window opens in the saved theme (as ?theme=); one already open switches over RPC.
 const urlFor = (compact: boolean) => {
-	const q = [compact ? "compact" : "", extra].filter(Boolean).join("&");
+	const q = [compact ? "compact" : "", `theme=${theme}`, extra].filter(Boolean).join("&");
 	return q ? `${baseUrl}?${q}` : baseUrl;
 };
 
@@ -127,13 +133,28 @@ function showOffice(): void {
 	office.window.activate();
 }
 
+/** Pick the theme: saved, and both windows switch (without a reload). */
+function setTheme(id: ThemeId): void {
+	if (id === theme) return;
+	theme = id;
+	try {
+		writeSettings(SETTINGS, { theme });
+	} catch (e) {
+		console.warn(`[busybodies] couldn't save settings: ${e}`);
+	}
+	office?.rpc.send.theme({ id });
+	compact?.rpc.send.theme({ id });
+	tray.refresh();
+}
+
 function about(): void {
 	showOffice();
 	office?.rpc.send.about(undefined);
 }
 
 const tray = installTray({
-	status: () => ({ snapshot: watcher.snapshot, compact: compactOn }),
+	status: () => ({ snapshot: watcher.snapshot, compact: compactOn, theme }),
+	setTheme,
 	showOffice,
 	toggleCompact: () => setCompact(!compactOn),
 	about,

@@ -137,8 +137,10 @@ export class Puppet extends Container {
 		const s = (name: string) => new Sprite(atlas.get(name));
 		this.#shadow = s("shadow");
 		this.#back = s("prop/chair");
-		this.#legL = s("leg");
-		this.#legR = s("leg");
+		// A theme may give a role its own leg or upper arm (the factory's knee pads and armband).
+		const leg = atlas.has(`leg/${opts.role}`) ? `leg/${opts.role}` : "leg";
+		this.#legL = s(leg);
+		this.#legR = s(leg);
 		this.#legR.scale.x = -1;
 
 		this.#body = s(`body/${opts.role}`);
@@ -202,7 +204,9 @@ export class Puppet extends Container {
 		const a = this.#atlas;
 		const root = new Container();
 		root.position.set(side * A.shoulderX, A.shoulderY);
-		const upper = new Sprite(a.get("arm/upper"));
+		// A role's own upper arm, if the theme has one, goes on the left arm only (an armband).
+		const own = `arm/upper/${this.role}`;
+		const upper = new Sprite(a.get(side < 0 && a.has(own) ? own : "arm/upper"));
 		const fore = new Container();
 		fore.y = A.upper;
 		const foreSprite = new Sprite(a.get("arm/fore"));

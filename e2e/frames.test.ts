@@ -53,9 +53,14 @@ async function measure(page: Page, ms = 2000) {
 	return page.evaluate(() => window.__busybodies!.counters());
 }
 
-describe("frame budgets", () => {
+/** Frame budgets hold in every theme (src/scene/theme/): `?theme=` on each scene. */
+const THEMES = ["office", "factory"] as const;
+
+for (const theme of THEMES)
+describe(`frame budgets (${theme})`, () => {
+	const t = `&theme=${theme}`;
 	test("an idle office requests no animation frames and renders nothing", async () => {
-		const page = await open("demo=idle");
+		const page = await open(`demo=idle${t}`);
 		const c = await measure(page);
 		expect(c.tickerRunning).toBe(false);
 		expect(c.animationFrames).toBe(0);
@@ -64,7 +69,7 @@ describe("frame budgets", () => {
 	}, T);
 
 	test("a busy office renders at no more than 30 fps", async () => {
-		const page = await open("demo");
+		const page = await open(`demo${t}`);
 		const c = await measure(page, 2000);
 		expect(c.tickerRunning).toBe(true);
 		expect(c.maxFPS).toBe(30);
@@ -77,7 +82,7 @@ describe("frame budgets", () => {
 	test("a busy room with several walkers still renders at no more than 30 fps", async () => {
 		// Walks run at the ambient rate: with trips, brick runs and rounds, a busy room has someone
 		// walking nearly all the time, and it must not pin the app at 60.
-		const page = await open("demo=release&settle=600000");
+		const page = await open(`demo=release&settle=600000${t}`);
 		await page.evaluate(() => {
 			const b = window.__busybodies!;
 			const s = structuredClone(b.snapshot()!);
@@ -101,7 +106,7 @@ describe("frame budgets", () => {
 	}, T);
 
 	test("the loop stops once everyone goes idle", async () => {
-		const page = await open("demo");
+		const page = await open(`demo${t}`);
 		await page.evaluate(() => {
 			const b = window.__busybodies!;
 			const s = structuredClone(b.snapshot()!);
@@ -125,11 +130,16 @@ describe("frame budgets", () => {
 	}, T);
 });
 
-describe("draw calls", () => {
-	test("a busy frame of the FloorBusy day takes at most 30 WebGL draws", async () => {
+for (const [theme, demo] of [
+	["office", "demo"],
+	["factory", "demo"],
+	["factory", "demo=release"],
+] as const)
+describe(`draw calls (${theme}, ${demo})`, () => {
+	test("a busy frame takes at most 30 WebGL draws", async () => {
 		// Static rooms are cached textures and furniture, labels and characters batch; a regression
 		// here (a new unbatchable Graphics per desk, say) shows up long before it shows in fps.
-		const page = await open("demo&frozen");
+		const page = await open(`${demo}&frozen&theme=${theme}`);
 		const draws = await page.evaluate(() => {
 			const gl = document.querySelector("canvas")!.getContext("webgl2")!;
 			let n = 0;

@@ -872,3 +872,36 @@ office and director import rather than copy.
 
 `?demo=release` now also buries the lead's in-tray by 9 s, compacts it to the shredder at 12 s,
 walks todo notes to the planner, and sends two sessions to your office.
+
+## 2026-11-22: the living office, wave 3 (the theme seam, the factory, arms that help)
+
+The office's look and words now sit behind a `SceneTheme` (`src/scene/theme/`): colours, room
+shells and wall items, a painter per furniture slot, desk props, the planner, the crew build's
+piece and flag, the night watch, and the words (area names, default signs, NOW SERVING, the
+planner's columns, the door plate). The layout and the director are unchanged; furniture kinds stay
+slot names (`copier` is the build station's body in any theme), and areas keep the office's names
+as their identity, so only the name tabs show a theme's words. The refactor was proved with
+`tools/shoot.ts` shots before and after, diffed by `tools/shot-diff.ts`: pixel-identical except the
+HTML waiting pill in the top bar, which differs between two runs of the same build anyway.
+
+`?theme=factory` is the same cast in workshop bays, a conveyor aisle, a QA booth, a break room and
+the foreman's office, with machines drawn as bodies under the rig's working points. Themes keep the
+mochis (decided with the owner): `factoryTheme()` in `rig/factory.ts` repaints rig parts by name,
+so every pose plays unchanged. The lead is a foreman in a white hard hat and a hi-vis vest, builders
+wear striped hard hats and tool belts, scouts headlamps, explorers a harness and knee pads,
+reviewers hairnets and safety glasses, verifiers a QA armband, designers a welding helmet flipped
+up. The station parts the hands work become a stamping press, a parts bin, a bolt bin, a gauge
+with pass/fail tags, a radio log, a loading-dock pallet, a crusher, a parts hopper and a shift bell,
+each within a few rig units of the paper part, so the solved reaches still land (tested). Two parts
+are factory-only (`leg/explorer`, `arm/upper/verifier`); the puppet uses them only when the atlas
+has them.
+
+Each bay has a robot arm on a rail at the back wall. It acts only on real events: it brings each
+new piece to the crew build (the piece lands when it lets go) and lifts the PR's crate onto the
+loading dock. It moves in short eased tweens and then stays still, so it costs frames only while
+it moves; its plan is Pixi-free (`armplan.ts`) and unit-tested.
+
+The tray's Theme menu saves the choice to `settings.json` in the app's data folder (new
+`src/bun/settings.ts`) and switches both windows over RPC without a reload: a new rig atlas, the
+office redrawn, signs the voice wrote kept. New windows open with `?theme=<saved>`, so the query
+parameter stays the one entry point.

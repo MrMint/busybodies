@@ -117,6 +117,12 @@ calls ride the belt as parts), robot crews, a hopper for context, a press for bu
 dock for PRs; (4) the tray menu picks the theme. Looks (paper, pixel, putty in `design/boards`)
 are a separate axis from themes and stay out of scope.
 
+**Wave 3 contract.** `src/scene/theme/id.ts` names the themes (`office`, `factory`) and reads
+`?theme=`; `src/scene/rig/themes.ts` gives the rig's painters per theme (`rigTheme(id)`, the
+factory's in `rig/factory.ts`, overriding parts by name so every pose keeps working). The office
+side (colours, words, furniture, props, signs) moves behind a `SceneTheme` in `src/scene/theme/`
+with no visual change to the office, proved by screenshots before and after.
+
 ## Stream E: the rig for all of this (`src/scene/rig/`)
 
 New props and poses for each station: folder flip, card thumb, copier feed and kick, stamp

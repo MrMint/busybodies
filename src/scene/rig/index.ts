@@ -11,3 +11,5 @@ export { paperTheme, PAPER_PALETTE, ACCENTS, ANCHORS, type Theme, type Palette, 
 export { Puppet, type PuppetOptions, type PlayOptions, type PuppetState } from "./puppet";
 export { rigCharacters, PUPPET_HEIGHT } from "./character";
 export { buildPoseSheet } from "./sheet";
+export { rigTheme } from "./themes";
+export { factoryTheme } from "./factory";

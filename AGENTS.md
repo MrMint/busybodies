@@ -55,13 +55,14 @@ v7-era APIs that look right and silently draw the wrong thing. Update it only wi
 | `src/watcher/` | Capture: reads the agent tool's files into a `Snapshot` (`model.ts` is the contract) |
 | `src/mainview/` | The webview's entry: app setup, the top bar, the inspector, demo days |
 | `src/scene/office/` | The open-floor office: floor plan, camera, cut-paper drawing, the character slot interface |
+| `src/scene/theme/` | Scene themes (`?theme=`, the tray's Theme menu): the office's and the factory's look and words behind a `SceneTheme`, and the factory's robot arms |
 | `src/scene/rig/` | The mochi character rig: parts atlas, springs, frames, poses, and the office's character factory (`?sheet`, `?demo=crowd`) |
 | `src/scene/director.ts`, `src/scene/director/` | The director: snapshot to world (spots, poses, walks) and events; the sass seam (`say`, `sign`) |
 | `test/` | Unit tests (`bun test test/`). Fixtures are built in a temp folder from invented data |
 | `e2e/` | Scene tests in headless Chrome (`bun test e2e/`) |
 | `tools/watch-tree.ts` | Prints the live session/agent tree in a terminal |
 | `tools/fake-home.ts`, `tools/profile.sh` | Synthetic load, and CPU per process under it |
-| `tools/shoot.ts` | Deterministic screenshots of named scene states, and a contact sheet |
+| `tools/shoot.ts`, `tools/shot-diff.ts` | Deterministic screenshots of named scene states (`--theme`), a contact sheet, and a pixel diff of two runs |
 | `tools/record-gif.ts`, `tools/tray-icons.ts` | The README's GIF from `?demo`, and the menu-bar faces |
 | `tools/pose-dump.ts`, `tools/pose-sheet.ts` | Every pose as text, and as one PNG (`docs/rig/pose-sheet.png`) |
 | `docs/instrumentation.md` | How to measure and check the app, and what's planned |
