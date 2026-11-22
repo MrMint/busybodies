@@ -9,8 +9,9 @@ import { join, normalize } from "node:path";
 import { parseArgs } from "node:util";
 import { type Browser, chromium } from "playwright-core";
 
-/** Where to point the camera: a room by its name, or a desk by its session's title. */
-type Aim = { kind: "office" } | { kind: "room"; name: string } | { kind: "desk"; title: string };
+/** Where to point the camera: a room by its name, or a desk by its session's title; "shot": where
+ * compact's following camera put it (mainview/shots.ts). */
+type Aim = { kind: "office" } | { kind: "room"; name: string } | { kind: "desk"; title: string } | { kind: "shot" };
 
 interface State {
 	name: string;
@@ -56,6 +57,10 @@ const STATES: State[] = [
 	{ name: "about", demo: "", aim: { kind: "office" }, size: BOARD, query: "about" },
 	{ name: "compact-busy", demo: "", aim: { kind: "office" }, size: [440, 300], query: "compact" },
 	{ name: "compact-empty", demo: "empty", aim: { kind: "office" }, size: [440, 300], query: "compact" },
+	// Compact as a live camera: the room its first shot cuts to, with the room tiles under it.
+	{ name: "compact-cut", demo: "", aim: { kind: "shot" }, size: [440, 300], query: "compact" },
+	{ name: "compact-cut-release", demo: "release", aim: { kind: "shot" }, size: [440, 300], query: "compact" },
+	{ name: "compact-cut-waiting", demo: "day-2", aim: { kind: "shot" }, size: [440, 300], query: "compact", frames: 40 },
 	// The living office (waves 1 and 2): stations, desk props, the crew build, your office.
 	{ name: "release-floor", demo: "release", aim: { kind: "office" }, size: BOARD },
 	{ name: "release-room", demo: "release", aim: { kind: "room", name: "lanternfish" }, size: BOARD },
@@ -107,7 +112,7 @@ async function shoot(browser: Browser, s: State, dpr: number): Promise<Buffer> {
 			let stop: Parameters<typeof b.goTo>[0] = { kind: "office" };
 			if (aim.kind === "room") stop = { kind: "room", id: layout.areas.find((a) => a.name === aim.name)!.id };
 			if (aim.kind === "desk") stop = { kind: "desk", id: flat(b.snapshot()!.sessions as never).find((x) => x.title === aim.title)!.id };
-			b.goTo(stop, false);
+			if (aim.kind !== "shot") b.goTo(stop, false);
 			b.step(frames);
 		},
 		{ aim: s.aim, frames: s.frames ?? 12 },
