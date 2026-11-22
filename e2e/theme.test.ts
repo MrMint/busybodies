@@ -156,4 +156,28 @@ describe("themes", () => {
 		expect(done).toEqual({ moving: false, jobs: 0, still: true });
 		await page.close();
 	}, T);
+
+	test("the settings cog: pick a theme in the sheet, and this window switches", async () => {
+		const page = await open("demo&frozen");
+		await page.click("#hud .settings");
+		await page.waitForFunction(() => !document.querySelector<HTMLElement>("#bb-settings")!.hidden);
+		const marked = () => page.evaluate(() => document.querySelector<HTMLElement>('#bb-settings [aria-checked="true"]')?.dataset.theme);
+		expect(await marked()).toBe("office");
+		await page.click('#bb-settings [data-theme="factory"]');
+		expect(await page.evaluate(() => window.__busybodies!.theme())).toBe("factory");
+		expect(await marked()).toBe("factory");
+		await page.keyboard.press("Escape");
+		expect(await page.evaluate(() => document.querySelector<HTMLElement>("#bb-settings")!.hidden)).toBe(true);
+		await page.close();
+	}, T);
+
+	test("the top bar fits a narrow window, cog and all", async () => {
+		const page = await open("demo&frozen");
+		for (const width of [800, 700, 600]) {
+			await page.setViewportSize({ width, height: 700 });
+			const right = await page.evaluate(() => Math.max(...[...document.querySelectorAll("#hud > *")].filter((e) => (e as HTMLElement).offsetParent).map((e) => e.getBoundingClientRect().right)));
+			expect(right).toBeLessThanOrEqual(width);
+		}
+		await page.close();
+	}, T);
 });

@@ -3,7 +3,7 @@
 // Quit is in the tray menu.
 import { existsSync } from "node:fs";
 import { BrowserView, BrowserWindow, GlobalShortcut, Updater, Utils } from "electrobun/main";
-import type { ThemeId } from "../scene/theme/id";
+import { type ThemeId, themeId } from "../scene/theme/id";
 import type { AppStatus, BusybodiesRPC } from "../shared/rpc";
 import type { Snapshot } from "../watcher/model";
 import { Watcher } from "../watcher/watch";
@@ -59,7 +59,7 @@ let compactOn = false;
 
 function status(): AppStatus {
 	const home = watcher.builder.roots.home;
-	return { version, home, homeFound: existsSync(home), compact: compactOn };
+	return { version, home, homeFound: existsSync(home), compact: compactOn, theme };
 }
 
 function makeRpc() {
@@ -71,6 +71,8 @@ function makeRpc() {
 				setCompact: ({ on }) => (setCompact(on), true),
 				showOffice: () => (showOffice(), true),
 				openProjectPage: () => Utils.openExternal(PROJECT_URL),
+				setTheme: ({ id }) => (setTheme(themeId(id)), true),
+				setToggles: (change) => (setToggles({ sound: change.sound, calm: change.calm }), true),
 			},
 		},
 	});
