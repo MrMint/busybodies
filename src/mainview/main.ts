@@ -11,7 +11,8 @@ import { installHud } from "./hud";
 import { installInspector } from "./inspector";
 import { type Bridge, installShell } from "./shell";
 import { placeholders } from "./placeholder";
-import { Atlas, buildPoseSheet, paperTheme, rigCharacters } from "../scene/rig";
+import { Atlas, buildPoseSheet, rigCharacters, rigTheme } from "../scene/rig";
+import { themeId } from "../scene/theme/id";
 import { Director, placeholderVoice } from "../scene/director";
 import { Voice } from "../scene/sass";
 
@@ -53,7 +54,7 @@ function blank(): void {
 	}
 
 	// The rig's parts, painted once and baked into one texture (src/scene/rig/atlas.ts).
-	const atlas = Atlas.build(app.renderer, paperTheme());
+	const atlas = Atlas.build(app.renderer, rigTheme(themeId(params.get("theme"))));
 
 	// ?sheet: every pose's frames, drawn once and left on screen (tools/pose-sheet.ts shoots it).
 	if (params.has("sheet")) {

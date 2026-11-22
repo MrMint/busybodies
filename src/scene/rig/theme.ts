@@ -53,8 +53,8 @@ export const ACCENTS = [0xff8a1f, 0x19b87a, 0x3d7dff, 0xff5c9a, 0x8c5cff] as con
 export { ANCHORS, WORK, STATION } from "./reach";
 
 /** Station colours: a manila folder, a red mark, the phone's handset, cabinet and copier enamel. */
-const MANILA = 0xf0cf8a;
-const RED = 0xff4d5e;
+export const MANILA = 0xf0cf8a;
+export const RED = 0xff4d5e;
 const HANDSET = 0xff8a7a;
 const CABINET = 0xc3cadb;
 const COPIER = 0xdfe4ef;
@@ -64,7 +64,7 @@ const TICKET = 0xffc9b0;
 const BRASS = 0xf2bd3c;
 
 /** Stroke weights. */
-const W = { body: 3.4, part: 2.6, fine: 1.8 };
+export const W = { body: 3.4, part: 2.6, fine: 1.8 };
 
 export type Painter = (g: Graphics, add: (c: Container) => void) => void;
 
@@ -77,7 +77,7 @@ export interface Theme {
 
 // Helpers ---------------------------------------------------------------------------------------
 
-const line = (g: Graphics, pts: number[], width: number, color: number) => {
+export const line = (g: Graphics, pts: number[], width: number, color: number) => {
 	g.moveTo(pts[0]!, pts[1]!);
 	for (let i = 2; i < pts.length; i += 2) g.lineTo(pts[i]!, pts[i + 1]!);
 	g.stroke({ width, color, cap: "round", join: "round" });
@@ -104,7 +104,7 @@ export function mochiPath(width = 100, height = 70): number[] {
 	return pts;
 }
 
-const text = (s: string, size: number, color: number, weight: "700" | "800" | "900" = "900") => {
+export const text = (s: string, size: number, color: number, weight: "700" | "800" | "900" = "900") => {
 	const t = new Text({
 		text: s,
 		style: { fontFamily: "ui-rounded, 'SF Pro Rounded', 'Arial Rounded MT Bold', system-ui, sans-serif", fontSize: size, fontWeight: weight, fill: color },
@@ -1239,7 +1239,7 @@ function confetti(g: Graphics, v: number) {
 	}
 }
 
-function rotRect(x: number, y: number, w: number, h: number, a: number): number[] {
+export function rotRect(x: number, y: number, w: number, h: number, a: number): number[] {
 	const c = Math.cos(a);
 	const s = Math.sin(a);
 	const pts: number[] = [];
@@ -1254,14 +1254,14 @@ function burst(g: Graphics, x: number, y: number, ink: number) {
 	}
 }
 
-function burstAt(g: Graphics, x: number, y: number, r1: number, r2: number, ink: number) {
+export function burstAt(g: Graphics, x: number, y: number, r1: number, r2: number, ink: number) {
 	for (let i = 0; i < 7; i++) {
 		const a = Math.PI * (0.55 + (i / 6) * 0.9);
 		line(g, [x + Math.cos(a) * r1, y + Math.sin(a) * r1, x + Math.cos(a) * r2, y + Math.sin(a) * r2], 1.6, ink);
 	}
 }
 
-function sparkle(g: Graphics, x: number, y: number, r: number, fill: number, ink: number) {
+export function sparkle(g: Graphics, x: number, y: number, r: number, fill: number, ink: number) {
 	g.star(x, y, 4, r, r * 0.38, 0).fill(fill).stroke({ width: 1.4, color: ink });
 }
 
@@ -1306,7 +1306,7 @@ function sheet(g: Graphics, x: number, y: number, a: number, ink: number) {
 }
 
 /** The in-tray's sheets at its tallest: the pile's top at TRAY.buried. */
-const TRAY_FULL = Math.round((TRAY.base - 2 - TRAY.buried) / TRAY.sheet);
+export const TRAY_FULL = Math.round((TRAY.base - 2 - TRAY.buried) / TRAY.sheet);
 
 /** The finger-gun's fingertip, from the hand's centre (held/finger). */
 const GUN_TIP = { x: 13, y: -0.5 };
