@@ -107,7 +107,7 @@ describe("the inspector", () => {
 			b.step(5);
 			const pill = document.querySelector("#hud .waiting") as HTMLElement;
 			const lead = b.entities().find((e) => e.key === "s:demo-session-16")!;
-			return { pulsing: b.pulsing().areas, pill: pill.hidden ? "" : pill.textContent, pose: lead.pose };
+			return { pulsing: b.pulsing().areas, pill: pill.hidden ? "" : pill.textContent, pose: String(lead.pose) };
 		});
 		expect(r.pulsing).toEqual(["room:lanternfish"]);
 		expect(r.pill).toBe("1 waiting on you");
