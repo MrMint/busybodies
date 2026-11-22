@@ -873,7 +873,7 @@ office and director import rather than copy.
 `?demo=release` now also buries the lead's in-tray by 9 s, compacts it to the shredder at 12 s,
 walks todo notes to the planner, and sends two sessions to your office.
 
-## Themes: the seam, the factory, and arms that help (wave 3)
+## 2026-11-22: the living office, wave 3 (the theme seam, the factory, arms that help)
 
 The office's look and words now sit behind a `SceneTheme` (`src/scene/theme/`): colours, room
 shells and wall items, a painter per furniture slot, desk props, the planner, the crew build's
