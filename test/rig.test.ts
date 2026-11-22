@@ -1,5 +1,6 @@
-// The rig's Pixi-free core: frames, pose timing, springs, interpolation and the atlas layout.
-import { describe, expect, test } from "bun:test";
+// The rig's Pixi-free core: frames, pose timing, springs, interpolation, the atlas layout, and the
+// themes' painters, measured through a stand-in for pixi.js.
+import { describe, expect, mock, test } from "bun:test";
 import { pack } from "../src/scene/rig/pack";
 import { CHANNELS, REST, channels, describe as describeFrame, diff, parseFrame } from "../src/scene/rig/frame";
 import { FEEL, Spring, SpringSet, SUBSTEP_S, Tween, ease, lerp } from "../src/scene/rig/motion";
@@ -455,5 +456,147 @@ describe("atlas layout", () => {
 	test("the layout is stable", () => {
 		const parts = [{ name: "b", x: 0, y: 0, width: 5, height: 5 }, { name: "a", x: 0, y: 0, width: 5, height: 5 }];
 		expect(pack(parts)).toEqual(pack([...parts].reverse()));
+	});
+});
+
+// The themes' painters, measured without a renderer: a stand-in for pixi.js records where each
+// painter draws (a conservative box: control points, shapes' boxes, half a stroke's width), so the
+// tests can check a theme's parts and pack them as the atlas does. CI runs without pixi.js.
+type Box = { x0: number; y0: number; x1: number; y1: number };
+type M = [number, number, number, number, number, number];
+class FakeGraphics {
+	box: Box = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
+	#m: M = [1, 0, 0, 1, 0, 0];
+	#stack: M[] = [];
+	#path: [number, number][] = [];
+	#done = false;
+	#pt(x: number, y: number) {
+		if (this.#done) {
+			this.#path = [];
+			this.#done = false;
+		}
+		const [a, b, c, d, tx, ty] = this.#m;
+		this.#path.push([a * x + c * y + tx, b * x + d * y + ty]);
+		return this;
+	}
+	#boxPts(x0: number, y0: number, x1: number, y1: number) {
+		return this.#pt(x0, y0).#pt(x1, y0).#pt(x1, y1).#pt(x0, y1);
+	}
+	#commit(pad: number) {
+		for (const [x, y] of this.#path) {
+			this.box.x0 = Math.min(this.box.x0, x - pad);
+			this.box.y0 = Math.min(this.box.y0, y - pad);
+			this.box.x1 = Math.max(this.box.x1, x + pad);
+			this.box.y1 = Math.max(this.box.y1, y + pad);
+		}
+		this.#done = true;
+		return this;
+	}
+	/** Pixi's draw-time transforms apply after the transform so far (scene-graphics.md). */
+	#then([A, B, C, D, TX, TY]: M) {
+		const [a, b, c, d, tx, ty] = this.#m;
+		this.#m = [A * a + C * b, B * a + D * b, A * c + C * d, B * c + D * d, A * tx + C * ty + TX, B * tx + D * ty + TY];
+		return this;
+	}
+	moveTo(x: number, y: number) { return this.#pt(x, y); }
+	lineTo(x: number, y: number) { return this.#pt(x, y); }
+	quadraticCurveTo(cx: number, cy: number, x: number, y: number) { return this.#pt(cx, cy).#pt(x, y); }
+	bezierCurveTo(ax: number, ay: number, bx: number, by: number, x: number, y: number) { return this.#pt(ax, ay).#pt(bx, by).#pt(x, y); }
+	closePath() { return this; }
+	poly(pts: number[]) {
+		for (let i = 0; i < pts.length; i += 2) this.#pt(pts[i]!, pts[i + 1]!);
+		return this;
+	}
+	rect(x: number, y: number, w: number, h: number) { return this.#boxPts(x, y, x + w, y + h); }
+	roundRect(x: number, y: number, w: number, h: number) { return this.#boxPts(x, y, x + w, y + h); }
+	circle(x: number, y: number, r: number) { return this.#boxPts(x - r, y - r, x + r, y + r); }
+	ellipse(x: number, y: number, rx: number, ry: number) { return this.#boxPts(x - rx, y - ry, x + rx, y + ry); }
+	arc(x: number, y: number, r: number) { return this.#boxPts(x - r, y - r, x + r, y + r); }
+	star(x: number, y: number, _n: number, r: number) { return this.#boxPts(x - r, y - r, x + r, y + r); }
+	regularPoly(x: number, y: number, r: number) { return this.#boxPts(x - r, y - r, x + r, y + r); }
+	fill() { return this.#commit(0); }
+	stroke(s?: { width?: number }) { return this.#commit((s?.width ?? 1) / 2); }
+	save() {
+		this.#stack.push(this.#m);
+		return this;
+	}
+	restore() {
+		this.#m = this.#stack.pop() ?? [1, 0, 0, 1, 0, 0];
+		return this;
+	}
+	translateTransform(x: number, y: number) { return this.#then([1, 0, 0, 1, x, y]); }
+	rotateTransform(a: number) { return this.#then([Math.cos(a), Math.sin(a), -Math.sin(a), Math.cos(a), 0, 0]); }
+}
+class FakeText {
+	anchor = { set() {} };
+	position = { x: 0, y: 0, set(x: number, y: number) { this.x = x; this.y = y; } };
+	rotation = 0;
+	size: number;
+	length: number;
+	constructor(o: { text: string; style: { fontSize: number } }) {
+		this.size = o.style.fontSize;
+		this.length = o.text.length;
+	}
+}
+mock.module("pixi.js", () => ({ Graphics: FakeGraphics, Text: FakeText, Container: class {} }));
+
+describe("themes", async () => {
+	const { paperTheme } = await import("../src/scene/rig/theme");
+	const { factoryTheme, FACTORY_REPAINTS, FACTORY_EXTRAS } = await import("../src/scene/rig/factory");
+	const { ATLAS_WIDTH, PAD, RESOLUTION } = await import("../src/scene/rig/pack");
+	const paper = paperTheme();
+	const factory = factoryTheme();
+	const measure = (t: typeof paper) =>
+		new Map(
+			Object.keys(t.parts).map((name) => {
+				const g = new FakeGraphics();
+				t.parts[name]!(g as never, (c) => {
+					const tx = c as unknown as FakeText;
+					const w = tx.size * tx.length * 0.6;
+					g.box.x0 = Math.min(g.box.x0, tx.position.x - w / 2);
+					g.box.x1 = Math.max(g.box.x1, tx.position.x + w / 2);
+					g.box.y0 = Math.min(g.box.y0, tx.position.y - tx.size / 2);
+					g.box.y1 = Math.max(g.box.y1, tx.position.y + tx.size / 2);
+				});
+				return [name, g.box] as const;
+			}),
+		);
+	const paperBox = measure(paper);
+	const factoryBox = measure(factory);
+
+	test("the factory paints every part the paper rig does, repainting the gear and stations on purpose", () => {
+		expect(factory.name).toBe("factory");
+		for (const name of Object.keys(paper.parts)) expect(factory.parts[name], name).toBeDefined();
+		for (const name of FACTORY_REPAINTS) {
+			expect(paper.parts[name], `${name} is a paper part`).toBeDefined();
+			expect(factory.parts[name], `${name} is repainted`).not.toBe(paper.parts[name]);
+		}
+		// Everything else is inherited on purpose: faces, hands, limbs, the builder's work, effects.
+		// (The painters are fresh closures per theme, so inherited ones are compared by what they draw.)
+		const repainted = new Set<string>(FACTORY_REPAINTS);
+		for (const name of Object.keys(paper.parts)) if (!repainted.has(name)) expect(factoryBox.get(name), name).toEqual(paperBox.get(name)!);
+		// The only new parts are the role leg and arm the puppet looks for.
+		expect(Object.keys(factory.parts).filter((n) => !paper.parts[n]).sort()).toEqual([...FACTORY_EXTRAS].sort());
+	});
+
+	test("every factory part draws something, and a repainted station part or prop keeps its size", () => {
+		for (const [name, b] of factoryBox) expect(b.x1 - b.x0, name).toBeGreaterThan(0);
+		// The solved reaches land on the business ends: a repaint stays within a few units of the
+		// paper part's extent on every side, so nothing moves out from under a hand.
+		// Except where no hand works it any more: the carton lying on the pallet (mail2) stands taller
+		// than the flat envelope did, after the hand has let go of it.
+		const free = new Set(["work/mail2"]);
+		for (const name of FACTORY_REPAINTS.filter((n) => /^(work|held|prop)\//.test(n) && !free.has(n))) {
+			const a = paperBox.get(name)!;
+			const b = factoryBox.get(name)!;
+			for (const k of ["x0", "y0", "x1", "y1"] as const) expect(Math.abs(a[k] - b[k]), `${name} ${k}`).toBeLessThan(6);
+		}
+	});
+
+	test("the factory atlas packs within the atlas limits", () => {
+		const bounds = [...factoryBox].map(([name, b]) => ({ name, x: b.x0, y: b.y0, width: Math.max(1, b.x1 - b.x0), height: Math.max(1, b.y1 - b.y0) }));
+		const { width, height } = pack(bounds, ATLAS_WIDTH, PAD);
+		expect(width * RESOLUTION).toBeLessThanOrEqual(4096);
+		expect(height * RESOLUTION).toBeLessThanOrEqual(4096);
 	});
 });
