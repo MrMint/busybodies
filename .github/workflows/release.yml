@@ -1,0 +1,114 @@
+name: release
+# A pushed v* tag builds and publishes a GitHub Release (a pre-release when the version has a
+# "-", like 0.2.0-beta.1). A manual run builds the same files into a DRAFT release, for testing.
+# Release layout, checksums and signing are explained in docs/decisions.md ("releases").
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version for the draft, without the v (e.g. 0.1.0-rc.1)"
+        required: true
+      update_base_url:
+        description: "Where this build looks for updates (testing only; empty = latest GitHub Release)"
+        required: false
+        default: ""
+permissions:
+  contents: write
+concurrency:
+  group: release-${{ github.ref }}-${{ inputs.version }}
+jobs:
+  macos-arm64:
+    runs-on: macos-15 # Apple Silicon
+    env:
+      HAS_SIGNING: ${{ secrets.MACOS_CERTIFICATE != '' && secrets.MACOS_CERTIFICATE_PASSWORD != '' && secrets.MACOS_DEVELOPER_ID != '' }}
+      HAS_NOTARIZATION: ${{ secrets.APPLE_API_KEY != '' && secrets.APPLE_API_KEY_ID != '' && secrets.APPLE_API_ISSUER != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Work out the version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          # Only a pushed tag publishes; every other run makes a draft.
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            version="${GITHUB_REF_NAME#v}"
+            echo "DRAFT=false" >> "$GITHUB_ENV"
+          else
+            version="${INPUT_VERSION#v}"
+            echo "DRAFT=true" >> "$GITHUB_ENV"
+          fi
+          echo "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$' || { echo "not a version: $version"; exit 1; }
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Install Hutch, the devkit and locked dependencies
+        run: |
+          curl -fsSL https://artifacts.electrobun.dev/hutch/install.sh | sh
+          ~/.hutch/bin/hutch install --frozen-lockfile
+
+      # Signing runs only once the Apple Developer secrets exist (see docs/decisions.md).
+      - name: Import the Developer ID certificate
+        if: env.HAS_SIGNING == 'true'
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          MACOS_DEVELOPER_ID: ${{ secrets.MACOS_DEVELOPER_ID }}
+        run: |
+          keychain="$RUNNER_TEMP/signing.keychain-db"
+          password="$(openssl rand -hex 16)"
+          echo "$MACOS_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+          security import "$RUNNER_TEMP/cert.p12" -P "$MACOS_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$keychain"
+          security set-key-partition-list -S apple-tool:,apple: -k "$password" "$keychain"
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+          rm "$RUNNER_TEMP/cert.p12"
+          echo "BUSYBODIES_CODESIGN=1" >> "$GITHUB_ENV"
+          echo "ELECTROBUN_DEVELOPER_ID=$MACOS_DEVELOPER_ID" >> "$GITHUB_ENV"
+
+      - name: Set up notarization
+        if: env.HAS_SIGNING == 'true' && env.HAS_NOTARIZATION == 'true'
+        env:
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+        run: |
+          key="$RUNNER_TEMP/AuthKey_$APPLE_API_KEY_ID.p8"
+          printf '%s' "$APPLE_API_KEY" > "$key"
+          echo "BUSYBODIES_NOTARIZE=1" >> "$GITHUB_ENV"
+          echo "ELECTROBUN_APPLEAPIKEY=$APPLE_API_KEY_ID" >> "$GITHUB_ENV"
+          echo "ELECTROBUN_APPLEAPIISSUER=$APPLE_API_ISSUER" >> "$GITHUB_ENV"
+          echo "ELECTROBUN_APPLEAPIKEYPATH=$key" >> "$GITHUB_ENV"
+
+      - name: Build
+        env:
+          BUSYBODIES_VERSION: ${{ env.VERSION }}
+          BUSYBODIES_UPDATE_BASE_URL: ${{ inputs.update_base_url }}
+        run: ~/.hutch/bin/hutch run build
+
+      - name: Check the app's signatures and version, and lay out the release files
+        run: |
+          command -v zstd >/dev/null || brew install zstd
+          tools/package-release.sh "$VERSION" release
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="v$VERSION"
+          cat > notes.md <<EOF
+          Install on an Apple Silicon Mac:
+
+              curl -fsSL https://raw.githubusercontent.com/$GITHUB_REPOSITORY/main/install.sh | sh -s -- $VERSION
+
+          Unsigned for now: the README explains the extra step for the .dmg.
+          EOF
+          if [ "$DRAFT" = "false" ]; then
+            flags="--verify-tag"
+            case "$VERSION" in *-*) flags="$flags --prerelease" ;; esac
+          else
+            flags="--draft --target $GITHUB_SHA"
+          fi
+          gh release create "$tag" $flags --title "Busybodies $VERSION" --notes-file notes.md release/*

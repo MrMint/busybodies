@@ -195,6 +195,72 @@ in the scene. Every time in a frame moves by the same amount, so durations stay 
 **New `Snapshot` fields are optional,** so hand-built snapshots (the demo, the other streams'
 tests) and older recordings still type-check.
 
+## 2026-11-21: releases (R1)
+
+**Unsigned Apple Silicon builds, installed by a script.** There's no Apple Developer account yet.
+`install.sh` fetches the release with `curl`, which doesn't set the quarantine attribute, so
+Gatekeeper never checks the app. Apple Silicon still refuses any binary with no signature at all,
+and Electrobun's build gives every binary an ad-hoc one (Bun's own is Developer ID signed);
+`tools/package-release.sh` fails the release if any Mach-O in the bundle is unsigned. Intel isn't
+built: the script says so and exits.
+
+**Release layout.** A pushed `v*` tag runs `.github/workflows/release.yml` on a `macos-15` runner
+and publishes a release (a pre-release when the version has a `-`). Any other run, including a
+manual one, makes a draft, so only a tag can publish. The version comes from the tag and reaches
+the app through `BUSYBODIES_VERSION` in `electrobun.config.ts`. Each release holds:
+
+| File | For |
+|---|---|
+| `Busybodies-macos-arm64.tar.gz` | `install.sh`. Plain gzip, because macOS's `tar` can't read zstd without Homebrew's `zstd` |
+| `Busybodies-macos-arm64.dmg` | A browser download. Electrobun's self-extracting wrapper app |
+| `stable-macos-arm64-update.json`, `-checksum.json`, `-Busybodies.app.tar.zst` | The updater. Electrobun fixes these names |
+| `SHA256SUMS` | `shasum -a 256` of every file above |
+
+The asset names carry no version, so `releases/latest/download/<name>` always resolves, for the
+script and the updater alike, without the GitHub API or its rate limit.
+
+**Checksums.** `install.sh` downloads `SHA256SUMS` from the same release and refuses an archive
+whose line doesn't match. This catches a broken or swapped download, not a compromised release:
+the sums sit next to the files they cover. Signing is what would cover that.
+
+**The updater follows the latest GitHub Release.** `release.baseUrl` is
+`https://github.com/MrMint/busybodies/releases/latest/download`, which skips drafts and
+pre-releases, so testers on a pre-release don't drag everyone else along.
+`src/bun/updates.ts` checks 30 s after launch and every 6 hours, downloads, and applies (the app
+restarts; it only shows a scene, so nothing is lost). Dev builds never update, and
+`BUSYBODIES_NO_UPDATE=1` turns it off. Delta patches are off (`generatePatch: false`): a full
+update is ~32 MB, and patches would add a file per previous version to keep in step.
+
+**Tested unsigned, on macOS 27.0.1, from GitHub.** Build 0.0.3-test.1 was installed with
+`install.sh` from a draft, with its update URL pointed at a temporary pre-release holding
+0.0.3-test.2. 34 s after launch it had downloaded the update, replaced itself in
+`/Applications` and relaunched as 0.0.3-test.2 with its window open. Electrobun follows GitHub's
+redirects to the asset host. Neither the installed nor the updated app carried
+`com.apple.quarantine`, so Gatekeeper never re-checks an update. What it fetches:
+`<baseUrl>/stable-macos-arm64-update.json`, then `-checksum.json`, then the `.tar.zst`, each
+with a cache-busting query.
+
+**The `.dmg`'s app is re-signed ad hoc.** Electrobun signs only the launcher binary, which
+leaves the bundle's signature invalid ("code has no resources but signature indicates they must
+be present"). Downloaded through a browser, macOS then calls the app **damaged** and offers only
+Move to Trash, with no Open Anyway. `tools/package-release.sh` re-signs the `.dmg`'s wrapper
+app with `codesign --deep --sign -` (and checks it with `--strict`), so `spctl` gives a plain
+"rejected" and the app gets the normal unverified-developer block that Open Anyway clears. The
+install archive and the update bundle are left as Electrobun built them: they're never
+quarantined, and re-signing the update bundle would change the checksum the updater checks.
+
+**Adding signing later is configuration only.** The workflow's signing and notarization steps
+run only when their secrets exist:
+
+- Signing: `MACOS_CERTIFICATE` (a base64 Developer ID Application `.p12`),
+  `MACOS_CERTIFICATE_PASSWORD`, and `MACOS_DEVELOPER_ID` (the identity, e.g.
+  `Developer ID Application: Name (TEAMID)`). The workflow imports it into a temporary keychain
+  and sets `BUSYBODIES_CODESIGN=1` and `ELECTROBUN_DEVELOPER_ID`.
+- Notarization, on top: an App Store Connect API key as `APPLE_API_KEY` (the `.p8` text),
+  `APPLE_API_KEY_ID` and `APPLE_API_ISSUER`, passed to Electrobun as `ELECTROBUN_APPLEAPIKEY*`.
+- Cost: the Apple Developer Program, US$99 a year. Then the `.dmg` opens without the extra step,
+  and the README's Open Anyway note can go.
+
 ## 2026-11-21: the mochi rig (S1)
 
 **A character is one `Puppet` of about 18 sprites from one shared atlas** (`src/scene/rig/`). Back
