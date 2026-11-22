@@ -1,0 +1,39 @@
+name: Set up Hutch
+description: Install Hutch, its toolchains and the locked dependencies, cached between runs
+inputs:
+  prepare:
+    description: "Also run `hutch electrobun prepare` before the cache is saved"
+    required: false
+    default: "false"
+runs:
+  using: composite
+  steps:
+    # The installer's host has had outages; keep Hutch and its toolchains between runs.
+    - name: Cache Hutch
+      id: hutch-cache
+      uses: actions/cache/restore@v4
+      with:
+        path: ~/.hutch
+        key: hutch-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('hutch.lock') }}
+        restore-keys: hutch-${{ runner.os }}-${{ runner.arch }}-
+    - name: Install Hutch, the devkit and locked dependencies
+      shell: bash
+      run: |
+        # The host flaps between 200 and 500: retry the whole install for up to ~10 minutes.
+        for i in $(seq 1 30); do
+          [ -x ~/.hutch/bin/hutch ] && break
+          curl -fsSL https://artifacts.electrobun.dev/hutch/install.sh -o "$RUNNER_TEMP/hutch-install.sh" && sh "$RUNNER_TEMP/hutch-install.sh" && [ -x ~/.hutch/bin/hutch ] && break
+          rm -rf ~/.hutch; echo "installer attempt $i failed; retrying"; sleep 20
+        done
+        ~/.hutch/bin/hutch install --frozen-lockfile
+    - name: Prepare Electrobun
+      if: inputs.prepare == 'true'
+      shell: bash
+      run: ~/.hutch/bin/hutch electrobun prepare
+    # Save straight away, so a cold cache is filled even if a later step fails.
+    - name: Save Hutch
+      if: steps.hutch-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ~/.hutch
+        key: hutch-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('hutch.lock') }}

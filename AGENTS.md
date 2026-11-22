@@ -34,6 +34,10 @@ v7-era APIs that look right and silently draw the wrong thing. Update it only wi
   type-check), `bun test test/`, and for scene work `hutch pm exec -- vite build && bun test e2e/`.
   The e2e tests run the bundled scene in headless Chrome and hold the frame budgets: an idle
   office makes zero animation frames, and a busy one renders at 30 fps or less.
+- **Add a changeset with any PR that changes the app:** `hutch pm exec -- changeset add --minor
+  busybodies -m "..."` (`--patch` for a fix), written for the release notes. Docs-only and
+  tooling-only PRs skip it. Never edit `version` in `package.json` or `CHANGELOG.md` by hand, and
+  never push a `v*` tag: merging the "Version Packages" PR releases (`.changeset/README.md`).
 - **Check the scene as data before pixels.** In dev, or with `?inspect`, `window.__busybodies`
   exposes the snapshot, every character (mood, size, position, bounce), frame counters, and
   `freeze()`/`step(n)` on a frozen clock. Read it from the browser pane with `?demo` or
@@ -66,4 +70,6 @@ v7-era APIs that look right and silently draw the wrong thing. Update it only wi
 | `docs/decisions.md` | Why things are the way they are |
 | `docs/research/` | Feasibility research (dated, with sources) |
 | `.claude/skills/pixijs/` | The vendored official PixiJS skill (MIT) |
+| `.changeset/` | Changesets waiting for the next release, and its config |
+| `.github/workflows/` | CI, the changesets release PR and status comment, and the release build |
 | `tools/` | Repo scripts |
