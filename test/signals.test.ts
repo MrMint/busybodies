@@ -5,7 +5,8 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { appendFile, mkdir, mkdtemp, rm, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { TranscriptLedger, commandKind } from "../src/watcher/ledger";
+import { TOOL_RATE_WINDOW_MS, TranscriptLedger, commandKind, editLines, lineCount } from "../src/watcher/ledger";
+import { contextWindow, modelFamily } from "../src/watcher/models";
 import { SnapshotBuilder, waiting } from "../src/watcher/snapshot";
 import { hookEvents, projectSlug } from "../src/watcher/sources";
 
@@ -174,6 +175,162 @@ describe("waiting on you", () => {
 	});
 });
 
+// Round two: model family, context, changes, todos, tool rate.
+const reply = (msAgo: number, model: string, usage: object, extra: object = {}) =>
+	JSON.stringify({ type: "assistant", requestId: `req_${++n}`, message: { model, content: [{ type: "text", text: "Brewing." }], usage }, timestamp: iso(msAgo), ...extra });
+const usage = (input: number, read: number, created: number) => ({ input_tokens: input, cache_read_input_tokens: read, cache_creation_input_tokens: created, output_tokens: 5 });
+/** A file-changing call, and a result for it: ok, or an error. */
+const change = (name: string, input: object, msAgo: number, ok = true, toolUseResult: object = {}) => {
+	const id = `toolu_${++n}`;
+	const res = JSON.stringify({ type: "user", message: { content: [{ type: "tool_result", tool_use_id: id, content: ok ? "done" : "String not found", is_error: !ok }] }, toolUseResult, timestamp: iso(msAgo - 10) });
+	return [call(name, msAgo, input, id), res];
+};
+const lines = (k: number, word = "brew") => Array.from({ length: k }, (_, i) => `${word} ${i}`).join("\n");
+
+describe("model family", () => {
+	test("maps ids to a family, and keeps placeholders out", () => {
+		expect(modelFamily("claude-opus-5-5")).toBe("opus");
+		expect(modelFamily("claude-sonnet-4-5-20250929")).toBe("sonnet");
+		expect(modelFamily("claude-3-5-haiku-20241022")).toBe("haiku");
+		expect(modelFamily("claude-fable-5-2")).toBe("fable");
+		expect(modelFamily("sonnet")).toBe("sonnet");
+		expect(modelFamily("us.anthropic.claude-haiku-5-5")).toBe("haiku");
+		expect(modelFamily("teapot-llm-7b")).toBe("other");
+		expect(modelFamily("<synthetic>")).toBeUndefined();
+		expect(modelFamily("inherit")).toBeUndefined();
+		expect(modelFamily(undefined)).toBeUndefined();
+	});
+
+	test("comes from the newest real response, on the cheap path and the parsed one", () => {
+		const l = ledgerOf([reply(9000, "claude-sonnet-5-5", usage(1, 2, 3)), reply(5000, "<synthetic>", usage(0, 0, 0))]);
+		expect(l.family).toBe("sonnet");
+		l.feed(`${JSON.stringify({ type: "assistant", message: { model: "claude-haiku-5-5", content: [{ type: "tool_use", id: "toolu_h", name: "Read", input: {} }], usage: usage(1, 1, 1) }, timestamp: iso(1000) })}\n`);
+		expect(l.family).toBe("haiku");
+	});
+});
+
+describe("context", () => {
+	test("windows come from a small table; an id it can't place has none", () => {
+		expect(contextWindow("claude-opus-5-5")).toBe(1_000_000);
+		expect(contextWindow("claude-opus-4-6")).toBe(1_000_000);
+		expect(contextWindow("claude-opus-4-1-20250805")).toBe(200_000);
+		expect(contextWindow("claude-haiku-4-5-20251001")).toBe(200_000);
+		expect(contextWindow("claude-haiku-5-5")).toBe(1_000_000);
+		expect(contextWindow("claude-sonnet-4-5[1m]")).toBe(1_000_000);
+		expect(contextWindow("claude-3-7-sonnet-20250219")).toBe(200_000);
+		expect(contextWindow("claude-fable-5")).toBe(1_000_000);
+		expect(contextWindow("teapot-llm-7b")).toBeUndefined();
+		expect(contextWindow(undefined)).toBeUndefined();
+	});
+
+	test("is the last request's input plus cache reads and writes", () => {
+		const l = ledgerOf([reply(9000, "claude-haiku-4-5", usage(10, 20, 30)), reply(4000, "claude-haiku-4-5", usage(3, 150_000, 2_000))]);
+		expect(l.context).toEqual({ used: 152_003, window: 200_000, at: NOW - 4000 });
+	});
+
+	test("finds usage in a long plain response without parsing it", () => {
+		const big = JSON.stringify({ type: "assistant", requestId: "req_big", message: { model: "claude-opus-5-5", content: [{ type: "text", text: `"input_tokens":1 ${"x".repeat(200_000)}` }], usage: { ...usage(7, 70, 700), iterations: [{ input_tokens: 99999 }] } }, timestamp: iso(2000) });
+		const l = ledgerOf([big]);
+		expect(l.context).toEqual({ used: 777, window: 1_000_000, at: NOW - 2000 });
+		expect(l.outputTokens).toBe(5);
+	});
+
+	test("an unknown model has no window", () => {
+		expect(ledgerOf([reply(1000, "teapot-llm-7b", usage(1, 1, 1))]).context).toEqual({ used: 3, at: NOW - 1000 });
+	});
+
+	test("skips error placeholders and side-chain records", () => {
+		const l = ledgerOf([reply(9000, "claude-opus-5-5", usage(1, 100, 0)), reply(5000, "<synthetic>", usage(0, 0, 0)), reply(3000, "claude-opus-5-5", usage(1, 5, 0), { isSidechain: true })]);
+		expect(l.context?.used).toBe(101);
+	});
+
+	test("a compaction resets it to what is left, or clears it", () => {
+		const boundary = (msAgo: number, meta: object) => JSON.stringify({ type: "system", subtype: "compact_boundary", compactMetadata: { trigger: "auto", ...meta }, timestamp: iso(msAgo) });
+		const l = ledgerOf([reply(9000, "claude-opus-5-5", usage(1, 800_000, 0)), boundary(5000, { preTokens: 800_001, postTokens: 12_000 })]);
+		expect(l.context).toEqual({ used: 12_000, window: 1_000_000, at: NOW - 5000 });
+		l.feed(`${boundary(3000, {})}\n`);
+		expect(l.context).toBeUndefined();
+		l.feed(`${reply(1000, "claude-opus-5-5", usage(1, 20_000, 0))}\n`);
+		expect(l.context?.used).toBe(20_001);
+	});
+
+	test("a torn line keeps the last good value", () => {
+		const l = ledgerOf([reply(5000, "claude-opus-5-5", usage(1, 50, 0))]);
+		l.feed(`${reply(1000, "claude-opus-5-5", usage(1, 90, 0)).slice(0, 40)}\n{"type":"assistant","usage":{"input_tok\n`);
+		expect(l.context?.used).toBe(51);
+	});
+});
+
+describe("changes", () => {
+	test("counts lines", () => {
+		expect(lineCount("")).toBe(0);
+		expect(lineCount("a")).toBe(1);
+		expect(lineCount("a\nb\n")).toBe(2);
+		expect(editLines("a\nb\nc", "a\nB\nc")).toEqual({ added: 1, removed: 1 });
+		expect(editLines("a\nc", "a\nb1\nb2\nc")).toEqual({ added: 2, removed: 0 });
+		expect(editLines("same", "same")).toEqual({ added: 0, removed: 0 });
+	});
+
+	test("estimates edits and writes, counting distinct files once", () => {
+		const l = ledgerOf([
+			...change("Write", { file_path: "/Users/you/code/teapot/spout.ts", content: lines(30) }, 9000),
+			...change("Edit", { file_path: "/Users/you/code/teapot/spout.ts", old_string: "brew 3", new_string: "brew 3\nsteep 1\nsteep 2" }, 8000),
+			...change("MultiEdit", { file_path: "/Users/you/code/teapot/lid.ts", edits: [{ old_string: lines(4), new_string: lines(1) }, { old_string: "x", new_string: "y" }] }, 7000),
+			...change("NotebookEdit", { notebook_path: "/Users/you/code/teapot/brew.ipynb", new_source: lines(5), edit_mode: "insert" }, 6000),
+		]);
+		expect(l.changes).toEqual({ files: 3, added: 30 + 2 + 0 + 1 + 5, removed: 0 + 3 + 1 });
+	});
+
+	test("a Write over a seen file is a rewrite: it replaces the lines last written there", () => {
+		const f = "/Users/you/code/teapot/kettle.md";
+		const l = ledgerOf([...change("Write", { file_path: f, content: lines(10) }, 9000), ...change("Write", { file_path: f, content: lines(4) }, 5000)]);
+		expect(l.changes).toEqual({ files: 1, added: 14, removed: 10 });
+	});
+
+	test("prefers the tool's own patch when the result has one for the same file", () => {
+		const f = "/Users/you/code/teapot/kettle.md";
+		const patch = { filePath: f, type: "update", structuredPatch: [{ oldStart: 1, oldLines: 3, newStart: 1, newLines: 3, lines: [" brew 0", "-brew 1", "+steep 1", " brew 2"] }] };
+		const other = { filePath: "/Users/you/code/teapot/other.md", structuredPatch: [{ lines: ["+a", "+b", "+c"] }] };
+		const l = ledgerOf([...change("Write", { file_path: f, content: lines(40) }, 9000, true, patch), ...change("Edit", { file_path: f, old_string: "a", new_string: "b" }, 5000, true, other)]);
+		expect(l.changes).toEqual({ files: 1, added: 2, removed: 2 });
+	});
+
+	test("ignores failed and unanswered calls, and keeps no paths", () => {
+		const l = ledgerOf([
+			...change("Edit", { file_path: "/Users/you/code/teapot/secret-recipe.ts", old_string: "a", new_string: "b" }, 9000, false),
+			call("Write", 1000, { file_path: "/Users/you/code/teapot/pending.ts", content: lines(5) }),
+		]);
+		expect(l.changes).toBeUndefined();
+		l.feed(`${change("Edit", { file_path: "/Users/you/code/teapot/secret-recipe.ts", old_string: "a", new_string: "b" }, 500).join("\n")}\n`);
+		expect(JSON.stringify(l.changes)).not.toContain("secret");
+		expect(l.changes).toEqual({ files: 1, added: 1, removed: 1 });
+	});
+});
+
+describe("todos", () => {
+	test("are counts from the latest TodoWrite", () => {
+		const todo = (statuses: string[], msAgo: number) => call("TodoWrite", msAgo, { todos: statuses.map((status, i) => ({ content: `Invented step ${i}`, status, activeForm: "Brewing" })) });
+		const l = ledgerOf([todo(["pending", "pending"], 9000), todo(["completed", "in_progress", "pending", "pending", "mystery"], 3000)]);
+		expect(l.todos).toEqual({ pending: 2, active: 1, done: 1 });
+		l.feed(`${call("TodoWrite", 1000, { todos: "not a list" })}\n`);
+		expect(l.todos).toEqual({ pending: 2, active: 1, done: 1 });
+	});
+});
+
+describe("tool rate", () => {
+	test("counts calls and failed results in the trailing window", () => {
+		const l = ledgerOf([call("Read", 5 * MIN), call("Read", 50_000), call("Grep", 20_000), ...shell("bun test", 1, 10_000), result("toolu_nope", 5000, "Permission denied", true)]);
+		expect(TOOL_RATE_WINDOW_MS).toBe(60_000);
+		expect(l.toolRate(NOW)).toEqual({ calls: 3, errors: 2, windowMs: 60_000 });
+		expect(l.toolRate(NOW + 45_000)).toEqual({ calls: 1, errors: 2, windowMs: 60_000 });
+		expect(l.toolRate(NOW + 2 * MIN)).toEqual({ calls: 0, errors: 0, windowMs: 60_000 });
+	});
+
+	test("is undefined for a transcript with no calls", () => {
+		expect(ledgerOf([reply(1000, "claude-opus-5-5", usage(1, 1, 1))]).toolRate(NOW)).toBeUndefined();
+	});
+});
+
 describe("in the snapshot", () => {
 	let home: string;
 	let desk: string;
@@ -220,6 +377,35 @@ describe("in the snapshot", () => {
 		const a = s.agents[0]!;
 		expect(a.running).toEqual({ tool: "Bash", since: NOW - 1000, kind: "test" });
 		expect(a.commands).toMatchObject({ failStreak: 2, repeats: 2 });
+	});
+
+	test("carries family, context, changes, todos and tool rate, and only counts", async () => {
+		const cwd = "/Users/you/code/kettle";
+		const dir = join(home, "projects", projectSlug(cwd));
+		await write(join(home, "sessions", "502.json"), JSON.stringify({ pid: 502, sessionId: "s-kettle", cwd, startedAt: NOW - 3_600_000, status: "busy" }));
+		const todo = call("TodoWrite", 40_000, { todos: [{ content: "Descale the invented kettle", status: "completed" }, { content: "Polish the spout", status: "in_progress" }] });
+		await write(
+			join(dir, "s-kettle.jsonl"),
+			`${[reply(50_000, "claude-sonnet-5-5", usage(2, 400_000, 98)), todo, ...change("Write", { file_path: "/Users/you/code/kettle/private-notes.md", content: lines(12) }, 30_000)].join("\n")}\n`,
+		);
+		const sub = join(dir, "s-kettle", "subagents");
+		await write(join(sub, "agent-h1.meta.json"), JSON.stringify({ agentType: "scout", description: "Find the lid", model: "claude-haiku-5-5", spawnDepth: 1 }));
+		await write(join(sub, "agent-h1.jsonl"), `${change("Edit", { file_path: "/Users/you/code/kettle/lid.ts", old_string: "a", new_string: "b\nc" }, 5000).join("\n")}\n`);
+		await write(join(sub, "agent-f1.meta.json"), JSON.stringify({ agentType: "scout", description: "Done already", model: "opus", spawnDepth: 1, finished: true }), 1000);
+		await write(join(sub, "agent-f1.jsonl"), `${change("Write", { file_path: "/Users/you/code/kettle/a.ts", content: lines(3) }, 9000).join("\n")}\n`, 1000);
+
+		const s = (await new SnapshotBuilder({ home }, () => true, () => NOW).build()).sessions[0]!;
+		expect(s.family).toBe("sonnet");
+		expect(s.context).toEqual({ used: 400_100, window: 1_000_000, at: NOW - 50_000 });
+		expect(s.changes).toEqual({ files: 1, added: 12, removed: 0 });
+		expect(s.todos).toEqual({ pending: 0, active: 1, done: 1 });
+		expect(s.tools).toEqual({ calls: 2, errors: 0, windowMs: 60_000 });
+		expect(JSON.stringify(s)).not.toContain("private-notes");
+		const [finished, scout] = s.agents;
+		expect(scout).toMatchObject({ family: "haiku", changes: { files: 1, added: 2, removed: 1 }, tools: { calls: 1, errors: 0 } });
+		// A finished agent still shows what it changed, while it lingers.
+		expect(finished).toMatchObject({ status: "finished", family: "opus", changes: { files: 1, added: 3, removed: 0 } });
+		expect(finished!.running).toBeUndefined();
 	});
 });
 

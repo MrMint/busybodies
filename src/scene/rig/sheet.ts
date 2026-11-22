@@ -6,6 +6,8 @@ import type { Atlas } from "./atlas";
 import { parseFrame } from "./frame";
 import { POSES, type Pose, BEAT_MS } from "./poses";
 import { Puppet } from "./puppet";
+import { STATION_POSE, type StationKind } from "../director/stations";
+import { STATION } from "./reach";
 import { ROLES, type Role } from "./roles";
 import { FACES } from "./vocab";
 
@@ -33,7 +35,38 @@ const BG: Record<string, number> = {
 	"subagent-spawned": 0xffe3c2, stalled: 0xe8e4dc, finished: 0xd4f3e4, thinking: 0xffe0ec, "subagent-green": 0xd6e8ff, "long-build": 0xffe3c2,
 };
 
-const roleOf = (p: Pose): Role => p.roles?.[0] ?? (p.trigger === "subagent-green" ? "builder" : "lead");
+/** Which station a pose is played at, for the sheet's stand-in furniture. */
+const STATION_OF = new Map<string, StationKind>(
+	Object.entries(STATION_POSE).flatMap(([kind, p]) => [p.work, ...(p.bad ? [p.bad] : [])].map((n) => [n, kind as StationKind] as const)),
+);
+
+/** A faint stand-in for the office's furniture behind a station pose (the office draws the real
+ * one): [left, right, top] relative to the working point, standing on the floor. */
+const GHOST: Record<StationKind, [number, number, number]> = {
+	reference: [-6, 30, -10],
+	search: [-5, 28, -3],
+	build: [-4, 40, 0],
+	test: [-10, 42, 2.5],
+	web: [-10, 24, 2],
+	outbox: [-9, 21, 6.5],
+	shredder: [-12, 24, 2.5],
+};
+
+function ghost(kind: StationKind): Graphics {
+	const [l, r, t] = GHOST[kind];
+	const g = new Graphics()
+		.roundRect(STATION.x + l, STATION.y + t, r - l, -(STATION.y + t), 3)
+		.fill({ color: 0xffffff, alpha: 0.6 })
+		.stroke({ width: 1.5, color: INK, alpha: 0.22 });
+	// The working point the station arms are solved onto.
+	g.moveTo(STATION.x - 4, STATION.y).lineTo(STATION.x + 4, STATION.y).moveTo(STATION.x, STATION.y - 4).lineTo(STATION.x, STATION.y + 4).stroke({ width: 1, color: 0xff4d5e, alpha: 0.5 });
+	g.scale.set(SCALE);
+	return g;
+}
+
+// Crew use the stations, so station poses show on a crew member (the scout: no hat brim in the way).
+const roleOf = (p: Pose): Role =>
+	p.roles?.[0] ?? (p.trigger === "subagent-green" ? "builder" : STATION_OF.has(p.name) || p.name === "queueWait" ? "scout" : "lead");
 
 /** `?sheet&only=hammer,place&zoom=3`: just those poses, drawn bigger, for a close look. */
 function closeUp(): { only?: string[]; zoom: number } {
@@ -134,6 +167,12 @@ export function buildPoseSheet(atlas: Atlas): { sheet: Container; width: number;
 				partner.position.set(x + 138, y + ROW - 46);
 				partners.push(partner);
 				cellPuppets.push(partner);
+			}
+			const kind = STATION_OF.get(pose.name);
+			if (kind) {
+				const g = ghost(kind);
+				g.position.copyFrom(lead.position);
+				sheet.addChild(g);
 			}
 			sheet.addChild(...cellPuppets);
 			const cap = label(`${i + 1} · ${Math.round(f.ms / BEAT_MS)}b${f.say ? `\n“${f.say}”` : ""}`, 10, "700", 0.8, cw - 10);

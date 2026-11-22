@@ -4,6 +4,7 @@ import { readdir } from "node:fs/promises";
 import { dirname, join, relative } from "node:path";
 import { FileCache } from "./files";
 import { TranscriptLedger } from "./ledger";
+import { modelFamily } from "./models";
 import type { Agent, AgentStatus, PullRequest, RunningTool, Session, Snapshot, Waiting } from "./model";
 import {
 	type AgentMeta,
@@ -128,6 +129,11 @@ export class SnapshotBuilder {
 			compactions: ledger.compactions,
 			cost: { ...(ledger.costUSD !== undefined ? { usd: ledger.costUSD } : {}), outputTokens: ledger.outputTokens },
 			...(ledger.apiRetry ? { apiRetry: ledger.apiRetry } : {}),
+			...optional("family", ledger.family),
+			...optional("context", ledger.context),
+			...optional("changes", ledger.changes),
+			...optional("todos", ledger.todos),
+			...optional("tools", ledger.toolRate(at)),
 			agents: transcript ? await this.#agents(transcript.replace(/\.jsonl$/, ""), at) : [],
 			children: [],
 		};
@@ -184,8 +190,10 @@ export class SnapshotBuilder {
 			const quiet = at - lastWriteAt;
 			if (status === "stalled" ? quiet > ABANDON_MS : status !== "running" && quiet > LINGER_MS) continue;
 			const activity = status === "running" ? await this.files.fromTail(log, lastToolCall) : undefined;
-			const ledger = status === "running" ? await this.#ledger(log) : undefined;
-			const running = ledger?.running;
+			// Every agent still shown keeps its counts; only a running one has a running tool.
+			const ledger = await this.#ledger(log);
+			const live = status === "running";
+			const running = live ? ledger.running : undefined;
 			const agent: Agent = {
 				id,
 				role: meta.agentType ?? "agent",
@@ -196,7 +204,10 @@ export class SnapshotBuilder {
 				lastWriteAt,
 				activity,
 				...(running ? { running } : {}),
-				...(ledger && ledger.commands.repeats > 0 ? { commands: ledger.commands } : {}),
+				...(live && ledger.commands.repeats > 0 ? { commands: ledger.commands } : {}),
+				...optional("family", ledger.family ?? modelFamily(meta.model)),
+				...optional("changes", ledger.changes),
+				...optional("tools", ledger.toolRate(at)),
 				children: [],
 			};
 			byId.set(id, agent);

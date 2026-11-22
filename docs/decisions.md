@@ -762,3 +762,62 @@ when its cell is lent elsewhere or freed, so the director walks a crew member wh
 even when the name is the same. The builder's brick lands on the tower when it leaves its hands
 in `place` (the end of the last frame that shows it), and the tower's bricks are kraft shades,
 the colour the builders carry.
+
+## 2026-11-22: the living office, wave 1 (capture, stations, station acting)
+
+The plan is `docs/plan-next.md`. Wave 1 ran as three parallel streams against a contract written
+into code first (the snapshot fields in `model.ts`, the station kinds and pose names in
+`director/stations.ts`, placeholder station poses), so they didn't collide.
+
+**Richer capture, round two (stream A).** The ledger now fills `family`, `context`, `changes`,
+`todos` and `tools` on sessions, and `family`, `changes` and `tools` on agents, from records the
+transcripts already hold. Only counts and family names leave the watcher.
+- `family` is mapped from `message.model` (the agent meta's `model` as a fallback); placeholder
+  ids like `<synthetic>` are ignored, and the full id never leaves.
+- `context.used` is the last response's input + cache-read + cache-creation tokens, read as text
+  from the usage object on plain response records (no parse). The window comes from a small table
+  in `src/watcher/models.ts` (1M for fable, opus and sonnet 4.6+ and haiku 5+; 200K for older
+  models; 1M with a `[1m]` marker). An id the table can't place gets no window, so no meter: the
+  window isn't in the transcript, and a wrong row makes a wrong meter. A compaction sets `used` to
+  its `postTokens`, or clears it.
+- `changes` counts distinct files (paths hashed in the watcher) and lines added and removed by
+  successful edit calls, from the tool's own `structuredPatch` when the result has one, else
+  estimated from the inputs (a Write over a seen file is a rewrite that removes what was last
+  written there). It says "a lot" or "a little", not an exact diff. A session's numbers don't
+  include its agents'.
+- `todos` are status counts from the latest `TodoWrite`. `tools` counts calls and errored results
+  in a trailing 60 s window by record time, so it decays through the 5 s poll.
+- Measured on invented transcripts, the ledger reads as fast as before.
+
+**Stations, trips and pace (stream C).** Each project room is 130 px wider, for a strip of shared
+stations along its left wall: a copier, a QA stamp desk, a filing cabinet and a card catalogue.
+They are counted from the hallway side, so adding or trimming desk rows never moves one; extras (a
+second of a kind, one per four busy crew past the first four) only go on the far end while the
+strip has room. The lamp left project rooms to make space.
+- A busy crew member walks to the station for its work once that kind has held 6 s and is still
+  the tool in hand (the copier and stamp desk only while a command is running), works there
+  facing it at `STATION_REACH` scaled to its size, and walks back when it edits again.
+- One user per station; up to two queue beside it (`queueWait`); the queue is served in the order
+  it formed. Anyone who finds everything full stays at its bench.
+- A long build at the copier kicks it; a red test at the stamp desk is a red stamp, then the thumb.
+- Walks follow heat (`director/pace.ts`): a stroll, a jog (×1.3) for a write in the last 15 s or 8
+  tool calls a minute, a run (×1.65) for 20 a minute or 8 with a recent write. The walk cycle steps
+  at the same pace (`walkTempo` on the cue). The brick-run cooldown shrinks 3% per edit a minute
+  above 4, to no less than 40%.
+- **Walks run at 30 fps.** Only camera moves get 60, so a busy room full of traffic still holds
+  the 30 fps budget; an e2e test holds a room with six walkers to it.
+
+**The crew acts out the stations with hands and props (stream E1).** Each station pose reaches to
+the station's working point (`STATION` in `src/scene/rig/reach.ts`, `STATION_REACH` in rig
+units). The rig draws the parts the work moves at that point (the drawer that opens, the card
+tray, the copier's lid, button, light, jam door and out-tray, the forms and their stamp marks, the
+notepad, the outbox tray, the shredder's slot and pile), so every action shows its effect in the
+same frame, while the office draws only the furniture's body, behind the character. The point is
+about eye level for a mochi, so crew reach up (`bd-up`, a rise without scaling); it reads as small
+crew at tall office counters. Arm angles are solved, not eyeballed: `solveArm` is the arm's
+inverse kinematics, `REACH` records what each arm was solved for, and tests hold every one within
+a unit of its point. Moving a station point or `STATION_REACH` means re-solving and pasting the
+numbers into `ARMS`. A kick (`boot`) swings the leg out in front of the body so it reads.
+
+Left for later: the web, outbox and shredder stations have poses but no furniture yet;
+`copierKick` plays once and holds, so a long build shows one kick, not a running feud.

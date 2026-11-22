@@ -546,21 +546,195 @@ export const POSES: Pose[] = [
 			["e-happy m-grin ar-hip al-hip", 2],
 		],
 	}),
-	// Station placeholders (plan-next stream C/E): the director plays these at shared equipment; the
-	// rig pass replaces their frames. Each reaches to STATION_REACH (src/scene/director/stations.ts).
-	...(
-		[
-			["fileFolder", "Flipping through a folder", "loop", ["l-right m-small hl-paper al-raise ar-point", 3], ["e-half l-right b-one m-small hl-paper al-raise ar-chin", 3]],
-			["cardThumb", "Thumbing through the card catalogue", "loop", ["e-squint l-right m-small al-low ar-point", 2], ["e-squint l-right b-one m-blep al-low ar-poke", 2]],
-			["copierFeed", "Feeding the copier", "loop", ["l-right m-small hl-paper al-raise ar-point", 3], ["e-half l-right m-small al-low ar-out", 3]],
-			["copierKick", "Kicking the jammed copier", "once", ["e-squint b-angry m-frown al-hip ar-hip f-kick", 3], ["e-half b-flat m-pout al-cross ar-cross2", 4]],
-			["stampGreen", "Stamping it approved", "loop", ["l-right m-small al-low ar-raise", 2], ["e-happy l-right m-grin al-low ar-point x-spark", 2]],
-			["stampRed", "Stamping it rejected", "once", ["l-right b-angry m-flat al-low ar-raise", 2], ["e-squint b-angry m-frown al-low ar-point", 4]],
-			["phone", "On the phone", "loop", ["l-right m-open hr-phone ar-phone al-hip", 4], ["e-half l-upR b-one m-small hr-phone ar-phone al-chin", 4]],
-			["mailDrop", "Dropping the envelope in the outbox", "once", ["l-right m-small hl-paper al-raise ar-low", 3], ["e-happy m-grin al-low ar-hip", 3]],
-			["shred", "Feeding the shredder", "loop", ["l-right m-small hl-paper al-raise ar-point", 3], ["e-closed l-right m-smirk al-low ar-out", 3]],
-		] as [string, string, "loop" | "once", Row, Row][]
-	).map(([name, title, play, ...rows]) => pose({ name, title, trigger: "working", rarity: 1, play, lines: [], frames: rows })),
+	// At the stations (src/scene/director/stations.ts STATION_POSE). The director stands the crew
+	// member STATION_REACH from the station's working point, facing it; the office draws the
+	// furniture's body and the rig the parts the hands move (w-cabinet, w-copier...), so the drawer
+	// opens, the lid lifts and the form takes the mark in the rig's own frames. The working point is
+	// about eye level for a mochi, so it reaches up (bd-up) and looks across (l-right). Arms are
+	// solved onto the station's points: reach.ts REACH, checked by the tests.
+	pose({
+		// Read: pull the top drawer, walk the tabs, draw a folder up, open it and read, turn a page,
+		// find it, and put it back and push the drawer shut.
+		name: "fileFolder", title: "Flipping through a folder", trigger: "working", rarity: 1, play: "loop",
+		lines: [],
+		frames: [
+			["l-right b-one m-small al-low ar-grip w-cabinet", 2],
+			["e-squint l-right b-flat m-blep al-low ar-pull bd-leanL w-drawer", 2],
+			["l-right b-one m-small al-low ar-tab1 bd-up w-drawer", 2],
+			["e-squint l-right b-one m-blep al-low ar-tab2 bd-up w-drawer", 1],
+			["e-squint l-right b-one m-blep al-low ar-tab1 bd-up w-drawer", 1],
+			["e-wide l-right b-up m-small al-low ar-tab2 bd-up w-drawer", 1],
+			["l-upR b-up m-small al-low hr-folder ar-fetch bd-up w-drawerGap", 2],
+			["l-down b-one m-small fr-folder al-sheet ar-sheet w-drawerGap", 3],
+			["e-closed l-down m-small fr-folder al-sheet ar-sheet w-drawerGap", 1],
+			["e-half l-down b-one m-small fr-folderT al-sheet ar-flip w-drawerGap", 2],
+			["l-down b-up m-small fr-folder2 al-sheet ar-sheet w-drawerGap", 3],
+			["e-happy l-down m-grin fr-folder2 al-sheet ar-sheet w-drawerGap", 1],
+			["l-right b-flat m-small al-low hr-folder ar-tab2 bd-up w-drawerGap", 2],
+			["l-right m-small al-low ar-pull bd-leanL w-drawer", 1],
+			["e-happy l-right m-grin al-low ar-grip w-cabinet", 2],
+		],
+	}),
+	pose({
+		// Search: a fingertip walks the cards, flicking them forward, stops, pulls one up to squint at,
+		// it's not the one, back it goes, and on through the cards.
+		name: "cardThumb", title: "Thumbing through the card catalogue", trigger: "working", rarity: 1, play: "loop",
+		lines: [],
+		frames: [
+			["l-right b-one m-small al-low ar-card1 bd-up w-cards", 2],
+			["e-squint l-right b-one m-blep al-low ar-card2 bd-up w-cardsA", 1],
+			["e-squint l-right b-one m-blep al-low ar-card3 bd-up w-cardsB", 1],
+			["e-squint l-right b-one m-small al-low ar-card2 bd-up w-cardsA", 1],
+			["e-squint l-right b-one m-blep al-low ar-card3 bd-up w-cardsB", 1],
+			["e-wide l-right b-up m-small al-low ar-card3 bd-up w-cardsB", 1],
+			["l-upR b-up m-small al-low hr-card ar-card w-cardsGap", 2],
+			["e-squint l-upR b-angry m-pout al-chin hr-card ar-card w-cardsGap", 3],
+			["e-closed l-upR b-angry m-pout al-chin hr-card ar-card w-cardsGap", 1],
+			["e-half l-upR b-flat m-flat al-chin hr-card ar-card w-cardsGap", 2],
+			["l-right b-flat m-small al-low hr-card ar-card3 bd-up w-cardsGap", 1],
+			["l-right b-one m-small al-low ar-card3 bd-up w-cards", 2],
+		],
+	}),
+	pose({
+		// A build: lift the lid with the original in hand, lay it on the glass, shut the lid, press
+		// start, the scan light runs, and copies come out into the tray.
+		name: "copierFeed", title: "Feeding the copier", trigger: "working", rarity: 1, play: "loop",
+		lines: [],
+		frames: [
+			["l-right b-one m-small al-low hr-paper ar-under w-copier", 2],
+			["e-squint l-right b-one m-blep al-low hr-paper ar-lid bd-up w-lidHalf", 1],
+			["l-right b-up m-small al-low hr-paper ar-lay bd-up w-lidUp", 2],
+			["l-right b-one m-small al-low ar-flat bd-up w-lidSheet", 2],
+			["l-right b-flat m-small al-low ar-shut w-copier", 1],
+			["e-squint l-right b-one m-small al-low ar-press w-copier", 1],
+			["e-wide l-right b-up m-small al-low ar-press w-scan", 1],
+			["l-right b-one m-small al-hip ar-hip w-copy1", 2],
+			["e-closed l-right m-small al-hip ar-hip w-scan", 1],
+			["l-right b-one m-small al-hip ar-hip w-copy1", 2],
+			["e-happy l-right m-grin al-hip ar-hip w-copy2", 3],
+		],
+	}),
+	pose({
+		// A failed build: start does nothing but a red light. Open the jam door, tug out the
+		// crumpled sheet, shut it, press again: still red. A kick, and a glare.
+		name: "copierKick", title: "Kicking the jammed copier", trigger: "working", rarity: 1, play: "once",
+		lines: [],
+		frames: [
+			["l-right b-one m-small al-low ar-press w-copier", 1],
+			["e-wide l-right b-up m-open al-low ar-press w-jam", 2],
+			["e-squint l-downR b-one m-flat al-low ar-door w-jam", 1],
+			["e-squint l-downR b-one m-flat al-low ar-door w-door", 1],
+			["e-squint l-downR b-angry m-blep al-low ar-tug1 w-door", 1],
+			["e-squint l-downR b-angry m-shout al-out ar-tug2 bd-leanL w-doorTug", 2],
+			["e-wide l-right b-up m-open al-low hr-crumple ar-card w-doorOpen", 2],
+			["e-half l-right b-flat m-flat al-low ar-door w-jammed", 1],
+			["e-half l-right b-flat m-flat al-low ar-press w-jammed", 2],
+			["e-squint l-right b-angry m-shout al-out ar-hip f-boot bd-leanL w-kicked", 2],
+			["e-squint l-right b-angry m-frown al-hip ar-hip w-jammed", 2],
+			["e-half l-right b-angry m-frown al-cross ar-cross2 w-jammed", 6],
+		],
+	}),
+	pose({
+		// A green test: ink the stamp, swing it over, press, and the form takes a green mark (the
+		// rubber comes away dry); then push it onto the done pile, the next form under it.
+		name: "stampGreen", title: "Stamping it approved", trigger: "working", rarity: 1, play: "loop",
+		lines: [],
+		frames: [
+			["l-right b-one m-small al-low hr-stamp ar-st1 bd-up w-forms", 2],
+			["e-squint l-right b-one m-blep al-low hr-stamp ar-ink bd-up w-forms", 1],
+			["l-right b-one m-small al-low hr-stampG ar-st1 bd-up w-forms", 1],
+			["l-right b-flat m-small al-low hr-stampG ar-st2 bd-up w-forms", 1],
+			["e-squint l-right b-angry m-flat al-low hr-stampG ar-stamp bd-up w-forms", 1],
+			["e-wide l-right b-up m-small al-low hr-stamp ar-st2 bd-up w-formsOk", 2],
+			["e-happy l-right m-grin al-low hr-stamp ar-push1 bd-up w-formsOk", 1],
+			["e-happy l-right m-grin al-low hr-stamp ar-push2 bd-up w-formsSlid", 2],
+		],
+	}),
+	pose({
+		// A red test: the same stroke from the red pad, a red cross on the form, and a long sigh.
+		name: "stampRed", title: "Stamping it rejected", trigger: "working", rarity: 1, play: "once",
+		lines: [],
+		frames: [
+			["l-right b-flat m-flat al-low hr-stamp ar-st1 bd-up w-formsR", 2],
+			["e-squint l-right b-flat m-flat al-low hr-stamp ar-ink bd-up w-formsR", 1],
+			["l-right b-worry m-flat al-low hr-stampR ar-st2 bd-up w-formsR", 2],
+			["e-squint l-right b-angry m-frown al-low hr-stampR ar-stamp bd-up w-formsR", 1],
+			["e-half l-right b-worry m-flat al-low hr-stamp ar-st2 bd-up w-formsNo", 2],
+			["e-closed b-worry m-small al-low hr-stamp ar-low w-formsNo x-sigh", 3],
+			["e-half l-right b-worry m-pout al-low hr-stamp ar-low w-formsNo", 4],
+		],
+	}),
+	pose({
+		// A web fetch: the receiver at the ear, listening and nodding, jotting a bit at a time on the
+		// notepad (each bit appears where the pencil went), and the full page flipped over.
+		name: "phone", title: "On the phone", trigger: "working", rarity: 1, play: "loop",
+		lines: [],
+		frames: [
+			["e-half l-upR b-one m-small hl-receiver al-ear hr-pencil ar-low w-note0", 3],
+			["l-upR b-up m-small hl-receiver al-ear hr-pencil ar-low bd-nod w-note0", 1],
+			["l-upR b-up m-small hl-receiver al-ear hr-pencil ar-low w-note0", 1],
+			["l-upR b-up m-small hl-receiver al-ear hr-pencil ar-low bd-nod w-note0", 1],
+			["l-right b-one m-open hl-receiver al-ear hr-pencil ar-low w-note0", 2],
+			["e-squint l-right b-one m-blep hl-receiver al-ear hr-pencil ar-jot1 bd-up w-note0", 1],
+			["e-squint l-right b-one m-blep hl-receiver al-ear hr-pencil ar-jot2 bd-up w-note1", 1],
+			["e-squint l-right b-one m-blep hl-receiver al-ear hr-pencil ar-jot3 bd-up w-note2", 1],
+			["l-upR b-up m-small hl-receiver al-ear hr-pencil ar-low bd-nod w-note2", 1],
+			["e-closed l-upR m-small hl-receiver al-ear hr-pencil ar-low w-note2", 1],
+			["l-upR b-up m-small hl-receiver al-ear hr-pencil ar-low w-note2", 1],
+			["e-squint l-right b-one m-blep hl-receiver al-ear hr-pencil ar-jot3 bd-up w-note3", 1],
+			["e-happy l-right m-grin hl-receiver al-ear hr-pencil ar-jot1 bd-up w-noteFlip", 2],
+		],
+	}),
+	pose({
+		// The PR: an envelope held up, over the outbox, let go; it drops into the tray. Dust off the
+		// hands, hands on hips. Ends settled.
+		name: "mailDrop", title: "Dropping the envelope in the outbox", trigger: "working", rarity: 1, play: "once",
+		lines: [],
+		frames: [
+			["l-right b-one m-small al-low hr-envelope ar-card w-outbox", 2],
+			["l-right b-one m-small al-low hr-envelope ar-post w-outbox", 2],
+			["e-wide l-downR b-up m-small al-low ar-let w-mail1", 1],
+			["l-downR b-up m-small al-low ar-let w-mail2", 2],
+			["e-happy m-grin al-brushHi ar-brushLo w-mail2 x-dusty", 1],
+			["e-happy m-grin al-brushLo ar-brushHi w-mail2 x-dusty", 1],
+			["e-happy m-grin al-brushHi ar-brushLo w-mail2 x-dusty", 1],
+			["e-happy m-grin al-brushLo ar-brushHi w-mail2", 1],
+			["e-half m-smirk al-hip ar-hip w-mail2", 4],
+		],
+	}),
+	pose({
+		// Cleaning up: slide the top sheet off the pile, stand it in the slot, and lower it as the
+		// shredder buzzes and eats it, a sheet at a time.
+		name: "shred", title: "Feeding the shredder", trigger: "working", rarity: 1, play: "loop",
+		lines: [],
+		frames: [
+			["l-right b-one m-small al-low ar-pick bd-up w-shred", 2],
+			["l-right b-one m-small al-low hr-slip ar-slide bd-up w-shred4", 1],
+			["l-right b-one m-small al-low hr-feed1 ar-feed1 bd-up w-shred4", 1],
+			["e-squint l-right b-flat m-blep al-low hr-feed2 ar-feed2 bd-up w-shredBuzz", 1],
+			["e-squint l-right b-flat m-blep al-low hr-feed3 ar-feed3 bd-up w-shredBuzz", 1],
+			["e-closed l-right m-smirk al-low ar-feed3 bd-up w-shredBuzz", 1],
+			["e-half l-right b-flat m-smirk al-low ar-low w-shred4", 2],
+		],
+	}),
+	pose({
+		// Waiting in line at a busy station: reading the clipboard and tapping a foot, then leaning
+		// to look past the one ahead (who stands toward the station, the way this one faces).
+		name: "queueWait", title: "Waiting in line", trigger: "working", rarity: 1, play: "loop",
+		lines: [],
+		frames: [
+			["e-half l-down b-flat m-flat hl-clip al-read ar-low", 3],
+			["e-half l-down b-flat m-flat hl-clip al-read ar-low f-tapR", 1],
+			["e-half l-down b-flat m-flat hl-clip al-read ar-low", 1],
+			["e-half l-down b-flat m-flat hl-clip al-read ar-low f-tapR", 1],
+			["e-closed l-down b-flat m-flat hl-clip al-read ar-low", 1],
+			["l-right b-one m-pout hl-clip al-low ar-hip bd-leanR", 3],
+			["e-side l-right b-one m-pout hl-clip al-low ar-hip bd-leanR f-tapR", 1],
+			["e-side l-right b-one m-pout hl-clip al-low ar-hip bd-leanR", 1],
+			["e-side l-right b-one m-pout hl-clip al-low ar-hip bd-leanR f-tapR", 1],
+			["e-half b-flat m-flat hl-clip al-low ar-hip", 2],
+		],
+	}),
 	pose({
 		name: "rest", title: "Standing about", trigger: "idle", rarity: 1, play: "once",
 		lines: [],

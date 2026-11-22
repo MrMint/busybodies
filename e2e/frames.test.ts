@@ -74,6 +74,32 @@ describe("frame budgets", () => {
 		await page.close();
 	}, T);
 
+	test("a busy room with several walkers still renders at no more than 30 fps", async () => {
+		// Walks run at the ambient rate: with trips, brick runs and rounds, a busy room has someone
+		// walking nearly all the time, and it must not pin the app at 60.
+		const page = await open("demo=release&settle=600000");
+		await page.evaluate(() => {
+			const b = window.__busybodies!;
+			const s = structuredClone(b.snapshot()!);
+			const first = s.sessions[0]!;
+			// Six new sessions in the busy room: six leads walking in from the lobby door at once.
+			for (let i = 0; i < 6; i++) s.sessions.push({ ...first, id: `e2e-walker-${i}`, title: `Walker ${i}`, startedAt: s.at + i, children: [], agents: [] });
+			b.show(s);
+		});
+		const walkers = await page.evaluate(() => window.__busybodies!.entities().filter((e) => e.walk).length);
+		expect(walkers).toBeGreaterThanOrEqual(6);
+		await page.evaluate(() => window.__busybodies!.resetCounters());
+		await page.waitForTimeout(2000);
+		const c = await page.evaluate(() => window.__busybodies!.counters());
+		expect(await page.evaluate(() => window.__busybodies!.entities().filter((e) => e.walk).length)).toBeGreaterThan(0);
+		expect(c.tickerRunning).toBe(true);
+		expect(c.maxFPS).toBe(30);
+		// Only a floor (it is animating): six walkers rendered in software on a loaded runner can be slow.
+		expect(c.renders).toBeGreaterThan(0);
+		expect(c.renders).toBeLessThanOrEqual(64);
+		await page.close();
+	}, T);
+
 	test("the loop stops once everyone goes idle", async () => {
 		const page = await open("demo");
 		await page.evaluate(() => {

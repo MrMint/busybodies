@@ -12,13 +12,18 @@ import { LEAD_SIZE, crewOf } from "../office/placement";
 import type { Mood } from "../office/slot";
 import type { Area, Slot, World as Floor } from "../office/world";
 import { buildSlot, crewSlot, crewSpot, crewSpots } from "../office/world";
-import { choosePose, hash, unit } from "../rig/player";
+import { choosePose, hash } from "../rig/player";
 import { HABITS, POSE, duration } from "../rig/poses";
 import { type Role, roleFor } from "../rig/roles";
 import type { Activity, Agent, Commands, RunningTool, Session, Snapshot } from "../../watcher/model";
+import { PACE, RUNS, editRate, paceOf, runCooldown } from "./pace";
 import { type Point, along, pathBetween, walkMs } from "./paths";
+import { STATION_FOR, STATION_POSE, type StationKind } from "./stations";
+import { TRIP, type Trip, type Want, planTrips, tripPlace } from "./trips";
 import type { Actor, Build, Cue, Run, Seen, World, WorldEvent } from "./types";
-import { WORK, WORK_POSE, type Work, isEdit, nextWork, tempo, tempoWake, workKind } from "./work";
+import { WORK, WORK_POSE, type Work, type WorkKind, isEdit, nextWork, tempo, tempoWake, workKind } from "./work";
+
+export { runCooldown };
 
 const MIN = 60_000;
 
@@ -49,13 +54,10 @@ export const RULES = {
 	/** The tallest a crew build gets. */
 	buildMax: 30,
 	/** A brick run: after one sets off, the session's next waits at least this long... */
-	runEveryMs: 20_000,
-	/** ...plus up to this much more, a share picked from the session's id. */
-	runJitterMs: 8_000,
+	runEveryMs: RUNS.everyMs,
+	/** ...plus up to this much more, a share picked from the session's id (less as edits pour in: pace.ts). */
+	runJitterMs: RUNS.jitterMs,
 } as const;
-
-/** How long a session waits between brick runs: 20 to 28 seconds, the same every time for its id. */
-export const runCooldown = (session: string): number => RULES.runEveryMs + Math.floor(unit(session, "run") * RULES.runJitterMs);
 
 export interface Direction {
 	world: World;
@@ -349,6 +351,29 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 	for (const [id, b] of Object.entries(prev?.builds ?? {})) if (b.run && now < b.run.done) runs.active.set(id, b.run);
 	const away = new Set([...runs.active.values()].filter((r) => now < r.lands).map((r) => r.key));
 
+	// What each one is working on (held a few seconds so the pose doesn't flicker), and its news.
+	const pre = new Map<string, Pre>();
+	for (const s of list) {
+		const was = before[s.key];
+		const live = was && !was.gone ? was : undefined;
+		const want = s.busy ? workKind(s.running, s.activity) : undefined;
+		const work = s.busy ? nextWork(live?.work, want, now) : undefined;
+		const continuing = live && live.acted && now < live.poseSince + poseMs(live.pose, live.as) ? live : undefined;
+		pre.set(s.key, { want, work, news: acted(s, was?.seen, now), continuing, follow: followUp(s, live, continuing) });
+	}
+
+	// Trips: crew whose held work has a station walk to it (or queue for it), leaving their crew spot
+	// to come back to. Nobody on a trip is visited on the foreman's round.
+	const homes = new Map<string, string>();
+	const trips = tripsFor(list, pre, places, before, floor, runs, hiredBy, now, wakes);
+	const stationById = new Map(floor.areas.flatMap((a) => a.stations ?? []).map((st) => [st.id, st]));
+	const sizes = new Map(list.map((s) => [s.key, s.size]));
+	for (const [key, t] of trips) {
+		homes.set(key, places.get(key)!.spot);
+		places.set(key, tripPlace(t, stationById.get(t.station)!, sizes.get(key)!));
+		away.add(key);
+	}
+
 	// The foreman's round: a lead whose crew is hard at it walks over to look.
 	const visits = foremanVisits(list, places, now, wakes, away);
 	for (const [key, v] of visits) places.set(key, v);
@@ -361,16 +386,14 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 		if (!place) continue;
 		const was = before[s.key];
 		const count = { ...(was?.count ?? {}) };
-		const continuing = was && !was.gone && was.acted && now < was.poseSince + poseMs(was.pose, was.as) ? was : undefined;
+		const { want, work, news, continuing, follow } = pre.get(s.key)!;
+		const trip = trips.get(s.key);
 
 		let choice: Choice;
-		const news = acted(s, was?.seen, now);
-		// What it is working on, by the tool in hand, held a few seconds so the pose doesn't flicker.
-		const want = s.busy ? workKind(s.running, s.activity) : undefined;
-		const work = s.busy ? nextWork(was?.gone ? undefined : was?.work, want, now) : undefined;
 		if (work && want && want !== work.kind) wakes.push(work.since + WORK.holdMs);
 		let st = standing(s, now, count, work);
 		if (visits.has(s.key) && st.pose !== "grumpy") st = { pose: "inspect", as: "lead", acted: false };
+		if (trip) st = atStation(st, trip);
 		// One wait keeps one pose: the rare roll happens once, when the wait starts.
 		if (st.trigger === "waiting" && was && !was.gone && was.seen.waiting === s.seen.waiting) st = { ...st, pose: was.pose };
 		if (s.mood === "stalled" || s.mood === "done" || st.trigger === "waiting") choice = st;
@@ -383,14 +406,20 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 				choice = { pose: "celebrate", as: "lead", acted: true, trigger: "pr" };
 			} else choice = news;
 		} else if (celebrating.has(s.key)) choice = { pose: "celebrate", as: "partner", acted: true, trigger: "pr" };
+		else if (news?.trigger === "fail" && trip?.queue === 0 && trip.kind === "test") choice = { pose: STATION_POSE.test.bad!, as: "lead", acted: true, trigger: "fail" };
 		else if (news) choice = news;
+		// A red stamp, then the thumb (or the failed-test pose), still at the stamp desk.
+		else if (follow) choice = { pose: follow, as: "lead", acted: true };
 		else if (!continuing && s.kind === "crew" && s.mood === "busy" && [...(startled.get(s.session.id) ?? [])].some((k) => k !== s.key))
 			choice = { pose: "glance", as: "lead", acted: true, trigger: "glance" };
 		else if (continuing) choice = { pose: continuing.pose, as: continuing.as, acted: true };
 		else choice = st;
 
 		// A brick run: a builder with a new edit walks it to the build, sets it down, walks back.
-		const run = brickRun(s, was, place, choice, runs, prev?.builds[s.session.id], visits, byKey, floor, now);
+		// How fast it walks, from how hot its work is.
+		const lastAt = Math.max(s.activity?.at ?? -Infinity, s.agent?.lastWriteAt ?? -Infinity);
+		const gait = paceOf(s.agent ? s.agent.tools : s.session.tools, Number.isFinite(lastAt) ? lastAt : undefined, now);
+		const run = brickRun(s, was, place, choice, runs, prev?.builds[s.session.id], visits, byKey, floor, now, gait.speed);
 		if (run) {
 			place = run.place;
 			choice = { pose: "place", as: "lead", acted: true, ...(run.run.since === now ? { trigger: "run" } : {}) };
@@ -411,11 +440,11 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 		let walk: Actor["walk"];
 		const arriving = !was || was.gone !== undefined;
 		// A crew spot can move without changing its name, when a free cell nearby is taken or freed.
-		const moved = was !== undefined && (was.slot.x !== place.slot.x || was.slot.y !== place.slot.y) && place.spot.startsWith("crew:");
+		const moved = was !== undefined && (was.slot.x !== place.slot.x || was.slot.y !== place.slot.y) && /^(crew|station|queue):/.test(place.spot);
 		if (was && !arriving && (was.area !== place.area || was.spot !== place.spot || moved)) {
 			const from = here(was, now);
 			const path = pathBetween(floor, was.area, from, place.area, place.slot);
-			walk = { path, ms: walkMs(path), since: now };
+			walk = { path, ms: walkMs(path, gait.speed), since: now };
 			events.push({ type: "walk", key: s.key, at: now, from: was.spot, to: place.spot, ms: walk.ms });
 		} else if (was && !arriving && was.walk && now < was.walk.since + was.walk.ms) {
 			walk = was.walk;
@@ -425,7 +454,7 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 			if (desk) {
 				const start = crewSlot(desk, 0);
 				const path = pathBetween(floor, desk.areaId, start, place.area, place.slot);
-				walk = { path, ms: walkMs(path), since: now };
+				walk = { path, ms: walkMs(path, gait.speed), since: now };
 				events.push({ type: "walk", key: s.key, at: now, from: "crew:0", to: place.spot, ms: walk.ms });
 			}
 		} else if (arriving && !first && s.kind === "lead") {
@@ -433,15 +462,18 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 			const door = doorPlace(floor);
 			if (door) {
 				const path = pathBetween(floor, door.area, door.slot, place.area, place.slot);
-				walk = { path, ms: walkMs(path), since: now };
+				walk = { path, ms: walkMs(path, gait.speed), since: now };
 			}
 		}
 		if (walk) wakes.push(walk.since + walk.ms);
 		if (arriving) events.push({ type: "arrive", key: s.key, at: now, spot: place.spot, area: place.area, walk: walk !== undefined });
 
 		if (!same) events.push({ type: "pose", key: s.key, at: now, pose: choice.pose, as: choice.as, acted: choice.acted });
+		const tripWas = was && !was.gone ? was.trip : undefined;
+		if (trip && tripWas?.station !== trip.station) events.push({ type: "trip", key: s.key, at: now, station: trip.station, state: trip.queue ? "queue" : "start" });
+		else if (trip && tripWas && tripWas.queue > 0 && trip.queue === 0) events.push({ type: "trip", key: s.key, at: now, station: trip.station, state: "use" });
+		if (tripWas && !trip) events.push({ type: "trip", key: s.key, at: now, station: tripWas.station, state: "end" });
 		// Busy loops run at the character's own pace: quick while writing, slow when coasting.
-		const lastAt = Math.max(s.activity?.at ?? -Infinity, s.agent?.lastWriteAt ?? -Infinity);
 		const pace = s.mood === "busy" && !choice.acted && POSE[choice.pose]?.play === "loop" ? tempo(s.key, Number.isFinite(lastAt) ? lastAt : undefined, now) : 1;
 
 		if (choice.pose === "handover" && choice.as === "partner") events.push({ type: "handover", key: hiredBy.get(s.key)!, at: now, to: s.key });
@@ -478,7 +510,8 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 			work,
 			tempo: pace,
 			task: s.task,
-			...(run ? { home: run.run.from, walkPose: "carry" } : {}),
+			...(run ? { home: run.run.from, walkPose: "carry" } : trip ? { home: homes.get(s.key)!, trip } : {}),
+			...(walk && walk === was?.walk ? (was.pace ? { pace: was.pace } : {}) : walk && gait.name !== "stroll" ? { pace: gait.name } : {}),
 		};
 		if (s.mood === "busy" && !choice.acted) {
 			const w = tempoWake(lastAt, now);
@@ -510,7 +543,7 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 		const to = door ?? { spot: "door", area: was.area, slot: was.slot };
 		const path = pathBetween(floor, was.area, from, to.area, to.slot);
 		const ms = walkMs(path);
-		actors[key] = { ...was, area: to.area, spot: "door", slot: to.slot, walk: { path, ms, since: now, exit: true }, gone: now + ms };
+		actors[key] = { ...was, area: to.area, spot: "door", slot: to.slot, walk: { path, ms, since: now, exit: true }, gone: now + ms, pace: undefined };
 		events.push({ type: "leave", key, at: now });
 		if (was.spot.startsWith("meeting:")) events.push({ type: "review", key, at: now, state: "end" });
 		if (was.kind === "lead" && was.seen.waiting !== undefined) events.push({ type: "waiting", key, at: now, state: "end", area: was.area });
@@ -534,6 +567,81 @@ function handOffMs(): number {
 		if (f.props.left === "brick" || f.props.right === "brick" || f.props.work === "brick") end = t;
 	}
 	return end || t;
+}
+
+/** What the director works out about each character before anyone moves. */
+interface Pre {
+	/** The kind of work the tool in hand says, and the kind showing (held). */
+	want?: WorkKind;
+	work?: Work;
+	news?: Choice;
+	/** An acted pose still playing from last time. */
+	continuing?: Actor;
+	/** An acted pose to play now that the last one ended (the thumb after a red stamp). */
+	follow?: string;
+}
+
+/** After a red stamp at the stamp desk: the thumb for a builder, the failed-test pose for anyone else. */
+function followUp(s: Spec, was: Actor | undefined, continuing: Actor | undefined): string | undefined {
+	if (!was || continuing || !was.acted || was.pose !== STATION_POSE.test.bad) return undefined;
+	return s.rig === "builder" ? "thumb" : "testFailed";
+}
+
+/** The station a crew member's work sends it to, if the tool in hand still says so. A shell
+ * command or a test sends it to the copier or the stamp desk only while it runs. */
+function stationKind(s: Spec, p: Pre): StationKind | undefined {
+	const w = p.work;
+	if (!w || p.want !== w.kind) return undefined;
+	const kind = STATION_FOR[w.kind];
+	if (!kind) return undefined;
+	if ((w.kind === "shell" || w.kind === "test") && !s.running) return undefined;
+	return kind;
+}
+
+/**
+ * Who goes to a station this time. A busy crew member at its crew spot (not carrying a brick, not
+ * just hired) goes once its work kind has held for TRIP.holdMs; it stays while the kind holds, and
+ * while it is mid-way through something acted there (a red stamp and the thumb after it).
+ */
+function tripsFor(
+	list: Spec[],
+	pre: Map<string, Pre>,
+	places: Map<string, Place>,
+	before: Record<string, Actor>,
+	floor: Floor,
+	runs: Runs,
+	hiredBy: Map<string, string>,
+	now: number,
+	wakes: number[],
+): Map<string, Trip> {
+	const wants: Want[] = [];
+	for (const s of list) {
+		if (s.kind !== "crew" || !s.busy || s.mood !== "busy" || hiredBy.has(s.key)) continue;
+		const place = places.get(s.key);
+		const was = before[s.key];
+		if (!place?.spot.startsWith("crew:") || !was || was.gone) continue;
+		const r = runs.active.get(s.session.id);
+		if (r?.key === s.key && r.carried && now < r.lands) continue;
+		const stations = floor.areas.find((a) => a.id === place.area)?.stations ?? [];
+		if (!stations.length) continue;
+		const p = pre.get(s.key)!;
+		const stay = was.trip !== undefined && (p.news !== undefined || p.continuing !== undefined || p.follow !== undefined);
+		let kind = stationKind(s, p);
+		if (kind && was.trip?.kind !== kind && now - p.work!.since < TRIP.holdMs) {
+			wakes.push(p.work!.since + TRIP.holdMs);
+			kind = undefined;
+		}
+		wants.push({ key: s.key, stations, kind, stay, was: was.trip, since: p.work?.since ?? now });
+	}
+	return planTrips(wants, now);
+}
+
+/** At a station: its work pose (or the jammed copier's kick on a long build); in its queue, waiting. */
+function atStation(st: Choice, trip: Trip): Choice {
+	if (trip.queue > 0) return { pose: TRIP.queuePose, as: "lead", acted: false };
+	const pose = STATION_POSE[trip.kind];
+	if (st.pose === "grumpy") return pose.bad && trip.kind === "build" ? { pose: pose.bad, as: "lead", acted: false } : st;
+	return { pose: pose.work, as: "lead", acted: false };
 }
 
 /** Where each lead on its foreman's round stands: just behind one of its busy crew, looking on. */
@@ -595,6 +703,7 @@ function brickRun(
 	byKey: Map<string, Spec>,
 	floor: Floor,
 	now: number,
+	speed = 1,
 ): { place: Place; run: Run } | undefined {
 	const id = s.session.id;
 	const desk = floor.desks.get(id);
@@ -614,13 +723,13 @@ function brickRun(
 	if (run || s.mood !== "busy" || choice.acted || build.pieces >= RULES.buildMax) return undefined;
 	const a = s.activity;
 	if (!a || !isEdit(a.tool) || build.seen[s.agent!.id] === a.at) return undefined;
-	if (build.ranAt !== undefined && now - build.ranAt < runCooldown(id)) return undefined;
+	if (build.ranAt !== undefined && now - build.ranAt < runCooldown(id, editRate(build.edits, now))) return undefined;
 	if (!was || was.gone || was.spot !== place.spot || !place.spot.startsWith("crew:")) return undefined;
 	if (was.walk && now < was.walk.since + was.walk.ms) return undefined;
 	const lead = `s:${id}`;
 	if (byKey.get(lead)?.seen.waiting !== undefined || visits.get(lead)?.spot === `visit:${s.key}`) return undefined;
 	const path = pathBetween(floor, place.area, here(was, now), there.area, there.slot);
-	const ms = walkMs(path);
+	const ms = walkMs(path, speed);
 	const lands = now + ms + handOffMs();
 	const fresh: Run = { key: s.key, from: place.spot, since: now, walkMs: ms, lands, done: lands + ms, carried: true };
 	runs.active.set(id, fresh);
@@ -651,6 +760,8 @@ function buildsFor(
 		const crew = members.filter((m) => m.kind === "crew");
 		if (!was && !(crew.some((m) => m.rig === "builder") || crew.length >= RULES.buildCrew)) continue;
 		const seen: Record<string, number> = {};
+		// Recent edit times, for the session's edit rate (the brick-run cooldown).
+		const edits = (was?.edits ?? []).filter((t) => t > now - RUNS.windowMs);
 		// A build found mid-session starts with a piece for each busy hand.
 		let pieces = was ? was.pieces : Math.min(6, crew.filter((m) => m.busy).length);
 		const started = runs.started.get(id);
@@ -659,6 +770,7 @@ function buildsFor(
 			const a = m.activity;
 			if (a && isEdit(a.tool)) {
 				seen[who] = a.at;
+				if (was && was.seen[who] !== a.at) edits.push(a.at);
 				// The runner's edit is in its hands: it goes on when the brick is set down.
 				if (was && was.seen[who] !== a.at && started?.key !== m.key) pieces++;
 			} else if (was?.seen[who] !== undefined) seen[who] = was.seen[who]!;
@@ -692,6 +804,7 @@ function buildsFor(
 			...(addedAt !== undefined ? { addedAt } : {}),
 			...(run ? { run } : {}),
 			...(ranAt !== undefined ? { ranAt } : {}),
+			...(edits.length ? { edits: edits.slice(-40) } : {}),
 		};
 		out[id] = b;
 		if (started) events.push({ type: "build", session: id, at: now, pieces, change: "carry", key: started.key });
@@ -727,5 +840,6 @@ export function cueFor(a: Actor, now: number): Cue {
 		...(walk ? { walk: { path: walk.path, ms: walk.ms, exit: walk.exit, elapsed: now - walk.since } } : {}),
 		...(a.tempo !== 1 ? { tempo: a.tempo } : {}),
 		...(walk && a.walkPose ? { walkPose: a.walkPose } : {}),
+		...(walk && a.pace ? { walkTempo: PACE.speed[a.pace] } : {}),
 	};
 }

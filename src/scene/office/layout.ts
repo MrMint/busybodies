@@ -28,6 +28,8 @@ import {
 	ROW,
 	type Rect,
 	SIDE,
+	STATION_FURNITURE,
+	STRIP,
 	type SignSlot,
 	type Slot,
 	WALL,
@@ -35,6 +37,7 @@ import {
 	type World,
 	roomHeight,
 	roomWidth,
+	stationsFor,
 } from "./world";
 
 interface Room {
@@ -47,6 +50,8 @@ interface Room {
 	/** Occupant per cell, row-major; null is a free desk. Its length is always cols * rows. */
 	cells: (string | null)[];
 	project?: string;
+	/** Busy crew across the project's sessions, this snapshot: a big crew earns extra stations. */
+	crew?: number;
 }
 
 /** A session in reading order, with the session that started it. */
@@ -99,6 +104,13 @@ export class FloorPlan {
 			room.project = project;
 			room.cells = Array(room.cols * Math.max(MIN_ROWS, Math.ceil(list.length / room.cols))).fill(null);
 			this.#rooms.set(project, room);
+		}
+
+		// Count each project's busy crew, for its stations.
+		const running = (list: Session["agents"]): number => list.reduce((n, a) => n + (a.status === "running" ? 1 : 0) + running(a.children), 0);
+		for (const [project, list] of byProject) {
+			const room = this.#rooms.get(project);
+			if (room) room.crew = list.reduce((n, s) => n + running(s.session.agents), 0);
 		}
 
 		// Seat new sessions.
@@ -201,7 +213,7 @@ function build(room: Room, x: number): Area {
 	const id = room.kind === "project" ? `room:${room.project}` : room.kind === "vacant" ? `vacant:${room.key}` : room.key;
 	const name = room.kind === "project" ? room.project! : room.kind === "vacant" ? "vacant" : NAMES[room.kind];
 	const hue = room.key.startsWith("room-") ? Number(room.key.slice(5)) - 1 : -1;
-	const area: Area = { id, kind: room.kind, name, band: room.band, hue, rect, floorY, cols: room.cols, rows, cells: [], desks: [], fixtures: [], wall: [], spots: {} };
+	const area: Area = { id, kind: room.kind, name, band: room.band, hue, rect, floorY, cols: room.cols, rows, cells: [], desks: [], fixtures: [], wall: [], spots: {}, stations: [] };
 
 	if (room.kind === "project" || room.kind === "vacant") {
 		room.cells.forEach((occupant, i) => {
@@ -210,6 +222,13 @@ function build(room: Room, x: number): Area {
 			if (occupant) area.desks.push(desk(occupant, id, room, i, cell));
 		});
 		dressRoom(area);
+		if (room.kind === "project") {
+			area.stations = stationsFor(area, room.crew ?? 0);
+			for (const st of area.stations) {
+				const kind = STATION_FURNITURE[st.kind];
+				if (kind) area.fixtures.push(fixture(kind, st.base.x, st.base.y));
+			}
+		}
 	} else if (room.kind === "meeting") meeting(area);
 	else if (room.kind === "lobby") lobby(area);
 	else kitchen(area);
@@ -220,7 +239,7 @@ function build(room: Room, x: number): Area {
 function cellRect(room: Room, x: number, i: number): Rect {
 	const col = i % room.cols;
 	const row = Math.floor(i / room.cols);
-	const cx = x + SIDE + col * CELL_W;
+	const cx = x + SIDE + STRIP.w + col * CELL_W;
 	const cy = room.band === "top" ? -FRONT - (row + 1) * ROW : HALL + WALL + row * ROW;
 	return { x: cx, y: cy, w: CELL_W, h: ROW };
 }
@@ -253,7 +272,6 @@ function dressRoom(a: Area): void {
 	if (a.band === "bottom") a.wall.push({ kind: "door", rect: { x: x + w - 82, y: y + 14, w: 60, h: WALL - 14 } });
 	const front = a.band === "top" ? y + a.rect.h - FRONT - 4 : y + a.rect.h - FRONT - 4;
 	a.fixtures.push(fixture("plant", x + w - 26, front));
-	if (a.cols >= 3) a.fixtures.push(fixture("lamp", x + 14, a.floorY + 70));
 }
 
 function meeting(a: Area): void {

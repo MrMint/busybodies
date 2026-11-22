@@ -180,7 +180,11 @@ export type FurnitureKind =
 	| "pod"
 	| "lamp"
 	| "screen-lit"
-	| "screen-off";
+	| "screen-off"
+	| "files"
+	| "catalogue"
+	| "copier"
+	| "stamps";
 
 /** A desk: the top surface behind, the front panel below. 150 wide, its front 44 tall. */
 function desk(g: Graphics, front: number, top: number, w = 150): void {
@@ -257,8 +261,67 @@ export function drawFurniture(kind: FurnitureKind): Graphics {
 			g.rect(-6, -2, 12, 12).fill(INK);
 			g.roundRect(-31, -44, 62, 44, 7).fill(0xaab2cc).stroke(line(4));
 			break;
+		default:
+			station(g, kind);
 	}
 	return g;
+}
+
+// Stations: shared equipment along a project room's left wall (world.ts STRIP). The office draws
+// only each station's body, around its base, with its user standing to the right facing it; the rig
+// draws the moving parts (the top drawer, the card tray, the copier's lid, button, light, jam door
+// and out-tray, the ink pad and forms) at the working point, (+20, -40) from the base, in every frame.
+// So each body's top surface is at that height, starting a few px past the point on the user's side
+// and running back toward the wall, and nothing is drawn there that the rig draws.
+const WOOD = 0xd9a066;
+const WOOD_TOP = 0xf0c48a;
+/** Body extents, from the base: left edge (toward the wall) and right edge (toward the user). */
+const ST_L = -24;
+const ST_R = 24;
+
+function station(g: Graphics, kind: FurnitureKind): void {
+	const w = ST_R - ST_L;
+	switch (kind) {
+		case "files": {
+			// A filing cabinet a little taller than the point: the rig pulls its top drawer.
+			g.rect(ST_L + 4, -47 + 5, w, 47).fill(SHADOW);
+			g.roundRect(ST_L, -47, w, 47, 4).fill(0xc9d2ea).stroke(line(4));
+			g.rect(ST_L, -31, w, 3).rect(ST_L, -15, w, 3).fill(INK);
+			g.roundRect(-6, -24, 12, 4, 2).roundRect(-6, -8, 12, 4, 2).fill(INK);
+			break;
+		}
+		case "catalogue": {
+			// A card catalogue: a chest of little drawers on legs (the rig draws the open tray on top).
+			g.rect(ST_L + 4, -42 + 5, w, 42).fill(SHADOW);
+			g.rect(ST_L + 4, -10, 5, 10).rect(ST_R - 9, -10, 5, 10).fill(INK);
+			g.roundRect(ST_L, -42, w, 34, 4).fill(WOOD).stroke(line(4));
+			for (let r = 0; r < 2; r++)
+				for (let c = 0; c < 3; c++) {
+					const x = ST_L + 4 + c * 14;
+					const y = -38 + r * 14;
+					g.roundRect(x, y, 12, 11, 2).fill(WOOD_TOP).stroke({ width: 2, color: INK });
+					g.circle(x + 6, y + 6, 1.6).fill(INK);
+				}
+			break;
+		}
+		case "copier": {
+			// A copier's body: a pale box on a plinth with its paper drawer (lid, panel and trays: the rig).
+			g.rect(ST_L + 4, -40 + 5, w, 40).fill(SHADOW);
+			g.roundRect(ST_L, -40, w, 34, 5).fill(0xf1f3fa).stroke(line(4));
+			g.roundRect(ST_L + 5, -20, w - 10, 9, 3).fill(0xdfe4f2).stroke({ width: 2, color: INK });
+			g.roundRect(-5, -17, 10, 3, 1.5).fill(INK);
+			g.roundRect(ST_L + 2, -7, w - 4, 7, 3).fill(SLAB);
+			break;
+		}
+		case "stamps": {
+			// The QA desk: a small table, its top just under the point (ink pad and forms: the rig).
+			g.rect(ST_L + 4, -38 + 5, w, 38).fill(SHADOW);
+			g.rect(ST_L + 4, -32, 5, 32).rect(ST_R - 9, -32, 5, 32).fill(INK);
+			g.rect(ST_L + 6, -14, w - 12, 3).fill(INK);
+			g.roundRect(ST_L - 2, -38, w + 4, 8, 3).fill(WOOD_TOP).stroke(line(4));
+			break;
+		}
+	}
 }
 
 /** A pill label: white, rounded ends, ink border. */

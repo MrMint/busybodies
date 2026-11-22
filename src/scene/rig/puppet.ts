@@ -366,8 +366,9 @@ export class Puppet extends Container {
 			this.#work.anchor.copyFrom(this.#work.texture.defaultAnchor ?? { x: 0, y: 0 });
 		}
 		this.#back.visible = f.props.back === "chair";
-		// Feet up go on the desk, in front of it; otherwise legs stand behind the body.
-		const up = f.feet === "up";
+		// Feet up go on the desk, in front of it, and a kick swings out in front of the body;
+		// otherwise legs stand behind the body.
+		const up = f.feet === "up" || f.feet === "boot";
 		if (up !== this.#legsUp) {
 			this.#legsUp = up;
 			this.rig.removeChild(this.#legL, this.#legR);

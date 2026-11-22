@@ -6,7 +6,9 @@ import { FEEL, Spring, SpringSet, SUBSTEP_S, Tween, ease, lerp } from "../src/sc
 import { choosePose, frameAt, hash, unit } from "../src/scene/rig/player";
 import { BEAT_MS, HABITS, POSE, POSES, duration } from "../src/scene/rig/poses";
 import { ROLES, roleFor } from "../src/scene/rig/roles";
-import { FACES } from "../src/scene/rig/vocab";
+import { ARMS, FACES, type Arm } from "../src/scene/rig/vocab";
+import { PUPPET_HEIGHT, REACH, STATION, STATION_CREW_PX, handAt, solveArm } from "../src/scene/rig/reach";
+import { STATION_POSE, STATION_REACH } from "../src/scene/director/stations";
 
 describe("frames", () => {
 	test("tokens parse into a complete frame, everything else at rest", () => {
@@ -82,6 +84,69 @@ describe("poses", () => {
 				if (f.say) expect(p.lines).toContain(f.say);
 			}
 		}
+	});
+});
+
+describe("stations", () => {
+	const stationPoses = [...new Set(Object.values(STATION_POSE).flatMap((p) => [p.work, ...(p.bad ? [p.bad] : [])]))];
+
+	test("the working point is STATION_REACH in rig units", () => {
+		expect(STATION.x).toBeCloseTo((STATION_REACH.x * PUPPET_HEIGHT) / STATION_CREW_PX, 6);
+		expect(STATION.y).toBeCloseTo((STATION_REACH.y * PUPPET_HEIGHT) / STATION_CREW_PX, 6);
+	});
+
+	test("every station pose exists: work loops, a bad one plays once, and the queue waits", () => {
+		for (const { work, bad } of Object.values(STATION_POSE)) {
+			// Work loops while the tool runs; posting the PR is one drop.
+			expect(POSE[work]?.play).toBe(work === "mailDrop" ? "once" : "loop");
+			expect(POSE[work]?.trigger).toBe("working");
+			if (bad) expect(POSE[bad]?.play).toBe("once");
+		}
+		expect(POSE.queueWait).toMatchObject({ play: "loop", trigger: "working" });
+	});
+
+	test("each station arm lands its hand (or what it holds) on the point it was solved for", () => {
+		for (const [name, r] of Object.entries(REACH)) {
+			expect(ARMS[name as Arm]).toBeDefined();
+			const at = handAt(name as Arm, r.body, r.side ?? 1, r.grip);
+			const miss = Math.hypot(at.x - r.at.x, at.y - r.at.y);
+			if (miss > 1) throw new Error(`ARMS.${name} misses its point by ${miss.toFixed(1)}: re-solve it, solveArm gives ${JSON.stringify(solveArm(r.at, { ...r }))}`);
+			// Reachable without locking the elbow straight.
+			expect(ARMS[name as Arm][1]).not.toBe(0);
+		}
+	});
+
+	test("a station arm is used with the body and the hand it was solved for", () => {
+		for (const p of POSES) {
+			for (const f of p.frames) {
+				for (const [arm, side] of [[f.armR, 1], [f.armL, -1]] as const) {
+					const r = REACH[arm];
+					if (!r) continue;
+					if (!r.mirror) expect(`${p.name} ${arm} side ${side}`).toBe(`${p.name} ${arm} side ${r.side ?? 1}`);
+					if (!r.torso) expect(`${p.name} ${arm} body ${f.body}`).toBe(`${p.name} ${arm} body ${r.body}`);
+				}
+			}
+		}
+	});
+
+	test("the station's parts are drawn in every frame, and the work changes them", () => {
+		for (const name of stationPoses) for (const f of POSE[name]!.frames) expect(f.props.work).toBeDefined();
+		const states = (name: string) => new Set(POSE[name]!.frames.map((f) => f.props.work));
+		expect(states("fileFolder")).toEqual(new Set(["cabinet", "drawer", "drawerGap"]));
+		expect(states("cardThumb")).toEqual(new Set(["cards", "cardsA", "cardsB", "cardsGap"]));
+		expect(states("copierFeed")).toContain("copy2");
+		expect(states("stampGreen")).toContain("formsOk");
+		expect(states("phone")).toEqual(new Set(["note0", "note1", "note2", "note3", "noteFlip"]));
+		expect(states("shred")).toContain("shredBuzz");
+		// Bad news holds: the copier stays jammed, the form keeps its red mark, the letter stays in.
+		expect(POSE.copierKick!.frames.at(-1)!.props.work).toBe("jammed");
+		expect(POSE.stampRed!.frames.at(-1)!.props.work).toBe("formsNo");
+		expect(POSE.mailDrop!.frames.at(-1)!.props.work).toBe("mail2");
+		// The ink comes off on the form: the rubber is inked going down and dry coming up.
+		const stamp = POSE.stampGreen!.frames;
+		const down = stamp.findIndex((f) => f.armR === "stamp");
+		expect(stamp[down]!.props.right).toBe("stampG");
+		expect(stamp[down + 1]!.props).toMatchObject({ right: "stamp", work: "formsOk" });
 	});
 });
 

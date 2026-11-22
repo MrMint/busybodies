@@ -5,6 +5,7 @@
 import { Container, Graphics, Text } from "pixi.js";
 import { EYES, FX, HELD, MOUTHS, WORKS } from "./vocab";
 import { ROLES, type Role } from "./roles";
+import { ANCHORS, AT, STATION, WORK } from "./reach";
 
 export interface Palette {
 	ink: number;
@@ -47,44 +48,16 @@ export const PAPER_PALETTE: Palette = {
 /** Project accent colours for the lead's tie and headset (the boards' t-* tints). */
 export const ACCENTS = [0xff8a1f, 0x19b87a, 0x3d7dff, 0xff5c9a, 0x8c5cff] as const;
 
-/** Where the face and limbs attach, in torso space (origin: the middle of the body's base). */
-export const ANCHORS = {
-	eyeX: 16,
-	eyeY: -40,
-	browY: -51,
-	mouthY: -27,
-	cheekX: 31,
-	cheekY: -31,
-	shoulderX: 46,
-	shoulderY: -28,
-	upper: 15,
-	fore: 14,
-	legX: 16,
-	/** Legs hang from here (puppet space) to the ground; the torso stands on them at `base`. */
-	legY: -18,
-	base: -15,
-	bodyTop: -70,
-	frontY: -16,
-} as const;
+// The rig's geometry (where limbs attach, where the work and the stations stand) lives in reach.ts,
+// Pixi-free, so the tests can check the arms against it.
+export { ANCHORS, WORK, STATION } from "./reach";
 
-/** Where the work stands, in puppet space (ground at y = 0, the body centred on x = 0), out front on
- * the side the character faces. vocab.ts ARMS solves the tool hand onto these points, so moving one
- * means re-solving its arms. */
-export const WORK = {
-	/** The sawhorse bench: its plank's ends and top. */
-	benchL: 60,
-	benchR: 104,
-	benchTop: -24,
-	/** The nail, and the top of its head at each stroke: standing up, half in, flush. */
-	nailX: 80,
-	nailTop: [-37, -32, -27],
-	/** The machine's nut. */
-	nut: { x: 82, y: -38 },
-	/** A brick set down on the build, where the palm let go of it. */
-	brick: { x: 60, y: -54 },
-	brickW: 24,
-	brickH: 16,
-} as const;
+/** Station colours: a manila folder, a red mark, the phone's handset, cabinet and copier enamel. */
+const MANILA = 0xf0cf8a;
+const RED = 0xff4d5e;
+const HANDSET = 0xff8a7a;
+const CABINET = 0xc3cadb;
+const COPIER = 0xdfe4ef;
 
 /** Stroke weights. */
 const W = { body: 3.4, part: 2.6, fine: 1.8 };
@@ -457,6 +430,57 @@ export function paperTheme(p: Palette = PAPER_PALETTE): Theme {
 			// On the palm: the hand shows under it.
 			brick(g, 0, -10, WORK.brickW, WORK.brickH, p.wood, ink);
 		},
+		// At the stations. Business ends are where reach.ts GRIP says, so the arms land them.
+		folder: (g) => {
+			// A closed manila folder held up by its bottom edge, a sheet's edge showing at the top.
+			g.roundRect(1, -26, 8, 5, 1.5).fill(MANILA).stroke({ width: 1.6, color: ink });
+			line(g, [-6, -23.5, 8, -23.5], 1.4, 0xffffff);
+			g.roundRect(-8, -23, 18, 23, 1.5).fill(MANILA).stroke({ width: W.fine + 0.2, color: ink });
+			line(g, [-5, -6, 7, -6], 1.2, 0xc99a5a);
+		},
+		card: (g) => {
+			// An index card: a red rule along the top and two lines.
+			g.roundRect(-8, -15, 16, 11, 1).fill(0xffffff).stroke({ width: 1.6, color: ink });
+			line(g, [-6, -12.3, 6, -12.3], 1.2, RED);
+			for (const y of [-9.5, -7]) line(g, [-6, y, 4, y], 1, 0x9aa3bd);
+		},
+		receiver: (g) => {
+			// A telephone handset held at its middle, earpiece and mouthpiece facing the face (to the
+			// right of the left hand), and its curly cord hanging down to the phone.
+			const zig: number[] = [];
+			for (let i = 0; i <= 10; i++) zig.push(1 + (i % 2 ? 2.4 : -2.4) + i * 0.5, 13 + i * 2.2);
+			line(g, zig, 1.3, ink);
+			g.roundRect(-2.6, -11, 5.2, 22, 2.4).fill(HANDSET).stroke({ width: 1.8, color: ink });
+			g.roundRect(-3, -16, 9, 6.5, 2.8).fill(HANDSET).stroke({ width: 1.8, color: ink });
+			g.roundRect(-3, 9.5, 9, 6.5, 2.8).fill(HANDSET).stroke({ width: 1.8, color: ink });
+		},
+		pencil: (g) => {
+			// Held writing: the point down and out at GRIP.pencil.
+			line(g, [-4, -10, 2.6, 5.4], 4.6, ink);
+			line(g, [-4, -10, 2.6, 5.4], 2.6, p.sun);
+			g.circle(-4.3, -10.6, 2).fill(0xff9eb1).stroke({ width: 1.2, color: ink });
+			line(g, [2.6, 5.4, 4, 8], 2.4, p.wood);
+			line(g, [3.5, 6.9, 4, 8], 1.4, ink);
+		},
+		stamp: (g) => stamp(g, 0x7a7f92),
+		stampG: (g) => stamp(g, p.go),
+		stampR: (g) => stamp(g, RED),
+		envelope: (g) => envelope(g, 0, -8, 0),
+		crumple: (g) => {
+			// A jammed sheet, balled up: a lumpy white ball with creases.
+			const r = [6.4, 5.2, 6.8, 5.6, 6.2, 4.9, 6.6, 5.4, 6, 5.1];
+			const pts = r.flatMap((v, i) => [Math.cos((i / r.length) * Math.PI * 2) * v, -6 + Math.sin((i / r.length) * Math.PI * 2) * v]);
+			g.poly(pts).fill(0xffffff).stroke({ width: 1.6, color: ink, join: "round" });
+			line(g, [-3, -9, 0, -6, -1, -2], 1, 0x9aa3bd);
+			line(g, [1, -10, 3, -5, 2, -2], 1, 0x9aa3bd);
+		},
+		slip: (g) => {
+			// A sheet slid flat off the pile, held by its near edge, seen at a slant.
+			g.poly([0, -1.5, 16, -3.5, 17.5, 0.5, 1, 2.5]).fill(0xffffff).stroke({ width: 1.4, color: ink, join: "round" });
+		},
+		feed1: (g) => feedSheet(g, 12),
+		feed2: (g) => feedSheet(g, 7),
+		feed3: (g) => feedSheet(g, 3),
 	};
 	for (const h of HELD) parts[`held/${h}`] = held[h];
 
@@ -477,6 +501,31 @@ export function paperTheme(p: Palette = PAPER_PALETTE): Theme {
 	};
 	parts["prop/plan"] = (g) => plan(g, false);
 	parts["prop/plan2"] = (g) => plan(g, true);
+	// An open folder held in both hands like the blueprint (ARMS.sheet on its top corners), and a
+	// page of it turning: lifted by its corner (ARMS.flip), then laid over to show the next.
+	const folder = (g: Graphics, step: 0 | 1 | 2) => {
+		g.roundRect(18, -17, 9, 5, 1.5).fill(MANILA).stroke({ width: 1.6, color: ink });
+		g.roundRect(-29, -13, 29, 23, 2).fill(MANILA).stroke({ width: W.fine + 0.4, color: ink });
+		g.roundRect(0, -13, 29, 23, 2).fill(MANILA).stroke({ width: W.fine + 0.4, color: ink });
+		const page = (x: number, lines: number[]) => {
+			g.rect(x, -11, 24, 19).fill(0xffffff).stroke({ width: 1.2, color: ink });
+			lines.forEach((w, i) => line(g, [x + 3, -7 + i * 3.6, x + 3 + w, -7 + i * 3.6], 1.2, 0x9aa3bd));
+		};
+		const A = [16, 12, 17, 9];
+		const B = [10, 17, 14, 15];
+		const C = [17, 8, 13, 16];
+		page(-26, step === 2 ? B : A);
+		page(2, step === 0 ? B : C);
+		if (step === 1) {
+			g.poly([1, -11, 19, -21, 14, 3, 1, 8]).fill(0xffffff).stroke({ width: 1.3, color: ink, join: "round" });
+			line(g, [5, -10, 13, -14], 1, 0x9aa3bd);
+			line(g, [5, -5, 12, -8], 1, 0x9aa3bd);
+		}
+		line(g, [0, -13, 0, 10], 1.4, 0xc99a5a);
+	};
+	parts["prop/folder"] = (g) => folder(g, 0);
+	parts["prop/folderT"] = (g) => folder(g, 1);
+	parts["prop/folder2"] = (g) => folder(g, 2);
 	parts["prop/roll"] = (g) => {
 		g.roundRect(-31, -18, 62, 12, 6).fill(0x4f8ff0).stroke({ width: W.part, color: ink });
 		line(g, [-18, -15, 14, -15], 1.4, 0xcfe0ff);
@@ -533,8 +582,287 @@ export function paperTheme(p: Palette = PAPER_PALETTE): Theme {
 		stackL: (g) => (bench(g), stack(g, -1)),
 		stackR: (g) => (bench(g), stack(g, 1)),
 		brick: (g) => brick(g, WORK.brick.x, WORK.brick.y, WORK.brickW, WORK.brickH, p.wood, ink),
+		cabinet: (g) => drawer(g, "shut"),
+		drawer: (g) => drawer(g, "out"),
+		drawerGap: (g) => drawer(g, "gap"),
+		cards: (g) => cardTray(g, 0, false),
+		cardsA: (g) => cardTray(g, AT.cards[1].x, false),
+		cardsB: (g) => cardTray(g, AT.cards[2].x, false),
+		cardsGap: (g) => cardTray(g, AT.cards[2].x, true),
+		copier: (g) => copier(g, {}),
+		lidHalf: (g) => copier(g, { lid: 22 }),
+		lidUp: (g) => copier(g, { lid: 78 }),
+		lidSheet: (g) => copier(g, { lid: 78, sheet: true }),
+		scan: (g) => copier(g, { light: "go", glow: true }),
+		copy1: (g) => copier(g, { light: "go", glow: true, copies: 1 }),
+		copy2: (g) => copier(g, { copies: 2 }),
+		jam: (g) => copier(g, { light: "red", jam: "corner" }),
+		door: (g) => copier(g, { light: "red", door: true, jam: "inside" }),
+		doorTug: (g) => copier(g, { light: "red", door: true, jam: "tugged" }),
+		doorOpen: (g) => copier(g, { light: "red", door: true }),
+		jammed: (g) => copier(g, { light: "red" }),
+		kicked: (g) => copier(g, { light: "red", bang: true }),
+		forms: (g) => forms(g, p.go),
+		formsOk: (g) => forms(g, p.go, "ok"),
+		formsSlid: (g) => forms(g, p.go, "ok", true),
+		formsR: (g) => forms(g, RED),
+		formsNo: (g) => forms(g, RED, "no"),
+		note0: (g) => notepad(g, 0),
+		note1: (g) => notepad(g, 1),
+		note2: (g) => notepad(g, 2),
+		note3: (g) => notepad(g, 3),
+		noteFlip: (g) => notepad(g, 0, true),
+		outbox: (g, add) => add(outbox(g, 0)),
+		mail1: (g, add) => add(outbox(g, 1)),
+		mail2: (g, add) => add(outbox(g, 2)),
+		shred: (g) => shredder(g, 5, false),
+		shred4: (g) => shredder(g, 4, false),
+		shredBuzz: (g) => shredder(g, 4, true),
 	};
 	for (const w of WORKS) parts[`work/${w}`] = work[w];
+
+	// Station parts, laid out around the working point (reach.ts STATION, AT) ----------------------
+	const S = STATION;
+	const at = (q: { x: number; y: number }) => ({ x: S.x + q.x, y: S.y + q.y });
+
+	/** The filing cabinet's top drawer: shut (its bar handle's near end on the working point), or
+	 * pulled out toward the viewer, lower and a little bigger, its folder tabs showing; `gap` is
+	 * missing the folder the hand took. */
+	const drawer = (g: Graphics, state: "shut" | "out" | "gap") => {
+		if (state === "shut") {
+			g.roundRect(S.x - 5, S.y - 6, 30, 13, 2).fill(CABINET).stroke({ width: W.fine + 0.4, color: ink });
+			g.rect(S.x + 6, S.y - 4.4, 8, 3.2).fill(0xffffff).stroke({ width: 1, color: ink });
+			g.roundRect(S.x - 1, S.y - 1.3, 20, 2.6, 1.3).fill(p.steel).stroke({ width: 1.4, color: ink });
+			return;
+		}
+		g.rect(S.x - 6, S.y - 6, 32, 5).fill(0x4a5072).stroke({ width: 1.2, color: ink });
+		const tabs = [MANILA, 0xbcd6ff, MANILA, 0xffc2d6, MANILA, 0xc8f0d8];
+		tabs.forEach((c, i) => {
+			const x = S.x - 3 + i * 5;
+			if (state === "gap" && i === 3) return;
+			g.roundRect(x, S.y - 11, 4.4, 7, 1).fill(c).stroke({ width: 1, color: ink });
+		});
+		const o = AT.drawerOut;
+		g.roundRect(S.x - 7, S.y - 2, 34, 14, 2).fill(CABINET).stroke({ width: W.fine + 0.4, color: ink });
+		g.rect(S.x + 6, S.y + 0.4, 8, 3.2).fill(0xffffff).stroke({ width: 1, color: ink });
+		g.roundRect(S.x + o.x - 1, S.y + o.y + 2.2, 20, 2.6, 1.3).fill(p.steel).stroke({ width: 1.4, color: ink });
+	};
+
+	/** The card catalogue's tray, pulled out: a row of cards on edge. Cards nearer than `upTo` are
+	 * flicked forward (leaning toward the character), the fingertip's place; `gap` has the card at
+	 * the fingertip pulled out. */
+	const cardTray = (g: Graphics, upTo: number, gap: boolean) => {
+		for (let i = 0; i < 11; i++) {
+			const x = S.x + i * 2;
+			if (gap && Math.abs(i * 2 - (upTo + 1)) < 1) continue;
+			const a = i * 2 < upTo ? -0.42 : 0;
+			const h = 10;
+			const cx = x + (Math.sin(a) * h) / 2;
+			const cy = S.y - 1 - (Math.cos(a) * h) / 2;
+			g.poly(rotRect(cx, cy, 1.7, h, a)).fill(i % 4 === 2 ? 0xfff3cf : 0xffffff).stroke({ width: 0.8, color: ink });
+		}
+		g.roundRect(S.x - 3, S.y - 1, 26, 9, 1.5).fill(p.wood).stroke({ width: W.fine + 0.2, color: ink });
+		g.rect(S.x + 7, S.y + 0.8, 6, 3).fill(p.sun).stroke({ width: 1, color: ink });
+		g.circle(S.x + 10, S.y + 5.6, 1.6).stroke({ width: 1.2, color: ink });
+	};
+
+	/** The copier's moving parts: its lid (shut, or up `lid` degrees about its hinge), the glass and
+	 * what's on it, the start button and status light, the jam door, the out-tray and its copies. The
+	 * office draws the copier's body under them. */
+	const copier = (
+		g: Graphics,
+		o: { lid?: number; sheet?: boolean; light?: "go" | "red"; glow?: boolean; copies?: 1 | 2; door?: boolean; jam?: "corner" | "inside" | "tugged"; bang?: boolean },
+	) => {
+		const lidLen = 30;
+		// The out-tray on the far side, and the copies in it.
+		g.poly([S.x + 36, S.y + 8, S.x + 52, S.y + 5, S.x + 52.5, S.y + 7.5, S.x + 36, S.y + 11]).fill(COPIER).stroke({ width: 1.6, color: ink, join: "round" });
+		if (o.copies === 1) g.poly([S.x + 34, S.y + 6.5, S.x + 45, S.y + 4.6, S.x + 45.4, S.y + 6.6, S.x + 34, S.y + 8.6]).fill(0xffffff).stroke({ width: 1.2, color: ink });
+		if (o.copies === 2) {
+			for (let k = 0; k < 3; k++) {
+				const d = -k * 1.3;
+				g.poly([S.x + 38, S.y + 8 + d, S.x + 51, S.y + 5.6 + d, S.x + 51.3, S.y + 6.8 + d, S.x + 38, S.y + 9.2 + d]).fill(0xffffff).stroke({ width: 1, color: ink });
+			}
+		}
+		// The control plate: the start button and the status light.
+		const b = at(AT.button);
+		g.roundRect(b.x - 4, b.y - 3, 15, 6, 1.5).fill(0x56628a).stroke({ width: 1.2, color: ink });
+		g.circle(b.x, b.y, 2.4).fill(o.light === "go" ? p.go : 0xcfd6e6).stroke({ width: 1.2, color: ink });
+		g.circle(b.x + 7, b.y, 1.5).fill(o.light === "red" ? RED : o.light === "go" ? p.go : 0x3a3f5c).stroke({ width: 1, color: ink });
+		if (o.light === "red") for (const a of [-2.4, -1.57, -0.74]) line(g, [b.x + 7 + Math.cos(a) * 3, b.y + Math.sin(a) * 3, b.x + 7 + Math.cos(a) * 5, b.y + Math.sin(a) * 5], 1, RED);
+		// The jam door, shut or dropped open on its bottom hinge.
+		const d = at(AT.door);
+		const dl = d.x - 5;
+		const dt = S.y + 12;
+		if (o.door) {
+			g.rect(dl, dt, 24, 11).fill(0x3a3f5c).stroke({ width: 1.4, color: ink });
+			for (const x of [dl + 6, dl + 16]) g.circle(x, dt + 7, 2.2).fill(p.steel).stroke({ width: 1, color: ink });
+			g.poly([dl, dt + 11, dl + 24, dt + 11, dl + 27, dt + 17, dl - 3, dt + 17]).fill(COPIER).stroke({ width: 1.6, color: ink, join: "round" });
+		} else {
+			g.roundRect(dl, dt, 24, 11, 1.5).stroke({ width: 1.2, color: ink, alpha: 0.7 });
+			g.rect(d.x - 1.5, d.y - 1, 3, 2).fill(p.steel).stroke({ width: 1, color: ink });
+		}
+		// The jammed sheet: a crumpled corner at the door's seam, balled up inside, or tugged out.
+		const j = at(AT.jam);
+		if (o.jam === "corner") g.poly([j.x - 3, dt + 0.5, j.x - 1, dt - 4, j.x + 2, dt - 2.5, j.x + 4, dt - 5, j.x + 5, dt + 0.5]).fill(0xffffff).stroke({ width: 1.2, color: ink, join: "round" });
+		if (o.jam === "inside") g.poly([j.x - 4, j.y - 3, j.x, j.y - 5, j.x + 4, j.y - 2, j.x + 3, j.y + 3, j.x - 2, j.y + 4, j.x - 5, j.y + 1]).fill(0xffffff).stroke({ width: 1.2, color: ink, join: "round" });
+		if (o.jam === "tugged") {
+			const e = at(AT.jamOut);
+			const top: number[] = [];
+			const bot: number[] = [];
+			for (let i = 0; i <= 6; i++) {
+				const x = j.x + 3 + ((e.x - j.x - 3) * i) / 6;
+				top.push(x, j.y - 3 + (i % 2 ? -1.2 : 0.4));
+				bot.unshift(x, j.y + 3 + (i % 2 ? 1 : -0.4));
+			}
+			g.poly([...top, ...bot]).fill(0xffffff).stroke({ width: 1.2, color: ink, join: "round" });
+		}
+		// The glass under a lifted lid, and the original laid on it.
+		if (o.lid) {
+			g.rect(S.x, S.y - 1.5, lidLen - 2, 1.5).fill(0x9fe3ff).stroke({ width: 1, color: ink });
+			if (o.sheet) g.rect(S.x + 4, S.y - 3, 18, 1.6).fill(0xffffff).stroke({ width: 1, color: ink });
+		}
+		// The lid, about its hinge at the far end.
+		const hx = S.x + lidLen;
+		const hy = S.y - 2;
+		g.save();
+		g.translateTransform(-hx, -hy).rotateTransform(((o.lid ?? 0) * Math.PI) / 180).translateTransform(hx, hy);
+		g.roundRect(S.x - 1, S.y - 4, lidLen + 1, 4, 1.5).fill(COPIER).stroke({ width: W.fine + 0.2, color: ink });
+		g.rect(S.x - 1, S.y - 3, 3, 2).fill(0x9aa3bd);
+		g.restore();
+		if (o.glow) {
+			// The scan light, leaking out under the lid.
+			g.rect(S.x, S.y - 0.6, lidLen - 2, 1.4).fill(0xd8ffe6);
+			for (const x of [S.x - 2, S.x + lidLen + 1]) line(g, [x, S.y - 1, x + (x < S.x ? -4 : 4), S.y - 2], 1.2, p.go);
+			g.ellipse(S.x + lidLen / 2, S.y, lidLen / 2 + 3, 3).fill({ color: 0xb8ffd0, alpha: 0.35 });
+		}
+		if (o.bang) {
+			// Kicked: an impact at its near foot, and the whole thing rattling.
+			burstAt(g, S.x - 4, -7, 3, 7, ink);
+			for (const [x, y] of [[S.x - 6, S.y + 2], [S.x + lidLen + 6, S.y - 4]] as const) {
+				g.arc(x, y, 4, -2.2, -1).stroke({ width: 1.2, color: ink });
+				g.arc(x, y, 7, -2.2, -1).stroke({ width: 1.2, color: ink, alpha: 0.6 });
+			}
+		}
+	};
+
+	/** The stamp desk: an ink pad (`ink` its colour), a pad of forms, and the done pile. `mark` is
+	 * on the top form once it's stamped; `slid` has it pushed onto the done pile, the next form
+	 * showing under it. Forms are drawn at a slant so their faces (and the marks) show. */
+	const forms = (g: Graphics, inkColour: number, mark?: "ok" | "no", slid = false) => {
+		const form = (x: number, y: number, m?: "ok" | "no") => {
+			g.poly([x - 8.5, y + 1, x + 8, y + 1, x + 11, y - 5.5, x - 5.5, y - 5.5]).fill(0xffffff).stroke({ width: 1.2, color: ink, join: "round" });
+			line(g, [x - 4.5, y - 4.4, x + 7, y - 4.4], 0.8, 0x9aa3bd);
+			if (m) stampMark(g, x + 1, y - 2, m === "ok" ? p.go : RED, m);
+		};
+		// The done pile, far side, a few stamped forms on it.
+		const pile = at({ x: AT.form.x + 18, y: 0 });
+		for (let k = 0; k < 3; k++) form(pile.x + (k % 2) * 0.8, pile.y - k * 1.2);
+		stampMark(g, pile.x + 1.5, pile.y - 4.4, p.go, "ok");
+		// The pad of forms.
+		const f = at(AT.form);
+		for (let k = 2; k >= 1; k--) form(f.x + k * 0.4, f.y + k * 1.1);
+		form(f.x, f.y, slid ? undefined : mark);
+		if (slid) form(f.x + 9, f.y - 1.2, mark);
+		// The ink pad: a tin with the inked felt on top.
+		const i = at(AT.ink);
+		g.roundRect(i.x - 6, i.y - 2, 12, 4.5, 1.2).fill(0x56628a).stroke({ width: 1.6, color: ink });
+		g.roundRect(i.x - 5, i.y - 3, 10, 1.8, 0.8).fill(inkColour).stroke({ width: 1, color: ink });
+	};
+
+	/** The notepad on the phone table, with `n` bits jotted where the pencil went (AT.note); or its
+	 * page flipped over the top, a fresh one under it. */
+	const notepad = (g: Graphics, n: number, flip = false) => {
+		const pad = (dy: number, fill: number) => g.poly([S.x - 8, S.y + 1 + dy, S.x + 14, S.y + 1 + dy, S.x + 16.5, S.y - 4 + dy, S.x - 5.5, S.y - 4 + dy]).fill(fill).stroke({ width: 1.3, color: ink, join: "round" });
+		pad(1.4, 0xc99a6b);
+		pad(0, 0xfff3a8);
+		for (let x = S.x - 4; x <= S.x + 14; x += 3) g.circle(x, S.y - 4, 0.9).fill(ink);
+		const bits = [[S.x - 4, S.x + 1], [S.x + 2, S.x + 7], [S.x + 8, S.x + 12]] as const;
+		for (let k = 0; k < Math.min(n, 3); k++) {
+			const [a, b] = bits[k]!;
+			const y = S.y - 1.5 + (k === 1 ? 0.6 : 0);
+			const pts: number[] = [];
+			for (let x = a; x <= b; x += 1.25) pts.push(x, y + (Math.round((x - a) / 1.25) % 2 ? -0.7 : 0.5));
+			line(g, pts, 0.9, 0x3d7dff);
+		}
+		if (n >= 3) line(g, [S.x - 4, S.y + 0.2, S.x + 12, S.y + 0.2], 0.9, RED);
+		if (flip) {
+			// The used page, flipped up over the binding.
+			g.moveTo(S.x - 5.5, S.y - 4).quadraticCurveTo(S.x - 3, S.y - 13, S.x + 4, S.y - 14).lineTo(S.x + 22, S.y - 12).quadraticCurveTo(S.x + 16, S.y - 10, S.x + 16.5, S.y - 4).closePath()
+				.fill(0xfff3a8).stroke({ width: 1.3, color: ink, join: "round" });
+			line(g, [S.x + 3, S.y - 11.5, S.x + 15, S.y - 10.5], 0.9, 0x3d7dff);
+		}
+	};
+
+	/** The outbox: a wire tray, empty, with an envelope falling into it, or lying in it. */
+	const outbox = (g: Graphics, env: 0 | 1 | 2) => {
+		const t = at(AT.tray);
+		g.rect(t.x - 11, S.y - 4, 30, 4).fill(p.steel).stroke({ width: 1.2, color: ink });
+		if (env === 2) g.poly(rotRect(t.x + 4, S.y - 1.5, 22, 6, -0.05)).fill(0xffffff).stroke({ width: 1.2, color: ink, join: "round" });
+		g.roundRect(t.x - 13, S.y, 34, 6.5, 1.5).fill(0xb8c0d4).stroke({ width: W.fine, color: ink });
+		for (const x of [t.x - 6, t.x + 14]) line(g, [x, S.y + 1.5, x, S.y + 5], 1, 0x8a94ad);
+		const label = text("OUT", 4.6, ink);
+		label.position.set(t.x + 4, S.y + 3.3);
+		if (env === 1) {
+			// Let go: it drops, turning a little, toward the tray.
+			envelope(g, t.x + 4, S.y - 8, -0.22);
+			for (const x of [t.x - 2, t.x + 10]) line(g, [x, S.y - 20, x, S.y - 16], 1.2, ink);
+		}
+		return label;
+	};
+
+	/** The shredder's top: its slot (the working point) and the pile of `n` sheets waiting beside it;
+	 * `buzz` while it's eating one. */
+	const shredder = (g: Graphics, n: number, buzz: boolean) => {
+		const pl = at(AT.pile);
+		for (let k = 0; k < n; k++) g.rect(pl.x - 7 + (k % 2) * 0.6, S.y - 1.2 * (k + 1), 14, 1.2).fill(k % 2 ? 0xf3f4f8 : 0xffffff).stroke({ width: 0.7, color: ink });
+		const s = at(AT.slot);
+		g.roundRect(s.x - 9, s.y - 1.2, 18, 2.4, 1.2).fill(ink);
+		line(g, [s.x - 10, s.y + 2, s.x + 10, s.y + 2], 1, p.steel);
+		if (buzz) {
+			for (const side of [-1, 1]) {
+				const x = s.x + side * 12;
+				line(g, [x, s.y - 3, x + side * 1.5, s.y - 1.5, x, s.y, x + side * 1.5, s.y + 1.5], 1.1, ink);
+				line(g, [x + side * 3.5, s.y - 2, x + side * 5, s.y - 0.5, x + side * 3.5, s.y + 1], 1.1, ink);
+			}
+		}
+	};
+
+	/** A rubber stamp held by its knob, its rubber face (`face` the ink on it) at GRIP.stamp. */
+	const stamp = (g: Graphics, face: number) => {
+		g.rect(-1.8, -5, 3.6, 8).fill(0x8a5a33).stroke({ width: 1.2, color: ink });
+		g.circle(0, -7, 3.4).fill(0x8a5a33).stroke({ width: 1.4, color: ink });
+		g.roundRect(-6.5, 2.5, 13, 4, 1).fill(p.wood).stroke({ width: W.fine, color: ink });
+		g.rect(-5.5, 6.5, 11, 2).fill(face).stroke({ width: 1, color: ink });
+	};
+
+	/** A stamp's mark on a form: a ring with a tick (approved) or a cross (rejected). */
+	const stampMark = (g: Graphics, x: number, y: number, colour: number, kind: "ok" | "no") => {
+		g.ellipse(x, y, 5.4, 2.5).stroke({ width: 1.6, color: colour });
+		if (kind === "ok") line(g, [x - 2.6, y, x - 0.8, y + 1.3, x + 2.8, y - 1.5], 1.5, colour);
+		else {
+			line(g, [x - 2.3, y - 1.3, x + 2.3, y + 1.3], 1.5, colour);
+			line(g, [x + 2.3, y - 1.3, x - 2.3, y + 1.3], 1.5, colour);
+		}
+	};
+
+	/** An envelope, its flap and a stamp, centred at (x, y) and turned `a`. */
+	const envelope = (g: Graphics, x: number, y: number, a: number) => {
+		g.poly(rotRect(x, y, 22, 14, a)).fill(0xffffff).stroke({ width: W.fine, color: ink, join: "round" });
+		const pt = (dx: number, dy: number) => {
+			const c = Math.cos(a);
+			const s = Math.sin(a);
+			return [x + dx * c - dy * s, y + dx * s + dy * c];
+		};
+		line(g, [...pt(-11, -7), ...pt(0, 0.5), ...pt(11, -7)], 1.3, ink);
+		g.poly(rotRect(...(pt(7.2, -3.6) as [number, number]), 3.6, 3.6, a)).fill(0xff5c9a).stroke({ width: 0.9, color: ink });
+		line(g, [...pt(-7, 3), ...pt(1, 3)], 1, 0x9aa3bd);
+	};
+
+	/** A sheet held by its top edge going into the shredder: `len` of it still shows. */
+	const feedSheet = (g: Graphics, len: number) => {
+		g.rect(-7, 1, 14, len).fill(0xffffff).stroke({ width: 1.4, color: ink });
+		for (let y = 4; y < len; y += 3) line(g, [-5, y, 4, y], 1, 0x9aa3bd);
+	};
 
 	/** A machine with a big nut on its face, turned a third of the way between steps. */
 	const machine = (g: Graphics, step: number) => {
@@ -638,6 +966,17 @@ export function paperTheme(p: Palette = PAPER_PALETTE): Theme {
 			const y = WORK.nailTop[0] + 15;
 			for (const a of [-2.7, -2.1, -1.05, -0.45]) line(g, [x + Math.cos(a) * 7, y + Math.sin(a) * 7, x + Math.cos(a) * 13, y + Math.sin(a) * 13], 2, ink);
 		},
+		sigh: (g) => {
+			// A long breath out, drifting from the mouth.
+			const y = ANCHORS.mouthY + 2;
+			for (const [x, dy, r] of [[11, 2, 2.6], [17, 4, 3.6], [24, 3, 4.4]] as const) g.circle(x, y + dy, r).fill({ color: 0xffffff, alpha: 0.9 }).stroke({ width: 1.2, color: ink, alpha: 0.55 });
+		},
+		dusty: (g) => {
+			// Dust shaken off both hands, out in front (ARMS.brushHi/brushLo), in torso space.
+			for (const side of [-1, 1]) {
+				for (const [x, y, r] of [[32, -22, 3], [28, -12, 2.4], [35, -15, 1.8]] as const) g.circle(side * x, y, r).fill({ color: 0xd8d2c4, alpha: 0.9 }).stroke({ width: 1.1, color: ink, alpha: 0.5 });
+			}
+		},
 		cobweb: (g) => {
 			// A web strung from the hat to the air, and a small spider.
 			const cx = -58;
@@ -694,6 +1033,13 @@ function burst(g: Graphics, x: number, y: number, ink: number) {
 	for (let i = 0; i < 8; i++) {
 		const a = (i / 8) * Math.PI * 2;
 		line(g, [x + Math.cos(a) * 9, y + Math.sin(a) * 9, x + Math.cos(a) * 16, y + Math.sin(a) * 16], 2.2, ink);
+	}
+}
+
+function burstAt(g: Graphics, x: number, y: number, r1: number, r2: number, ink: number) {
+	for (let i = 0; i < 7; i++) {
+		const a = Math.PI * (0.55 + (i / 6) * 0.9);
+		line(g, [x + Math.cos(a) * r1, y + Math.sin(a) * r1, x + Math.cos(a) * r2, y + Math.sin(a) * r2], 1.6, ink);
 	}
 }
 

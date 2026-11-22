@@ -97,6 +97,60 @@ export const ARMS = {
 	/** A stung hand flapped. */
 	flap1: [119, 73, 0],
 	flap2: [95, 72, 0],
+	// Stations, solved onto the station's working point (reach.ts REACH says what each is solved
+	// for, and the tests hold them to it). The point is about eye level for a mochi, so most reach
+	// up with the elbow high and the forearm out to the work.
+	/** Filing cabinet: on the drawer's handle, pulling it out, two steps along the folder tabs, a
+	 * folder drawn up out of the drawer, and a page of an open folder lifted to turn it. */
+	grip: [196, -101, 0],
+	pull: [49, 97, 0],
+	tab1: [185, -57, 0],
+	tab2: [169, -39, 0],
+	fetch: [204, -106, 0],
+	flip: [-55, -46, 0],
+	/** Card catalogue: a fingertip stepping along the card tops; a card held up to the eye. */
+	card1: [207, -76, 0],
+	card2: [191, -67, 0],
+	card3: [172, -49, 0],
+	card: [148, 129, 0],
+	/** Copier: under the lid's edge, the lid half up, a sheet over the glass, flat on the glass,
+	 * the lid pressed shut, a finger on the button; the jam door, the jammed sheet, and tugged out. */
+	under: [192, -111, 0],
+	lid: [182, -42, 0],
+	lay: [173, -76, 0],
+	flat: [166, -71, 0],
+	shut: [166, -46, 0],
+	press: [193, -124, 0],
+	door: [31, 133, 0],
+	tug1: [36, 105, 0],
+	tug2: [-2, 107, 0],
+	/** Stamp desk: the stamp over the ink pad, in it, swung over the form, pressed on it, and
+	 * pushing the stamped form aside. */
+	st1: [194, -55, 0],
+	ink: [204, -82, 0],
+	st2: [169, -34, 20],
+	stamp: [163, -44, 0],
+	push1: [186, -60, 0],
+	push2: [161, -31, 0],
+	/** Phone: the receiver at the ear (the left hand), the pencil's point along the notepad. */
+	ear: [138, 137, 0],
+	jot1: [218, -89, 0],
+	jot2: [204, -89, 0],
+	jot3: [184, -70, 0],
+	/** Outbox: an envelope held over the tray, and the hand lifting off it. */
+	post: [179, -74, 0],
+	let: [177, -49, 0],
+	/** Dusting off the hands: both in front, one high and one low, then swapped. */
+	brushHi: [-44, -61, 0],
+	brushLo: [-33, -52, 0],
+	/** Shredder: a finger on the pile's top sheet, sliding it over, and lowering it into the slot. */
+	pick: [184, -83, 0],
+	slide: [204, -89, 0],
+	feed1: [192, -50, 0],
+	feed2: [205, -85, 0],
+	feed3: [211, -106, 0],
+	/** A clipboard held up to read (the left hand), waiting in line. */
+	read: [-25, -76, 0],
 } as const satisfies Record<string, readonly [number, number, number]>;
 export type Arm = keyof typeof ARMS;
 
@@ -112,6 +166,9 @@ export const FEET = {
 	swingL: [22, 0, 10, 0],
 	swingR: [-10, 0, -22, 0],
 	tip: [0, -3.4, 0, -3.4],
+	/** A real kick out front: the right leg swung up toward the work, drawn in front of the body
+	 * (like `up`) so it shows against it. */
+	boot: [4, 0, -104, -9],
 } as const satisfies Record<string, readonly [number, number, number, number]>;
 export type Feet = keyof typeof FEET;
 
@@ -132,6 +189,10 @@ export const BODIES = {
 	leanL: [-3, 0, -9, 1, 1, 0],
 	shakeL: [-6, 0, -5, 1, 1, 0],
 	shakeR: [6, 0, 5, 1, 1, 0],
+	/** Up and in toward a station: its working point is about eye level for a mochi (reach.ts). */
+	up: [4, -3, 0, 1, 1, 0],
+	/** A small nod, listening on the phone. */
+	nod: [1, 1, 4, 1, 1, 0],
 } as const satisfies Record<string, readonly [number, number, number, number, number, number]>;
 export type Body = keyof typeof BODIES;
 
@@ -139,11 +200,16 @@ export type Body = keyof typeof BODIES;
 export const HELD = [
 	"sign", "ok", "trophy", "mag", "clip", "pom", "mug", "hammer", "map", "torch", "brush", "plane", "phone", "paper",
 	"wrench", "bolt", "gear", "brick",
+	// At the stations (reach.ts GRIP says where each one's business end is).
+	"folder", "card", "receiver", "pencil", "stamp", "stampG", "stampR", "envelope", "crumple",
+	/** A sheet slid flat off the shredder's pile, then held by its top edge going into the slot:
+	 * the slot eats it, so less of it shows each step. */
+	"slip", "feed1", "feed2", "feed3",
 ] as const;
 export type Held = (typeof HELD)[number];
 
 /** Things in front of the body: a parcel held in both hands, a sign held overhead, a desk. */
-export const FRONTS = ["box", "pls", "desk", "roll", "plan", "plan2"] as const;
+export const FRONTS = ["box", "pls", "desk", "roll", "plan", "plan2", "folder", "folderT", "folder2"] as const;
 export type Front = (typeof FRONTS)[number];
 
 /** What the work is done on, standing on the floor out front (to the right, the way the character
@@ -155,6 +221,26 @@ export const WORKS = [
 	"crate",
 	"stack", "stackL", "stackR",
 	"brick",
+	// The working parts of a station, at its working point (reach.ts STATION and AT): the office
+	// draws the furniture's body, the rig draws what the hands move and what the work changes.
+	/** Filing cabinet: the top drawer shut, pulled out with its folder tabs, and with one taken. */
+	"cabinet", "drawer", "drawerGap",
+	/** Card catalogue: the tray's cards upright, flicked forward to the fingertip, one pulled. */
+	"cards", "cardsA", "cardsB", "cardsGap",
+	/** Copier: the lid, button and out-tray; the lid half up, up, a sheet on the glass; the scan
+	 * light, a copy coming out, the copies in the tray; jammed (a crumpled corner at the door and
+	 * a red light), the door open, the sheet tugged out, the door empty, still jammed, kicked. */
+	"copier", "lidHalf", "lidUp", "lidSheet", "scan", "copy1", "copy2",
+	"jam", "door", "doorTug", "doorOpen", "jammed", "kicked",
+	/** Stamp desk: an ink pad, a pad of forms and the done pile; green-stamped, slid onto the
+	 * pile; with the red pad, and red-stamped. */
+	"forms", "formsOk", "formsSlid", "formsR", "formsNo",
+	/** Phone table: the notepad, with one, two and three lines jotted, and its page flipped over. */
+	"note0", "note1", "note2", "note3", "noteFlip",
+	/** Outbox: the tray, an envelope falling into it, and lying in it. */
+	"outbox", "mail1", "mail2",
+	/** Shredder: the slot with the pile beside it, one sheet fewer, and buzzing as it eats one. */
+	"shred", "shred4", "shredBuzz",
 ] as const;
 export type Work = (typeof WORKS)[number];
 
@@ -178,6 +264,8 @@ export const FX = [
 	"papers1", "papers2",
 	"cobweb",
 	"hit",
+	/** A sigh's puff from the mouth; dust shaken off the hands. */
+	"sigh", "dusty",
 ] as const;
 export type Fx = (typeof FX)[number];
 

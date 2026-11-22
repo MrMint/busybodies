@@ -6,10 +6,10 @@ import type { Atlas } from "./atlas";
 import { choosePose, hash } from "./player";
 import { Puppet } from "./puppet";
 import { COSTUMES, roleFor } from "./roles";
+import { PUPPET_HEIGHT } from "./reach";
 import { ACCENTS } from "./theme";
 
-/** A standing mochi is about this tall in rig units, ground to the top of the body. */
-export const PUPPET_HEIGHT = 85;
+export { PUPPET_HEIGHT };
 
 const TRIGGER = { busy: "busy", idle: "idle", stalled: "stalled", done: "finished" } as const;
 const MS_PER_TICK = 1000 / 60;
@@ -98,7 +98,7 @@ class RigCharacter implements Character {
 		this.#walkFrom = cue.walk?.elapsed ?? 0;
 		this.#walked = this.#walkFrom;
 		if (cue.walk && this.#walked < cue.walk.ms) {
-			this.puppet.play(cue.walkPose ?? "walk", { snap: first });
+			this.puppet.play(cue.walkPose ?? "walk", { snap: first, tempo: cue.walkTempo });
 			this.#walkTo(this.#walked);
 		} else this.#pose(first);
 	}
@@ -127,7 +127,7 @@ class RigCharacter implements Character {
 		this.#gone = false;
 		this.puppet.visible = true;
 		if (this.moving) {
-			this.puppet.play(this.#cue?.walkPose ?? "walk", { snap: true });
+			this.puppet.play(this.#cue?.walkPose ?? "walk", { snap: true, tempo: this.#cue?.walkTempo });
 			this.#walkTo(this.#walked);
 		} else this.puppet.rewind();
 	}

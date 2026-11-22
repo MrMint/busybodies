@@ -169,7 +169,7 @@ export class Office extends Container {
 		return false;
 	}
 
-	/** True while anyone walks: the app raises the frame rate for it, as for a camera move. */
+	/** True while anyone walks (for the inspector; walks run at the ambient 30 fps, unlike a camera move). */
 	get walking(): boolean {
 		for (const p of this.#people.values()) if (p.moving) return true;
 		return false;
@@ -589,7 +589,7 @@ export class Office extends Container {
 	#bake(res: number): void {
 		this.#res = res;
 		const old = [...this.#textures.values()];
-		const kinds: FurnitureKind[] = ["desk", "chair", "plant", "counter", "cooler", "fridge", "sofa", "table", "cabinet", "pod", "lamp", "screen-lit", "screen-off"];
+		const kinds: FurnitureKind[] = ["desk", "chair", "plant", "counter", "cooler", "fridge", "sofa", "table", "cabinet", "pod", "lamp", "screen-lit", "screen-off", "files", "catalogue", "copier", "stamps"];
 		for (const kind of kinds) {
 			const g = drawFurniture(kind);
 			const b = g.getLocalBounds();
