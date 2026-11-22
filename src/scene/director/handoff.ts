@@ -9,15 +9,17 @@
 // The outbox: when a session opens a PR, its lead walks the envelope to the room's outbox
 // (`envelopeCarry`), drops it in (`mailDrop`), walks back and celebrates.
 import type { Slot } from "../office/world";
+import { HANDOFF as RIG_HANDOFF, PUPPET_HEIGHT } from "../rig/reach";
 import type { StationKind } from "./stations";
 
 export const HANDOFF = {
 	/** The stations whose errand is a folder that can be passed on. */
 	kinds: ["reference", "search"] as StationKind[],
 	pose: "handOff",
-	/** The giver stands this far in front of the taker, facing it (office px, for a 58 px crew
-	 * member): the partner part steps toward it (`at-s2`). */
-	gap: 64,
+	/** The giver stands this far in front of the taker, facing it, in rig units: the rig's own
+	 * staging (`HANDOFF.slot` in rig/reach.ts), so the taker's `at-s2` step leaves an arm's-length
+	 * pass. About 150 px for a 58 px crew member. */
+	gap: RIG_HANDOFF.slot,
 } as const;
 
 export const MAIL = {
@@ -76,7 +78,7 @@ export function pickTaker(giver: { key: string; session: string; kind: StationKi
 
 /** Where the giver stands: in front of the taker, facing it. */
 export function handOffSlot(taker: Slot, size: number): Slot {
-	const gap = Math.round((HANDOFF.gap * size) / 58);
+	const gap = Math.round((HANDOFF.gap * size) / PUPPET_HEIGHT);
 	const x = taker.x + taker.facing * gap;
 	const y = taker.y + 2;
 	return { x, y, depth: y, facing: taker.facing === 1 ? -1 : 1 };
