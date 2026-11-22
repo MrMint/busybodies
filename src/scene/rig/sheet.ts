@@ -131,7 +131,7 @@ export function buildPoseSheet(atlas: Atlas): { sheet: Container; width: number;
 
 	let y = head ? 24 : 0;
 	if (head) {
-		const title = label(`Busybodies · mochi pose sheet${atlas.theme.name === "paper" ? "" : ` · ${atlas.theme.name}`}`, 30, "800");
+		const title = label(`Busybodies · mochi pose sheet${atlas.theme.name === "paper" || atlas.theme.name === "office" ? "" : ` · ${atlas.theme.name}`}`, 30, "800");
 		title.position.set(24, y);
 		sheet.addChild(title);
 		y += 46;

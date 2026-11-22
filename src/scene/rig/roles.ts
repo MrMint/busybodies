@@ -1,5 +1,24 @@
 // The seven role costumes. A role is a body colour, a hat, a front piece and maybe something worn
 // on the face; mochi has no chest to speak of, so the hat and the props carry the role.
+//
+// The part names below are slots, and each theme dresses them its own way, so the costumes are per
+// theme while the puppet stays the same (rig/themes.ts picks the painters):
+//
+//   role      office (office.ts)                          factory (factory.ts)
+//   lead      pompadour, loud tie, headset with foam mic  white hard hat, hi-vis vest, ear defender
+//   builder   spiky hair, pencil behind the ear, tie      striped hard hat, tool belt
+//             flung over the shoulder
+//   scout     high ponytail, lanyard and ID badge         cap with a headlamp, hi-vis bandana
+//   explorer  shades pushed up on gelled hair, fleece     orange hard hat, harness, knee pads
+//             vest with a laser pointer
+//   reviewer  grey bun with a pencil through it,          bun in a hairnet, safety glasses
+//             cardigan, half-moon glasses on a chain
+//   verifier  green accountant's visor over a combover,   bump cap, QA tag, QA armband
+//             pocket protector, sleeve garter
+//   designer  black beret, round glasses, black           welding helmet flipped up, leather scarf
+//             turtleneck
+//
+// (`front/apron` is the builder's front piece whatever the theme draws there, and so on.)
 
 export const ROLES = ["lead", "builder", "scout", "explorer", "reviewer", "verifier", "designer"] as const;
 export type Role = (typeof ROLES)[number];

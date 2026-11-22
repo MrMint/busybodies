@@ -8,7 +8,7 @@ import { choosePose, frameAt, hash, unit } from "../src/scene/rig/player";
 import { BEAT_MS, HABITS, POSE, POSES, duration } from "../src/scene/rig/poses";
 import { ROLES, roleFor } from "../src/scene/rig/roles";
 import { ARMS, FACES, SPOTS, type Arm } from "../src/scene/rig/vocab";
-import { HANDOFF, PUPPET_HEIGHT, REACH, STATION, STATION_CREW_PX, TRAY, handAt, solveArm } from "../src/scene/rig/reach";
+import { HANDOFF, PUPPET_HEIGHT, REACH, STATION, STATION_CREW_PX, TRAY, WORK, handAt, solveArm } from "../src/scene/rig/reach";
 import { STATION_POSE, STATION_REACH } from "../src/scene/director/stations";
 
 describe("frames", () => {
@@ -598,5 +598,57 @@ describe("themes", async () => {
 		const { width, height } = pack(bounds, ATLAS_WIDTH, PAD);
 		expect(width * RESOLUTION).toBeLessThanOrEqual(4096);
 		expect(height * RESOLUTION).toBeLessThanOrEqual(4096);
+	});
+
+	describe("the office", async () => {
+		const { officeTheme, OFFICE_REPAINTS, OFFICE_EXTRAS } = await import("../src/scene/rig/office");
+		const { rigTheme } = await import("../src/scene/rig/themes");
+		const office = officeTheme();
+		const officeBox = measure(office);
+		const repainted = new Set<string>(OFFICE_REPAINTS);
+
+		test("the office's rig is the office theme; the factory keeps its own", () => {
+			expect(rigTheme("office").name).toBe("office");
+			expect(rigTheme("factory").name).toBe("factory");
+		});
+
+		test("the office repaints the costumes and the builder's work by name, and nothing else", () => {
+			for (const name of Object.keys(paper.parts)) expect(office.parts[name], name).toBeDefined();
+			for (const name of OFFICE_REPAINTS) {
+				expect(paper.parts[name], `${name} is a paper part`).toBeDefined();
+				expect(office.parts[name], `${name} is repainted`).not.toBe(paper.parts[name]);
+			}
+			for (const name of Object.keys(paper.parts)) if (!repainted.has(name)) expect(officeBox.get(name), name).toEqual(paperBox.get(name)!);
+			expect(Object.keys(office.parts).filter((n) => !paper.parts[n]).sort()).toEqual([...OFFICE_EXTRAS].sort());
+			// No hard hat, apron, kerchief or pith helmet is left in the office: every hat and front piece is its own.
+			for (const n of Object.keys(paper.parts).filter((n) => /^(hat|front)\//.test(n))) expect(repainted.has(n), n).toBe(true);
+		});
+
+		test("every piece of construction gear is repainted, and the factory keeps it", () => {
+			const gear = ["held/hammer", "held/wrench", "held/bolt", "held/gear", "held/brick", "work/nail1", "work/nail2", "work/nail3", "work/bent", "work/nut1", "work/nut2", "work/nut3", "work/crate", "work/stack", "work/stackL", "work/stackR", "work/brick", "prop/plan", "prop/plan2", "prop/roll"];
+			for (const n of gear) expect(repainted.has(n), n).toBe(true);
+			for (const n of ["held/hammer", "work/nail1", "work/stack", "work/brick", "work/nut1"]) expect(factoryBox.get(n), n).toEqual(paperBox.get(n)!);
+		});
+
+		test("a repainted prop keeps its size and its working ends, so the solved reaches still land", () => {
+			for (const [name, b] of officeBox) expect(b.x1 - b.x0, name).toBeGreaterThan(0);
+			// Except where no hand meets the prop's far edge: the laser pointer's beam is thinner than the
+			// torch's cone (the hand holds the pen, where the torch's handle was).
+			const free = new Set(["held/torch"]);
+			for (const name of OFFICE_REPAINTS.filter((n) => /^(work|held|prop)\//.test(n) && !free.has(n))) {
+				const a = paperBox.get(name)!;
+				const b = officeBox.get(name)!;
+				for (const k of ["x0", "y0", "x1", "y1"] as const) expect(Math.abs(a[k] - b[k]), `${name} ${k}`).toBeLessThan(6);
+			}
+			// The sheaf's top is where the nail's head was at each strike, so the stapler lands on it.
+			(["work/nail1", "work/nail2", "work/nail3"] as const).forEach((n, i) => expect(Math.abs(officeBox.get(n)!.y0 - WORK.nailTop[i]!), n).toBeLessThan(2.5));
+		});
+
+		test("the office atlas packs within the atlas limits", () => {
+			const bounds = [...officeBox].map(([name, b]) => ({ name, x: b.x0, y: b.y0, width: Math.max(1, b.x1 - b.x0), height: Math.max(1, b.y1 - b.y0) }));
+			const { width, height } = pack(bounds, ATLAS_WIDTH, PAD);
+			expect(width * RESOLUTION).toBeLessThanOrEqual(4096);
+			expect(height * RESOLUTION).toBeLessThanOrEqual(4096);
+		});
 	});
 });
