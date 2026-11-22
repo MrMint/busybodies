@@ -81,6 +81,42 @@ export interface ApiRetry {
 	at: number;
 }
 
+/** How full the session's context is, from the last API request's input tokens. */
+export interface Context {
+	/** Tokens the last request sent: input plus cache reads and writes. */
+	used: number;
+	/** The model's window, when the model is known; no window means no meter. */
+	window?: number;
+	/** Epoch ms of that request. */
+	at: number;
+}
+
+/** What the session (or agent) has changed, as counts only: never paths or text. */
+export interface Changes {
+	/** Distinct files edited or written. */
+	files: number;
+	/** Lines added and removed, from Edit/MultiEdit/Write inputs: an estimate, not a diff. */
+	added: number;
+	removed: number;
+}
+
+/** The latest todo list, as counts only. */
+export interface Todos {
+	pending: number;
+	active: number;
+	done: number;
+}
+
+/** How hard it is working: tool calls and failed tool results in the last `windowMs`. */
+export interface ToolRate {
+	calls: number;
+	errors: number;
+	windowMs: number;
+}
+
+/** A model family, as plain text: never a full model id, never a logo. */
+export type ModelFamily = "fable" | "opus" | "sonnet" | "haiku" | "other";
+
 export type WaitingReason = "permission" | "question" | "plan" | "other";
 
 /** The session is stopped until the person answers. */
@@ -109,6 +145,10 @@ export interface Agent {
 	activity?: Activity;
 	running?: RunningTool;
 	commands?: Commands;
+	/** Plan-next stream A: optional, absent until the watcher fills them. */
+	family?: ModelFamily;
+	changes?: Changes;
+	tools?: ToolRate;
 	children: Agent[];
 }
 
@@ -136,6 +176,12 @@ export interface Session {
 	compactions?: Compactions;
 	cost?: Cost;
 	apiRetry?: ApiRetry;
+	/** Plan-next stream A: optional, absent until the watcher fills them. */
+	family?: ModelFamily;
+	context?: Context;
+	changes?: Changes;
+	todos?: Todos;
+	tools?: ToolRate;
 	agents: Agent[];
 	/** Sessions this one started (side sessions and forks) that are still running. */
 	children: Session[];

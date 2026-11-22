@@ -41,6 +41,44 @@ describe("Anonymizer", () => {
 		expect(s.agents[0]).toMatchObject({ depth: 1, status: "running" });
 	});
 
+	test("passes round-two counts and families through, and nothing else", () => {
+		const sneaky = { path: "/home/me/private/hush/notes.md" };
+		const real = snap(T, [
+			session("s1", "Payroll", "hush", {
+				family: "opus",
+				context: { used: 412_000, window: 1_000_000, at: T - 2000, ...sneaky } as Session["context"],
+				changes: { files: 3, added: 120, removed: 40, ...sneaky } as Session["changes"],
+				todos: { pending: 2, active: 1, done: 4, ...sneaky } as Session["todos"],
+				tools: { calls: 18, errors: 2, windowMs: 60_000, ...sneaky } as Session["tools"],
+				agents: [{ id: "a1", role: "Explore", task: "Payroll", depth: 1, status: "running", lastWriteAt: T, family: "claude-opus-5-5-secret" as never, changes: { files: 1, added: 9, removed: 0 }, tools: { calls: 4, errors: 0, windowMs: 60_000 }, children: [] }],
+			}),
+		]);
+		const out = new Anonymizer().snapshot(real);
+		expect(JSON.stringify(out)).not.toContain("private");
+		const s = out.sessions[0]!;
+		expect(s.family).toBe("opus");
+		expect(s.context).toEqual({ used: 412_000, window: 1_000_000, at: RECORDING_EPOCH - 2000 });
+		expect(s.changes).toEqual({ files: 3, added: 120, removed: 40 });
+		expect(s.todos).toEqual({ pending: 2, active: 1, done: 4 });
+		expect(s.tools).toEqual({ calls: 18, errors: 2, windowMs: 60_000 });
+		const a = s.agents[0]!;
+		expect(a.family).toBeUndefined(); // not a family name: dropped
+		expect(a).toMatchObject({ changes: { files: 1, added: 9, removed: 0 }, tools: { calls: 4, errors: 0, windowMs: 60_000 } });
+	});
+
+	test("round-trips the new fields through a recording", () => {
+		const frame = snap(T, [session("s1", "A", "p", { family: "haiku", context: { used: 9000, at: T - 1000 }, changes: { files: 2, added: 5, removed: 1 }, todos: { pending: 1, active: 0, done: 2 }, tools: { calls: 3, errors: 1, windowMs: 60_000 } })]);
+		const recorded = new Anonymizer().snapshot(frame);
+		const [back] = parseRecording(`${JSON.stringify(recorded)}\n`);
+		expect(back).toEqual(recorded);
+		const shown: Snapshot[] = [];
+		replay([back!], (x) => shown.push(x), { now: () => 50_000, setTimer: (fn) => fn() });
+		const s = shown[0]!.sessions[0]!;
+		// The context's time moves with the frame; the counts don't.
+		expect(shown[0]!.at - s.context!.at).toBe(1000);
+		expect(s).toMatchObject({ family: "haiku", changes: { files: 2, added: 5, removed: 1 }, todos: { pending: 1, active: 0, done: 2 }, tools: { calls: 3, errors: 1, windowMs: 60_000 } });
+	});
+
 	test("is deterministic, and stable across frames", () => {
 		const frames = [snap(T, [session("s1", "A", "p")]), snap(T + 1000, [session("s1", "A", "p"), session("s9", "B", "q")])];
 		const run = () => {

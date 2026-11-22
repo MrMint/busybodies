@@ -2,6 +2,9 @@
 // (layout.ts) computes it from a Snapshot; the view (office.ts) draws it. Nothing here knows about
 // PixiJS, so the layout is unit-tested as plain data. Units are world pixels: a room is 400 tall,
 // as on the FloorBusy board, and the camera scales the whole world to the window.
+import type { StationKind } from "../director/stations";
+import type { Point } from "./slot";
+import { STATION_REACH } from "../director/stations";
 
 export interface Rect {
 	x: number;
@@ -30,7 +33,7 @@ export type Band = "top" | "bottom";
 
 /** A piece of floor furniture. Its base sits at (x, y) and it is depth-sorted with characters. */
 export interface Fixture {
-	kind: "plant" | "chair" | "counter" | "cooler" | "fridge" | "sofa" | "table" | "cabinet" | "pod" | "lamp";
+	kind: "plant" | "chair" | "counter" | "cooler" | "fridge" | "sofa" | "table" | "cabinet" | "pod" | "lamp" | StationFurniture;
 	x: number;
 	y: number;
 	/** Draw order; usually y, the base. */
@@ -87,6 +90,37 @@ export interface Area {
 	wall: WallItem[];
 	/** Named standing spots in common areas: "queue", "cooler", "seat", "nap", "sofa". */
 	spots: Record<string, Slot[]>;
+	/** A project room's shared stations, in the strip along its left wall (see `stationsFor`). */
+	stations: Station[];
+}
+
+/** The office's furniture for each station kind (the office theme). Kinds without one get no station yet. */
+export type StationFurniture = "files" | "catalogue" | "copier" | "stamps";
+export const STATION_FURNITURE: Partial<Record<StationKind, StationFurniture>> = {
+	reference: "files",
+	search: "catalogue",
+	build: "copier",
+	test: "stamps",
+};
+
+/**
+ * A shared station in a project room: a filing cabinet, a copier... Its user stands at `use`, facing
+ * it, with its feet STATION_REACH from the working point `at` (for a crew member STATION_CREW_PX
+ * tall; `useFor` scales it for others); the next ones wait at `queue`. The office draws only the
+ * station's body, with its top surface at the working point's height; the rig draws the moving parts
+ * (drawer, lid, ink pad...) at the working point, so the user always draws in front of the body.
+ */
+export interface Station {
+	/** Stable for the room's life: `<area id>:<kind>:<n>`. */
+	id: string;
+	kind: StationKind;
+	areaId: string;
+	/** The furniture's base: bottom centre, where it meets the floor. */
+	base: Point;
+	/** Where the user's hands go. */
+	at: Point;
+	use: Slot;
+	queue: Slot[];
 }
 
 export interface World {
@@ -110,7 +144,86 @@ export const MIN_ROWS = 2;
 export const MAX_COLS = 4;
 export const COMMON_W = { meeting: 340, lobby: 260, kitchen: 460 } as const;
 
-export const roomWidth = (cols: number) => SIDE * 2 + cols * CELL_W;
+/**
+ * The station strip: a column of shared equipment along a project room's left wall, left of the desk
+ * cells. Stations stand `pitch` apart, counted from the hallway side (a room above the hallway grows
+ * upward, one below grows downward, so the hallway side never moves): adding or trimming a row of
+ * desks never moves a station, and a new station only ever goes on the far end.
+ */
+export const STRIP = {
+	w: 130,
+	pitch: 66,
+	/** A room below the hallway: the first station's base, down from where its floor begins. */
+	first: 80,
+	/** A room above: the first station's base, up from its front edge. */
+	front: 18,
+	/** The tallest station, so the far one stays clear of the back wall's signs. */
+	tall: 76,
+	/** Each station's centre, in from the room's left edge. */
+	x: 45,
+	/** The working point, right of the station's centre (its user stands to its right, facing it). */
+	reach: 20,
+	/** Queue slots per station. */
+	queue: 2,
+} as const;
+
+/** The four every project room gets, from the hallway side; then the extras a big crew earns. */
+export const STATIONS_BASE: StationKind[] = ["build", "test", "reference", "search"];
+export const STATIONS_EXTRA: StationKind[] = ["build", "test", "reference", "search"];
+/** A second station of a kind: one per this many busy crew in the room past the first four. */
+export const STATION_CREW = 4;
+
+/** The crew height in office px that STATION_REACH is measured for (the rig's reach.ts agrees). */
+export const STATION_CREW_PX = 58;
+
+/** Where a user `size` px tall stands at a station: STATION_REACH scaled to its size, so its hands
+ * still meet the working point. Always just in front of the station's body. */
+export function useFor(st: Pick<Station, "at" | "base">, size: number): Slot {
+	const k = size / STATION_CREW_PX;
+	return { x: Math.round(st.at.x + STATION_REACH.x * k), y: Math.round(st.at.y - STATION_REACH.y * k), depth: st.base.y + 1, facing: -1 };
+}
+
+/** How many stations a room's strip holds: it grows with the room's rows. */
+export function stationRoom(area: Pick<Area, "band" | "rect" | "floorY">): number {
+	let n = 0;
+	while (stationBase(area, n) !== undefined) n++;
+	return n;
+}
+
+function stationBase(area: Pick<Area, "band" | "rect" | "floorY">, i: number): Point | undefined {
+	const x = area.rect.x + STRIP.x;
+	if (area.band === "bottom") {
+		const y = area.floorY + STRIP.first + i * STRIP.pitch;
+		return y <= area.rect.y + area.rect.h - FRONT - 14 ? { x, y } : undefined;
+	}
+	const y = area.rect.y + area.rect.h - FRONT - STRIP.front - i * STRIP.pitch;
+	return y - STRIP.tall >= area.floorY - 12 ? { x, y } : undefined;
+}
+
+/**
+ * A project room's stations: the base four, then (with a big crew, and while the strip has room) a
+ * second of each kind in turn. `crew` is the busy crew across the room's sessions.
+ */
+export function stationsFor(area: Pick<Area, "id" | "band" | "rect" | "floorY">, crew: number): Station[] {
+	const room = stationRoom(area);
+	const extra = Math.max(0, Math.floor(crew / STATION_CREW) - 1);
+	const kinds = [...STATIONS_BASE, ...STATIONS_EXTRA.slice(0, extra)].slice(0, room);
+	const seen: Partial<Record<StationKind, number>> = {};
+	return kinds.map((kind, i) => {
+		const base = stationBase(area, i)!;
+		const n = seen[kind] ?? 0;
+		seen[kind] = n + 1;
+		const at = { x: base.x + STRIP.reach, y: base.y + STATION_REACH.y };
+		const use = useFor({ at, base }, STATION_CREW_PX);
+		const queue = Array.from({ length: STRIP.queue }, (_, k): Slot => {
+			const y = use.y + 10 + k * 4;
+			return { x: use.x + 30 + k * 28, y, depth: y, facing: -1 };
+		});
+		return { id: `${area.id}:${kind}:${n}`, kind, areaId: area.id, base, at, use, queue };
+	});
+}
+
+export const roomWidth = (cols: number) => SIDE * 2 + STRIP.w + cols * CELL_W;
 export const roomHeight = (rows: number) => WALL + rows * ROW + FRONT;
 
 /**

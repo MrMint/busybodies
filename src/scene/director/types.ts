@@ -2,6 +2,8 @@
 // world can be compared, logged and replayed.
 import type { Cue, Mood, Walk, Who } from "../office/slot";
 import type { Slot } from "../office/world";
+import type { PaceName } from "./pace";
+import type { Trip } from "./trips";
 import type { Work } from "./work";
 
 export type { Cue, Walk };
@@ -48,6 +50,10 @@ export interface Actor {
 	home?: string;
 	/** The pose it walks in, if not the plain walk (`carry` on the way to the build). */
 	walkPose?: string;
+	/** On a trip: the station it uses or queues for (its crew spot is `home`). */
+	trip?: Trip;
+	/** The pace of the walk under way, when quicker than a stroll (pace.ts). */
+	pace?: PaceName;
 }
 
 /** A brick on its way to the build: one crew builder walks it over, sets it down, walks back. */
@@ -84,6 +90,8 @@ export interface Build {
 	run?: Run;
 	/** When the last run set off: the next waits out the session's cooldown. */
 	ranAt?: number;
+	/** When the recent edits were seen (the last minute): the session's edit rate. */
+	edits?: number[];
 }
 
 /** The signals an actor's pose is chosen from, as last seen. */
@@ -113,4 +121,5 @@ export type WorldEvent =
 	| { type: "handover"; key: string; at: number; to: string }
 	| { type: "review"; key: string; at: number; state: "start" | "end" }
 	| { type: "waiting"; key: string; at: number; state: "start" | "end"; area: string }
+	| { type: "trip"; key: string; at: number; station: string; state: "start" | "queue" | "use" | "end" }
 	| { type: "build"; session: string; at: number; pieces: number; change: "start" | "add" | "fall" | "top" | "carry"; key?: string };

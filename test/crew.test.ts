@@ -3,9 +3,12 @@
 import { describe, expect, test } from "bun:test";
 import { RULES, cueFor, direct, runCooldown } from "../src/scene/director/direct";
 import type { World } from "../src/scene/director/types";
+import { PACE, RUNS, editRate, paceOf } from "../src/scene/director/pace";
+import { STATION_POSE, STATION_REACH } from "../src/scene/director/stations";
+import { TRIP } from "../src/scene/director/trips";
 import { WORK, WORK_POSE, nextWork, tempo, workKind } from "../src/scene/director/work";
 import { FloorPlan } from "../src/scene/office/layout";
-import { crewSpots } from "../src/scene/office/world";
+import { STATION_CREW_PX, crewSpots } from "../src/scene/office/world";
 import { POSE, duration } from "../src/scene/rig/poses";
 import { detect } from "../src/scene/sass/detect";
 import type { Agent, Session, Snapshot } from "../src/watcher/model";
@@ -115,14 +118,17 @@ describe("a busy crew", () => {
 		expect(soon.world.actors["a:rel:b0"]!.pose).toBe("blueprint");
 		expect(soon.wake).toBeLessThanOrEqual(T0 + WORK.holdMs);
 		const later = s.step(snap(T0 + WORK.holdMs, [release([builder("b0", "Grep", T0 + 2 * SEC)])]));
-		const a = later.world.actors["a:rel:b0"]!;
-		expect(a.pose).toBe("rummage");
+		expect(later.world.actors["a:rel:b0"]!.pose).toBe("rummage");
+		// Held another hold: off to the card catalogue, thumbing through it.
+		const there = s.step(snap(T0 + 2 * WORK.holdMs, [release([builder("b0", "Grep", T0 + 2 * SEC)])]));
+		const a = there.world.actors["a:rel:b0"]!;
+		expect(a.pose).toBe(STATION_POSE.search.work);
 		// Coasting: same pose, slower, same cue key.
 		const cold = s.step(snap(T0 + 3 * MIN, [release([builder("b0", "Grep", T0 + 2 * SEC)])]));
 		const b = cold.world.actors["a:rel:b0"]!;
-		expect(b.pose).toBe("rummage");
+		expect(b.pose).toBe(STATION_POSE.search.work);
 		expect(b.tempo).toBeLessThan(a.tempo);
-		expect(cueFor(b, T0 + 3 * MIN).key).toBe(cueFor(a, T0 + WORK.holdMs).key);
+		expect(cueFor(b, T0 + 3 * MIN).key).toBe(cueFor(a, T0 + 3 * MIN).key);
 		expect(cueFor(b, T0 + 3 * MIN).tempo).toBe(b.tempo);
 	});
 
@@ -418,3 +424,213 @@ describe("crew spots", () => {
 	});
 });
 
+
+describe("stations and trips", () => {
+	const STATION = (kind: string, n = 0) => `station:room:teapot:${kind}:${n}`;
+	/** Step the crew through `times`, the same crew each time unless `at` changes it. */
+	const run = (s: ReturnType<typeof stage>, times: number[], crew: (t: number) => Agent[], extra: Partial<Session> = {}) =>
+		times.map((t) => s.step(snap(t, [release(crew(t), extra)])));
+
+	test("a held read walks to the filing cabinet, works facing it, and walks back when it edits", () => {
+		const s = stage();
+		const readAt = (t: number) => [builder("b0", t < T0 + 20 * SEC ? "Read" : "Edit", t < T0 + 20 * SEC ? T0 : T0 + 20 * SEC)];
+		const [first, early] = run(s, [T0, T0 + 5 * SEC], readAt);
+		const home = first!.world.actors["a:rel:b0"]!.spot;
+		expect(home).toMatch(/^crew:/);
+		// A single call's worth of reading sends nobody: it has to hold first.
+		expect(early!.world.actors["a:rel:b0"]!.spot).toBe(home);
+		expect(early!.wake).toBeLessThanOrEqual(T0 + TRIP.holdMs);
+		const [go] = run(s, [T0 + TRIP.holdMs], readAt);
+		const b0 = go!.world.actors["a:rel:b0"]!;
+		expect(b0.spot).toBe(STATION("reference"));
+		expect(b0.home).toBe(home);
+		expect(b0.pose).toBe(STATION_POSE.reference.work);
+		expect(b0.trip).toMatchObject({ kind: "reference", queue: 0, since: T0 + TRIP.holdMs });
+		expect(go!.events).toContainEqual({ type: "trip", key: "a:rel:b0", at: T0 + TRIP.holdMs, station: "room:teapot:reference:0", state: "start" });
+		expect(go!.events.some((e) => e.type === "walk" && e.key === "a:rel:b0" && e.to === STATION("reference"))).toBe(true);
+		// It stands facing the station, its feet STATION_REACH from the working point.
+		const floor = new FloorPlan().update(snap(T0, [release(readAt(T0))]));
+		const st = floor.areas.find((a) => a.id === "room:teapot")!.stations.find((x) => x.kind === "reference")!;
+		expect(b0.slot).toEqual(st.use);
+		expect(b0.slot.facing).toBe(-1);
+		expect(st.at.x - b0.slot.x).toBe(-STATION_REACH.x);
+		expect(st.at.y - b0.slot.y).toBe(STATION_REACH.y);
+		// Still reading: it stays. Editing again: back to its own spot.
+		const [stay, back] = run(s, [T0 + 15 * SEC, T0 + 20 * SEC], readAt);
+		expect(stay!.world.actors["a:rel:b0"]!.spot).toBe(STATION("reference"));
+		const b = back!.world.actors["a:rel:b0"]!;
+		expect(b.spot).toBe(home);
+		expect(b.trip).toBeUndefined();
+		expect(back!.events).toContainEqual({ type: "trip", key: "a:rel:b0", at: T0 + 20 * SEC, station: "room:teapot:reference:0", state: "end" });
+		expect(back!.events.some((e) => e.type === "walk" && e.key === "a:rel:b0" && e.to === home)).toBe(true);
+	});
+
+	test("a smaller crew member stands closer, so its hands still meet the working point", () => {
+		const s = stage();
+		const small = (t: number) => [builder("b0", "Read", T0, { depth: 3 })];
+		run(s, [T0], small);
+		const [d] = run(s, [T0 + TRIP.holdMs], small);
+		const b0 = d!.world.actors["a:rel:b0"]!;
+		expect(b0.size).toBeLessThan(STATION_CREW_PX);
+		const floor = new FloorPlan().update(snap(T0, [release(small(T0))]));
+		const st = floor.areas.find((a) => a.id === "room:teapot")!.stations.find((x) => x.kind === "reference")!;
+		const k = b0.size / STATION_CREW_PX;
+		expect(Math.abs(b0.slot.x - st.at.x - STATION_REACH.x * k)).toBeLessThanOrEqual(0.5);
+		expect(Math.abs(st.at.y - b0.slot.y - STATION_REACH.y * k)).toBeLessThanOrEqual(0.5);
+		// Drawn in front of the station's body, whatever its size.
+		expect(b0.slot.depth).toBeGreaterThan(st.base.y);
+	});
+
+	test("a quick look never makes a trip; a finished shell command doesn't send anyone to the copier", () => {
+		const s = stage();
+		// Edits, one Read in between, edits again: the read never holds while it is the tool in hand.
+		const tool = (t: number) => (t === T0 + 7 * SEC ? "Read" : "Edit");
+		const ds = run(s, [T0, T0 + 7 * SEC, T0 + 9 * SEC, T0 + 13 * SEC, T0 + 20 * SEC], (t) => [builder("b0", tool(t), t === T0 + 7 * SEC ? t : T0)]);
+		for (const d of ds) expect(d.world.actors["a:rel:b0"]!.trip).toBeUndefined();
+		// A Bash call that has ended: shell work, but nothing running, so no copier.
+		const t = stage();
+		const done = run(t, [T0, T0 + 10 * SEC], () => [builder("b0", "Bash", T0)]);
+		expect(done[1]!.world.actors["a:rel:b0"]!.pose).toBe("tinker");
+		expect(done[1]!.world.actors["a:rel:b0"]!.trip).toBeUndefined();
+		// While it runs, it goes.
+		const building = run(stage(), [T0, T0 + 10 * SEC], () => [builder("b0", "Bash", T0, { running: { tool: "Bash", since: T0, kind: "build" } })]);
+		expect(building[1]!.world.actors["a:rel:b0"]!.spot).toBe(STATION("build"));
+		expect(building[1]!.world.actors["a:rel:b0"]!.pose).toBe(STATION_POSE.build.work);
+	});
+
+	test("one user per station: the next two queue beside it, a fourth stays at its bench", () => {
+		const s = stage();
+		const readers = (t: number) => ["b0", "b1", "b2", "b3"].map((id, i) => builder(id, i === 0 && t >= T0 + 20 * SEC ? "Edit" : "Read", i === 0 && t >= T0 + 20 * SEC ? t : T0));
+		const [, d] = run(s, [T0, T0 + TRIP.holdMs], readers);
+		const a = (k: string) => d!.world.actors[`a:rel:${k}`]!;
+		expect(a("b0").spot).toBe(STATION("reference"));
+		expect(a("b1").spot).toBe("queue:room:teapot:reference:0:0");
+		expect(a("b2").spot).toBe("queue:room:teapot:reference:0:1");
+		expect(a("b3").spot).toMatch(/^crew:/);
+		expect(a("b1").pose).toBe(TRIP.queuePose);
+		expect(a("b1").trip).toMatchObject({ queue: 1 });
+		expect(d!.events).toContainEqual({ type: "trip", key: "a:rel:b1", at: T0 + TRIP.holdMs, station: "room:teapot:reference:0", state: "queue" });
+		// The user goes back to edit: the line moves up, and the fourth joins the end of it.
+		const [up] = run(s, [T0 + 20 * SEC], readers);
+		const u = (k: string) => up!.world.actors[`a:rel:${k}`]!;
+		expect(u("b0").spot).toMatch(/^crew:/);
+		expect(u("b1").spot).toBe(STATION("reference"));
+		expect(u("b1").pose).toBe(STATION_POSE.reference.work);
+		expect(u("b2").spot).toBe("queue:room:teapot:reference:0:0");
+		expect(u("b3").spot).toBe("queue:room:teapot:reference:0:1");
+		expect(up!.events).toContainEqual({ type: "trip", key: "a:rel:b1", at: T0 + 20 * SEC, station: "room:teapot:reference:0", state: "use" });
+	});
+
+	test("a long build at the copier jams it: the grumpy rule plays the kick", () => {
+		const s = stage();
+		const crew = () => [builder("b0", "Bash", T0, { running: { tool: "Bash", since: T0 - (RULES.longBuildMin + 5) * MIN, kind: "build" } })];
+		const [first, d] = run(s, [T0, T0 + TRIP.holdMs], crew);
+		expect(first!.world.actors["a:rel:b0"]!.pose).toBe("grumpy");
+		expect(d!.world.actors["a:rel:b0"]!.spot).toBe(STATION("build"));
+		expect(d!.world.actors["a:rel:b0"]!.pose).toBe(STATION_POSE.build.bad!);
+	});
+
+	test("a red test at the stamp desk: a red stamp, then the thumb, then back to the bench", () => {
+		const s = stage();
+		const testing = [builder("b0", "Bash", T0, { running: { tool: "Bash", since: T0, kind: "test" } })];
+		run(s, [T0], () => testing);
+		const [at] = run(s, [T0 + TRIP.holdMs], () => testing);
+		expect(at!.world.actors["a:rel:b0"]!.spot).toBe(STATION("test"));
+		expect(at!.world.actors["a:rel:b0"]!.pose).toBe(STATION_POSE.test.work);
+		const red = [builder("b0", "Bash", T0 + 8 * SEC, { commands: { failStreak: 1, repeats: 1, failed: 1, testsFailed: 1, last: { kind: "test", exitCode: 1, at: T0 + 8 * SEC } } })];
+		const [stamp] = run(s, [T0 + 8 * SEC], () => red);
+		const b0 = stamp!.world.actors["a:rel:b0"]!;
+		expect(b0.spot).toBe(STATION("test"));
+		expect(b0.pose).toBe(STATION_POSE.test.bad!);
+		const stampEnd = T0 + 8 * SEC + duration(POSE[STATION_POSE.test.bad!]!.frames);
+		expect(stamp!.wake).toBeLessThanOrEqual(stampEnd);
+		const [thumb] = run(s, [stampEnd], () => red);
+		expect(thumb!.world.actors["a:rel:b0"]!.pose).toBe("thumb");
+		expect(thumb!.world.actors["a:rel:b0"]!.spot).toBe(STATION("test"));
+		const [home] = run(s, [stampEnd + duration(POSE.thumb!.frames)], () => red);
+		expect(home!.world.actors["a:rel:b0"]!.spot).toMatch(/^crew:/);
+	});
+
+	test("a lead on its rounds never visits an empty bench", () => {
+		const crew = (t: number) => six(["Read", "Read", "Read", "Read", "Read", "Read"], T0).map((a) => ({ ...a, lastWriteAt: t }));
+		const s = stage();
+		let visits = 0;
+		for (let t = T0; t < T0 + 2 * RULES.foremanEveryMs; t += SEC) {
+			const d = s.step(snap(t, [release(crew(t))]));
+			const spot = d.world.actors["s:rel"]!.spot;
+			if (!spot.startsWith("visit:")) continue;
+			visits++;
+			expect(d.world.actors[spot.slice(6)]!.trip).toBeUndefined();
+		}
+		expect(visits).toBeGreaterThan(0);
+	});
+
+	test("the same snapshots always give the same trips", () => {
+		const play = () => {
+			const s = stage();
+			const out: unknown[] = [];
+			const tools = ["Read", "Grep", "Edit", "Read", "Grep", "Read"];
+			for (let i = 0; i < 40; i++) {
+				const at = T0 + i * 1500;
+				const crew = six(tools.map((t, k) => ((i + k) % 9 < 5 ? t : "Edit")), at);
+				const d = s.step(snap(at, [release(crew)]));
+				out.push(d.events.filter((e) => e.type === "trip" || e.type === "walk"));
+			}
+			return out;
+		};
+		const a = play();
+		expect(play()).toEqual(a);
+		expect(JSON.stringify(a)).toContain('"type":"trip"');
+	});
+});
+
+describe("pace", () => {
+	test("stroll, jog, run: from the tool rate when the snapshot has it, else from a recent write", () => {
+		const rate = (calls: number) => ({ calls, errors: 0, windowMs: 60_000 });
+		expect(paceOf(undefined, undefined, T0).name).toBe("stroll");
+		expect(paceOf(undefined, T0 - 5 * SEC, T0).name).toBe("jog");
+		expect(paceOf(undefined, T0 - MIN, T0).name).toBe("stroll");
+		expect(paceOf(rate(2), T0 - MIN, T0).name).toBe("stroll");
+		expect(paceOf(rate(PACE.jogPerMin), T0 - MIN, T0).name).toBe("jog");
+		expect(paceOf(rate(PACE.jogPerMin), T0 - SEC, T0).name).toBe("run");
+		expect(paceOf(rate(PACE.runPerMin), undefined, T0).name).toBe("run");
+		expect(paceOf(rate(PACE.runPerMin), undefined, T0).speed).toBeGreaterThan(paceOf(rate(PACE.jogPerMin), undefined, T0).speed);
+	});
+
+	test("a hot crew member gets there sooner, and its steps quicken to match", () => {
+		const trip = (tools?: { calls: number; errors: number; windowMs: number }) => {
+			const s = stage();
+			const crew = [builder("b0", "Read", T0 - 5 * MIN, { lastWriteAt: T0 - 5 * MIN, ...(tools ? { tools } : {}) })];
+			s.step(snap(T0, [release(crew)]));
+			const a = s.step(snap(T0 + TRIP.holdMs, [release(crew)])).world.actors["a:rel:b0"]!;
+			return { ms: a.walk!.ms, cue: cueFor(a, T0 + TRIP.holdMs) };
+		};
+		const calm = trip();
+		const hot = trip({ calls: 30, errors: 0, windowMs: 60_000 });
+		expect(hot.ms).toBeLessThan(calm.ms);
+		expect(Math.abs(hot.ms * PACE.speed.run - calm.ms)).toBeLessThan(5);
+		expect(calm.cue.walkTempo).toBeUndefined();
+		expect(hot.cue.walkTempo).toBe(PACE.speed.run);
+	});
+
+	test("the brick-run cooldown shrinks with the edit rate, to no less than 40%", () => {
+		const calm = runCooldown("rel");
+		expect(runCooldown("rel", RUNS.calmPerMin)).toBe(calm);
+		expect(runCooldown("rel", 12)).toBeLessThan(calm);
+		expect(runCooldown("rel", 200)).toBe(Math.round(calm * RUNS.floor));
+		expect(editRate([T0 - 2 * MIN, T0 - 30 * SEC, T0 - SEC, T0 + SEC], T0)).toBe(2);
+	});
+
+	test("the build remembers its recent edits", () => {
+		const s = stage();
+		let crew = six(["Read", "Read"]);
+		s.step(snap(T0, [release(crew)]));
+		for (let i = 1; i <= 5; i++) {
+			crew = structuredClone(crew);
+			crew[1]!.activity = { tool: "Edit", at: T0 + i * SEC };
+			s.step(snap(T0 + i * SEC, [release(crew)]));
+		}
+		const d = s.step(snap(T0 + 6 * SEC, [release(crew)]));
+		expect(editRate(d.world.builds.rel!.edits, T0 + 6 * SEC)).toBe(5);
+	});
+});

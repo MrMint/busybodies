@@ -4,8 +4,10 @@
 //   ?demo=idle    the same office after hours: everyone idle, every agent finished
 //   ?demo=one     a single session
 //   ?demo=thirty  thirty sessions over eight projects
-//   ?demo=release a release with six builders: tools change, a test goes red, one finishes, a PR;
-//                 builders carry bricks to their crew build (and a two-builder hotfix next door)
+//   ?demo=release a release with six builders: they walk to the room's stations for their work and
+//                 queue for them, a long build kicks the copier, a test goes red at the stamp desk,
+//                 one finishes, a PR; builders carry bricks to their crew build (and a two-builder
+//                 hotfix next door shares the stations)
 //   ?demo=empty   nobody's in; ?demo=nohome: no coding agent found (add &compact for the small window)
 // The clock is fixed, so the same demo always draws the same frames.
 import type { SignText } from "../scene/office/paper";
@@ -124,15 +126,64 @@ function thirty(): Snapshot {
 	return { at: NOW, sessions };
 }
 
-/** A release crew: a lead waiting on six builders, each on a different tool. */
-const RELEASE_TOOLS = ["Edit", "Read", "Grep", "Edit", "Bash", "Write"];
+/** One step of a crew member's day: the tool in hand, and what it has running. */
+type Step = { tool: string; run?: "build" | "test" } | "done";
+type Script = (t: number) => Step;
+
+/**
+ * What each of the release crew has in hand from second `t` of the day. A kind has to hold six
+ * seconds before anyone walks for it, so the first trips set off at 6 s.
+ */
+const RELEASE_SCRIPT: [task: string, script: Script][] = [
+	// Edits all day, at its bench: the brick runs.
+	["Bump the versions", () => ({ tool: "Edit" })],
+	// Reads at the filing cabinet from 6 s, then back to write at 15 s.
+	["Changelog entries", (t) => (t < 15 ? { tool: "Read" } : { tool: "Edit" })],
+	// Runs the export test: at the stamp desk from 12 s; red at 18 s (a red stamp, then the thumb).
+	["Fix the export test", (t) => (t < 3 ? { tool: "Grep" } : t < 18 ? { tool: "Bash", run: "test" } : t < 21 ? { tool: "Bash" } : { tool: "Edit" })],
+	// Reads too: queues at the filing cabinet behind the changelog, gives up to write at 12 s.
+	["Migrate the settings", (t) => (t < 12 ? { tool: "Read" } : { tool: "Edit" })],
+	// A build 25 minutes in: at the copier from 6 s, kicking it; fixed at 27 s.
+	["Build the installer", (t) => (t < 27 ? { tool: "Bash", run: "build" } : { tool: "Edit" })],
+	// Writes, looks things up at the card catalogue from 15 s, finishes at 24 s.
+	["Release notes", (t) => (t < 9 ? { tool: "Write" } : t < 24 ? { tool: "Grep" } : "done")],
+];
+/** The hotfix pair next door shares the room's stations, at a run (a hot tool rate). */
+const HOTFIX_SCRIPT: [task: string, script: Script][] = [
+	["Patch the signing step", (t) => (t < 3 ? { tool: "Read" } : { tool: "Edit" })],
+	// Builds from 3 s: at 12 s it queues at the copier behind the installer build; edits at 21 s.
+	["Retry the upload", (t) => (t < 3 ? { tool: "Read" } : t < 21 ? { tool: "Bash", run: "build" } : { tool: "Edit" })],
+];
+
+/** Put a crew member on its step at `at`. A new tool, or every other beat, is a new call. */
+function perform(a: Agent, step: Step, at: number, fresh: boolean): void {
+	if (step === "done") {
+		a.status = "finished";
+		a.activity = undefined;
+		a.running = undefined;
+		return;
+	}
+	if (a.status !== "running") return;
+	if (fresh || a.activity?.tool !== step.tool) {
+		a.activity = { tool: step.tool, at };
+		a.lastWriteAt = at;
+	}
+	a.running = step.run ? (a.running?.kind === step.run ? a.running : { tool: step.tool, since: at, kind: step.run }) : undefined;
+}
+
+const crewOf = (script: [string, Script][], rate: number) =>
+	script.map(([task, play], i) => {
+		const a: Agent = { ...agent("general-purpose", task), tools: { calls: rate, errors: 0, windowMs: 60_000 } };
+		perform(a, play(0), min(0.05 + i * 0.1), true);
+		return a;
+	});
+
+/** A release crew: a lead waiting on six builders, each on its own errand. */
 function release(): Snapshot {
 	n = 0;
-	const crew = ["Bump the versions", "Changelog entries", "Fix the export test", "Migrate the settings", "Build the installer", "Release notes"].map((task, i) => ({
-		...agent("general-purpose", task),
-		activity: { tool: RELEASE_TOOLS[i]!, at: min(0.05 + i * 0.1) },
-		...(RELEASE_TOOLS[i] === "Bash" ? { running: { tool: "Bash", since: min(0.5), kind: "build" as const } } : {}),
-	}));
+	const crew = crewOf(RELEASE_SCRIPT, 6);
+	// The installer build has been going a while: long enough to jam the copier.
+	crew[4]!.running = { tool: "Bash", since: min(25), kind: "build" };
 	return {
 		at: NOW,
 		sessions: [
@@ -147,10 +198,7 @@ function release(): Snapshot {
 				branch: "fix/installer",
 				activity: { tool: "Task", at: min(0.5) },
 				running: { tool: "Task", since: min(0.5) },
-				agents: ["Patch the signing step", "Retry the upload"].map((task, i) => ({
-					...agent("general-purpose", task),
-					activity: { tool: i ? "Read" : "Edit", at: min(0.3 + i * 0.1) },
-				})),
+				agents: crewOf(HOTFIX_SCRIPT, 24),
 			}),
 			session("Docs sweep", "mossy-docs", "idle", 60, { branch: "docs/sweep" }),
 		],
@@ -158,48 +206,25 @@ function release(): Snapshot {
 }
 
 /**
- * The release, played forward: tools change, edits land, a test goes red, a builder finishes and
- * the PR goes up. A beat every few seconds; every name is invented.
+ * The release, played forward: a beat every 3 s. Crew walk to the stations their work needs and
+ * queue when one is taken (filing cabinet and copier); the long build kicks the copier; a test goes
+ * red at the stamp desk at 18 s; a builder finishes at 24 s; the PR goes up at 33 s. Edits keep
+ * landing, so bricks run to the builds. Every name is invented.
  */
 export function releaseDay(): { after: number; snapshot: Snapshot }[] {
 	let snap = release();
 	const steps: { after: number; snapshot: Snapshot }[] = [];
-	const beat = (after: number, change: (s: Snapshot, at: number) => void) => {
-		snap = structuredClone(snap);
-		snap.at = NOW + after;
-		change(snap, NOW + after);
-		steps.push({ after, snapshot: snap });
-	};
-	const crew = (s: Snapshot) => s.sessions[0]!.agents;
-	const hotfix = (s: Snapshot) => s.sessions[1]!.agents;
-	const use = (a: Agent, tool: string, at: number) => {
-		a.activity = { tool, at };
-		a.lastWriteAt = at;
-		a.running = tool === "Bash" ? { tool, since: at, kind: "test" } : undefined;
-	};
-	const TOOLS = ["Edit", "Read", "Edit", "Grep", "Write", "Bash", "Edit"];
 	for (let i = 1; i <= 12; i++) {
-		beat(i * 3000, (s, at) => {
-			crew(s).forEach((a, k) => {
-				if (a.status !== "running") return;
-				if ((i + k) % 3 === 0) use(a, TOOLS[(i + k) % TOOLS.length]!, at - k * 50);
-			});
-			// The hotfix pair takes turns editing, a beat apart from the release crew.
-			hotfix(s).forEach((a, k) => {
-				if (i >= 2 && (i + k) % 2 === 0) use(a, i % 4 === 3 ? "Read" : "Edit", at - 1500 - k * 50);
-			});
-			if (i === 5) {
-				const a = crew(s)[2]!;
-				a.commands = { failStreak: 1, repeats: 1, failed: 1, testsFailed: 1, last: { kind: "test", exitCode: 1, at } };
-			}
-			if (i === 8) {
-				const a = crew(s)[5]!;
-				a.status = "finished";
-				a.activity = undefined;
-				a.running = undefined;
-			}
-			if (i === 11) s.sessions[0]!.prs = [{ number: 300, url: "https://example.invalid/pull/300", at }];
-		});
+		const t = i * 3;
+		snap = structuredClone(snap);
+		const at = NOW + t * 1000;
+		snap.at = at;
+		const [ship, hotfix] = snap.sessions as [Session, Session];
+		ship.agents.forEach((a, k) => perform(a, RELEASE_SCRIPT[k]![1](t), at - k * 50, (i + k) % 2 === 0));
+		hotfix.agents.forEach((a, k) => perform(a, HOTFIX_SCRIPT[k]![1](t), at - 1500 - k * 50, (i + k) % 2 === 0));
+		if (t === 18) ship.agents[2]!.commands = { failStreak: 1, repeats: 1, failed: 1, testsFailed: 1, last: { kind: "test", exitCode: 1, at } };
+		if (t === 33) ship.prs = [{ number: 300, url: "https://example.invalid/pull/300", at }];
+		steps.push({ after: t * 1000, snapshot: snap });
 	}
 	return steps;
 }

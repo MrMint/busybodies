@@ -83,13 +83,15 @@ function blank(): void {
 	});
 
 	// Ambient motion doesn't need the display's full rate (120 Hz on ProMotion screens). A camera
-	// move and a walk must be smooth, so they get 60 for as long as they last.
+	// move must be smooth (the whole view slides), so it gets 60 for as long as it lasts. Walks stay
+	// at 30: a busy room has someone walking nearly all the time (trips, brick runs, rounds), and a
+	// walker moves a few pixels a frame, which reads fine at 30.
 	const AMBIENT_FPS = 30;
 	const MOVING_FPS = 60;
 	app.ticker.maxFPS = AMBIENT_FPS;
 	app.ticker.add((t) => {
 		office.tick(t.deltaTime);
-		app.ticker.maxFPS = office.moving || office.walking ? MOVING_FPS : AMBIENT_FPS;
+		app.ticker.maxFPS = office.moving ? MOVING_FPS : AMBIENT_FPS;
 		if (!office.animating) app.ticker.stop();
 	});
 
@@ -103,7 +105,7 @@ function blank(): void {
 		stopDemo: undefined as (() => void) | undefined,
 		redraw() {
 			if (office.animating && !scene.frozen) {
-				if (office.moving || office.walking) app.ticker.maxFPS = MOVING_FPS;
+				if (office.moving) app.ticker.maxFPS = MOVING_FPS;
 				if (!app.ticker.started) app.ticker.start();
 			} else {
 				app.render();

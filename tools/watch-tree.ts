@@ -3,7 +3,7 @@
 //   bun tools/watch-tree.ts --once    print one snapshot and exit
 //   bun tools/watch-tree.ts --json    print one snapshot as JSON and exit
 // Output shows your real session titles: keep it in your terminal, never in the repo.
-import type { Agent, Commands, RunningTool, Session, Snapshot } from "../src/watcher/model";
+import type { Agent, Changes, Commands, RunningTool, Session, Snapshot, ToolRate } from "../src/watcher/model";
 import { Watcher } from "../src/watcher/watch";
 
 const ago = (now: number, t: number) => {
@@ -23,12 +23,24 @@ const commandsText = (c?: Commands) => {
 	return ` · ${last}${streak}${retry} · ${c.failed} failed (${c.testsFailed} tests)`;
 };
 
+const k = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(2)}M` : n >= 1000 ? `${(n / 1000).toFixed(0)}k` : String(n));
+const changesText = (c?: Changes) => (c ? `📝 ${c.files} files +${c.added} −${c.removed}` : "");
+const toolsText = (t?: ToolRate) => (t && (t.calls || t.errors) ? `🔥 ${t.calls} calls${t.errors ? ` ${t.errors} errors` : ""}/${Math.round(t.windowMs / 1000)}s` : "");
+/** The counts an agent carries, on its own line. */
+const countsText = (a: Pick<Agent, "family" | "changes" | "tools">) => [a.family ? `🧠 ${a.family}` : "", changesText(a.changes), toolsText(a.tools)].filter(Boolean).join("  ");
+
 function signalsLine(now: number, s: Session): string {
 	const bits: string[] = [];
 	if (s.waiting) bits.push(`🙋 waiting on you (${s.waiting.reason}, ${s.waiting.source}) ${ago(now, s.waiting.since)}`);
 	if (s.apiRetry) bits.push(`🔁 API retry ${s.apiRetry.attempt}${s.apiRetry.max ? `/${s.apiRetry.max}` : ""}`);
 	if (s.prs?.length) bits.push(`🏆 PRs ${s.prs.map((p) => `#${p.number}${p.state ? ` ${p.state.toLowerCase()}` : ""}`).join(", ")}`);
 	if (s.compactions?.count) bits.push(`🗜 compacted ${s.compactions.count}× (last ${ago(now, s.compactions.lastAt ?? now)} ago)`);
+	if (s.family) bits.push(`🧠 ${s.family}`);
+	if (s.context)
+		bits.push(`📚 context ${k(s.context.used)}${s.context.window ? ` / ${k(s.context.window)} (${Math.round((100 * s.context.used) / s.context.window)}%)` : ""}`);
+	if (s.changes) bits.push(changesText(s.changes));
+	if (s.todos) bits.push(`🗒 todos ${s.todos.done}/${s.todos.pending + s.todos.active + s.todos.done} done${s.todos.active ? `, ${s.todos.active} active` : ""}`);
+	if (toolsText(s.tools)) bits.push(toolsText(s.tools));
 	if (s.cost) bits.push(`💸 ${s.cost.usd !== undefined ? `$${s.cost.usd.toFixed(2)} · ` : ""}${(s.cost.outputTokens / 1000).toFixed(1)}k out`);
 	return bits.join("  ");
 }
@@ -40,6 +52,8 @@ function render(snap: Snapshot, w: Watcher): string {
 		for (const a of agents) {
 			const doing = a.activity ? ` · ${a.activity.tool} ${ago(now, a.activity.at)} ago` : "";
 			out.push(`${pad}${STATUS[a.status]} ${a.role}: ${a.task}${a.model ? ` (${a.model})` : ""}${doing}${runningText(now, a.running)}${commandsText(a.commands)}`);
+			const counts = countsText(a);
+			if (counts) out.push(`${pad}     ${counts}`);
 			agentLines(a.children, `${pad}   `);
 		}
 	};

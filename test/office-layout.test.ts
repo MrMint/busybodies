@@ -2,7 +2,8 @@
 // title here is invented.
 import { describe, expect, test } from "bun:test";
 import { FloorPlan } from "../src/scene/office/layout";
-import { type Rect, type World, crewSlot } from "../src/scene/office/world";
+import { STATIONS_BASE, STATION_CREW, STRIP, type Rect, type World, crewSlot } from "../src/scene/office/world";
+import type { Agent } from "../src/watcher/model";
 import type { Session, Snapshot } from "../src/watcher/model";
 
 const PROJECTS = ["lanternfish", "orbit-kit", "breadbox", "mossy-docs", "kettle-api", "pebble", "quokka", "tinsel", "marmot", "fennel"];
@@ -43,6 +44,16 @@ function checkSane(world: World, sessions: Session[]): void {
 			expect(d.cell.y).toBeGreaterThanOrEqual(a.floorY);
 		}
 		for (const f of a.fixtures) expect(f.x > a.rect.x && f.x < a.rect.x + a.rect.w && f.y > a.floorY && f.y < a.rect.y + a.rect.h).toBe(true);
+		// Every project room has its four stations, in the strip left of the desks, users and queues
+		// on the floor.
+		if (a.kind === "project") expect(a.stations.map((st) => st.kind).slice(0, 4)).toEqual(STATIONS_BASE);
+		for (const st of a.stations) {
+			for (const c of a.cells) expect(st.base.x + 30).toBeLessThanOrEqual(c.x);
+			for (const p of [st.use, ...st.queue]) {
+				expect(p.x > a.rect.x && p.x < a.rect.x + a.rect.w && p.y > a.floorY && p.y < a.rect.y + a.rect.h).toBe(true);
+				expect(p.x).toBeLessThan(a.rect.x + STRIP.w + 70);
+			}
+		}
 	}
 	const cells = [...world.desks.values()].map((d) => `${d.cell.x},${d.cell.y}`);
 	expect(new Set(cells).size).toBe(cells.length);
@@ -193,5 +204,44 @@ describe("layout scaling", () => {
 			expect(p.y).toBeLessThanOrEqual(d.cell.y + d.cell.h);
 		}
 		expect(new Set(pts.map((p) => `${p.x},${p.y}`)).size).toBe(pts.length);
+	});
+});
+
+describe("stations", () => {
+	const crew = (count: number): Agent[] =>
+		Array.from({ length: count }, (_, i) => ({ id: `c${i}`, role: "general-purpose", task: "invented", depth: 1, status: "running", lastWriteAt: 0, children: [] }));
+	const where = (w: World, project: string) =>
+		new Map(w.areas.find((a) => a.name === project)!.stations.map((st) => [st.id, JSON.stringify([st.base, st.use, st.queue])]));
+
+	test("stations never move as sessions come and go, above the hallway or below it", () => {
+		for (const project of ["lanternfish", "orbit-kit"]) {
+			const plan = new FloorPlan();
+			// Two projects, so one room is above the hallway and one below.
+			const list = [session("lanternfish"), session("orbit-kit")];
+			const before = where(plan.update(snap(list)), project);
+			expect(before.size).toBe(4);
+			// A room gaining rows (and losing them again) keeps every station where it was.
+			const more = [...list, ...Array.from({ length: 6 }, () => session(project))];
+			const grown = where(plan.update(snap(more)), project);
+			for (const [id, at] of before) expect(grown.get(id)).toBe(at);
+			const back = where(plan.update(snap(list)), project);
+			expect([...back]).toEqual([...before]);
+		}
+	});
+
+	test("a big crew in a room with space gets a second station of a kind, on the far end", () => {
+		const plan = new FloorPlan();
+		const list = Array.from({ length: 7 }, () => session("lanternfish"));
+		const small = plan.update(snap(list)).areas.find((a) => a.name === "lanternfish")!;
+		expect(small.rows).toBeGreaterThanOrEqual(3);
+		expect(small.stations).toHaveLength(4);
+		list[0] = { ...list[0]!, agents: crew(STATION_CREW * 3) };
+		const big = plan.update(snap(list)).areas.find((a) => a.name === "lanternfish")!;
+		expect(big.stations.map((st) => st.id.split(":").slice(2).join(":"))).toEqual(["build:0", "test:0", "reference:0", "search:0", "build:1", "test:1"]);
+		// The first four stay put.
+		for (const st of small.stations) expect(big.stations.find((x) => x.id === st.id)!.base).toEqual(st.base);
+		// A two-row room has no space for more, however big the crew.
+		const tight = new FloorPlan().update(snap([session("pebble", { agents: crew(20) })])).areas.find((a) => a.name === "pebble")!;
+		expect(tight.stations).toHaveLength(4);
 	});
 });

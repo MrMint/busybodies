@@ -372,3 +372,137 @@ place: Setting a brick on the build
    7   260ms  { eyes: 'happy', look: 'right', mouth: 'grin', armL: 'low', armR: 'pat2', work: 'brick' }
    8   260ms  { eyes: 'happy', mouth: 'grin', armL: 'hip', armR: 'hip' }
 
+fileFolder: Flipping through a folder
+  on working, loop; 15 frames, 3380 ms (26 beats)
+   1   260ms  { look: 'right', brows: 'one', mouth: 'small', armL: 'low', armR: 'grip', work: 'cabinet' }
+   2   260ms  { eyes: 'squint', look: 'right', brows: 'flat', mouth: 'blep', armL: 'low', armR: 'pull', body: 'leanL', work: 'drawer' }
+   3   260ms  { look: 'right', brows: 'one', mouth: 'small', armL: 'low', armR: 'tab1', body: 'up', work: 'drawer' }
+   4   130ms  { eyes: 'squint', look: 'right', brows: 'one', mouth: 'blep', armL: 'low', armR: 'tab2', body: 'up', work: 'drawer' }
+   5   130ms  { eyes: 'squint', look: 'right', brows: 'one', mouth: 'blep', armL: 'low', armR: 'tab1', body: 'up', work: 'drawer' }
+   6   130ms  { eyes: 'wide', look: 'right', brows: 'up', mouth: 'small', armL: 'low', armR: 'tab2', body: 'up', work: 'drawer' }
+   7   260ms  { look: 'upR', brows: 'up', mouth: 'small', armL: 'low', armR: 'fetch', body: 'up', holdR: 'folder', work: 'drawerGap' }
+   8   390ms  { look: 'down', brows: 'one', mouth: 'small', armL: 'sheet', armR: 'sheet', front: 'folder', work: 'drawerGap' }
+   9   130ms  { eyes: 'closed', look: 'down', mouth: 'small', armL: 'sheet', armR: 'sheet', front: 'folder', work: 'drawerGap' }
+  10   260ms  { eyes: 'half', look: 'down', brows: 'one', mouth: 'small', armL: 'sheet', armR: 'flip', front: 'folderT', work: 'drawerGap' }
+  11   390ms  { look: 'down', brows: 'up', mouth: 'small', armL: 'sheet', armR: 'sheet', front: 'folder2', work: 'drawerGap' }
+  12   130ms  { eyes: 'happy', look: 'down', mouth: 'grin', armL: 'sheet', armR: 'sheet', front: 'folder2', work: 'drawerGap' }
+  13   260ms  { look: 'right', brows: 'flat', mouth: 'small', armL: 'low', armR: 'tab2', body: 'up', holdR: 'folder', work: 'drawerGap' }
+  14   130ms  { look: 'right', mouth: 'small', armL: 'low', armR: 'pull', body: 'leanL', work: 'drawer' }
+  15   260ms  { eyes: 'happy', look: 'right', mouth: 'grin', armL: 'low', armR: 'grip', work: 'cabinet' }
+
+cardThumb: Thumbing through the card catalogue
+  on working, loop; 12 frames, 2340 ms (18 beats)
+   1   260ms  { look: 'right', brows: 'one', mouth: 'small', armL: 'low', armR: 'card1', body: 'up', work: 'cards' }
+   2   130ms  { eyes: 'squint', look: 'right', brows: 'one', mouth: 'blep', armL: 'low', armR: 'card2', body: 'up', work: 'cardsA' }
+   3   130ms  { eyes: 'squint', look: 'right', brows: 'one', mouth: 'blep', armL: 'low', armR: 'card3', body: 'up', work: 'cardsB' }
+   4   130ms  { eyes: 'squint', look: 'right', brows: 'one', mouth: 'small', armL: 'low', armR: 'card2', body: 'up', work: 'cardsA' }
+   5   130ms  { eyes: 'squint', look: 'right', brows: 'one', mouth: 'blep', armL: 'low', armR: 'card3', body: 'up', work: 'cardsB' }
+   6   130ms  { eyes: 'wide', look: 'right', brows: 'up', mouth: 'small', armL: 'low', armR: 'card3', body: 'up', work: 'cardsB' }
+   7   260ms  { look: 'upR', brows: 'up', mouth: 'small', armL: 'low', armR: 'card', holdR: 'card', work: 'cardsGap' }
+   8   390ms  { eyes: 'squint', look: 'upR', brows: 'angry', mouth: 'pout', armL: 'chin', armR: 'card', holdR: 'card', work: 'cardsGap' }
+   9   130ms  { eyes: 'closed', look: 'upR', brows: 'angry', mouth: 'pout', armL: 'chin', armR: 'card', holdR: 'card', work: 'cardsGap' }
+  10   260ms  { eyes: 'half', look: 'upR', brows: 'flat', mouth: 'flat', armL: 'chin', armR: 'card', holdR: 'card', work: 'cardsGap' }
+  11   130ms  { look: 'right', brows: 'flat', mouth: 'small', armL: 'low', armR: 'card3', body: 'up', holdR: 'card', work: 'cardsGap' }
+  12   260ms  { look: 'right', brows: 'one', mouth: 'small', armL: 'low', armR: 'card3', body: 'up', work: 'cards' }
+
+copierFeed: Feeding the copier
+  on working, loop; 11 frames, 2340 ms (18 beats)
+   1   260ms  { look: 'right', brows: 'one', mouth: 'small', armL: 'low', armR: 'under', holdR: 'paper', work: 'copier' }
+   2   130ms  { eyes: 'squint', look: 'right', brows: 'one', mouth: 'blep', armL: 'low', armR: 'lid', body: 'up', holdR: 'paper', work: 'lidHalf' }
+   3   260ms  { look: 'right', brows: 'up', mouth: 'small', armL: 'low', armR: 'lay', body: 'up', holdR: 'paper', work: 'lidUp' }
+   4   260ms  { look: 'right', brows: 'one', mouth: 'small', armL: 'low', armR: 'flat', body: 'up', work: 'lidSheet' }
+   5   130ms  { look: 'right', brows: 'flat', mouth: 'small', armL: 'low', armR: 'shut', work: 'copier' }
+   6   130ms  { eyes: 'squint', look: 'right', brows: 'one', mouth: 'small', armL: 'low', armR: 'press', work: 'copier' }
+   7   130ms  { eyes: 'wide', look: 'right', brows: 'up', mouth: 'small', armL: 'low', armR: 'press', work: 'scan' }
+   8   260ms  { look: 'right', brows: 'one', mouth: 'small', armL: 'hip', armR: 'hip', work: 'copy1' }
+   9   130ms  { eyes: 'closed', look: 'right', mouth: 'small', armL: 'hip', armR: 'hip', work: 'scan' }
+  10   260ms  { look: 'right', brows: 'one', mouth: 'small', armL: 'hip', armR: 'hip', work: 'copy1' }
+  11   390ms  { eyes: 'happy', look: 'right', mouth: 'grin', armL: 'hip', armR: 'hip', work: 'copy2' }
+
+copierKick: Kicking the jammed copier
+  on working, once; 12 frames, 2990 ms (23 beats)
+   1   130ms  { look: 'right', brows: 'one', mouth: 'small', armL: 'low', armR: 'press', work: 'copier' }
+   2   260ms  { eyes: 'wide', look: 'right', brows: 'up', mouth: 'open', armL: 'low', armR: 'press', work: 'jam' }
+   3   130ms  { eyes: 'squint', look: 'downR', brows: 'one', mouth: 'flat', armL: 'low', armR: 'door', work: 'jam' }
+   4   130ms  { eyes: 'squint', look: 'downR', brows: 'one', mouth: 'flat', armL: 'low', armR: 'door', work: 'door' }
+   5   130ms  { eyes: 'squint', look: 'downR', brows: 'angry', mouth: 'blep', armL: 'low', armR: 'tug1', work: 'door' }
+   6   260ms  { eyes: 'squint', look: 'downR', brows: 'angry', mouth: 'shout', armL: 'out', armR: 'tug2', body: 'leanL', work: 'doorTug' }
+   7   260ms  { eyes: 'wide', look: 'right', brows: 'up', mouth: 'open', armL: 'low', armR: 'card', holdR: 'crumple', work: 'doorOpen' }
+   8   130ms  { eyes: 'half', look: 'right', brows: 'flat', mouth: 'flat', armL: 'low', armR: 'door', work: 'jammed' }
+   9   260ms  { eyes: 'half', look: 'right', brows: 'flat', mouth: 'flat', armL: 'low', armR: 'press', work: 'jammed' }
+  10   260ms  { eyes: 'squint', look: 'right', brows: 'angry', mouth: 'shout', armL: 'out', armR: 'hip', feet: 'boot', body: 'leanL', work: 'kicked' }
+  11   260ms  { eyes: 'squint', look: 'right', brows: 'angry', mouth: 'frown', armL: 'hip', armR: 'hip', work: 'jammed' }
+  12   780ms  { eyes: 'half', look: 'right', brows: 'angry', mouth: 'frown', armL: 'cross', armR: 'cross2', work: 'jammed' }
+
+stampGreen: Stamping it approved
+  on working, loop; 8 frames, 1430 ms (11 beats)
+   1   260ms  { look: 'right', brows: 'one', mouth: 'small', armL: 'low', armR: 'st1', body: 'up', holdR: 'stamp', work: 'forms' }
+   2   130ms  { eyes: 'squint', look: 'right', brows: 'one', mouth: 'blep', armL: 'low', armR: 'ink', body: 'up', holdR: 'stamp', work: 'forms' }
+   3   130ms  { look: 'right', brows: 'one', mouth: 'small', armL: 'low', armR: 'st1', body: 'up', holdR: 'stampG', work: 'forms' }
+   4   130ms  { look: 'right', brows: 'flat', mouth: 'small', armL: 'low', armR: 'st2', body: 'up', holdR: 'stampG', work: 'forms' }
+   5   130ms  { eyes: 'squint', look: 'right', brows: 'angry', mouth: 'flat', armL: 'low', armR: 'stamp', body: 'up', holdR: 'stampG', work: 'forms' }
+   6   260ms  { eyes: 'wide', look: 'right', brows: 'up', mouth: 'small', armL: 'low', armR: 'st2', body: 'up', holdR: 'stamp', work: 'formsOk' }
+   7   130ms  { eyes: 'happy', look: 'right', mouth: 'grin', armL: 'low', armR: 'push1', body: 'up', holdR: 'stamp', work: 'formsOk' }
+   8   260ms  { eyes: 'happy', look: 'right', mouth: 'grin', armL: 'low', armR: 'push2', body: 'up', holdR: 'stamp', work: 'formsSlid' }
+
+stampRed: Stamping it rejected
+  on working, once; 7 frames, 1950 ms (15 beats)
+   1   260ms  { look: 'right', brows: 'flat', mouth: 'flat', armL: 'low', armR: 'st1', body: 'up', holdR: 'stamp', work: 'formsR' }
+   2   130ms  { eyes: 'squint', look: 'right', brows: 'flat', mouth: 'flat', armL: 'low', armR: 'ink', body: 'up', holdR: 'stamp', work: 'formsR' }
+   3   260ms  { look: 'right', brows: 'worry', mouth: 'flat', armL: 'low', armR: 'st2', body: 'up', holdR: 'stampR', work: 'formsR' }
+   4   130ms  { eyes: 'squint', look: 'right', brows: 'angry', mouth: 'frown', armL: 'low', armR: 'stamp', body: 'up', holdR: 'stampR', work: 'formsR' }
+   5   260ms  { eyes: 'half', look: 'right', brows: 'worry', mouth: 'flat', armL: 'low', armR: 'st2', body: 'up', holdR: 'stamp', work: 'formsNo' }
+   6   390ms  { eyes: 'closed', brows: 'worry', mouth: 'small', armL: 'low', armR: 'low', fx: 'sigh', holdR: 'stamp', work: 'formsNo' }
+   7   520ms  { eyes: 'half', look: 'right', brows: 'worry', mouth: 'pout', armL: 'low', armR: 'low', holdR: 'stamp', work: 'formsNo' }
+
+phone: On the phone
+  on working, loop; 13 frames, 2210 ms (17 beats)
+   1   390ms  { eyes: 'half', look: 'upR', brows: 'one', mouth: 'small', armL: 'ear', armR: 'low', holdL: 'receiver', holdR: 'pencil', work: 'note0' }
+   2   130ms  { look: 'upR', brows: 'up', mouth: 'small', armL: 'ear', armR: 'low', body: 'nod', holdL: 'receiver', holdR: 'pencil', work: 'note0' }
+   3   130ms  { look: 'upR', brows: 'up', mouth: 'small', armL: 'ear', armR: 'low', holdL: 'receiver', holdR: 'pencil', work: 'note0' }
+   4   130ms  { look: 'upR', brows: 'up', mouth: 'small', armL: 'ear', armR: 'low', body: 'nod', holdL: 'receiver', holdR: 'pencil', work: 'note0' }
+   5   260ms  { look: 'right', brows: 'one', mouth: 'open', armL: 'ear', armR: 'low', holdL: 'receiver', holdR: 'pencil', work: 'note0' }
+   6   130ms  { eyes: 'squint', look: 'right', brows: 'one', mouth: 'blep', armL: 'ear', armR: 'jot1', body: 'up', holdL: 'receiver', holdR: 'pencil', work: 'note0' }
+   7   130ms  { eyes: 'squint', look: 'right', brows: 'one', mouth: 'blep', armL: 'ear', armR: 'jot2', body: 'up', holdL: 'receiver', holdR: 'pencil', work: 'note1' }
+   8   130ms  { eyes: 'squint', look: 'right', brows: 'one', mouth: 'blep', armL: 'ear', armR: 'jot3', body: 'up', holdL: 'receiver', holdR: 'pencil', work: 'note2' }
+   9   130ms  { look: 'upR', brows: 'up', mouth: 'small', armL: 'ear', armR: 'low', body: 'nod', holdL: 'receiver', holdR: 'pencil', work: 'note2' }
+  10   130ms  { eyes: 'closed', look: 'upR', mouth: 'small', armL: 'ear', armR: 'low', holdL: 'receiver', holdR: 'pencil', work: 'note2' }
+  11   130ms  { look: 'upR', brows: 'up', mouth: 'small', armL: 'ear', armR: 'low', holdL: 'receiver', holdR: 'pencil', work: 'note2' }
+  12   130ms  { eyes: 'squint', look: 'right', brows: 'one', mouth: 'blep', armL: 'ear', armR: 'jot3', body: 'up', holdL: 'receiver', holdR: 'pencil', work: 'note3' }
+  13   260ms  { eyes: 'happy', look: 'right', mouth: 'grin', armL: 'ear', armR: 'jot1', body: 'up', holdL: 'receiver', holdR: 'pencil', work: 'noteFlip' }
+
+mailDrop: Dropping the envelope in the outbox
+  on working, once; 9 frames, 1950 ms (15 beats)
+   1   260ms  { look: 'right', brows: 'one', mouth: 'small', armL: 'low', armR: 'card', holdR: 'envelope', work: 'outbox' }
+   2   260ms  { look: 'right', brows: 'one', mouth: 'small', armL: 'low', armR: 'post', holdR: 'envelope', work: 'outbox' }
+   3   130ms  { eyes: 'wide', look: 'downR', brows: 'up', mouth: 'small', armL: 'low', armR: 'let', work: 'mail1' }
+   4   260ms  { look: 'downR', brows: 'up', mouth: 'small', armL: 'low', armR: 'let', work: 'mail2' }
+   5   130ms  { eyes: 'happy', mouth: 'grin', armL: 'brushHi', armR: 'brushLo', fx: 'dusty', work: 'mail2' }
+   6   130ms  { eyes: 'happy', mouth: 'grin', armL: 'brushLo', armR: 'brushHi', fx: 'dusty', work: 'mail2' }
+   7   130ms  { eyes: 'happy', mouth: 'grin', armL: 'brushHi', armR: 'brushLo', fx: 'dusty', work: 'mail2' }
+   8   130ms  { eyes: 'happy', mouth: 'grin', armL: 'brushLo', armR: 'brushHi', work: 'mail2' }
+   9   520ms  { eyes: 'half', mouth: 'smirk', armL: 'hip', armR: 'hip', work: 'mail2' }
+
+shred: Feeding the shredder
+  on working, loop; 7 frames, 1170 ms (9 beats)
+   1   260ms  { look: 'right', brows: 'one', mouth: 'small', armL: 'low', armR: 'pick', body: 'up', work: 'shred' }
+   2   130ms  { look: 'right', brows: 'one', mouth: 'small', armL: 'low', armR: 'slide', body: 'up', holdR: 'slip', work: 'shred4' }
+   3   130ms  { look: 'right', brows: 'one', mouth: 'small', armL: 'low', armR: 'feed1', body: 'up', holdR: 'feed1', work: 'shred4' }
+   4   130ms  { eyes: 'squint', look: 'right', brows: 'flat', mouth: 'blep', armL: 'low', armR: 'feed2', body: 'up', holdR: 'feed2', work: 'shredBuzz' }
+   5   130ms  { eyes: 'squint', look: 'right', brows: 'flat', mouth: 'blep', armL: 'low', armR: 'feed3', body: 'up', holdR: 'feed3', work: 'shredBuzz' }
+   6   130ms  { eyes: 'closed', look: 'right', mouth: 'smirk', armL: 'low', armR: 'feed3', body: 'up', work: 'shredBuzz' }
+   7   260ms  { eyes: 'half', look: 'right', brows: 'flat', mouth: 'smirk', armL: 'low', armR: 'low', work: 'shred4' }
+
+queueWait: Waiting in line
+  on working, loop; 10 frames, 1950 ms (15 beats)
+   1   390ms  { eyes: 'half', look: 'down', brows: 'flat', mouth: 'flat', armL: 'read', armR: 'low', holdL: 'clip' }
+   2   130ms  { eyes: 'half', look: 'down', brows: 'flat', mouth: 'flat', armL: 'read', armR: 'low', feet: 'tapR', holdL: 'clip' }
+   3   130ms  { eyes: 'half', look: 'down', brows: 'flat', mouth: 'flat', armL: 'read', armR: 'low', holdL: 'clip' }
+   4   130ms  { eyes: 'half', look: 'down', brows: 'flat', mouth: 'flat', armL: 'read', armR: 'low', feet: 'tapR', holdL: 'clip' }
+   5   130ms  { eyes: 'closed', look: 'down', brows: 'flat', mouth: 'flat', armL: 'read', armR: 'low', holdL: 'clip' }
+   6   390ms  { look: 'right', brows: 'one', mouth: 'pout', armL: 'low', armR: 'hip', body: 'leanR', holdL: 'clip' }
+   7   130ms  { eyes: 'side', look: 'right', brows: 'one', mouth: 'pout', armL: 'low', armR: 'hip', feet: 'tapR', body: 'leanR', holdL: 'clip' }
+   8   130ms  { eyes: 'side', look: 'right', brows: 'one', mouth: 'pout', armL: 'low', armR: 'hip', body: 'leanR', holdL: 'clip' }
+   9   130ms  { eyes: 'side', look: 'right', brows: 'one', mouth: 'pout', armL: 'low', armR: 'hip', feet: 'tapR', body: 'leanR', holdL: 'clip' }
+  10   260ms  { eyes: 'half', brows: 'flat', mouth: 'flat', armL: 'low', armR: 'hip', holdL: 'clip' }
+

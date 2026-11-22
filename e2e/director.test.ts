@@ -49,7 +49,7 @@ async function measure(page: Page, ms = 2000) {
 }
 
 describe("walks", () => {
-	test("a walk raises the frame rate while it lasts, then the idle office goes quiet", async () => {
+	test("a walk runs at the ambient 30 fps while it lasts, then the idle office goes quiet", async () => {
 		// The voice is held back (?settle) so the quiet window after the walk measures the walk alone;
 		// the voice has its own budget test below.
 		const page = await open("demo=idle&settle=600000");
@@ -68,7 +68,7 @@ describe("walks", () => {
 		}));
 		expect(during.walking).toEqual(["s:e2e-new"]);
 		expect(during.c.tickerRunning).toBe(true);
-		expect(during.c.maxFPS).toBe(60);
+		expect(during.c.maxFPS).toBe(30);
 		await page.waitForFunction(() => !window.__busybodies!.counters().tickerRunning, undefined, { timeout: 20_000 });
 		const after = await measure(page);
 		expect(after.animationFrames).toBe(0);
@@ -76,6 +76,26 @@ describe("walks", () => {
 		const lead = await page.evaluate(() => window.__busybodies!.entities().find((e) => e.key === "s:e2e-new")!);
 		expect(lead.spot).toBe("desk");
 		expect(lead.walk).toBe("");
+		await page.close();
+	}, T);
+});
+
+describe("trips", () => {
+	test("the release crew walks to the room's stations within the first ten seconds, and queues", async () => {
+		const page = await open("demo=release&settle=600000");
+		await page.waitForFunction(
+			() => {
+				const list = window.__busybodies!.entities();
+				return list.some((e) => String(e.spot).startsWith("station:")) && list.some((e) => String(e.spot).startsWith("queue:"));
+			},
+			undefined,
+			{ timeout: 12_000, polling: 250 },
+		);
+		const at = await page.evaluate(() => window.__busybodies!.entities().filter((e) => /^(station|queue):/.test(String(e.spot))).map((e) => `${e.spot}|${e.cue}`));
+		expect(at.some((s) => s.startsWith("station:room:lanternfish:reference:0|fileFolder"))).toBe(true);
+		expect(at.some((s) => s.startsWith("station:room:lanternfish:build:0|copierKick"))).toBe(true);
+		const trips = await page.evaluate(() => window.__busybodies!.events().filter((e) => e.type === "trip").length);
+		expect(trips).toBeGreaterThan(2);
 		await page.close();
 	}, T);
 });

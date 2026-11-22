@@ -1,8 +1,10 @@
 // Turns real snapshots into shareable ones. Every title, path, branch, id, task and repository is
 // replaced with an invented name; times are shifted to a fixed day. The same input always gets
 // the same names, in order of first appearance, so the structure of a day (who spawned whom, which
-// sessions share a project) survives. Counters, states, tool names and kinds stay as they are.
-import type { Agent, PullRequest, RunningTool, Session, Snapshot } from "./model";
+// sessions share a project) survives. Counters, states, tool names and kinds stay as they are; the
+// count-only fields (context, changes, todos, tool rate) are rebuilt field by field, so nothing
+// but their numbers and a known model family can ride along.
+import type { Agent, Changes, Context, ModelFamily, PullRequest, RunningTool, Session, Snapshot, Todos, ToolRate } from "./model";
 
 /** Recordings start at this instant, whatever day they were made. */
 export const RECORDING_EPOCH = Date.parse("2030-01-07T09:00:00Z");
@@ -14,6 +16,14 @@ const VERBS = ["Fix", "Tidy", "Port", "Draw", "Check", "Rename", "Speed up", "Un
 const BUILTIN_ROLES = new Set(["general-purpose", "Explore", "Plan", "statusline-setup", "claude-code-guide", "agent", "fork", "claude"]);
 const ROLES = ["stream-builder", "scout", "reviewer", "verifier", "designer", "sweeper", "surveyor", "builder"];
 const MODELS = /^(opus|sonnet|haiku|fable|claude-[a-z0-9.-]+|inherit)$/i;
+const FAMILIES = new Set<ModelFamily>(["fable", "opus", "sonnet", "haiku", "other"]);
+
+/** A count: a finite, non-negative whole number, or 0. */
+const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? Math.round(v) : 0);
+const family = (f: unknown) => (FAMILIES.has(f as ModelFamily) ? { family: f as ModelFamily } : {});
+const changes = (c: Changes): Changes => ({ files: n(c.files), added: n(c.added), removed: n(c.removed) });
+const todos = (t: Todos): Todos => ({ pending: n(t.pending), active: n(t.active), done: n(t.done) });
+const tools = (t: ToolRate): ToolRate => ({ calls: n(t.calls), errors: n(t.errors), windowMs: n(t.windowMs) });
 
 /** One anonymizer per recording: it remembers the names it gave out. */
 export class Anonymizer {
@@ -62,6 +72,11 @@ export class Anonymizer {
 			...(s.compactions ? { compactions: { ...s.compactions, ...(s.compactions.lastAt !== undefined ? { lastAt: this.#t(s.compactions.lastAt) } : {}) } } : {}),
 			...(s.cost ? { cost: { ...s.cost } } : {}),
 			...(s.apiRetry ? { apiRetry: { ...s.apiRetry, at: this.#t(s.apiRetry.at) } } : {}),
+			...family(s.family),
+			...(s.context ? { context: this.#context(s.context) } : {}),
+			...(s.changes ? { changes: changes(s.changes) } : {}),
+			...(s.todos ? { todos: todos(s.todos) } : {}),
+			...(s.tools ? { tools: tools(s.tools) } : {}),
 			agents: s.agents.map((a) => this.#agent(a)),
 			children: s.children.map((c) => this.#session(c)),
 		};
@@ -80,8 +95,15 @@ export class Anonymizer {
 			...(a.activity ? { activity: { tool: tool(a.activity.tool), at: this.#t(a.activity.at) } } : {}),
 			...(a.running ? { running: this.#running(a.running) } : {}),
 			...(a.commands ? { commands: { ...a.commands, ...(a.commands.last ? { last: { ...a.commands.last, at: this.#t(a.commands.last.at) } } : {}) } } : {}),
+			...family(a.family),
+			...(a.changes ? { changes: changes(a.changes) } : {}),
+			...(a.tools ? { tools: tools(a.tools) } : {}),
 			children: a.children.map((c) => this.#agent(c)),
 		};
+	}
+
+	#context(c: Context): Context {
+		return { used: n(c.used), ...(c.window !== undefined ? { window: n(c.window) } : {}), at: this.#t(c.at) };
 	}
 
 	#running(r: RunningTool): RunningTool {

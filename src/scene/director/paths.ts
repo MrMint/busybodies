@@ -50,8 +50,9 @@ function dedupe(points: Point[]): Point[] {
 
 export const pathLength = (points: Point[]): number => points.slice(1).reduce((n, p, i) => n + Math.hypot(p.x - points[i]!.x, p.y - points[i]!.y), 0);
 
-/** How long a walk along `points` takes. */
-export const walkMs = (points: Point[]): number => Math.round(clamp((pathLength(points) / WALK_SPEED) * 1000, MIN_WALK_MS, MAX_WALK_MS));
+/** How long a walk along `points` takes, at `speed` times the stroll (a jog, a run: pace.ts). */
+export const walkMs = (points: Point[], speed = 1): number =>
+	Math.round(clamp((pathLength(points) / (WALK_SPEED * speed)) * 1000, MIN_WALK_MS / speed, MAX_WALK_MS / speed));
 
 /** Where a walker is `ms` into a walk of `total` ms along `points`, and which way it faces. */
 export function along(points: Point[], ms: number, total: number): { x: number; y: number; facing: 1 | -1 } {

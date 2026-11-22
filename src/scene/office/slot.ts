@@ -38,8 +38,8 @@ export interface Character {
 	inspect(): Record<string, string | number>;
 	/** Optional: take a cue from the director. */
 	act?(cue: Cue): void;
-	/** Optional: true while walking. The office raises the frame rate for walkers and lets each
-	 * walker keep its own depth. */
+	/** Optional: true while walking. The office lets each walker keep its own depth (walks run at
+	 * the ambient 30 fps). */
 	readonly moving?: boolean;
 	/** Optional: back to the start of its pose, settled (the inspector's freeze, so step(n) is the
 	 * same however long the page ran first). */
@@ -86,4 +86,7 @@ export interface Cue {
 	tempo?: number;
 	/** The pose played while walking (default `walk`): `carry` takes a brick to the crew's build. */
 	walkPose?: string;
+	/** How fast the walk's steps run, matching its pace (a jog 1.3, a run 1.65; pace.ts). The walk's
+	 * `ms` already covers the ground at that pace. */
+	walkTempo?: number;
 }
