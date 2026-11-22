@@ -3,7 +3,7 @@
 // theme reskins the rig by supplying different painters or colours for the same part names; poses
 // and frames never change. Part names are `<layer>/<variant>`; docs/decisions.md lists them.
 import { Container, Graphics, Text } from "pixi.js";
-import { EYES, FX, HELD, MOUTHS } from "./vocab";
+import { EYES, FX, HELD, MOUTHS, WORKS } from "./vocab";
 import { ROLES, type Role } from "./roles";
 
 export interface Palette {
@@ -65,6 +65,25 @@ export const ANCHORS = {
 	base: -15,
 	bodyTop: -70,
 	frontY: -16,
+} as const;
+
+/** Where the work stands, in puppet space (ground at y = 0, the body centred on x = 0), out front on
+ * the side the character faces. vocab.ts ARMS solves the tool hand onto these points, so moving one
+ * means re-solving its arms. */
+export const WORK = {
+	/** The sawhorse bench: its plank's ends and top. */
+	benchL: 60,
+	benchR: 104,
+	benchTop: -24,
+	/** The nail, and the top of its head at each stroke: standing up, half in, flush. */
+	nailX: 80,
+	nailTop: [-37, -32, -27],
+	/** The machine's nut. */
+	nut: { x: 82, y: -38 },
+	/** A brick set down on the build, where the palm let go of it. */
+	brick: { x: 60, y: -54 },
+	brickW: 24,
+	brickH: 16,
 } as const;
 
 /** Stroke weights. */
@@ -419,8 +438,126 @@ export function paperTheme(p: Palette = PAPER_PALETTE): Theme {
 			g.rect(-9, -22, 17, 22).fill(0xffffff).stroke({ width: 1.8, color: ink });
 			for (const y of [-17, -12, -7]) line(g, [-6, y, 5, y], 1.3, 0x9aa3bd);
 		},
+		wrench: (g) => {
+			// Upright about the palm: the handle, and an open jaw 24 up (the arms put it on the nut).
+			g.roundRect(-3.2, -17, 6.4, 21, 3.2).fill(p.steel).stroke({ width: 2, color: ink });
+			g.arc(0, -24, 7.4, Math.PI * 0.62, Math.PI * 2.38).stroke({ width: 7, color: ink, cap: "round" });
+			g.arc(0, -24, 7.4, Math.PI * 0.62, Math.PI * 2.38).stroke({ width: 4, color: p.steel, cap: "round" });
+		},
+		bolt: (g) => {
+			g.rect(-2.2, -12, 4.4, 11).fill(p.steel).stroke({ width: 1.4, color: ink });
+			for (const y of [-9, -6, -3]) line(g, [-2.2, y, 2.2, y - 1.2], 1, ink);
+			g.roundRect(-6, -17, 12, 5.5, 1).fill(p.steel).stroke({ width: 1.8, color: ink });
+		},
+		gear: (g) => {
+			g.star(0, -11, 8, 9.5, 7, 0).fill(p.sun).stroke({ width: 1.8, color: ink, join: "round" });
+			g.circle(0, -11, 2.8).fill(0xffffff).stroke({ width: 1.4, color: ink });
+		},
+		brick: (g) => {
+			// On the palm: the hand shows under it.
+			brick(g, 0, -10, WORK.brickW, WORK.brickH, p.wood, ink);
+		},
 	};
 	for (const h of HELD) parts[`held/${h}`] = held[h];
+
+	// A blueprint held in both hands by its top corners (vocab ARMS.sheet), in torso space.
+	const plan = (g: Graphics, flip: boolean) => {
+		// Held low, under the mouth, so the face stays readable over it.
+		g.roundRect(-29, -14, 58, 25, 2).fill(0x4f8ff0).stroke({ width: W.part, color: ink });
+		// A little house in white lines, and a dimension line beside it. Turned, it stands on its roof.
+		const k = flip ? -1 : 1;
+		const cy = -1;
+		const pts = [-9, 6, -9, -2, 0, -9, 9, -2, 9, 6, -9, 6].map((v, i) => (i % 2 ? cy + v * k : v));
+		line(g, pts, 1.8, 0xffffff);
+		line(g, [-2.5, cy + 6 * k, -2.5, cy + 1 * k, 2.5, cy + 1 * k, 2.5, cy + 6 * k], 1.4, 0xffffff);
+		line(g, [-22, cy - 8 * k, -22, cy + 8 * k], 1.2, 0xcfe0ff);
+		line(g, [15, cy + 8 * k, 23, cy + 8 * k], 1.2, 0xcfe0ff);
+		// The curl along the top edge, where it was rolled.
+		g.roundRect(-30, -17, 60, 6, 3).fill(0x3d7de0).stroke({ width: 2, color: ink });
+	};
+	parts["prop/plan"] = (g) => plan(g, false);
+	parts["prop/plan2"] = (g) => plan(g, true);
+	parts["prop/roll"] = (g) => {
+		g.roundRect(-31, -18, 62, 12, 6).fill(0x4f8ff0).stroke({ width: W.part, color: ink });
+		line(g, [-18, -15, 14, -15], 1.4, 0xcfe0ff);
+		g.ellipse(-31, -12, 3, 6).fill(0xcfe0ff).stroke({ width: 1.6, color: ink });
+		g.ellipse(31, -12, 3, 6).fill(0xcfe0ff).stroke({ width: 1.6, color: ink });
+	};
+
+	// The work, on the floor out front, in puppet space (see WORK). ------------------------------------
+	const bench = (g: Graphics) => {
+		const { benchL: l, benchR: r, benchTop: t } = WORK;
+		line(g, [l + 7, t + 4, l + 3, 0], 4, ink);
+		line(g, [r - 7, t + 4, r - 3, 0], 4, ink);
+		line(g, [l + 5, t + 13, r - 5, t + 13], 3, ink);
+		g.roundRect(l, t, r - l, 6, 2).fill(p.wood).stroke({ width: W.part, color: ink });
+		line(g, [l + 4, t + 3, l + 12, t + 3], 1, 0xb88a4c);
+		line(g, [r - 16, t + 3, r - 6, t + 3], 1, 0xb88a4c);
+	};
+	const nail = (g: Graphics, top: number) => {
+		const x = WORK.nailX;
+		if (top < WORK.benchTop - 3) g.rect(x - 1.7, top + 3, 3.4, WORK.benchTop - top - 3).fill(p.steel).stroke({ width: 1.2, color: ink });
+		g.roundRect(x - 5.5, top, 11, 3.4, 1.2).fill(p.steel).stroke({ width: 1.8, color: ink });
+	};
+	const work: Record<(typeof WORKS)[number], Painter> = {
+		nail1: (g) => (bench(g), nail(g, WORK.nailTop[0])),
+		nail2: (g) => (bench(g), nail(g, WORK.nailTop[1])),
+		nail3: (g) => (bench(g), nail(g, WORK.nailTop[2])),
+		bent: (g) => {
+			// Struck crooked: the nail folded over, and the hammer knocked to the floor.
+			bench(g);
+			const x = WORK.nailX;
+			const t = WORK.benchTop;
+			line(g, [x, t, x, t - 6, x + 8, t - 9], 3.6, ink);
+			line(g, [x, t, x, t - 6, x + 8, t - 9], 1.6, p.steel);
+			g.roundRect(x + 6, t - 13, 3, 8, 1).fill(p.steel).stroke({ width: 1.4, color: ink });
+			line(g, [WORK.benchR + 6, -3, WORK.benchR + 30, -6], 4, 0x8a5a33);
+			g.roundRect(WORK.benchR + 2, -10, 9, 10, 2).fill(p.steel).stroke({ width: 2, color: ink });
+		},
+		nut1: (g) => machine(g, 0),
+		nut2: (g) => machine(g, 1),
+		nut3: (g) => machine(g, 2),
+		crate: (g) => {
+			// A crate of parts: a gear, bolts and a pipe poking out of the top.
+			g.star(64, -22, 8, 8, 6, 0.2).fill(p.sun).stroke({ width: 1.6, color: ink });
+			g.rect(82, -30, 3.6, 10).fill(p.steel).stroke({ width: 1.2, color: ink });
+			g.roundRect(79.5, -32, 8.6, 4, 1).fill(p.steel).stroke({ width: 1.4, color: ink });
+			line(g, [72, -18, 76, -29], 4, ink);
+			line(g, [72, -18, 76, -29], 2, 0xff8a1f);
+			g.roundRect(54, -21, 40, 21, 2.5).fill(p.kraft).stroke({ width: W.part, color: ink });
+			line(g, [55, -11, 93, -11], 1.4, 0xb07a40);
+			line(g, [60, -19, 60, -2], 1.2, 0xb07a40);
+			line(g, [88, -19, 88, -2], 1.2, 0xb07a40);
+		},
+		stack: (g) => (bench(g), stack(g, 0)),
+		stackL: (g) => (bench(g), stack(g, -1)),
+		stackR: (g) => (bench(g), stack(g, 1)),
+		brick: (g) => brick(g, WORK.brick.x, WORK.brick.y, WORK.brickW, WORK.brickH, p.wood, ink),
+	};
+	for (const w of WORKS) parts[`work/${w}`] = work[w];
+
+	/** A machine with a big nut on its face, turned a third of the way between steps. */
+	const machine = (g: Graphics, step: number) => {
+		const { x, y } = WORK.nut;
+		g.roundRect(x - 12, y - 18, 32, 56, 4).fill(0x6f7fa8).stroke({ width: W.part, color: ink });
+		g.roundRect(x - 8, y - 14, 24, 7, 2).fill({ color: 0xffffff, alpha: 0.18 });
+		g.circle(x + 12, y + 14, 2.6).fill(p.go).stroke({ width: 1.2, color: ink });
+		g.circle(x, y, 8.5).fill(0x56628a).stroke({ width: 1.6, color: ink });
+		const a = (step * Math.PI) / 9;
+		g.regularPoly(x, y, 6, 6, a).fill(p.steel).stroke({ width: 1.8, color: ink, join: "round" });
+		g.circle(x, y, 2.2).fill(0x56628a).stroke({ width: 1.2, color: ink });
+	};
+	/** Three bricks stacked on the bench, rocking `tilt` (-1, 0, 1) on a bottom corner. */
+	const stack = (g: Graphics, tilt: number) => {
+		const t = WORK.benchTop;
+		const px = tilt < 0 ? 75 : 93;
+		g.save();
+		g.translateTransform(-px, -t).rotateTransform(tilt * 0.12).translateTransform(px, t);
+		brick(g, 84, t - 5.5, 18, 11, 0x9be3ff, ink);
+		brick(g, 85, t - 16.5, 18, 11, 0xffe58a, ink);
+		brick(g, 83, t - 27.5, 18, 11, 0x8fe3b5, ink);
+		g.restore();
+	};
 
 	// Fronts and backs.
 	parts["prop/box"] = (g) => {
@@ -495,6 +632,12 @@ export function paperTheme(p: Palette = PAPER_PALETTE): Theme {
 			sheet(g, 60, -56, -0.35, ink);
 			sheet(g, -40, -96, -0.1, ink);
 		},
+		hit: (g) => {
+			// The strike, on the nail's head (drawn as if the body stood at y = 0; see WORK).
+			const x = WORK.nailX;
+			const y = WORK.nailTop[0] + 15;
+			for (const a of [-2.7, -2.1, -1.05, -0.45]) line(g, [x + Math.cos(a) * 7, y + Math.sin(a) * 7, x + Math.cos(a) * 13, y + Math.sin(a) * 13], 2, ink);
+		},
 		cobweb: (g) => {
 			// A web strung from the hat to the air, and a small spider.
 			const cx = -58;
@@ -518,6 +661,11 @@ export function paperTheme(p: Palette = PAPER_PALETTE): Theme {
 	for (const f of FX) parts[`fx/${f}`] = fx[f];
 
 	return { name: "paper", palette: p, parts };
+}
+
+function brick(g: Graphics, cx: number, cy: number, w: number, h: number, fill: number, ink: number) {
+	g.roundRect(cx - w / 2, cy - h / 2, w, h, 2).fill(fill).stroke({ width: 2, color: ink });
+	g.rect(cx - w / 2 + 2, cy - h / 2 + 2, w - 4, 2).fill({ color: 0xffffff, alpha: 0.4 });
 }
 
 function drop(g: Graphics, x: number, y: number, fill: number, ink: number, s = 1) {

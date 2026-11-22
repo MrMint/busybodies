@@ -284,6 +284,16 @@ export const NEW_LINES: Line[] = [
 	N("fridge", "n", "Reminder: the sofa is for finished sessions. You know who you are.", "room", "", { place: "fridge", tag: "done" }),
 	N("fridge", "n", "{name} has been mysterious for {min} minutes.", "room", "", { place: "fridge", tag: "stalled" }),
 	N("fridge", "n", "It is late. The mochis are still typing. Somebody call their parents.", "room", "", { place: "fridge", tag: "late" }),
+	// Crew chatter: a big crew talking shop while it works
+	N("chatter", "s", "Pass the clamp.", "builder", "big crew, busy"),
+	N("chatter", "s", "Is this wall load-bearing?", "builder", "big crew, busy"),
+	N("chatter", "s", "Left a bit. No, your left.", "anyone", "big crew, busy"),
+	N("chatter", "t", "Who moved my hammer.", "builder", "big crew, busy"),
+	N("chatter", "s", "Mine compiles. Yours?", "anyone", "big crew, busy"),
+	N("chatter", "s", "That is not a nail. That is a test.", "builder", "big crew, busy"),
+	N("chatter", "t", "If I look busy, nobody gives me the migration.", "anyone", "big crew, busy"),
+	N("chatter", "s", "Somebody touched my file. I can feel it.", "anyone", "big crew, busy"),
+	N("chatter", "s", "Two more nails and it is a release.", "builder", "big crew, busy"),
 	// Late at night
 	N("lateNight", "s", "Is it night? I do not believe in night.", "anyone", "after 23:00"),
 	N("lateNight", "t", "The office is spooky after dark. I love it here.", "anyone", "after 23:00"),

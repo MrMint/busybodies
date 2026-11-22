@@ -678,3 +678,87 @@ the owner's, and it isn't tied to a personal account. Without the variable the w
 to the default token, and the owner merges the release PR by bypassing the required checks, which
 is safe because every change in it already passed CI on `main`. The repository must also allow
 GitHub Actions to create pull requests (Settings → Actions → General).
+
+## 2026-11-22: a busy crew
+
+A release session with six builders looked like six copies of one loop: every busy builder fell
+through to "the role's own work", hammering. The crew now acts out what it is doing, from signals
+the snapshot already carries.
+
+**Builders act out the tool in hand** (`src/scene/director/work.ts`). A running test is poking it
+with a clipboard; any other running shell command is tinkering; Read and web fetches are reading
+the blueprint; Grep, Glob and LS are rummaging with a magnifier; Edit and Write are hammering. A
+new kind shows only after the last has held for 6 seconds, so a burst of tool calls doesn't
+flicker the pose (a wake is booked for when the hold ends). Only builders, for now: the other
+roles' own poses already say what they do. The new poses take the `working` trigger, so
+`choosePose("busy", ...)` still gives a builder the hammer.
+
+**Each busy loop runs at its own pace.** The puppet gained a tempo: frames run faster or slower,
+springs keep real time. It is 1.25 when the character wrote in the last 15 seconds, 1 up to a
+minute, 0.8 after, times a ±8% share from its id so a crew never falls into step (the loop phase
+was already picked from the id). The cue carries the tempo, but its key doesn't, so a new pace
+never restarts a pose.
+
+**Bad news makes the crew look up.** A builder's red test plays `thumb` (it hits its thumb
+mid-swing) instead of the failed-test pose, and every other busy crew member in the session
+plays a short `glance`. A teammate finishing gets the same glance.
+
+**The lead walks its rounds.** A busy lead with two or more busy crew around its desk, waiting on
+them (a running Task or Agent call, or no tool call of its own for 15 seconds), spends 10 seconds
+of every 40 standing just behind one of them, nodding (`inspect`), then walks back. Which crew
+member, and where in the 40 seconds, comes from the lead's id and the clock, so it stays
+deterministic. The walk is the director's ordinary spot change (`visit:<key>`).
+
+**The crew's build grows on the desk.** A session with a builder, or with three or more crew, gets a
+tower of bricks on its desk's left end, clear of the lead. It starts with a brick per busy crew
+member (an office opened mid-release isn't bare), adds one per new edit seen (an Edit or Write
+whose time differs from the last one counted, lead included), loses one to a red test (the
+fallen brick lies at its foot until the next goes on), tops out at 30, and gets a flag when the
+session has a PR. It is part of the desk's cached drawing and redraws only when it changes, so it
+costs nothing between changes. Edits that land between two snapshots count once: the tower
+measures activity, not an exact tally. The director now runs before the desks draw, so a desk
+shows this snapshot's build.
+
+**The crew talks shop.** A new sass trigger, `chatter`: a session with three or more busy crew,
+busy in the last snapshot too (the hiring beat belongs to the big-crew line), gives one crew
+member a line about every 75 seconds, picked from the session id and the time. It has the lowest
+priority, so it never takes a slot from anything that matters.
+
+**Zoomed into a desk, the crew's tasks show** as small tags under their feet (16 characters,
+clipped). Only at the desk stop, where there is room to read them.
+
+`?demo=release` plays all of this: six builders on six tools, edits landing every few seconds, a
+red test at 15 s, a builder finishing at 24 s, the PR at 33 s. A two-builder "Hotfix: installer"
+session shares the room, so brick runs show early (about 3, 6, 27 and 30 s).
+
+**Acting is hands and tools, not squash.** The owner doesn't like animation that is mostly the
+body squishing and stretching. Every pose was reworked so a limb and a prop do a recognisable job
+with cause and effect: the hammer meets a nail on a sawhorse and the nail goes down a step per
+strike; a blueprint unrolls, gets turned upside down and back; a wrench turns a nut a third per
+stroke; a finger rocks a stack of bricks. The bodies `hop`, `stretch`, `low`, `squash` and `puff`
+are gone (a walking step's rise, `bob`, replaced the hop), and a test holds every frame's body
+scale within 5% of 1. Limb springs are stiff with almost no overshoot; a held tool trails the
+swing a few degrees on its own `tool` feel. The work on the floor in front of a character is a
+new part, `w-` (nails, a nut, a crate, a brick stack), in puppet space so it doesn't lean with
+the body; its arm angles are solved against `WORK` in theme.ts, so moving a prop means solving
+them again.
+
+**Builders carry bricks to the build.** When a builder's new edit is counted, it may walk a brick
+to the tower (`carry` as the cue's `walkPose`), set it on (`place`) and walk back; the brick
+lands when `place` ends. One runner per session at a time, then a 20–28 s cooldown from the
+session id. Every other edit (the lead's, other roles', a builder's during a run or cooldown)
+adds its brick at once, so the tower still counts edits. A placed brick drops about 10 px and
+settles; a red test tumbles the top brick off onto the desk. Both animate only while they move.
+
+**The crew spreads out so its work shows.** The work on the floor sticks out about 40 px past a
+character on the side it faces, and the old crew pattern (spots 60 px apart, ten around a desk)
+hid nearly every bench behind a neighbour. Crew now stand in facing pairs, 124 px apart with their
+work between them (`crewSpots` in office/world.ts): two pairs in the desk's own cell, then the free
+cells it is lent. A free cell is lent to exactly one desk: the one it lies in front of, else the
+one behind, else its left neighbour, else its right. A bare cell (its row has no desks) holds two
+more pairs; a free desk's cell holds the two pairs in front of that desk. Past those, the old
+tight pattern takes the overflow, so a very big crew still crowds. A crew spot keeps its name
+when its cell is lent elsewhere or freed, so the director walks a crew member whose spot moved
+even when the name is the same. The builder's brick lands on the tower when it leaves its hands
+in `place` (the end of the last frame that shows it), and the tower's bricks are kraft shades,
+the colour the builders carry.

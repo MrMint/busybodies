@@ -70,7 +70,7 @@ function blank(): void {
 	const characters = params.has("placeholders") ? placeholders(app.renderer) : rigCharacters(atlas);
 	// The director decides who stands where and in which pose; the office draws it.
 	const director = new Director();
-	const office = new Office({ renderer: app.renderer, characters, wake: () => scene.redraw(), cast: director.cast, top: compact ? 40 : 64 });
+	const office = new Office({ renderer: app.renderer, characters, wake: () => scene.redraw(), cast: director.cast, builds: director.builds, top: compact ? 40 : 64 });
 	app.stage.addChild(office);
 	// The office's voice (src/scene/sass): bubbles and signs from what the sessions are doing.
 	// ?toolvoice keeps the director's placeholder (each busy lead says its tool). A live scene lets
@@ -190,7 +190,7 @@ function blank(): void {
 	});
 
 	if (params.has("demo")) {
-		const { demo, demoDay } = await import("./demo");
+		const { demo, demoDay, releaseDay } = await import("./demo");
 		const name = params.get("demo");
 		// ?demo=day-N: the demo day's first N beats, played at once (for screenshots of a beat).
 		const beat = name?.match(/^day-(\d)$/);
@@ -199,9 +199,12 @@ function blank(): void {
 		show(day.snapshot);
 		if (beat) for (const b of demoDay().slice(0, Number(beat[1]))) show(b.snapshot);
 		// Plain ?demo plays the day through the director: arrivals, a review, a wait, departures.
-		// Frozen scenes (tests, screenshots) stay on its first moment.
-		if (!name && !params.has("frozen")) {
-			const timers = demoDay().map(({ after, snapshot }) => setTimeout(() => !scene.frozen && show(snapshot), after));
+		// ?demo=release plays the release crew's beats. Frozen scenes (tests, screenshots) stay on
+		// their first moment.
+		const days = { "": demoDay, release: releaseDay } as Record<string, (() => { after: number; snapshot: Snapshot }[]) | undefined>;
+		const play = days[name ?? ""];
+		if (play && !params.has("frozen")) {
+			const timers = play().map(({ after, snapshot }) => setTimeout(() => !scene.frozen && show(snapshot), after));
 			scene.stopDemo = () => timers.forEach(clearTimeout);
 		}
 		return;

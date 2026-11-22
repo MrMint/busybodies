@@ -32,7 +32,7 @@ import {
 } from "./paper";
 import { type Placed, Placement, crewOf } from "./placement";
 import type { Character, CharacterFactory, Who } from "./slot";
-import type { Area, Desk, Rect, World } from "./world";
+import { type Area, BUILD, type Desk, type Rect, type World } from "./world";
 
 /** Default text for the common areas' signs. The sass engine (S5) replaces these through setSign. */
 const DEFAULT_SIGNS: Record<string, SignText> = {
@@ -75,6 +75,27 @@ export interface OfficeOptions {
 	cast?: (snapshot: Snapshot, floor: World) => Placed[];
 	/** Screen pixels kept clear above the office for the top bar (default 64). */
 	top?: number;
+	/** Each session's crew build, drawn on its desk (the director's). */
+	builds?: () => Record<string, CrewBuild>;
+}
+
+/** A crew's build on the desk: a stack of blocks, one knocked off, a flag for the PR. */
+export interface CrewBuild {
+	pieces: number;
+	topped: boolean;
+	/** When the last brick fell off (it tumbles down once, then lies there). */
+	fellAt?: number;
+	/** When the last brick went on (it is set down with a little drop, once). */
+	addedAt?: number;
+}
+
+/** A brick moving on a crew build: set down, or tumbling off. Only its transform changes. */
+interface BrickMove {
+	view: Graphics;
+	ms: number;
+	t: number;
+	/** Where it is `u` (0 to 1) of the way through. */
+	at: (u: number) => { x: number; y: number; r: number };
 }
 
 /** Who keeps an empty office company. */
@@ -96,6 +117,9 @@ export class Office extends Container {
 	#depth = new Container({ sortableChildren: true });
 	#bubbles = new Container();
 	#labels = new Container();
+	#tasks = new Container();
+	#tasksSig = "";
+	#placed: Placed[] = [];
 
 	#plan = new FloorPlan();
 	#placement = new Placement();
@@ -113,6 +137,9 @@ export class Office extends Container {
 	#pulsing: string[] = [];
 	#pulseT = 0;
 	#signs = new Map<string, SignText>(Object.entries(DEFAULT_SIGNS));
+	/** Bricks moving on crew builds, by desk item; and what each desk's build last moved for. */
+	#bricks = new Map<string, BrickMove[]>();
+	#brickSeen = new Map<string, { added?: number; fell?: number }>();
 
 	#textures = new Map<FurnitureKind, Texture>();
 	#anchors = new Map<FurnitureKind, { x: number; y: number }>();
@@ -127,7 +154,7 @@ export class Office extends Container {
 	constructor(opts: OfficeOptions) {
 		super();
 		this.#opts = opts;
-		this.world.addChild(this.#slab, this.#floor, this.#pulse, this.#depth, this.#bubbles, this.#labels);
+		this.world.addChild(this.#slab, this.#floor, this.#pulse, this.#depth, this.#tasks, this.#bubbles, this.#labels);
 		this.world.interactiveChildren = false;
 		this.addChild(this.world);
 	}
@@ -137,6 +164,7 @@ export class Office extends Container {
 	get animating(): boolean {
 		if (this.#move) return true;
 		if (this.#pulsing.length) return true;
+		if (this.#bricks.size) return true;
 		for (const p of this.#people.values()) if (p.animating) return true;
 		return false;
 	}
@@ -179,6 +207,12 @@ export class Office extends Container {
 	/** Every character back to the start of its pose (the inspector's freeze). */
 	rewind(): void {
 		for (const p of this.#people.values()) p.rewind?.();
+		for (const list of this.#bricks.values()) for (const m of list) moveBrick(m, (m.t = 0));
+	}
+
+	/** The crew-build bricks moving now, by desk (for the inspector and tests). */
+	get bricks(): { desk: string; t: number; ms: number }[] {
+		return [...this.#bricks].flatMap(([key, list]) => list.map((m) => ({ desk: key.slice(5), t: Math.round(m.t), ms: m.ms })));
 	}
 
 	/**
@@ -255,6 +289,12 @@ export class Office extends Container {
 				this.#rebake();
 			}
 		}
+		for (const [key, list] of this.#bricks) {
+			for (const m of list) moveBrick(m, (m.t = Math.min(m.ms, m.t + dt * (1000 / 60))));
+			const left = list.filter((m) => m.t < m.ms);
+			if (left.length) this.#bricks.set(key, left);
+			else this.#bricks.delete(key);
+		}
 		for (const p of this.#people.values()) p.tick(dt);
 		// Bubbles follow walkers.
 		for (const [key, p] of this.#people) if (p.moving) this.#anchor(key);
@@ -303,6 +343,7 @@ export class Office extends Container {
 		const to = viewFor(this.#data, stop, this.#viewport());
 		if (!to) return this.goTo({ kind: "office" }, animate);
 		this.#stop = stop;
+		this.#drawTasks();
 		if (!animate) {
 			this.#move = undefined;
 			this.#apply(to);
@@ -374,8 +415,9 @@ export class Office extends Container {
 			this.#slab.clear().roundRect(b.x - 14, b.y - 14, b.w + 28, b.h + 28, 18).fill(SLAB);
 		}
 		this.#drawFloor(world);
-		this.#drawFurniture(world, snapshot);
+		// People first: the director runs in their cast, and the desks show its crew builds.
 		this.#drawPeople(world, snapshot);
+		this.#drawFurniture(world, snapshot);
 		this.#drawLabels(world, snapshot);
 	}
 
@@ -444,6 +486,7 @@ export class Office extends Container {
 	/** Desks (with their screens and name cards), chairs and floor furniture: depth-sorted. */
 	#drawFurniture(world: World, snapshot: Snapshot): void {
 		const sessions = new Map(flat(snapshot.sessions).map((s) => [s.id, s]));
+		const builds = this.#opts.builds?.() ?? {};
 		const seen = new Set<string>();
 		const put = (key: string, sig: string, x: number, y: number, depth: number, make: () => Container) => {
 			seen.add(key);
@@ -471,7 +514,9 @@ export class Office extends Container {
 			for (const d of a.desks) {
 				const s = sessions.get(d.id)!;
 				const card = deskCard(s);
-				put(`desk:${d.id}`, `${s.state === "busy"}|${card.join("|")}`, d.at.x, d.at.y, d.at.y, () => this.#desk(s));
+				const b = builds[d.id];
+				const bsig = b ? `${b.pieces}|${b.topped}|${b.fellAt ?? ""}|${b.addedAt ?? ""}` : "";
+				put(`desk:${d.id}`, `${s.state === "busy"}|${card.join("|")}|${bsig}`, d.at.x, d.at.y, d.at.y, () => this.#desk(s, b));
 				put(`chair:${d.id}`, "chair", d.chair.x, d.chair.y, d.chair.depth, () => this.#baked("chair"));
 			}
 			for (const [i, f] of a.fixtures.entries()) put(`fx:${a.id}:${i}:${f.kind}`, f.kind, f.x, f.y, f.depth, () => this.#baked(f.kind));
@@ -480,12 +525,33 @@ export class Office extends Container {
 			if (seen.has(key)) continue;
 			drop(item.view);
 			this.#items.delete(key);
+			this.#bricks.delete(key);
+			if (key.startsWith("desk:")) this.#brickSeen.delete(key);
 		}
 	}
 
-	#desk(s: Session | undefined): Container {
+	#desk(s: Session | undefined, build?: CrewBuild): Container {
 		const c = new Container();
 		c.addChild(this.#baked("desk"));
+		if (s) {
+			// A rebuilt desk starts with every brick at rest; a new brick, or a new fall, moves once.
+			const key = `desk:${s.id}`;
+			this.#bricks.delete(key);
+			const was = this.#brickSeen.get(key);
+			this.#brickSeen.set(key, { added: build?.addedAt, fell: build?.fellAt });
+			if (build && (build.pieces > 0 || build.topped || build.fellAt !== undefined)) {
+				const t = crewBuild(build, s.id);
+				c.addChild(t.view);
+				const moves: BrickMove[] = [];
+				if (was && t.top && build.addedAt !== undefined && build.addedAt !== was.added) moves.push(setDown(t.top));
+				if (was && t.fallen && build.fellAt !== undefined && build.fellAt !== was.fell) moves.push(tumble(t.fallen, t.fellFrom!));
+				for (const m of moves) moveBrick(m, 0);
+				if (moves.length) {
+					this.#bricks.set(key, moves);
+					this.#opts.wake();
+				}
+			}
+		}
 		const screen = this.#baked(s?.state === "busy" ? "screen-lit" : "screen-off");
 		screen.position.set(46, -64);
 		c.addChild(screen);
@@ -555,6 +621,7 @@ export class Office extends Container {
 
 	#drawPeople(world: World, snapshot: Snapshot): void {
 		const placed = this.#opts.cast ? this.#opts.cast(snapshot, world) : this.#placement.place(snapshot, world);
+		this.#placed = placed;
 		// An empty office is never a blank one: the night watch naps in the lobby's pod.
 		if (placed.length === 0) {
 			const nap = world.areas.find((a) => a.kind === "lobby")?.spots.nap?.[0];
@@ -601,12 +668,29 @@ export class Office extends Container {
 			this.say(key, undefined);
 		}
 		for (const key of this.#said.keys()) this.#anchor(key);
+		this.#drawTasks();
 		this.#drawPulse();
 		for (const [key, b] of this.#bubbleFor) {
 			if (bubbles.has(key)) continue;
 			drop(b.view);
 			this.#bubbleFor.delete(key);
 		}
+	}
+
+	/** Zoomed into a desk: a small tag under each of its crew saying what it is working on. */
+	#drawTasks(): void {
+		const stop = this.#stop;
+		const list = stop.kind === "desk" ? this.#placed.filter((p) => p.desk === stop.id && p.task && p.who.kind === "crew" && p.who.mood !== "done") : [];
+		const sig = list.map((p) => `${p.who.key}|${p.task}|${p.slot.x},${p.slot.y}`).join(";");
+		if (sig === this.#tasksSig) return;
+		this.#tasksSig = sig;
+		for (const c of this.#tasks.removeChildren()) c.destroy({ children: true });
+		for (const p of list) {
+			const t = pill(clipText(p.task!, 16), 6.5);
+			t.position.set(p.slot.x - t.width / 2, p.slot.y + 4);
+			this.#tasks.addChild(t);
+		}
+		this.#opts.wake();
 	}
 
 	/** Room name tabs and their counts, above everything. */
@@ -682,6 +766,108 @@ function clip(t: { text: string; width: number }, max: number): void {
 		s = s.slice(0, -1);
 		t.text = `${s}…`;
 	}
+}
+
+const clipText = (s: string, max: number) => (s.length > max ? `${s.slice(0, max - 1).trimEnd()}…` : s);
+
+/** Brick colours for crew builds: the kraft the builders carry (the rig's brick), in a few
+ * shades so the courses read as bricks. */
+const BLOCKS = [0xe9bd80, 0xdca56a, 0xf0c994, 0xe3b074, 0xeec088];
+
+/**
+ * A crew's build on the desk's left end, clear of the lead behind it: a tower of bricks three wide,
+ * each course a little off the last, a knocked-off brick lying beside it after a red test, and a
+ * flag on top once the PR is up. Drawn once per change, as part of the desk. The newest brick and
+ * the fallen one are their own Graphics, centred on themselves, so they can be moved into place by
+ * their transform (set down, or tumbling off) without redrawing anything.
+ */
+function crewBuild(b: CrewBuild, seed: string): { view: Container; top?: Graphics; fallen?: Graphics; fellFrom?: { x: number; y: number } } {
+	const view = new Container();
+	const g = new Graphics();
+	view.addChild(g);
+	const { brickW: W, brickH: H, wide: WIDE, left, floor } = BUILD;
+	const colour = (k: number) => BLOCKS[(hash(seed) + k * 3) % BLOCKS.length]!;
+	// Every other course sits a little to one side, as stacked bricks do.
+	const at = (i: number) => {
+		const row = Math.floor(i / WIDE);
+		return { x: left + (i % WIDE) * W + (row % 2 ? 3 : 0), y: floor - (row + 1) * H };
+	};
+	const brick = (k: number) => new Graphics().roundRect(-W / 2, -H / 2, W, H, 2).fill(colour(k)).stroke({ width: 1.5, color: INK });
+	let top: { x: number; y: number } = { x: left + (WIDE * W) / 2, y: floor };
+	let last: Graphics | undefined;
+	for (let i = 0; i < b.pieces; i++) {
+		const { x, y } = at(i);
+		const row = Math.floor(i / WIDE);
+		if (i < b.pieces - 1) g.roundRect(x, y, W, H, 2).fill(colour(i)).stroke({ width: 1.5, color: INK });
+		else {
+			last = brick(i);
+			last.position.set(x + W / 2, y + H / 2);
+		}
+		if (i % WIDE === Math.min(WIDE, b.pieces - row * WIDE) >> 1 || i === 0) top = { x: x + W / 2, y };
+	}
+	if (last) view.addChild(last);
+	let fallen: Graphics | undefined;
+	let fellFrom: { x: number; y: number } | undefined;
+	if (b.fellAt !== undefined) {
+		// The one that fell: tipped over on the desk beside the tower, from where it sat on top.
+		fallen = brick(b.pieces);
+		const from = at(b.pieces);
+		fellFrom = { x: from.x + W / 2, y: from.y + H / 2 };
+		fallen.position.set(FALLEN.x, FALLEN.y);
+		fallen.rotation = Math.PI / 2;
+		view.addChild(fallen);
+	}
+	if (b.topped) {
+		const f = new Graphics();
+		f.moveTo(top.x, top.y).lineTo(top.x, top.y - 22).stroke({ width: 2.5, color: INK });
+		f.moveTo(top.x, top.y - 22).lineTo(top.x + 15, top.y - 16).lineTo(top.x, top.y - 10).closePath().fill(0xff6b6b).stroke({ width: 1.5, color: INK });
+		view.addChild(f);
+	}
+	return { view, top: last, fallen, fellFrom };
+}
+
+/** Where a fallen brick comes to rest: lying on the desk top just right of the tower. */
+const FALLEN = { x: BUILD.left + BUILD.wide * BUILD.brickW + 3 + 4 + BUILD.brickH / 2, y: BUILD.floor - BUILD.brickW / 2 };
+
+/** A brick set down on the tower: a short drop onto its place, a tiny rebound, still. No squash. */
+function setDown(view: Graphics): BrickMove {
+	const x = view.x;
+	const y = view.y;
+	const r = view.rotation;
+	return {
+		view,
+		ms: 300,
+		t: 0,
+		at: (u) => {
+			const fall = 0.72;
+			const dy = u < fall ? -10 * (1 - (u / fall) ** 2) : -1.5 * Math.sin((Math.PI * (u - fall)) / (1 - fall));
+			return { x, y: y + dy, r };
+		},
+	};
+}
+
+/** A brick knocked off the top: it pops up and out, turns over three quarters, and lands lying down. */
+function tumble(view: Graphics, from: { x: number; y: number }): BrickMove {
+	const to = { x: view.x, y: view.y };
+	return {
+		view,
+		ms: 620,
+		t: 0,
+		at: (u) => {
+			const ease = 1 - (1 - u) ** 2;
+			return {
+				x: from.x + (to.x - from.x) * ease,
+				y: from.y + (to.y - from.y) * u * u - 12 * Math.sin(Math.PI * u),
+				r: (Math.PI * 3 * ease) / 2,
+			};
+		},
+	};
+}
+
+function moveBrick(m: BrickMove, t: number): void {
+	const p = m.at(Math.min(1, t / m.ms));
+	m.view.position.set(p.x, p.y);
+	m.view.rotation = p.r;
 }
 
 function bubble(): Container {

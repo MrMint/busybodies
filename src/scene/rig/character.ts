@@ -83,7 +83,14 @@ class RigCharacter implements Character {
 	}
 
 	act(cue: Cue): void {
-		if (this.#cue?.key === cue.key) return;
+		if (this.#cue?.key === cue.key) {
+			// Same pose, maybe a new pace: speed up or slow down without starting over.
+			if ((cue.tempo ?? 1) !== (this.#cue.tempo ?? 1)) {
+				this.#cue = cue;
+				if (!this.moving) this.puppet.setTempo(cue.tempo ?? 1);
+			}
+			return;
+		}
 		const first = !this.#cue;
 		this.#cue = cue;
 		this.#gone = false;
@@ -91,7 +98,7 @@ class RigCharacter implements Character {
 		this.#walkFrom = cue.walk?.elapsed ?? 0;
 		this.#walked = this.#walkFrom;
 		if (cue.walk && this.#walked < cue.walk.ms) {
-			this.puppet.play("walk", { snap: first });
+			this.puppet.play(cue.walkPose ?? "walk", { snap: first });
 			this.#walkTo(this.#walked);
 		} else this.#pose(first);
 	}
@@ -120,7 +127,7 @@ class RigCharacter implements Character {
 		this.#gone = false;
 		this.puppet.visible = true;
 		if (this.moving) {
-			this.puppet.play("walk", { snap: true });
+			this.puppet.play(this.#cue?.walkPose ?? "walk", { snap: true });
 			this.#walkTo(this.#walked);
 		} else this.puppet.rewind();
 	}
@@ -141,6 +148,7 @@ class RigCharacter implements Character {
 				.join(" "),
 			spot: this.#cue?.spot ?? "",
 			cue: this.#cue?.pose ?? "",
+			tempo: Math.round(this.puppet.tempo * 100) / 100,
 			walk: w && this.moving ? `${Math.round(this.#walked)}/${w.ms}ms${w.exit ? " exit" : ""}` : "",
 		};
 	}
@@ -160,7 +168,7 @@ class RigCharacter implements Character {
 
 	#pose(first: boolean): void {
 		const c = this.#cue!;
-		this.puppet.play(c.pose, { as: c.as, loops: c.loops, at: c.at, snap: first || c.at === "end" });
+		this.puppet.play(c.pose, { as: c.as, loops: c.loops, at: c.at, snap: first || c.at === "end", tempo: c.tempo });
 	}
 
 	#size(): void {

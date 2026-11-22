@@ -4,6 +4,8 @@
 //   ?demo=idle    the same office after hours: everyone idle, every agent finished
 //   ?demo=one     a single session
 //   ?demo=thirty  thirty sessions over eight projects
+//   ?demo=release a release with six builders: tools change, a test goes red, one finishes, a PR;
+//                 builders carry bricks to their crew build (and a two-builder hotfix next door)
 //   ?demo=empty   nobody's in; ?demo=nohome: no coding agent found (add &compact for the small window)
 // The clock is fixed, so the same demo always draws the same frames.
 import type { SignText } from "../scene/office/paper";
@@ -122,6 +124,86 @@ function thirty(): Snapshot {
 	return { at: NOW, sessions };
 }
 
+/** A release crew: a lead waiting on six builders, each on a different tool. */
+const RELEASE_TOOLS = ["Edit", "Read", "Grep", "Edit", "Bash", "Write"];
+function release(): Snapshot {
+	n = 0;
+	const crew = ["Bump the versions", "Changelog entries", "Fix the export test", "Migrate the settings", "Build the installer", "Release notes"].map((task, i) => ({
+		...agent("general-purpose", task),
+		activity: { tool: RELEASE_TOOLS[i]!, at: min(0.05 + i * 0.1) },
+		...(RELEASE_TOOLS[i] === "Bash" ? { running: { tool: "Bash", since: min(0.5), kind: "build" as const } } : {}),
+	}));
+	return {
+		at: NOW,
+		sessions: [
+			session("Ship release 3.0", "lanternfish", "busy", 40, {
+				branch: "release/3.0",
+				activity: { tool: "Task", at: min(1) },
+				running: { tool: "Task", since: min(1) },
+				agents: crew,
+			}),
+			// A second, smaller crew next door: its own brick runs, on its own cooldown.
+			session("Hotfix: installer", "lanternfish", "busy", 20, {
+				branch: "fix/installer",
+				activity: { tool: "Task", at: min(0.5) },
+				running: { tool: "Task", since: min(0.5) },
+				agents: ["Patch the signing step", "Retry the upload"].map((task, i) => ({
+					...agent("general-purpose", task),
+					activity: { tool: i ? "Read" : "Edit", at: min(0.3 + i * 0.1) },
+				})),
+			}),
+			session("Docs sweep", "mossy-docs", "idle", 60, { branch: "docs/sweep" }),
+		],
+	};
+}
+
+/**
+ * The release, played forward: tools change, edits land, a test goes red, a builder finishes and
+ * the PR goes up. A beat every few seconds; every name is invented.
+ */
+export function releaseDay(): { after: number; snapshot: Snapshot }[] {
+	let snap = release();
+	const steps: { after: number; snapshot: Snapshot }[] = [];
+	const beat = (after: number, change: (s: Snapshot, at: number) => void) => {
+		snap = structuredClone(snap);
+		snap.at = NOW + after;
+		change(snap, NOW + after);
+		steps.push({ after, snapshot: snap });
+	};
+	const crew = (s: Snapshot) => s.sessions[0]!.agents;
+	const hotfix = (s: Snapshot) => s.sessions[1]!.agents;
+	const use = (a: Agent, tool: string, at: number) => {
+		a.activity = { tool, at };
+		a.lastWriteAt = at;
+		a.running = tool === "Bash" ? { tool, since: at, kind: "test" } : undefined;
+	};
+	const TOOLS = ["Edit", "Read", "Edit", "Grep", "Write", "Bash", "Edit"];
+	for (let i = 1; i <= 12; i++) {
+		beat(i * 3000, (s, at) => {
+			crew(s).forEach((a, k) => {
+				if (a.status !== "running") return;
+				if ((i + k) % 3 === 0) use(a, TOOLS[(i + k) % TOOLS.length]!, at - k * 50);
+			});
+			// The hotfix pair takes turns editing, a beat apart from the release crew.
+			hotfix(s).forEach((a, k) => {
+				if (i >= 2 && (i + k) % 2 === 0) use(a, i % 4 === 3 ? "Read" : "Edit", at - 1500 - k * 50);
+			});
+			if (i === 5) {
+				const a = crew(s)[2]!;
+				a.commands = { failStreak: 1, repeats: 1, failed: 1, testsFailed: 1, last: { kind: "test", exitCode: 1, at } };
+			}
+			if (i === 8) {
+				const a = crew(s)[5]!;
+				a.status = "finished";
+				a.activity = undefined;
+				a.running = undefined;
+			}
+			if (i === 11) s.sessions[0]!.prs = [{ number: 300, url: "https://example.invalid/pull/300", at }];
+		});
+	}
+	return steps;
+}
+
 /** 200 characters: 40 sessions, each a lead and four crew in every role and state. The rig's load
  * test (e2e/rig.test.ts); `crowd-idle` is the same crowd after hours. */
 function crowd(): Snapshot {
@@ -211,6 +293,8 @@ export function demo(name: string | null): DemoDay {
 			return { snapshot: thirty(), signs: {} };
 		case "crowd":
 			return { snapshot: crowd(), signs: {} };
+		case "release":
+			return { snapshot: release(), signs: {} };
 		case "crowd-idle":
 			return { snapshot: asleep(crowd()), signs: {} };
 		// Nobody's in; and nobody's in because no coding agent was found (the shell says which).

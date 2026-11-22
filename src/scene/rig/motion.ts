@@ -42,14 +42,18 @@ export interface SpringFeel {
 }
 
 export const FEEL = {
-	/** Arms and legs: quick, with one visible overshoot. */
-	limb: { stiffness: 320, damping: 0.5, epsilon: 0.05 },
-	/** The mochi body: softer and wobblier, so it keeps jiggling a beat after it lands. */
-	body: { stiffness: 210, damping: 0.32, epsilon: 0.01 },
-	/** Face parts: fast and nearly flat, so expressions read at once. */
-	face: { stiffness: 520, damping: 0.7, epsilon: 0.01 },
-	/** A pop on a swap (a new mouth, a prop arriving): very springy. */
-	pop: { stiffness: 600, damping: 0.28, epsilon: 0.002 },
+	/** Arms and legs: quick and decisive, landing where the pose puts them inside a beat with only
+	 * a hair of overshoot, so a strike lands on its target instead of wobbling about it. */
+	limb: { stiffness: 620, damping: 0.74, epsilon: 0.05 },
+	/** The angle of a hand, so of anything held: a little looser than the arm, so a hammer or wrench
+	 * trails the swing and follows through past the stop by a few degrees. */
+	tool: { stiffness: 520, damping: 0.6, epsilon: 0.05 },
+	/** The mochi body: it leans and recoils when the action asks, and settles without jiggling. */
+	body: { stiffness: 260, damping: 0.85, epsilon: 0.01 },
+	/** Face parts: fast and flat, so expressions and glances read at once. */
+	face: { stiffness: 620, damping: 0.85, epsilon: 0.01 },
+	/** Something arriving (a prop in the hand, an effect): a quick ease in with a small settle. */
+	pop: { stiffness: 600, damping: 0.62, epsilon: 0.002 },
 } as const satisfies Record<string, SpringFeel>;
 
 /** The fixed sub-step. Whatever the frame rate, a spring integrates in steps of this size. */
