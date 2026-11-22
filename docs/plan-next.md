@@ -159,10 +159,20 @@ names, station kinds, snapshot field names) is written into the code as types, a
 - **CPU.** More walkers and more animated props: the busy profile must be re-measured on a quiet
   machine before release.
 
-## Open questions for the owner
+## Decided with the owner (after wave 1)
 
-1. The human's door for waiting sessions: a new room by the lobby, or the lobby itself?
-2. Model pace traits (haiku quicker, opus steadier): charming, or too close to a judgement?
-3. Lines on the tower instead of edits: switch, or show both (tower = lines, run frequency =
-   edits)?
-4. Factory theme: robots replace mochis, or mochis in hard hats and goggles?
+1. **Waiting sessions go to "your office"**, a new common room beside the lobby: a door with
+   YOU on it, a ticket machine, a NOW SERVING sign, and a queue of waiting leads holding numbered
+   tickets in the order they started waiting. The first one in rings the bell. Answering one
+   sends it back to its desk; the queue shuffles up. It's the most visible place for the thing
+   that most needs a human, and a queue at a door reads at office zoom.
+2. **Model pace traits: yes, and be opinionated.** Each family gets a personality: haiku zippy
+   (quick steps, quick hands, a little scattered), sonnet brisk and steady, opus deliberate (slower
+   steps, longer looks, a pause before acting), fable flamboyant (extra flourishes). Plain text on
+   the name card, never a logo.
+3. **The tower counts lines, runs count edits.** A brick per ~20 lines added (log-ish past 200, so
+   a big rewrite doesn't fill the room), removed lines carried away to a skip. Brick runs still go
+   on edits, so the run frequency stays a measure of activity and the tower of output.
+4. **Themes keep the mochis.** Every theme is the same cast in different outfits with different
+   tools; the factory adds giant robot arms that help (lifting, welding, passing parts) rather
+   than robot characters.

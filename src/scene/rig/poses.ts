@@ -735,6 +735,36 @@ export const POSES: Pose[] = [
 			["e-half b-flat m-flat hl-clip al-low ar-hip", 2],
 		],
 	}),
+	// Wave 2 placeholders (plan-next streams B and C2): the director plays these; the rig pass
+	// replaces their frames. Names, triggers and play modes are the contract.
+	...(
+		[
+			["buried", "Buried under the in-tray", "loop", ["e-wide b-worry m-wobble al-type1 ar-type3 x-sweat1", 2], ["e-wide b-worry m-flat al-type3 ar-type1 x-sweat2", 2]],
+			["ticketWait", "Waiting at your door with a ticket", "loop", ["m-small hr-paper ar-up al-hip f-tapR", 3], ["e-half b-one m-pout hr-paper ar-up al-hip", 3]],
+			["bellRing", "Ringing the bell on your desk", "once", ["l-down m-small al-low ar-point", 2], ["e-happy m-grin al-hip ar-hip", 3]],
+			["stickyCarry", "Carrying a sticky note", "loop", ["l-right m-small hr-paper ar-up al-low f-swingL", 2], ["l-right m-small hr-paper ar-up al-low f-swingR", 2]],
+			["stickyPost", "Posting a sticky note on the planner", "once", ["l-up m-small hr-paper ar-up al-hip", 3], ["e-happy l-up m-grin al-hip ar-point", 3]],
+			["rushRun", "Running, papers flying", "loop", ["e-wide b-worry m-open al-out ar-out f-runL x-papers1", 1], ["e-wide b-worry m-open al-out ar-out f-runR x-papers2", 1]],
+			["envelopeCarry", "Carrying the PR envelope", "loop", ["e-happy l-right m-grin hr-paper ar-up al-low f-swingL", 2], ["e-happy l-right m-grin hr-paper ar-up al-low f-swingR", 2]],
+			["copierFeud", "A running feud with the copier", "loop", ["e-squint b-angry m-frown al-hip ar-hip f-kick", 3], ["e-half b-flat m-pout al-cross ar-cross2 f-tapR", 5]],
+			["flourish", "A little flourish", "once", ["e-shine m-grin al-up ar-hip x-spark", 3], ["e-happy m-smirk al-hip ar-hip", 3]],
+		] as [string, string, "loop" | "once", Row, Row][]
+	).map(([name, title, play, ...rows]) => pose({ name, title, trigger: "working", rarity: 1, play, lines: [], frames: rows })),
+	pose({
+		name: "handOff", title: "Handing a folder to a teammate", trigger: "working", rarity: 1, play: "once",
+		lines: [],
+		frames: [
+			["l-right m-small hr-paper ar-point al-low", 3],
+			["e-happy l-right m-grin al-low ar-hip", 3],
+		],
+		partner: {
+			role: "builder",
+			frames: [
+				["at-s2 l-left m-small al-low ar-low", 3],
+				["at-s2 e-happy l-left m-grin hl-paper al-raise ar-low", 3],
+			],
+		},
+	}),
 	pose({
 		name: "rest", title: "Standing about", trigger: "idle", rarity: 1, play: "once",
 		lines: [],
