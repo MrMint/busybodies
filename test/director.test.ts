@@ -171,21 +171,26 @@ describe("acted poses", () => {
 		expect(d.events).toContainEqual({ type: "arrive", key: "a:a:new", at: T0 + 1000, spot: "crew:0", area: actor(d.world, "s:a").area, walk: false });
 	});
 
-	test("a compaction stretches", () => {
+	test("a compaction sends the lead to the room's shredder with its in-tray", () => {
 		const s = stage();
 		s.step(snap(T0, [session("a", "teapot", { compactions: { count: 1, lastAt: T0 - 30 * MIN } })]));
 		const d = s.step(snap(T0 + 1000, [session("a", "teapot", { compactions: { count: 2, lastAt: T0 + 900 } })]));
-		expect(actor(d.world, "s:a").pose).toBe("stretch");
+		const lead = actor(d.world, "s:a");
+		expect(lead.pose).toBe("shred");
+		expect(lead.spot).toBe("station:room:teapot:shredder:0");
+		expect(lead.walk).toBeDefined();
+		expect(lead.homeArea).toBe("room:teapot");
 	});
 });
 
 describe("waiting on you", () => {
-	test("the paddle goes up, and events mark the start and end", () => {
+	test("the lead takes a ticket to your office, and events mark the start and end in its room", () => {
 		const s = stage();
 		s.step(snap(T0, [session("a", "teapot")]));
 		const d = s.step(snap(T0 + 1000, [session("a", "teapot", { state: "idle", waiting: { reason: "permission", since: T0 + 900, source: "hook" } })]));
-		expect(["waiting", "waitingPlease"]).toContain(actor(d.world, "s:a").pose);
-		expect(d.events.filter((e) => e.type === "waiting")).toEqual([{ type: "waiting", key: "s:a", at: T0 + 1000, state: "start", area: actor(d.world, "s:a").area }]);
+		expect(["ticketWait", "waitingPlease"]).toContain(actor(d.world, "s:a").pose);
+		expect(actor(d.world, "s:a").spot).toBe("yours:line:0");
+		expect(d.events.filter((e) => e.type === "waiting")).toEqual([{ type: "waiting", key: "s:a", at: T0 + 1000, state: "start", area: "room:teapot" }]);
 		const still = s.step(snap(T0 + 5000, [session("a", "teapot", { state: "idle", waiting: { reason: "permission", since: T0 + 900, source: "hook" } })]));
 		expect(still.events).toEqual([]);
 		const done = s.step(snap(T0 + 9000, [session("a", "teapot")]));

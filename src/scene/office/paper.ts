@@ -3,6 +3,7 @@
 // Graphics or Container; nothing here is per-frame. Furniture is drawn around its base point
 // (0, 0): the bottom centre, where it meets the floor.
 import { BitmapFont, BitmapText, Container, Graphics, Text, type TextStyleOptions } from "pixi.js";
+import type { PropFurniture } from "./props";
 import type { Rect, WallItem } from "./world";
 
 export const INK = 0x1b2140;
@@ -28,6 +29,7 @@ export const ROOM_COLOURS: [number, number][] = [
 export const COMMON_COLOURS = {
 	meeting: [0xf1f3fa, 0xcfd6ea],
 	lobby: [0xf6f1e4, 0xe8dfc8],
+	yours: [0xfff1e0, 0xe9d6c0],
 	kitchen: [0xf6f1e4, 0xffffff],
 	vacant: [0xeef0f4, 0xd9dde6],
 } as const;
@@ -186,7 +188,8 @@ export type FurnitureKind =
 	| "copier"
 	| "stamps"
 	| "phone"
-	| "outbox";
+	| "outbox"
+	| PropFurniture;
 
 /** A desk: the top surface behind, the front panel below. 150 wide, its front 44 tall. */
 function desk(g: Graphics, front: number, top: number, w = 150): void {

@@ -3,6 +3,9 @@
 import type { Cue, Mood, Walk, Who } from "../office/slot";
 import type { Slot } from "../office/world";
 import type { HandOff, Mail } from "./handoff";
+import type { Pending } from "./beats";
+import type { Errand } from "./errands";
+import type { Metrics } from "./metrics";
 import type { PaceName } from "./pace";
 import type { Rush } from "./rush";
 import type { StationKind } from "./stations";
@@ -60,6 +63,14 @@ export interface Actor {
 	/** Took a folder from a teammate for the stretch of work that started then (`work.since`): no
 	 * trip for it (handoff.ts). */
 	handed?: number;
+	/** Plan-next stream B. An errand metrics sent it on (the shredder, the planner: errands.ts). */
+	errand?: Errand;
+	/** The room its desk is in, while it stands elsewhere (your office, the shredder): the pulse's room. */
+	homeArea?: string;
+	/** Its model's walk factor, when not 1 (traits.ts): the walk's steps keep the same pace. */
+	stride?: number;
+	/** An acted pose a deliberate character holds back a beat (beats.ts). */
+	pending?: Pending;
 }
 
 /** A brick on its way to the build: one crew builder walks it over, sets it down, walks back. */
@@ -98,6 +109,10 @@ export interface Build {
 	ranAt?: number;
 	/** When the recent edits were seen (the last minute): the session's edit rate. */
 	edits?: number[];
+	/** Counting lines (plan-next stream B): the bricks the lines added are worth (metrics.ts towerBricks)... */
+	lines?: number;
+	/** ...less this many knocked off by red tests since the lines last grew. */
+	knocked?: number;
 }
 
 /** The signals an actor's pose is chosen from, as last seen. */
@@ -123,6 +138,8 @@ export interface World {
 	handoffs?: Record<string, HandOff>;
 	/** Leads walking a PR to the outbox, by session id (handoff.ts). */
 	mail?: Record<string, Mail>;
+	/** Metrics as things: each desk's in-tray, drawers, skip, mugs and lamp; the planners; your office's tickets (metrics.ts). */
+	metrics?: Metrics;
 }
 
 export type WorldEvent =

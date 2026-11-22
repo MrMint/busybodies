@@ -115,8 +115,10 @@ describe("the inspector", () => {
 			expect(typeof e.pose).toBe("string");
 			expect(typeof e.walk).toBe("string");
 		}
-		const walking = list.filter((e) => e.walk);
+		// The new reviewer, the new session's lead, and a crew member walking a done todo to the planner.
+		const walking = list.filter((e) => e.walk && !String(e.spot).startsWith("planner:"));
 		expect(walking.map((e) => e.key).sort()).toEqual(["a:demo-session-20:demo-agent-hired-1", "s:demo-session-30"]);
+		expect(list.filter((e) => e.walk && String(e.spot) === "planner:demo-session-20")).toHaveLength(1);
 		expect(events.some((e) => e.type === "review" && e.state === "start")).toBe(true);
 		expect(events.some((e) => e.type === "handover")).toBe(true);
 		await page.close();
@@ -133,7 +135,8 @@ describe("the inspector", () => {
 		});
 		expect(r.pulsing).toEqual(["room:lanternfish"]);
 		expect(r.pill).toBe("1 waiting on you");
-		expect(["waiting", "waitingPlease"]).toContain(r.pose);
+		// It takes a ticket to your office: walking there, or holding the ticket in the queue.
+		expect(["walk", "ticketWait", "bellRing", "waitingPlease"]).toContain(r.pose);
 		await page.close();
 	}, T);
 
