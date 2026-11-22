@@ -121,6 +121,22 @@ function thirty(): Snapshot {
 	return { at: NOW, sessions };
 }
 
+/** 200 characters: 40 sessions, each a lead and four crew in every role and state. The rig's load
+ * test (e2e/rig.test.ts); `crowd-idle` is the same crowd after hours. */
+function crowd(): Snapshot {
+	n = 0;
+	const projects = ["lanternfish", "orbit-kit", "breadbox", "mossy-docs", "kettle-api", "pebble", "quokka", "tinsel"];
+	const roles = ["scout", "builder", "verifier", "reviewer", "designer", "Explore"];
+	const states: Agent["status"][] = ["running", "running", "running", "stalled", "finished"];
+	const sessions = Array.from({ length: 40 }, (_, i) =>
+		session(`Task ${i + 1}`, projects[i % projects.length]!, i % 4 === 3 ? "idle" : "busy", 400 - i * 7, {
+			branch: `task-${i + 1}`,
+			agents: Array.from({ length: 4 }, (_, k) => agent(roles[(i + k) % roles.length]!, `Step ${k + 1}`, states[(i + k) % states.length])),
+		}),
+	);
+	return { at: NOW, sessions };
+}
+
 export interface DemoDay {
 	snapshot: Snapshot;
 	signs: Record<string, SignText>;
@@ -134,6 +150,10 @@ export function demo(name: string | null): DemoDay {
 			return { snapshot: one(), signs: {} };
 		case "thirty":
 			return { snapshot: thirty(), signs: {} };
+		case "crowd":
+			return { snapshot: crowd(), signs: {} };
+		case "crowd-idle":
+			return { snapshot: asleep(crowd()), signs: {} };
 		default:
 			return { snapshot: floorBusy(), signs: FLOOR_BUSY_SIGNS };
 	}

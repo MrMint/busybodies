@@ -36,6 +36,9 @@ export interface Character {
 	tick(dt: number): void;
 	/** What the inspector reports about this character, besides its key and position. */
 	inspect(): Record<string, string | number>;
+	/** Optional: back to the start of its pose, settled (the inspector's freeze, so step(n) is the
+	 * same however long the page ran first). */
+	rewind?(): void;
 	destroy(): void;
 }
 

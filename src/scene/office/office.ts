@@ -147,6 +147,11 @@ export class Office extends Container {
 		});
 	}
 
+	/** Every character back to the start of its pose (the inspector's freeze). */
+	rewind(): void {
+		for (const p of this.#people.values()) p.rewind?.();
+	}
+
 	tick(dt: number): void {
 		if (this.#move) {
 			const v = this.#move.step(dt * (1000 / 60), this.#centre());

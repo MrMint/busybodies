@@ -10,6 +10,7 @@ import { LAWN } from "../scene/office/paper";
 import { installHud } from "./hud";
 import { installInspector } from "./inspector";
 import { placeholders } from "./placeholder";
+import { Atlas, buildPoseSheet, paperTheme, rigCharacters } from "../scene/rig";
 
 const params = new URLSearchParams(location.search);
 
@@ -44,7 +45,23 @@ function blank(): void {
 		t.stop();
 	}
 
-	const office = new Office({ renderer: app.renderer, characters: placeholders(app.renderer), wake: () => scene.redraw() });
+	// The rig's parts, painted once and baked into one texture (src/scene/rig/atlas.ts).
+	const atlas = Atlas.build(app.renderer, paperTheme());
+
+	// ?sheet: every pose's frames, drawn once and left on screen (tools/pose-sheet.ts shoots it).
+	if (params.has("sheet")) {
+		const { sheet, width, height } = buildPoseSheet(atlas);
+		app.resizeTo = undefined as unknown as HTMLElement;
+		app.renderer.resize(width, height);
+		app.stage.addChild(sheet);
+		app.render();
+		Object.assign(window, { __sheet: { width, height, ready: true } });
+		return;
+	}
+
+	// Mochi characters from the rig; ?placeholders draws the old stand-ins (for A/B profiling).
+	const characters = params.has("placeholders") ? placeholders(app.renderer) : rigCharacters(atlas);
+	const office = new Office({ renderer: app.renderer, characters, wake: () => scene.redraw() });
 	app.stage.addChild(office);
 
 	// Ambient motion doesn't need the display's full rate (120 Hz on ProMotion screens). A camera

@@ -376,3 +376,94 @@ the layout data from one stage listener, so nothing in the scene is hit-tested.
 `room:lanternfish:board` or `kitchen:sign`), and take `{ title, body }` through
 `Office.setSign` (also on the inspector). The common areas have default lines from the line bank;
 the sass engine (S5) writes the rest.
+
+## 2026-11-21: the mochi rig (S1)
+
+**A character is one `Puppet` of about 18 sprites from one shared atlas** (`src/scene/rig/`). Back
+to front: shadow, chair, two legs, then the torso (body, costume front piece, two cheeks, a face
+of two eyes, two brows and a mouth, something worn, the hat), a desk, then an upper layer that
+shares the torso's transform (a parcel or sign held in front, and two arms of upper arm, forearm,
+hand and held prop), and one effect. Arms ride their own layer so a desk can sit between the body
+and the hands on its keyboard. The office (S2) turns the rig's own desk off with `desk: false`
+when it draws real furniture. Feet up move the legs in front of the desk.
+
+**Rig units.** The mochi body is 100 wide and 70 tall; the origin is the ground between the feet,
+y down; angles are degrees, clockwise positive, as in the CSS boards they were ported from. A
+puppet at `scale = size / 100` is `size` pixels wide. `ANCHORS` in `theme.ts` holds every
+attachment point (eyes, brows, shoulders, legs, the body's `base` height). Shoulders sit out by
+the cheeks, as `Shapes` warned; hats ride the torso, so they stretch with its squash.
+
+**The atlas is painted at startup, not shipped as an image.** `Atlas.build(renderer, theme)` runs
+every painter in the theme into a Graphics, shelf-packs them (tallest first, then by name, so the
+layout is stable) into a strip 1024 rig units wide with 3 units of padding, and bakes the lot
+with one `generateTexture` at 2 pixels per unit, with mipmaps for the whole-office zoom. Each part
+is a sub-texture whose `defaultAnchor` puts the painter's own origin at the sprite's position, so
+a painter draws in its part's natural space (a hat above the body's top, a prop above the hand)
+and no offsets live anywhere else. One texture source means a crowd batches into a few draw
+calls.
+
+**Part names are `<layer>/<variant>`**, and the rig asks for nothing else:
+`body/<role>`, `hand/<role>`, `hat/<role>` (plus `hat/lead-cup`), `front/<piece>` (tie, apron,
+kerchief, straps, bowtie, badge, scarf), `wear/<thing>` (glasses, binoc), `eye/<eyes>`,
+`mouth/<mouth>`, `held/<prop>`, `prop/<box|pls|desk|chair>`, `fx/<effect>`, and the singletons
+`shadow`, `leg`, `arm/upper`, `arm/fore`, `brow`, `cheek`. The variant names are the vocabulary
+in `vocab.ts`, the same words frames use.
+
+**A theme reskins parts and never poses.** A `Theme` is a palette plus a painter per part name;
+`paperTheme(palette)` is the only one so far. To reskin, supply other painters or colours for the
+same names and rebuild the atlas. Frames, poses, springs and anchors don't change. Two parts are
+painted white and tinted at runtime instead of baked per colour: the lead's tie and headset cup
+take the project accent, and the cheeks take the frame's blush or pallor. Everything else bakes
+its colour in.
+
+**A frame is a parameter object; poses are written in the boards' token form.**
+`parseFrame("e-wide al-up hr-trophy")` fills a complete `Frame` (`eyes, look, brows, cheeks,
+mouth, armL, armR, feet, body, props {left, right, front, back, wear}, fx, spot`), anything not
+named at rest, and throws on an unknown token so a typo fails the unit tests. Frame lengths are
+in the boards' 130 ms beats. A pose adds its trigger, rarity (1/20 for the rare waiting pose),
+lines, `loop` or `once`, the roles it suits, whether it is a slacking habit, and a partner part
+for two-handers.
+
+**Continuous parts spring, swapped parts pop.** Every numeric channel (shoulders, elbows, hands,
+legs and lifts, body x/y/rotation/squash, where the face looks, brows, cheeks, a partner's spot)
+chases its target on a damped spring: limbs bounce once, the body is softer and wobblier, the
+face is quick. Textures that swap (eyes, mouth, held props, effects) pop in on a springy scale.
+Springs integrate in fixed 1/240 s sub-steps, so the same elapsed time gives the same motion at
+30 fps, 60 fps or in `step(n)`.
+
+**Render on demand still holds with puppets.** A puppet reports `animating` while its pose has
+frames to come or any spring is moving. `loop` poses (busy work, waiting, a long build) animate
+until replaced; `once` poses play through, hold their last frame and settle. A character found
+idle starts already mid-habit (`at: "end"`), so an idle office draws nothing; one that goes idle
+while watched plays its habit once, then stops. The director (S4) decides when to replay a habit.
+
+**Variation comes from the id.** `choosePose(trigger, id, role, n)` picks the role's own pose
+when there is one, otherwise one of the trigger's poses by hash, and rolls the rare variant per
+occurrence `n`. Loops start at a phase hashed from the id so a crowd doesn't type in step.
+`roleFor(agentType)` maps the agent tool's free-text types onto the seven costumes.
+
+**Review by reading first.** `bun tools/pose-dump.ts [pose]` prints every frame's non-rest
+parameters; `bun tools/pose-sheet.ts` renders every pose's frames into `docs/rig/pose-sheet.png`
+from `?sheet`. `?demo=crowd` (200 characters: 40 sessions of a lead and four crew) and
+`?demo=crowd-idle` are the load test the e2e budgets run against.
+
+**Measured cost of the rig.** Alternating `tools/profile.sh` runs on one machine, heavy load
+(`--sessions 12 --agents 8 --busy 0.75 --rate 20`), % of one core, Bun / WebContent, with the
+profiler reading the app's Bun process (not the launcher): `main` 7.1 / 16.7 and 6.9 / 12.4; the
+rig 6.5 / 20.6 and 7.1 / 20.8. Idle with the rig: 0.4 / 0.0. The rig adds about 6 points of
+WebContent when ~100 characters animate at once; Bun is unchanged, and an idle office still draws
+nothing. In Chrome at 2x DPR, 200 mixed puppets take a median 1.9 ms per frame (0.5 ms of it
+ticking), so most of the extra is drawing ~25 sprites per character instead of one placeholder
+shape. Accepted for now; cuts for later: skip springs and transforms on settled puppets mid-loop,
+lower the frame rate for characters far from the camera, and drop hidden parts from the tree.
+
+**`freeze()` rewinds poses.** Freezing the inspector replays every character's current pose from
+its first frame, settled, so `step(n)` gives the same frames however long the page ran first.
+Slow CI renders a few real frames before a test can freeze.
+
+**In the office, the rig is the character factory.** `rigCharacters(atlas)` implements S2's
+`Character` slot (`src/scene/rig/character.ts`): a lead wears the lead costume, crew wear
+`roleFor(role)`, the tint key picks the lead's accent, `size` is the height of a standing mochi
+(85 rig units, ground to the top of the body), and `facing` mirrors the puppet. The office draws
+the desks, so the rig's own stays off. `?placeholders` swaps S2's baked stand-ins back in, for A/B
+profiling. The slot gains an optional `rewind()`, which the inspector's `freeze()` calls.
