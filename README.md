@@ -22,6 +22,9 @@ It downloads the latest release, checks it against the release's `SHA256SUMS`, a
 `Busybodies.app` in `/Applications` (or `~/Applications`), without `sudo`. Pin a version with
 `... | sh -s -- 0.1.0`.
 
+If macOS won't open it the first time (it can't verify an unsigned app), open **System Settings →
+Privacy & Security** and click **Open Anyway** next to Busybodies. That's needed once.
+
 <details><summary>The <code>.dmg</code>, updates and uninstalling</summary>
 
 **The `.dmg`.** Each [release](https://github.com/MrMint/busybodies/releases) also has
