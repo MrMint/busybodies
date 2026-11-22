@@ -27,6 +27,16 @@ jobs:
         with:
           node-version: 24
       - uses: ./.github/actions/setup-hutch
+      # The default token can't start CI on the PR it opens, so the release PR is opened by the
+      # busybodies release GitHub App instead. Until the app is set up, the default token is used.
+      - id: app-token
+        if: vars.CHANGESETS_APP_CLIENT_ID != ''
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.CHANGESETS_APP_CLIENT_ID }}
+          private-key: ${{ secrets.CHANGESETS_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
       - id: changesets
         uses: changesets/action@v2
         with:
@@ -36,10 +46,7 @@ jobs:
           push-git-tags: true
           pr-title: "Release: Version Packages"
           commit-message: "Release: Version Packages"
-          # The default token can't start CI on the PR it opens. With a CHANGESETS_TOKEN secret
-          # (a fine-grained token or GitHub App token with contents and pull-requests write), CI
-          # runs on the release PR like any other.
-          github-token: ${{ secrets.CHANGESETS_TOKEN || github.token }}
+          github-token: ${{ steps.app-token.outputs.token || github.token }}
 
   release:
     needs: version-or-tag

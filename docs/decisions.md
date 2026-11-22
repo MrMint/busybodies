@@ -668,9 +668,13 @@ tags.
 on each PR with what it would release. Docs-only and tooling-only PRs need no changeset, so a
 missing one doesn't fail the PR. A fork's PR gets no comment (its token is read-only).
 
-**The release PR's CI.** GitHub doesn't run workflows on a PR opened with the default token, so
-the release PR's checks never report. A `CHANGESETS_TOKEN` secret (a fine-grained token or GitHub
-App token with contents and pull-requests write) fixes that; without it, the owner merges the
-release PR by bypassing the required checks, which is safe because every change in it already
-passed CI on `main`. The repository must also allow GitHub Actions to create pull requests
-(Settings → Actions → General).
+**The release PR comes from a GitHub App.** GitHub doesn't run workflows on a PR opened with the
+default token, so the release PR's checks would never report. The changesets workflow instead
+mints a token from a GitHub App installed only on this repository, with Contents and Pull
+requests write. Its client ID is the `CHANGESETS_APP_CLIENT_ID` repository variable and its private
+key the `CHANGESETS_APP_PRIVATE_KEY` secret. An App over a personal token: its key doesn't expire
+(each run's token lasts an hour), the release PR, commits and tags carry a bot's name rather than
+the owner's, and it isn't tied to a personal account. Without the variable the workflow falls back
+to the default token, and the owner merges the release PR by bypassing the required checks, which
+is safe because every change in it already passed CI on `main`. The repository must also allow
+GitHub Actions to create pull requests (Settings → Actions → General).
