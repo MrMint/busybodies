@@ -201,7 +201,7 @@ tests) and older recordings still type-check.
 for word, with their kind, speaker role and timing note. A unit test parses
 `design/boards/Lines.dc.html` and checks the count and every line against it, so the two can't
 drift. A board line with a name, number or time in it ("PR #219. Frame it.") becomes a template
-(`PR #{n}. Frame it.`) and keeps the board's wording in `boardText`. 107 new lines make 188, with
+(`PR #{n}. Frame it.`) and keeps the board's wording in `boardText`. 108 new lines make 189, with
 at least 5 for each of the 22 triggers. A line whose placeholder has no value isn't used.
 
 **Detectors are pure: `detect(prev, snap, now)`.** Events (a PR opened, a test going red, a hire)
