@@ -194,3 +194,48 @@ in the scene. Every time in a frame moves by the same amount, so durations stay 
 
 **New `Snapshot` fields are optional,** so hand-built snapshots (the demo, the other streams'
 tests) and older recordings still type-check.
+
+## 2026-11-21: sass (S5)
+
+**The line bank is typed data in `src/scene/sass/lines.ts`.** The board's 81 lines are kept word
+for word, with their kind, speaker role and timing note. A unit test parses
+`design/boards/Lines.dc.html` and checks the count and every line against it, so the two can't
+drift. A board line with a name, number or time in it ("PR #219. Frame it.") becomes a template
+(`PR #{n}. Frame it.`) and keeps the board's wording in `boardText`. 107 new lines make 188, with
+at least 5 for each of the 22 triggers. A line whose placeholder has no value isn't used.
+
+**Detectors are pure: `detect(prev, snap, now)`.** Events (a PR opened, a test going red, a hire)
+fire once, on the change. On the first snapshot only events from the last minute count, so
+opening the app doesn't replay the day. States (a wait, a long build, a nap, a stall) fire on
+every call while they hold, with a magnitude in minutes or a count, and a key that stays the same
+for the whole state. A session that vanishes while busy counts as a crash. "Finished, still open"
+is a session idle with a PR up. A busy-to-idle change alone is just a turn ending. Cost is in
+coffee cups: $8 a cup from the tool's cost record, or 100k output tokens a cup when there's none.
+
+**Escalation is by tier.** A line's `min` and `max` bound the trigger's magnitude. The scheduler
+picks only from the highest tier still on offer, so a wait moves on from "Whenever you are
+ready." to "No rush. Some rush." at 2 minutes. A state is said again when it crosses a tier, or
+after 8 quiet minutes.
+
+**The scheduler takes turns.** It allows at most 2, 3 or 4 bubbles on screen as the camera zooms
+in. New bubbles start 1.5 s apart, and each character keeps 45 s between its own. The same
+character never says the same line within the hour, and nobody repeats a line within 10 minutes.
+Repeats count by line, not by filled text. Lines over 30 characters show only from zoom 1.2 up,
+or in the room the camera is on. Each choice hashes the seed, the trigger key and the time, so a
+replay is the same every time. Nothing runs a timer: `Sass.nextWake(now)` says when to call
+`tick` (a bubble ends, a queued line's turn comes, a wait reaches its next tier). It's undefined
+when nothing is due, so an idle office with no bubbles up can sleep.
+
+**Signs: triggers put sign lines up, and counters take the slot back.** A trigger's sign holds its
+slot for 2 minutes. After that, the counters own the room whiteboard ("Days since a test broke",
+or the fail streak from 3), the room sign (the PR tally), and the kitchen sign (green builds
+today). Room idle time drives the plant (`fresh`, `droopy` from 15 min, `wilting` from 30) and
+the mug pile (one mug per 10 min, up to 6). These go out as `sign(slot, state)` too. The fridge
+note is about the most pressing thing: the longest wait, then a long build, a fail streak, deep
+scouts, a stall, late-night work, a finished session left open, then a long nap. Its minutes are
+rounded to 5, so it doesn't change every minute. Slot names follow the office:
+`room:<project>:sign|board|desk|plant|mugs`, `meeting:*`, `kitchen:sign`, `fridge`, `ticker`. The
+wiring maps the props the office doesn't draw yet, or drops them.
+
+**`tools/sass-dump.ts` replays a fixture and prints who said what, in UTC,** so the voice can be
+reviewed by reading. `--zoom 0.4` shows what the whole-office view would show.
