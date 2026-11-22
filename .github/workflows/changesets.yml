@@ -1,0 +1,53 @@
+name: changesets
+# On every push to main: while changesets are waiting, open or update the release PR
+# ("Version Packages"), which bumps package.json and writes CHANGELOG.md. Once that PR is merged
+# there are none left, so tag the new version and call the release workflow to build and publish
+# it. See docs/decisions.md ("releases with Changesets").
+on:
+  push:
+    branches: [main]
+permissions: {}
+concurrency:
+  group: changesets-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  version-or-tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # the release branch and the v* tag
+      pull-requests: write # the release PR
+    outputs:
+      published: ${{ steps.changesets.outputs.published }}
+      version: ${{ steps.changesets.outputs.published == 'true' && fromJSON(steps.changesets.outputs.published-packages)[0].version || '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the changelog links each entry to the commit that added it
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: ./.github/actions/setup-hutch
+      - id: changesets
+        uses: changesets/action@v2
+        with:
+          # "Publishing" is only the git tag: the app isn't on npm. The release job builds it.
+          publish-script: node node_modules/@changesets/cli/bin.js git-tag
+          create-github-releases: false
+          push-git-tags: true
+          pr-title: "Release: Version Packages"
+          commit-message: "Release: Version Packages"
+          # The default token can't start CI on the PR it opens. With a CHANGESETS_TOKEN secret
+          # (a fine-grained token or GitHub App token with contents and pull-requests write), CI
+          # runs on the release PR like any other.
+          github-token: ${{ secrets.CHANGESETS_TOKEN || github.token }}
+
+  release:
+    needs: version-or-tag
+    if: needs.version-or-tag.outputs.published == 'true'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/release.yml
+    with:
+      version: ${{ needs.version-or-tag.outputs.version }}
+      publish: true
+    secrets: inherit

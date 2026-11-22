@@ -204,10 +204,11 @@ and Electrobun's build gives every binary an ad-hoc one (Bun's own is Developer 
 `tools/package-release.sh` fails the release if any Mach-O in the bundle is unsigned. Intel isn't
 built: the script says so and exits.
 
-**Release layout.** A pushed `v*` tag runs `.github/workflows/release.yml` on a `macos-15` runner
-and publishes a release (a pre-release when the version has a `-`). Any other run, including a
-manual one, makes a draft, so only a tag can publish. The version comes from the tag and reaches
-the app through `BUSYBODIES_VERSION` in `electrobun.config.ts`. Each release holds:
+**Release layout.** `.github/workflows/release.yml` builds on a `macos-15` runner and publishes a
+release (a pre-release when the version has a `-`). Since 2026-11-22 only the changesets workflow
+publishes, by calling it once the `v*` tag exists ("releases with Changesets", below); a manual
+run makes a draft. The version reaches the app through `BUSYBODIES_VERSION` in
+`electrobun.config.ts`. Each release holds:
 
 | File | For |
 |---|---|
@@ -642,3 +643,34 @@ launcher sat in `_dyld_start` with nothing logged. Two causes, one fixed:
   setting for the owner, not an agent; signing and notarization (configuration only, see
   "releases") would remove the step. Until then the README's "Open Anyway" steps apply to the
   script install too on some setups.
+
+## 2026-11-22: releases with Changesets
+
+**Changesets decides the version.** A PR that changes what users get adds a changeset
+(`.changeset/*.md`: the bump and a line for the changelog). On each push to `main`,
+`.github/workflows/changesets.yml` gathers the waiting changesets into one release PR,
+"Version Packages", which bumps `package.json` and writes `CHANGELOG.md`. Merging it is the
+release: with no changesets left, the workflow runs `changeset git-tag`, pushes `v<version>`, and
+calls `release.yml` with `publish: true`, which builds that tag and publishes. The notes are the
+install line plus that version's `CHANGELOG.md` entry. A pre-release is Changesets' pre mode
+(`changeset pre enter beta`): its versions carry a `-`, so `release.yml` marks them pre-releases
+and the updater skips them.
+
+**Why a call, not a tag trigger.** A tag pushed with the workflow's own token starts no other
+workflow, so `release.yml` no longer listens for tags; and a token that could start one would run
+it twice. The changesets workflow passes its secrets on (`secrets: inherit`) for signing.
+
+**The package is private.** `privatePackages` is on in `.changeset/config.json`, because
+Changesets 3 skips private packages by default. Nothing goes to npm: the "publish" step only
+tags.
+
+**The status comment is advice, not a gate.** `.github/workflows/changeset-status.yml` comments
+on each PR with what it would release. Docs-only and tooling-only PRs need no changeset, so a
+missing one doesn't fail the PR. A fork's PR gets no comment (its token is read-only).
+
+**The release PR's CI.** GitHub doesn't run workflows on a PR opened with the default token, so
+the release PR's checks never report. A `CHANGESETS_TOKEN` secret (a fine-grained token or GitHub
+App token with contents and pull-requests write) fixes that; without it, the owner merges the
+release PR by bypassing the required checks, which is safe because every change in it already
+passed CI on `main`. The repository must also allow GitHub Actions to create pull requests
+(Settings → Actions → General).
