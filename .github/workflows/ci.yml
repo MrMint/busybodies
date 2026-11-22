@@ -40,7 +40,7 @@ jobs:
           # The host flaps between 200 and 500: retry the whole install for up to ~10 minutes.
           for i in $(seq 1 30); do
             [ -x ~/.hutch/bin/hutch ] && break
-            curl -fsSL https://artifacts.electrobun.dev/hutch/install.sh | sh && break
+            curl -fsSL https://artifacts.electrobun.dev/hutch/install.sh -o "$RUNNER_TEMP/hutch-install.sh" && sh "$RUNNER_TEMP/hutch-install.sh" && [ -x ~/.hutch/bin/hutch ] && break
             rm -rf ~/.hutch; echo "installer attempt $i failed; retrying"; sleep 20
           done
           ~/.hutch/bin/hutch install --frozen-lockfile
