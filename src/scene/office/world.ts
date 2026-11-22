@@ -343,9 +343,80 @@ export function crewSpots(world: World, desk: Desk): Slot[] {
 	return out;
 }
 
-/** The i-th spot of a desk's crew: `crewSpots` first, then the tight pattern for the rest. */
+/** The i-th spot of a desk's crew: `crewSpots` first, then the crowd (`crowdSlot`) for the rest,
+ * re-staggered off anyone it would stand on (`restagger`). A spot depends only on the spots before
+ * it, so `crew:<i>` names the same place however big the crew gets. */
 export function crewSpot(spots: Slot[], desk: Desk, i: number): Slot {
-	return spots[i] ?? crewSlot(desk, CREW.length + i - spots.length);
+	if (i < spots.length) return spots[i]!;
+	const all = [...spots];
+	for (let k = spots.length; k <= i; k++) all.push(restagger(crowdSlot(desk, k - spots.length), all, desk));
+	return all[i]!;
+}
+
+/** True for a crew spot past the spaced ones: part of the crowd (whose rear members may turn to
+ * face whoever stands in front of them: `faceFront`). */
+export const inCrowd = (spots: Slot[], i: number) => i >= spots.length;
+
+/**
+ * The crowd: crew past the spaced spots stand in a loose arc in front of the desk, rows staggered
+ * by half a place so nobody stands square behind another, the outer ones a little further back (the
+ * arc bends round the desk), each facing the lead.
+ */
+export const CROWD = { perRow: 6, pitch: 34, left: -85, front: 58, row: 13, bend: 14, rows: 3, reach: 104 } as const;
+
+export function crowdSlot(desk: Desk, k: number): Slot {
+	const row = Math.floor(k / CROWD.perRow);
+	const j = k % CROWD.perRow;
+	const r = row % CROWD.rows;
+	const cycle = Math.floor(row / CROWD.rows);
+	const dx = Math.max(-CROWD.reach, Math.min(CROWD.reach, CROWD.left + j * CROWD.pitch + (r % 2) * (CROWD.pitch / 2) + (cycle % 2) * 8));
+	const dy = Math.round(CROWD.front + r * CROWD.row + (cycle % 2) * 4 - CROWD.bend * (dx / 90) ** 2);
+	const x = desk.at.x + dx;
+	const y = desk.at.y + dy;
+	return { x, y, depth: y, facing: x < desk.lead.x ? 1 : -1 };
+}
+
+/** How close two crew may stand before the rear one is hidden (feet, px): nearly square behind.
+ * The crowd's rows are staggered by half a place, so a rear one shows past the front one's side. */
+export const OVERLAP = { dx: 16, dy: 24 } as const;
+
+/** Where a re-staggered spot may try, nearest first: half steps aside, then a little back or forward. */
+const STAGGER_X = [0, 17, -17, 34, -34, 51, -51, 68, -68, 85, -85, 102, -102];
+const STAGGER_Y = [0, -8, 8, -16, 16, 24, -24];
+
+/** Re-stagger a crew spot that would stand on an earlier one: the nearest place a half step or so
+ * aside (or a little back or forward) that is clear, still in front of the desk and in its cell. If
+ * there is none (a very big crew), it crowds in where it was. */
+export function restagger(slot: Slot, earlier: Slot[], desk: Desk): Slot {
+	const clear = (x: number, y: number) => !earlier.some((p) => Math.abs(p.x - x) < OVERLAP.dx && Math.abs(p.y - y) < OVERLAP.dy);
+	if (clear(slot.x, slot.y)) return slot;
+	for (const oy of STAGGER_Y)
+		for (const ox of STAGGER_X) {
+			const x = slot.x + ox;
+			const y = slot.y + oy;
+			if (Math.abs(x - desk.at.x) > CROWD.reach || y - desk.at.y < 12 || y > desk.cell.y + desk.cell.h) continue;
+			if (clear(x, y)) return { x, y, depth: y, facing: x < desk.lead.x ? 1 : -1 };
+		}
+	return slot;
+}
+
+/**
+ * Crew standing close together: the rear one (higher up the floor) turns to face the one in front
+ * of it, so a crowd reads as people talking over each other's shoulders, not a queue of backs. Only
+ * spots marked `turn` (the crowd) turn; the spaced spots keep facing their partner across the work.
+ */
+export function faceFront(slots: { slot: Slot; turn: boolean }[]): Slot[] {
+	return slots.map(({ slot, turn }) => {
+		if (!turn) return slot;
+		let best: Slot | undefined;
+		for (const { slot: p } of slots) {
+			if (p === slot || p.y <= slot.y || Math.abs(p.x - slot.x) >= 44 || p.y - slot.y >= 26) continue;
+			if (!best || Math.hypot(p.x - slot.x, p.y - slot.y) < Math.hypot(best.x - slot.x, best.y - slot.y)) best = p;
+		}
+		if (!best || best.x === slot.x) return slot;
+		const facing = best.x > slot.x ? 1 : -1;
+		return facing === slot.facing ? slot : { ...slot, facing };
+	});
 }
 
 /** The crew's build on a desk (office.ts draws it): bricks this big, stacked this many to a course,

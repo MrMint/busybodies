@@ -267,6 +267,59 @@ export const POSES: Pose[] = [
 		],
 	}),
 
+	// Noticing (plan-alive stream A): the director points these at someone with the cue's `lookAt`
+	// (rig/gaze.ts), so the looks below are only what shows without one.
+	pose({
+		// Back on screen after a while away: an idle character looks up at you, pleased.
+		name: "lookUp", title: "Noticing you", trigger: "reacting", rarity: 1, play: "once",
+		lines: [],
+		frames: [
+			["e-wide l-up b-up m-small", 2],
+			["e-shine l-up b-up m-grin", 7],
+			["e-closed l-up b-up m-grin", 1],
+			["e-shine l-up b-up m-grin", 5],
+			["e-half m-smirk", 3],
+		],
+	}),
+	pose({
+		// One of them waves.
+		name: "wave", title: "Waving at you", trigger: "reacting", rarity: 1, play: "once",
+		lines: [],
+		frames: [
+			["e-wide l-up b-up m-open ar-raise", 2],
+			["e-happy l-up b-up m-grin ar-wave1", 2],
+			["e-happy l-up b-up m-grin ar-wave2", 2],
+			["e-happy l-up b-up m-grin ar-wave1", 2],
+			["e-happy l-up b-up m-grin ar-wave2", 2],
+			["e-happy l-up b-up m-grin ar-wave1", 2],
+			["e-shine l-up m-grin ar-low", 3],
+			["e-half m-smirk", 3],
+		],
+	}),
+	pose({
+		// Waiting at your door when you come back: the ticket goes up high, on tiptoe, then back down.
+		name: "ticketHigh", title: "Holding the ticket up for you", trigger: "working", rarity: 1, play: "once",
+		lines: [],
+		frames: [
+			["e-wide l-up b-up m-open hr-ticket ar-raise al-hip", 2],
+			["e-shine l-up b-up m-grin hr-ticket ar-up al-hip f-tip", 6],
+			["e-shine l-up b-up m-grin hr-ticket ar-hi al-hip f-tip", 2],
+			["e-shine l-up b-up m-grin hr-ticket ar-up al-hip f-tip", 6],
+			["e-closed l-up b-up m-grin hr-ticket ar-up al-hip f-tip", 1],
+			["e-wide l-up b-up m-small hr-ticket ar-up al-hip f-tip", 6],
+			["l-right m-flat hr-ticket ar-low al-hip", 2],
+		],
+	}),
+	pose({
+		// A hand-off's taker, as the folder arrives: it looks up and raises a hand to take it.
+		name: "handReady", title: "Ready to take the folder", trigger: "working", rarity: 1, play: "once",
+		lines: [],
+		frames: [
+			["e-wide l-right b-up m-small al-low ar-low", 1],
+			["l-right b-up m-open al-low ar-offer", 3],
+		],
+	}),
+
 	// Slacking, obviously: seven habits ------------------------------------------------------------
 	pose({
 		name: "feetUp", title: "Feet up", trigger: "idle", rarity: 1, play: "once", habit: true,

@@ -8,8 +8,12 @@ import { Puppet } from "./puppet";
 import { COSTUMES, roleFor } from "./roles";
 import { PUPPET_HEIGHT } from "./reach";
 import { ACCENTS } from "./theme";
+import { AT_VIEWER, type Aim, type LookAt, aimAt, eyesOf, isViewer } from "./gaze";
 
 export { PUPPET_HEIGHT };
+
+/** Everyone one factory made, by key: so a character told to look at another can find it. */
+type Cast = Map<string, RigCharacter>;
 
 const TRIGGER = { busy: "busy", idle: "idle", stalled: "stalled", done: "finished" } as const;
 const MS_PER_TICK = 1000 / 60;
@@ -42,9 +46,14 @@ class RigCharacter implements Character {
 	#walked = 0;
 	#walkFrom = 0;
 	#gone = false;
+	// Gaze: what the director's cue says to look at (rig/gaze.ts), and the cast to find it in.
+	#lookAt?: LookAt;
+	#cast: Cast;
 
-	constructor(atlas: Atlas, who: Who) {
+	constructor(atlas: Atlas, who: Who, cast: Cast = new Map()) {
 		this.#who = who;
+		this.#cast = cast;
+		cast.set(who.key, this);
 		const role = who.kind === "lead" ? "lead" : roleFor(who.role);
 		// The office draws real desks, so the rig's own stays off.
 		this.puppet = new Puppet(atlas, { id: who.key, role, accent: ACCENTS[hash(who.tint) % ACCENTS.length], desk: false });
@@ -91,6 +100,8 @@ class RigCharacter implements Character {
 	}
 
 	act(cue: Cue): void {
+		this.#lookAt = cue.lookAt;
+		this.#look();
 		if (this.#cue?.key === cue.key) {
 			// Same pose, maybe a new pace: speed up or slow down without starting over.
 			if ((cue.tempo ?? 1) !== (this.#cue.tempo ?? 1)) {
@@ -127,6 +138,7 @@ class RigCharacter implements Character {
 				this.#pose(false);
 			}
 		}
+		this.#look();
 		this.puppet.tick(dt);
 	}
 
@@ -158,11 +170,34 @@ class RigCharacter implements Character {
 			cue: this.#cue?.pose ?? "",
 			tempo: Math.round(this.puppet.tempo * 100) / 100,
 			walk: w && this.moving ? `${Math.round(this.#walked)}/${w.ms}ms${w.exit ? " exit" : ""}` : "",
+			lookAt: lookAtText(this.#lookAt),
+			look: aimText(this.puppet.aimed),
 		};
 	}
 
 	destroy(): void {
+		if (this.#cast.get(this.#who.key) === this) this.#cast.delete(this.#who.key);
 		this.puppet.destroy({ children: true });
+	}
+
+	// Gaze ------------------------------------------------------------------------------------------
+
+	/** Where this character's face is in the world, for someone looking at it. */
+	get face(): { x: number; y: number } {
+		return eyesOf(this.puppet.position, this.#who.size);
+	}
+
+	/** Point the face at the cue's `lookAt`, in rig units against the way it faces now. Not while
+	 * walking (the walk looks where it goes), and nothing to look at is no aim. */
+	#look(): void {
+		this.puppet.aim(this.moving || this.#gone ? undefined : this.#aimFor(this.#lookAt));
+	}
+
+	#aimFor(at: LookAt | undefined): Aim | undefined {
+		if (at === undefined) return undefined;
+		if (isViewer(at)) return AT_VIEWER;
+		const to = typeof at === "string" ? this.#cast.get(at)?.face : at;
+		return to ? aimAt(this.face, this.#facing, to) : undefined;
 	}
 
 	#walkTo(ms: number): void {
@@ -194,5 +229,9 @@ class RigCharacter implements Character {
 
 /** A factory of mochi characters drawing from `atlas`. */
 export function rigCharacters(atlas: Atlas): CharacterFactory {
-	return (who) => new RigCharacter(atlas, who);
+	const cast: Cast = new Map();
+	return (who) => new RigCharacter(atlas, who, cast);
 }
+
+const lookAtText = (l: LookAt | undefined) => (l === undefined ? "" : typeof l === "string" ? l : isViewer(l) ? "viewer" : `${Math.round(l.x)},${Math.round(l.y)}`);
+const aimText = (a: Aim | undefined) => (a ? `${a.x},${a.y}${a.side ? " side" : ""}` : "");
