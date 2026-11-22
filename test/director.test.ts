@@ -145,15 +145,20 @@ describe("acted poses", () => {
 		expect(actor(d.world, "s:a").pose).toBe("typing");
 	});
 
-	test("a PR opened: celebrate with a busy teammate at the desk, else alone", () => {
+	test("a PR opened: walked to the outbox, then celebrate with a busy teammate at the desk, else alone", () => {
 		const s = stage();
 		const crew = [agent("v", "verifier")];
-		s.step(snap(T0, [session("a", "teapot", { agents: crew }), session("bb", "kettle")]));
+		const both = (prs: boolean) => [session("a", "teapot", { agents: crew, ...(prs ? { prs: pr(7) } : {}) }), session("bb", "kettle", prs ? { prs: pr(8) } : {})];
 		const pr = (n: number) => [{ number: n, url: `https://example.invalid/pr/${n}`, at: T0 + 1000 }];
-		const d = s.step(snap(T0 + 1000, [session("a", "teapot", { agents: crew, prs: pr(7) }), session("bb", "kettle", { prs: pr(8) })]));
-		expect(actor(d.world, "s:a").pose).toBe("celebrate");
-		expect(actor(d.world, "a:a:v")).toMatchObject({ pose: "celebrate", as: "partner" });
-		expect(actor(d.world, "s:bb").pose).toBe("prOpened");
+		s.step(snap(T0, both(false)));
+		const d = s.step(snap(T0 + 1000, both(true)));
+		expect(actor(d.world, "s:a").pose).toBe("mailDrop");
+		const drops = Math.max(d.world.mail!.a!.drops, d.world.mail!.bb!.drops);
+		const back = s.step(snap(drops, both(true)));
+		expect(actor(back.world, "s:a").pose).toBe("celebrate");
+		expect(actor(back.world, "s:bb").pose).toBe("prOpened");
+		const home = s.step(snap(back.world.mail!.a!.back!, both(true)));
+		expect(actor(home.world, "a:a:v")).toMatchObject({ pose: "celebrate", as: "partner" });
 	});
 
 	test("a new subagent: the boss hands over and the hire plays the other half", () => {
@@ -166,21 +171,26 @@ describe("acted poses", () => {
 		expect(d.events).toContainEqual({ type: "arrive", key: "a:a:new", at: T0 + 1000, spot: "crew:0", area: actor(d.world, "s:a").area, walk: false });
 	});
 
-	test("a compaction stretches", () => {
+	test("a compaction sends the lead to the room's shredder with its in-tray", () => {
 		const s = stage();
 		s.step(snap(T0, [session("a", "teapot", { compactions: { count: 1, lastAt: T0 - 30 * MIN } })]));
 		const d = s.step(snap(T0 + 1000, [session("a", "teapot", { compactions: { count: 2, lastAt: T0 + 900 } })]));
-		expect(actor(d.world, "s:a").pose).toBe("stretch");
+		const lead = actor(d.world, "s:a");
+		expect(lead.pose).toBe("shred");
+		expect(lead.spot).toBe("station:room:teapot:shredder:0");
+		expect(lead.walk).toBeDefined();
+		expect(lead.homeArea).toBe("room:teapot");
 	});
 });
 
 describe("waiting on you", () => {
-	test("the paddle goes up, and events mark the start and end", () => {
+	test("the lead takes a ticket to your office, and events mark the start and end in its room", () => {
 		const s = stage();
 		s.step(snap(T0, [session("a", "teapot")]));
 		const d = s.step(snap(T0 + 1000, [session("a", "teapot", { state: "idle", waiting: { reason: "permission", since: T0 + 900, source: "hook" } })]));
-		expect(["waiting", "waitingPlease"]).toContain(actor(d.world, "s:a").pose);
-		expect(d.events.filter((e) => e.type === "waiting")).toEqual([{ type: "waiting", key: "s:a", at: T0 + 1000, state: "start", area: actor(d.world, "s:a").area }]);
+		expect(["ticketWait", "waitingPlease"]).toContain(actor(d.world, "s:a").pose);
+		expect(actor(d.world, "s:a").spot).toBe("yours:line:0");
+		expect(d.events.filter((e) => e.type === "waiting")).toEqual([{ type: "waiting", key: "s:a", at: T0 + 1000, state: "start", area: "room:teapot" }]);
 		const still = s.step(snap(T0 + 5000, [session("a", "teapot", { state: "idle", waiting: { reason: "permission", since: T0 + 900, source: "hook" } })]));
 		expect(still.events).toEqual([]);
 		const done = s.step(snap(T0 + 9000, [session("a", "teapot")]));

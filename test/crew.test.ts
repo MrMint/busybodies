@@ -1,7 +1,7 @@
 // A busy crew, directed: builders act out the tool in hand at their own pace, look up when a
 // teammate's test goes red, the lead walks its rounds, and the crew's build grows on the desk.
 import { describe, expect, test } from "bun:test";
-import { RULES, cueFor, direct, runCooldown } from "../src/scene/director/direct";
+import { COPIER_FEUD, RULES, cueFor, direct, runCooldown } from "../src/scene/director/direct";
 import type { World } from "../src/scene/director/types";
 import { PACE, RUNS, editRate, paceOf } from "../src/scene/director/pace";
 import { STATION_POSE, STATION_REACH } from "../src/scene/director/stations";
@@ -510,24 +510,33 @@ describe("stations and trips", () => {
 		expect(a("b1").pose).toBe(TRIP.queuePose);
 		expect(a("b1").trip).toMatchObject({ queue: 1 });
 		expect(d!.events).toContainEqual({ type: "trip", key: "a:rel:b1", at: T0 + TRIP.holdMs, station: "room:teapot:reference:0", state: "queue" });
-		// The user goes back to edit: the line moves up, and the fourth joins the end of it.
+		// The user goes back to edit: the line moves up, and on its way it hands its folder to the
+		// fourth, so that one never joins the line (handoff.ts).
 		const [up] = run(s, [T0 + 20 * SEC], readers);
 		const u = (k: string) => up!.world.actors[`a:rel:${k}`]!;
-		expect(u("b0").spot).toMatch(/^crew:/);
+		expect(u("b0").spot).toBe("handoff:a:rel:b3");
 		expect(u("b1").spot).toBe(STATION("reference"));
 		expect(u("b1").pose).toBe(STATION_POSE.reference.work);
 		expect(u("b2").spot).toBe("queue:room:teapot:reference:0:0");
-		expect(u("b3").spot).toBe("queue:room:teapot:reference:0:1");
+		expect(u("b3").spot).toMatch(/^crew:/);
+		expect(u("b3").trip).toBeUndefined();
 		expect(up!.events).toContainEqual({ type: "trip", key: "a:rel:b1", at: T0 + 20 * SEC, station: "room:teapot:reference:0", state: "use" });
 	});
 
-	test("a long build at the copier jams it: the grumpy rule plays the kick", () => {
+	test("a long build at the copier jams it: a running feud, looped until the build ends", () => {
 		const s = stage();
-		const crew = () => [builder("b0", "Bash", T0, { running: { tool: "Bash", since: T0 - (RULES.longBuildMin + 5) * MIN, kind: "build" } })];
-		const [first, d] = run(s, [T0, T0 + TRIP.holdMs], crew);
+		const running = { tool: "Bash", since: T0 - (RULES.longBuildMin + 5) * MIN, kind: "build" as const };
+		const crew = (t: number) => [builder("b0", t < T0 + 40 * SEC ? "Bash" : "Edit", t < T0 + 40 * SEC ? T0 : t, t < T0 + 40 * SEC ? { running } : {})];
+		const [first, d, later, done] = run(s, [T0, T0 + TRIP.holdMs, T0 + 30 * SEC, T0 + 40 * SEC], crew);
 		expect(first!.world.actors["a:rel:b0"]!.pose).toBe("grumpy");
-		expect(d!.world.actors["a:rel:b0"]!.spot).toBe(STATION("build"));
-		expect(d!.world.actors["a:rel:b0"]!.pose).toBe(STATION_POSE.build.bad!);
+		const b0 = d!.world.actors["a:rel:b0"]!;
+		expect(b0.spot).toBe(STATION("build"));
+		expect(b0.pose).toBe(COPIER_FEUD);
+		expect(POSE[COPIER_FEUD]!.play).toBe("loop");
+		expect(cueFor(b0, T0 + TRIP.holdMs).loops).toBe(Infinity);
+		// Still feuding, the same pose carrying on; the build ends and it walks back.
+		expect(later!.world.actors["a:rel:b0"]).toMatchObject({ pose: COPIER_FEUD, poseSince: b0.poseSince });
+		expect(done!.world.actors["a:rel:b0"]!.spot).toMatch(/^crew:/);
 	});
 
 	test("a red test at the stamp desk: a red stamp, then the thumb, then back to the bench", () => {

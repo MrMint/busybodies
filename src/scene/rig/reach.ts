@@ -2,7 +2,7 @@
 // point, and the arm's kinematics (forward, to check a pose, and inverse, to solve one). Pixi-free,
 // so the unit tests check that every tool hand lands on what it works on.
 import { STATION_REACH } from "../director/stations";
-import { ARMS, BODIES, type Arm, type Body } from "./vocab";
+import { ARMS, BODIES, SPOTS, type Arm, type Body } from "./vocab";
 
 /** A standing mochi is about this tall in rig units, ground to the top of the body. */
 export const PUPPET_HEIGHT = 85;
@@ -61,6 +61,8 @@ export const STATION = {
 	y: (STATION_REACH.y * PUPPET_HEIGHT) / STATION_CREW_PX,
 } as const;
 
+const station0 = (p: { x: number; y: number }) => ({ x: STATION.x + p.x, y: STATION.y + p.y });
+
 /** Points on each station, relative to STATION (rig units, +x away from the character, +y down).
  * theme.ts draws the station props here and the station arms below are solved onto them. */
 export const AT = {
@@ -88,12 +90,55 @@ export const AT = {
 	formEdge: { x: 4, y: -2 },
 	/** Phone table: the notepad, jotted on from left to right. */
 	note: [{ x: 0, y: 0 }, { x: 5, y: 1 }, { x: 10, y: 0 }],
+	/** Where the handset's cord meets the phone's base: the office draws the base on the wall side
+	 * of the table top, 20 to 42 office px past the point (a 58 px user) and from 10 above it to 3
+	 * below: 29 to 62 rig units on, -15 to 4 down. The cord ends at its near edge, a little up. */
+	phoneBase: { x: 31, y: -5 },
 	/** Outbox: the tray's rim. */
 	tray: { x: 4, y: 0 },
 	/** Shredder: the slot (the working point) and the pile waiting beside it. */
 	slot: { x: 0, y: 0 },
 	pile: { x: 14, y: -3 },
 } as const;
+
+/**
+ * The lead's in-tray, on its desk, in the lead's puppet space (it stands behind the desk facing
+ * right): the pile's middle, width, and the desk top it stands on. The office's desk top's back
+ * edge is about here (a 72 px lead behind a desk sees the desk top 28 px above its feet, 33 rig
+ * units), so the pile's foot hides behind the desk's edge as a real pile would. Each sheet is
+ * `sheet` thick; `buried` is the pile's top at its tallest, just under the brows (eyes at -55,
+ * brows at -66), so the lead peers over it on its toes (`bd-peer`).
+ */
+export const TRAY = { x: 21, w: 30, base: -28, sheet: 1.5, buried: -61 } as const;
+
+/**
+ * The bell on your desk (the office's "your office"): the plunger's top, in the ringer's puppet
+ * space. It is a station working point (STATION plus a little), so the director stands the ringer
+ * with the same `useFor` geometry as a station, and the counter the bell sits on has its top
+ * `BELL_BASE` below the plunger (theme.ts draws the bell; the office draws only the counter).
+ */
+export const BELL = station0({ x: 2, y: 8 });
+export const BELL_BASE = 13;
+
+/**
+ * The wall planner, where a sticky note goes: the note's middle when it's pressed on, up and in
+ * front (above the eyes; the poster reaches up on `bd-reach`). The office draws the planner board
+ * around it and the notes already posted; the rig draws only the note being pressed on.
+ */
+export const PLANNER = { x: 58, y: -66 } as const;
+export const STICKY = 12;
+
+/**
+ * A hand-off (`handOff`): the taker stands `gap` rig units in front of the giver, facing it (feet to
+ * feet; mirrored, as the office faces crew pairs). Each holds the folder at arm's length, `hand` in
+ * its own space, the folder running `folder.from` to `folder.to` out from the hand: the giver holds
+ * its near edge and the taker its far edge, which in the taker's own space is its near edge too.
+ * So `gap` is two arm's lengths and the folder's width, and the folder never moves as it changes
+ * hands. The taker's part steps in on `at-s2` (SPOTS.s2, 60 rig units toward the giver once it
+ * faces it), so the director stands it `slot` from the giver: 220 rig units, 150 office px for a
+ * 58 px crew member (scale by size), and the step closes that to `gap`.
+ */
+export const HANDOFF = { gap: 160, slot: 160 + SPOTS.s2[0], hand: { x: 70, y: -41 }, folder: { from: 1, to: 19 } } as const;
 
 /** Points on a held prop, from the hand's centre, drawn upright (theme.ts): its business end. */
 export const GRIP = {
@@ -263,4 +308,29 @@ export const REACH: Record<string, Reach> = {
 	feed3: { at: station({ x: AT.slot.x, y: AT.slot.y - 4 }), body: "up", bend: -1 },
 	// Waiting in line: a clipboard held up to read (left hand).
 	read: { at: { x: -26, y: -32 }, body: "rest", side: -1, bend: -1, torso: true },
+	// Buried: a palm on the pile's top, up on the toes, and a grab at the sheet sliding off it.
+	steady: { at: { x: 31, y: TRAY.buried - 6 }, body: "peer", bend: 1 },
+	catch: { at: { x: 58, y: -56 }, body: "peer", bend: -1 },
+	// A ticket held up under the chin to check it.
+	check: { at: { x: 30, y: -40 }, body: "rest", bend: -1, torso: true },
+	// The bell: the palm's centre a palm's depth over the plunger (raised), and on it.
+	poise: { at: { x: BELL.x - 4, y: BELL.y - 15 }, body: "rest", bend: -1 },
+	ring: { at: { x: BELL.x, y: BELL.y - 6 }, body: "rest", bend: -1 },
+	// A sticky note up on a fingertip; pressed on the planner, and the thumb along its top edge.
+	tipUp: { at: { x: 54, y: -64 }, body: "rest", bend: 1, torso: true },
+	stick: { at: PLANNER, body: "reach", bend: -1 },
+	smooth1: { at: { x: PLANNER.x - 5, y: PLANNER.y - STICKY / 2 + 1 }, body: "reach", grip: GRIP.finger, bend: -1 },
+	smooth2: { at: { x: PLANNER.x + 5, y: PLANNER.y - STICKY / 2 + 1 }, body: "reach", grip: GRIP.finger, bend: -1 },
+	// The big envelope, a hand on each side of it.
+	present: { at: { x: 23, y: -29 }, body: "rest", bend: -1, torso: true, mirror: true },
+	// The hand-off: the folder close, at arm's length (both characters), the taker's reach, tucked.
+	offerIn: { at: { x: 38, y: -36 }, body: "rest", bend: -1, torso: true },
+	offer: { at: HANDOFF.hand, body: "rest", bend: 1 },
+	reachOut: { at: { x: 58, y: -43 }, body: "rest", bend: 1 },
+	tuck: { at: { x: 42, y: -24 }, body: "rest", bend: -1, torso: true },
+	// Copier feud: the finger off the button between jabs; the crumpled corner at the door's seam.
+	jab0: { at: station({ x: AT.button.x - 6, y: AT.button.y - 4 }), body: "rest", grip: GRIP.finger, bend: -1 },
+	pluck: { at: station({ x: AT.jam.x + 1, y: AT.jam.y - 7.6 }), body: "rest", bend: 1 },
+	// The finger-gun blown on, the hand at the mouth.
+	blow: { at: { x: 22, y: -38 }, body: "rest", hand: 90, bend: -1, torso: true },
 };

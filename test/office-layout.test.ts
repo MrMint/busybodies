@@ -44,9 +44,9 @@ function checkSane(world: World, sessions: Session[]): void {
 			expect(d.cell.y).toBeGreaterThanOrEqual(a.floorY);
 		}
 		for (const f of a.fixtures) expect(f.x > a.rect.x && f.x < a.rect.x + a.rect.w && f.y > a.floorY && f.y < a.rect.y + a.rect.h).toBe(true);
-		// Every project room has its four stations, in the strip left of the desks, users and queues
+		// Every project room has its six stations, in the strip left of the desks, users and queues
 		// on the floor.
-		if (a.kind === "project") expect(a.stations.map((st) => st.kind).slice(0, 4)).toEqual(STATIONS_BASE);
+		if (a.kind === "project") expect(a.stations.map((st) => st.kind).slice(0, STATIONS_BASE.length)).toEqual(STATIONS_BASE);
 		for (const st of a.stations) {
 			for (const c of a.cells) expect(st.base.x + 30).toBeLessThanOrEqual(c.x);
 			for (const p of [st.use, ...st.queue]) {
@@ -190,7 +190,18 @@ describe("layout scaling", () => {
 
 	test("an empty snapshot still has the common areas", () => {
 		const world = new FloorPlan().update(snap([]));
-		expect(world.areas.map((a) => a.kind)).toEqual(["meeting", "lobby", "kitchen"]);
+		expect(world.areas.map((a) => a.kind)).toEqual(["meeting", "lobby", "yours", "kitchen"]);
+		// Your office sits beside the lobby, its way in first on the wall (walks use it), a line to queue in.
+		const yours = world.areas.find((a) => a.kind === "yours")!;
+		expect(yours.rect.x).toBe(world.areas.find((a) => a.kind === "lobby")!.rect.x + world.areas.find((a) => a.kind === "lobby")!.rect.w);
+		expect(yours.wall.find((w) => w.kind === "door" || w.kind === "you")!.kind).toBe("door");
+		expect(yours.spots.line!.length).toBeGreaterThanOrEqual(6);
+		for (const p of yours.spots.line!) {
+			expect(p.x).toBeGreaterThan(yours.rect.x + 20);
+			expect(p.x).toBeLessThan(yours.rect.x + yours.rect.w - 20);
+			expect(p.y).toBeGreaterThan(yours.floorY);
+			expect(p.y).toBeLessThan(yours.rect.y + yours.rect.h - 10);
+		}
 		expect(world.areas.find((a) => a.kind === "kitchen")!.spots.queue).toHaveLength(5);
 	});
 
@@ -219,7 +230,7 @@ describe("stations", () => {
 			// Two projects, so one room is above the hallway and one below.
 			const list = [session("lanternfish"), session("orbit-kit")];
 			const before = where(plan.update(snap(list)), project);
-			expect(before.size).toBe(4);
+			expect(before.size).toBe(STATIONS_BASE.length);
 			// A room gaining rows (and losing them again) keeps every station where it was.
 			const more = [...list, ...Array.from({ length: 6 }, () => session(project))];
 			const grown = where(plan.update(snap(more)), project);
@@ -234,14 +245,37 @@ describe("stations", () => {
 		const list = Array.from({ length: 7 }, () => session("lanternfish"));
 		const small = plan.update(snap(list)).areas.find((a) => a.name === "lanternfish")!;
 		expect(small.rows).toBeGreaterThanOrEqual(3);
-		expect(small.stations).toHaveLength(4);
+		expect(small.stations).toHaveLength(STATIONS_BASE.length);
 		list[0] = { ...list[0]!, agents: crew(STATION_CREW * 3) };
 		const big = plan.update(snap(list)).areas.find((a) => a.name === "lanternfish")!;
-		expect(big.stations.map((st) => st.id.split(":").slice(2).join(":"))).toEqual(["build:0", "test:0", "reference:0", "search:0", "build:1", "test:1"]);
-		// The first four stay put.
+		expect(big.stations.map((st) => st.id.split(":").slice(2).join(":"))).toEqual(["build:0", "test:0", "reference:0", "search:0", "web:0", "outbox:0", "build:1", "test:1"]);
+		// The base six stay put.
 		for (const st of small.stations) expect(big.stations.find((x) => x.id === st.id)!.base).toEqual(st.base);
 		// A two-row room has no space for more, however big the crew.
 		const tight = new FloorPlan().update(snap([session("pebble", { agents: crew(20) })])).areas.find((a) => a.name === "pebble")!;
-		expect(tight.stations).toHaveLength(4);
+		expect(tight.stations).toHaveLength(STATIONS_BASE.length);
+	});
+
+	test("each project room has a shredder off the strip, under its back wall by the wall opposite it", () => {
+		for (const project of ["lanternfish", "orbit-kit"]) {
+			const plan = new FloorPlan();
+			const list = [session("lanternfish"), session("orbit-kit")];
+			const room = plan.update(snap(list)).areas.find((a) => a.name === project)!;
+			const st = room.shredder!;
+			expect(room.stations.some((s) => s.kind === "shredder")).toBe(false);
+			// By the right wall, just under the back wall; its user to its left, facing it, inside the room.
+			expect(st.base.x).toBeGreaterThan(room.rect.x + room.rect.w - 60);
+			expect(st.base.y - room.floorY).toBeGreaterThan(0);
+			expect(st.base.y - room.floorY).toBeLessThan(40);
+			expect(st.use.y).toBeGreaterThan(room.floorY);
+			expect(st.use.y).toBeLessThan(room.rect.y + room.rect.h);
+			expect(st.use.facing).toBe(1);
+			expect(st.use.x).toBeLessThan(st.at.x);
+			expect(room.fixtures.some((f) => f.kind === "shredder" && f.x === st.base.x && f.y === st.base.y)).toBe(true);
+			const grown = plan.update(snap([...list, ...Array.from({ length: 6 }, () => session(project))])).areas.find((a) => a.name === project)!;
+			// It keeps its place on the back wall: fixed below the hallway, moving up with the wall above it.
+			if (room.band === "bottom") expect(grown.shredder).toEqual(st);
+			else expect(grown.shredder!.base.y - grown.floorY).toBe(st.base.y - room.floorY);
+		}
 	});
 });

@@ -28,12 +28,12 @@ export interface Slot {
 	facing: 1 | -1;
 }
 
-export type AreaKind = "project" | "vacant" | "meeting" | "lobby" | "kitchen";
+export type AreaKind = "project" | "vacant" | "meeting" | "lobby" | "kitchen" | "yours";
 export type Band = "top" | "bottom";
 
 /** A piece of floor furniture. Its base sits at (x, y) and it is depth-sorted with characters. */
 export interface Fixture {
-	kind: "plant" | "chair" | "counter" | "cooler" | "fridge" | "sofa" | "table" | "cabinet" | "pod" | "lamp" | StationFurniture;
+	kind: "plant" | "chair" | "counter" | "cooler" | "fridge" | "sofa" | "table" | "cabinet" | "pod" | "lamp" | StationFurniture | PropFixture;
 	x: number;
 	y: number;
 	/** Draw order; usually y, the base. */
@@ -42,7 +42,8 @@ export interface Fixture {
 
 /** Something hung on a back wall: drawn into the room's cached layer. */
 export interface WallItem {
-	kind: "window" | "whiteboard" | "sign" | "door" | "frame";
+	/** `planner`: the room's todo planner; `you`: the door to your office (office/props.ts draws both). */
+	kind: "window" | "whiteboard" | "sign" | "door" | "frame" | "planner" | "you";
 	rect: Rect;
 	/** Named slots (whiteboards, signs, frames) take text later, from the sass engine (S5). */
 	slot?: string;
@@ -92,16 +93,24 @@ export interface Area {
 	spots: Record<string, Slot[]>;
 	/** A project room's shared stations, in the strip along its left wall (see `stationsFor`). */
 	stations: Station[];
+	/** A project room's shredder, in the back corner opposite the strip (see `shredderFor`). */
+	shredder?: Station;
 }
 
 /** The office's furniture for each station kind (the office theme). Kinds without one get no station yet. */
-export type StationFurniture = "files" | "catalogue" | "copier" | "stamps";
+export type StationFurniture = "files" | "catalogue" | "copier" | "stamps" | "phone" | "outbox";
 export const STATION_FURNITURE: Partial<Record<StationKind, StationFurniture>> = {
 	reference: "files",
 	search: "catalogue",
 	build: "copier",
 	test: "stamps",
+	web: "phone",
+	outbox: "outbox",
 };
+
+/** The metrics' furniture (office/props.ts): a room's shredder; your office's ticket machine and the
+ * counter with the bell by your door. */
+export type PropFixture = "shredder" | "tickets" | "bell";
 
 /**
  * A shared station in a project room: a filing cabinet, a copier... Its user stands at `use`, facing
@@ -142,7 +151,7 @@ export const FRONT = 10;
 export const HALL = 130;
 export const MIN_ROWS = 2;
 export const MAX_COLS = 4;
-export const COMMON_W = { meeting: 340, lobby: 260, kitchen: 460 } as const;
+export const COMMON_W = { meeting: 340, lobby: 260, yours: 300, kitchen: 460 } as const;
 
 /**
  * The station strip: a column of shared equipment along a project room's left wall, left of the desk
@@ -152,11 +161,12 @@ export const COMMON_W = { meeting: 340, lobby: 260, kitchen: 460 } as const;
  */
 export const STRIP = {
 	w: 130,
-	pitch: 66,
+	/** Six stations fit a two-row room at this pitch (wave 2 added the phone and the outbox). */
+	pitch: 52,
 	/** A room below the hallway: the first station's base, down from where its floor begins. */
-	first: 80,
+	first: 64,
 	/** A room above: the first station's base, up from its front edge. */
-	front: 18,
+	front: 16,
 	/** The tallest station, so the far one stays clear of the back wall's signs. */
 	tall: 76,
 	/** Each station's centre, in from the room's left edge. */
@@ -167,8 +177,9 @@ export const STRIP = {
 	queue: 2,
 } as const;
 
-/** The four every project room gets, from the hallway side; then the extras a big crew earns. */
-export const STATIONS_BASE: StationKind[] = ["build", "test", "reference", "search"];
+/** The six every project room gets, from the hallway side (the wave-1 four, then the phone and the
+ * outbox); then the extras a big crew earns. */
+export const STATIONS_BASE: StationKind[] = ["build", "test", "reference", "search", "web", "outbox"];
 export const STATIONS_EXTRA: StationKind[] = ["build", "test", "reference", "search"];
 /** A second station of a kind: one per this many busy crew in the room past the first four. */
 export const STATION_CREW = 4;
@@ -221,6 +232,30 @@ export function stationsFor(area: Pick<Area, "id" | "band" | "rect" | "floorY">,
 		});
 		return { id: `${area.id}:${kind}:${n}`, kind, areaId: area.id, base, at, use, queue };
 	});
+}
+
+/**
+ * A project room's shredder (a lead feeds its in-tray in on a compaction): off the station strip,
+ * against the right wall opposite it, just under the back wall: the one gap the desks leave there
+ * (above the back-right desk's filing drawers; the front corner has the plant, and the front-right
+ * desk's drawers and skip). Like the planner and the signs it belongs to the back wall: in a room
+ * below the hallway it never moves; in one above, it moves up with the wall when a row is added.
+ * Its user stands to its left, facing it (the strip's stand to the right), its feet STATION_REACH
+ * (scaled) from the working point.
+ */
+export const SHREDDER = { inset: 34, back: 28, reach: -10 } as const;
+
+export function shredderFor(area: Pick<Area, "id" | "rect" | "floorY">): Station {
+	const base = { x: area.rect.x + area.rect.w - SHREDDER.inset, y: area.floorY + SHREDDER.back };
+	const at = { x: base.x + SHREDDER.reach, y: base.y + STATION_REACH.y };
+	const use = shredderUse({ at, base }, STATION_CREW_PX);
+	return { id: `${area.id}:shredder:0`, kind: "shredder", areaId: area.id, base, at, use, queue: [] };
+}
+
+/** Where a user `size` px tall stands at the shredder: left of it, facing right. */
+export function shredderUse(st: Pick<Station, "at" | "base">, size: number): Slot {
+	const k = size / STATION_CREW_PX;
+	return { x: Math.round(st.at.x - STATION_REACH.x * k), y: Math.round(st.at.y - STATION_REACH.y * k), depth: st.base.y + 1, facing: 1 };
 }
 
 export const roomWidth = (cols: number) => SIDE * 2 + STRIP.w + cols * CELL_W;

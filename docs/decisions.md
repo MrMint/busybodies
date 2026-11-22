@@ -821,3 +821,54 @@ numbers into `ARMS`. A kick (`boot`) swings the leg out in front of the body so 
 
 Left for later: the web, outbox and shredder stations have poses but no furniture yet;
 `copierKick` plays once and holds, so a long build shows one kick, not a running feud.
+
+## 2026-11-22: the living office, wave 2 (metrics as things, hectic rooms, their acting)
+
+Decided with the owner first (recorded in `docs/plan-next.md`): waiting sessions queue at a new
+"your office"; model families get opinionated personalities (`director/traits.ts`); the tower
+counts lines while brick runs count edits; themes keep the mochis. Wave 2 ran as three agents in
+separate worktrees, merged here; where the branches met, the director's gait became one function
+(the model's stride, then the heat's pace, then at least a run in a rush).
+
+**Metrics as things (stream B).** The director turns the watcher's numbers into thing state in
+theme-neutral words (`director/metrics.ts`); the office draws them (`office/props.ts`).
+- Context is an in-tray at the rig's TRAY point: up to 16 sheets, sliding off past 80%; past 95%
+  a busy lead plays `buried` and the rig draws that pile (the office hides its own).
+- A compaction sends the lead with its pile to the room's shredder (one per room, against the
+  right wall under the back wall, off the station strip) for two loops of `shred`.
+- The tower counts lines added: a brick per 20, then six more per doubling past 200, capped at 30.
+  Removed lines fill a skip; files touched fill filing drawers (one per ten); cups become mugs; the
+  last test lights a red or green lamp. The small ones show only zoomed in.
+- Todos are sticky notes on a wall planner over the station strip; a crew member (or the lead)
+  walks each done note over (`stickyCarry`, `stickyPost`).
+- Waiting leads queue at "your office", beside the lobby (the bottom band is now lobby, your office,
+  kitchen), holding numbered tickets in the order their waits started; NOW SERVING shows the lowest,
+  and the first one into an empty office rings the bell. The pulse and pill stay on the lead's room.
+- Model families act out `traits.ts`: walk and pose pace, a beat before acting for deliberate
+  models, fable's flourish; the family is plain text on the desk card.
+- Props Graphics are forced into the batch, so a busy frame stays within 30 draws.
+
+**Hectic rooms (stream C, wave 2).** A session's heat is its tool calls a minute (its own and its
+running crew's) plus 2 per edit a minute. At 90 its room goes into rush, which ends below 60 and
+never within 15 s of starting. In a rush every walk in the room is `rushRun` at a run, the hot
+session's trips go after a 3 s hold, its brick-run cooldown halves, and its lead dashes for 6 s to
+the newest red test, else to whoever has queued longest. Walks that start together in one area and
+would come within 26 px are untangled: the later key sidesteps on the smallest detour that keeps
+them apart (walks whose timing something else depends on keep their paths). A crew member back
+from the filing cabinet or card catalogue walks its folder to a teammate whose work wants the same
+station (`handOff`, at the rig's arm's-length distance, about 150 px for a 58 px crew member), and
+that teammate skips the trip. A long build loops `copierFeud`. The strip gained a phone table (web)
+and a mail cart (outbox) at a 52 px pitch, so six fit a two-row room; a PR is walked to the outbox
+(`envelopeCarry`, `mailDrop`) before the celebration.
+
+**Wave 2 acting (stream E, round two).** The placeholders became acting with hands and props: the
+lead types behind a teetering in-tray, peers over it and loses its top sheet over the side; waiting
+leads hold a numbered ticket, and the first in brings a flat palm down on a desk bell that dings; a
+sticky note rides a fingertip to the planner and is pressed on with a thumb; the rush is a real run
+with papers trailing; the PR's big envelope is carried proudly; a long build is a running feud with
+a jammed copier (kick, spit sheet, toss, jabs); fable's flourish is a finger-gun. Each new working
+point is a named constant in `rig/reach.ts` (TRAY, BELL, PLANNER, HANDOFF, AT.phoneBase), which the
+office and director import rather than copy.
+
+`?demo=release` now also buries the lead's in-tray by 9 s, compacts it to the shredder at 12 s,
+walks todo notes to the planner, and sends two sessions to your office.

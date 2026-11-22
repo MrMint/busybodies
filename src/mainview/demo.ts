@@ -5,8 +5,10 @@
 //   ?demo=one     a single session
 //   ?demo=thirty  thirty sessions over eight projects
 //   ?demo=release a release with six builders: they walk to the room's stations for their work and
-//                 queue for them, a long build kicks the copier, a test goes red at the stamp desk,
-//                 one finishes, a PR; builders carry bricks to their crew build (and a two-builder
+//                 queue for them, a long build feuds with the copier, one is on the phone, the work
+//                 heats up into a rush (runs, papers flying, the lead dashing about, walkers dodging),
+//                 a folder is handed over, a test goes red at the stamp desk, one finishes, a PR is
+//                 walked to the outbox; builders carry bricks to their crew build (and a two-builder
 //                 hotfix next door shares the stations)
 //   ?demo=empty   nobody's in; ?demo=nohome: no coding agent found (add &compact for the small window)
 // The clock is fixed, so the same demo always draws the same frames.
@@ -35,6 +37,11 @@ function agent(role: string, task: string, status: Agent["status"] = "running", 
 }
 const relevel = (a: Agent, depth: number): Agent => ({ ...a, depth, children: a.children.map((c) => relevel(c, depth + 1)) });
 
+/** A context this full of a 1M window, as of `at` (metrics: the in-tray). */
+const ctx = (share: number, at = NOW) => ({ used: Math.round(share * 1_000_000), window: 1_000_000, at });
+/** A last test result (metrics: the desk's lamp). */
+const tested = (ok: boolean, at = min(2)): Agent["commands"] => ({ failStreak: ok ? 0 : 1, repeats: 1, failed: ok ? 0 : 1, testsFailed: ok ? 0 : 1, last: { kind: "test", exitCode: ok ? 0 : 1, at } });
+
 function session(title: string, project: string, state: string, started: number, extra: Partial<Session> = {}): Session {
 	const id = `demo-session-${++n}`;
 	return {
@@ -61,6 +68,12 @@ function floorBusy(): Snapshot {
 		sessions: [
 			session("Ship release 2.4", "lanternfish", "busy", 320, {
 				branch: "release/2.4",
+				// Nearly out of room: papers sliding off its in-tray.
+				family: "opus",
+				context: ctx(0.93),
+				changes: { files: 34, added: 1240, removed: 380 },
+				todos: { pending: 3, active: 2, done: 6 },
+				cost: { outputTokens: 520_000 },
 				agents: [
 					agent("scout", "Find callers of saveDraft", "running", [agent("scout", "Also find callers", "running", [agent("scout", "Actually looking")])]),
 					agent("reviewer", "PR #212, round 2"),
@@ -70,20 +83,29 @@ function floorBusy(): Snapshot {
 					agent("scout", "Count the flags", "finished"),
 				],
 				children: [
-					session("Export endpoint", "lanternfish", "busy", 200, { worktree: "export-endpoint", agents: [agent("verifier", "Run export tests")] }),
-					session("Settings screen", "lanternfish", "busy", 190, { worktree: "settings-screen", agents: [agent("scout", "Where is the toggle read?")] }),
+					session("Export endpoint", "lanternfish", "busy", 200, { worktree: "export-endpoint", family: "sonnet", context: ctx(0.42), changes: { files: 6, added: 140, removed: 20 }, commands: tested(true), agents: [agent("verifier", "Run export tests")] }),
+					session("Settings screen", "lanternfish", "busy", 190, { worktree: "settings-screen", family: "haiku", context: ctx(0.18), agents: [agent("scout", "Where is the toggle read?")] }),
 					session("Fork: slow CI?", "lanternfish", "idle", 150, { branch: "fork/slow-ci" }),
 				],
 			}),
-			session("Flaky login test", "lanternfish", "busy", 100, { branch: "fix/flaky-login", agents: [agent("verifier", "Same red. Hello again.")] }),
+			session("Flaky login test", "lanternfish", "busy", 100, { branch: "fix/flaky-login", family: "sonnet", context: ctx(0.55), agents: [agent("verifier", "Same red. Hello again.")] }),
 			session("Pagination for /orbits", "orbit-kit", "busy", 260, {
 				branch: "feat/pagination",
+				// Over 80%: papers sliding off. It compacts at +17 s and walks the pile to the shredder.
+				family: "haiku",
+				context: ctx(0.86),
+				compactions: { count: 1, lastAt: min(90) },
+				changes: { files: 12, added: 260, removed: 90 },
+				todos: { pending: 3, active: 1, done: 2 },
+				cost: { outputTokens: 210_000 },
+				commands: tested(true),
 				agents: [agent("builder", "Page two"), agent("verifier", "Page two loads"), agent("verifier", "Old cursor test", "finished")],
 			}),
-			session("Rename everything", "orbit-kit", "busy", 90, { branch: "chore/rename", agents: [agent("scout", "Find usages of paginate")] }),
+			session("Rename everything", "orbit-kit", "busy", 90, { branch: "chore/rename", family: "fable", context: ctx(0.3), changes: { files: 48, added: 60, removed: 610 }, agents: [agent("scout", "Find usages of paginate")] }),
 			session("Crumb cache rewrite", "breadbox", "idle", 240, { branch: "crumb-cache", agents: [agent("scout", "Paused by you", "stalled")] }),
 			session("Changelog draft", "mossy-docs", "idle", 230, { branch: "docs/changelog", agents: [agent("builder", "Sent home by you", "stopped")] }),
-			session("Docs sweep", "mossy-docs", "busy", 60, { branch: "docs/sweep" }),
+			// Buried to the eyebrows in its in-tray.
+			session("Docs sweep", "mossy-docs", "busy", 60, { branch: "docs/sweep", family: "sonnet", context: ctx(0.97), changes: { files: 22, added: 90, removed: 40 }, cost: { outputTokens: 160_000 } }),
 			session("Webhook spike", "kettle-api", "idle", 210, { branch: "spike/webhooks" }),
 		],
 	};
@@ -132,22 +154,26 @@ type Script = (t: number) => Step;
 
 /**
  * What each of the release crew has in hand from second `t` of the day. A kind has to hold six
- * seconds before anyone walks for it, so the first trips set off at 6 s.
+ * seconds before anyone walks for it (three in a rush), so the first trips set off at 6 s.
  */
 const RELEASE_SCRIPT: [task: string, script: Script][] = [
 	// Edits all day, at its bench: the brick runs.
 	["Bump the versions", () => ({ tool: "Edit" })],
-	// Reads at the filing cabinet from 6 s, then back to write at 15 s.
-	["Changelog entries", (t) => (t < 15 ? { tool: "Read" } : { tool: "Edit" })],
-	// Runs the export test: at the stamp desk from 12 s; red at 18 s (a red stamp, then the thumb).
-	["Fix the export test", (t) => (t < 3 ? { tool: "Grep" } : t < 18 ? { tool: "Bash", run: "test" } : t < 21 ? { tool: "Bash" } : { tool: "Edit" })],
-	// Reads too: queues at the filing cabinet behind the changelog, gives up to write at 12 s.
-	["Migrate the settings", (t) => (t < 12 ? { tool: "Read" } : { tool: "Edit" })],
-	// A build 25 minutes in: at the copier from 6 s, kicking it; fixed at 27 s.
+	// Reads at the filing cabinet from 6 s; back to write at 18 s, it hands its folder on.
+	["Changelog entries", (t) => (t < 18 ? { tool: "Read" } : { tool: "Edit" })],
+	// Runs the export test: at the stamp desk from 9 s; red at 21 s (a red stamp, then the thumb).
+	["Fix the export test", (t) => (t < 3 ? { tool: "Grep" } : t < 21 ? { tool: "Bash", run: "test" } : t < 24 ? { tool: "Bash" } : { tool: "Edit" })],
+	// Reads too: queues at the filing cabinet behind the changelog, gives up to write at 12 s; wants
+	// to read again at 18 s, just as the changelog comes back, and takes its folder instead.
+	["Migrate the settings", (t) => (t < 12 ? { tool: "Read" } : t < 18 ? { tool: "Edit" } : t < 30 ? { tool: "Read" } : { tool: "Edit" })],
+	// A build 25 minutes in: at the copier from 6 s, feuding with it; fixed at 27 s.
 	["Build the installer", (t) => (t < 27 ? { tool: "Bash", run: "build" } : { tool: "Edit" })],
-	// Writes, looks things up at the card catalogue from 15 s, finishes at 24 s.
-	["Release notes", (t) => (t < 9 ? { tool: "Write" } : t < 24 ? { tool: "Grep" } : "done")],
+	// Writes, then searches the web on the phone from 12 s, writes again at 21 s, finishes at 24 s.
+	["Release notes", (t) => (t < 9 ? { tool: "Write" } : t < 21 ? { tool: "WebSearch" } : t < 24 ? { tool: "Edit" } : "done")],
 ];
+/** The release crew's tool rate (calls a minute, each): it heats up into a rush at 6 s, and cools
+ * from 27 s (the rush ends once the heat has dropped below the line, rush.ts). */
+const releaseRate = (t: number) => (t < 6 ? 6 : t < 27 ? 16 : 2);
 /** The hotfix pair next door shares the room's stations, at a run (a hot tool rate). */
 const HOTFIX_SCRIPT: [task: string, script: Script][] = [
 	["Patch the signing step", (t) => (t < 3 ? { tool: "Read" } : { tool: "Edit" })],
@@ -171,9 +197,12 @@ function perform(a: Agent, step: Step, at: number, fresh: boolean): void {
 	a.running = step.run ? (a.running?.kind === step.run ? a.running : { tool: step.tool, since: at, kind: step.run }) : undefined;
 }
 
+/** A crew of mixed models: each family walks and works at its own pace (director/traits.ts). */
+const FAMILIES: Agent["family"][] = ["haiku", "sonnet", "opus", "fable", "haiku", "sonnet"];
+
 const crewOf = (script: [string, Script][], rate: number) =>
 	script.map(([task, play], i) => {
-		const a: Agent = { ...agent("general-purpose", task), tools: { calls: rate, errors: 0, windowMs: 60_000 } };
+		const a: Agent = { ...agent("general-purpose", task), tools: { calls: rate, errors: 0, windowMs: 60_000 }, family: FAMILIES[i % FAMILIES.length], changes: { files: 2 + i, added: 30 + i * 12, removed: 6 + i * 3 } };
 		perform(a, play(0), min(0.05 + i * 0.1), true);
 		return a;
 	});
@@ -181,7 +210,7 @@ const crewOf = (script: [string, Script][], rate: number) =>
 /** A release crew: a lead waiting on six builders, each on its own errand. */
 function release(): Snapshot {
 	n = 0;
-	const crew = crewOf(RELEASE_SCRIPT, 6);
+	const crew = crewOf(RELEASE_SCRIPT, releaseRate(0));
 	// The installer build has been going a while: long enough to jam the copier.
 	crew[4]!.running = { tool: "Bash", since: min(25), kind: "build" };
 	return {
@@ -191,6 +220,12 @@ function release(): Snapshot {
 				branch: "release/3.0",
 				activity: { tool: "Task", at: min(1) },
 				running: { tool: "Task", since: min(1) },
+				// A deliberate lead, its in-tray nearly full (papers sliding off); it compacts at 12 s.
+				family: "opus",
+				context: ctx(0.88),
+				compactions: { count: 0 },
+				todos: { pending: 4, active: 1, done: 2 },
+				cost: { outputTokens: 380_000 },
 				agents: crew,
 			}),
 			// A second, smaller crew next door: its own brick runs, on its own cooldown.
@@ -198,18 +233,25 @@ function release(): Snapshot {
 				branch: "fix/installer",
 				activity: { tool: "Task", at: min(0.5) },
 				running: { tool: "Task", since: min(0.5) },
-				agents: crewOf(HOTFIX_SCRIPT, 24),
+				family: "haiku",
+				context: ctx(0.35),
+				commands: tested(true),
+				cost: { outputTokens: 120_000 },
+				agents: crewOf(HOTFIX_SCRIPT, 20),
 			}),
-			session("Docs sweep", "mossy-docs", "idle", 60, { branch: "docs/sweep" }),
+			session("Docs sweep", "mossy-docs", "idle", 60, { branch: "docs/sweep", family: "fable", context: ctx(0.22), changes: { files: 9, added: 120, removed: 45 } }),
 		],
 	};
 }
 
 /**
  * The release, played forward: a beat every 3 s. Crew walk to the stations their work needs and
- * queue when one is taken (filing cabinet and copier); the long build kicks the copier; a test goes
- * red at the stamp desk at 18 s; a builder finishes at 24 s; the PR goes up at 33 s. Edits keep
- * landing, so bricks run to the builds. Every name is invented.
+ * queue when one is taken (filing cabinet and copier); the long build feuds with the copier; one
+ * searches the web on the phone; from 6 s the room is in a rush (walkers run with papers flying,
+ * sidestep each other, and the lead dashes to whoever is queued or red); at 18 s a folder is handed
+ * over instead of a second trip to the cabinet; a test goes red at the stamp desk at 21 s; a builder
+ * finishes at 24 s; the PR goes up at 30 s and the lead walks it to the outbox. Edits keep landing,
+ * so bricks run to the builds. Every name is invented.
  */
 export function releaseDay(): { after: number; snapshot: Snapshot }[] {
 	let snap = release();
@@ -219,11 +261,29 @@ export function releaseDay(): { after: number; snapshot: Snapshot }[] {
 		snap = structuredClone(snap);
 		const at = NOW + t * 1000;
 		snap.at = at;
-		const [ship, hotfix] = snap.sessions as [Session, Session];
-		ship.agents.forEach((a, k) => perform(a, RELEASE_SCRIPT[k]![1](t), at - k * 50, (i + k) % 2 === 0));
+		const [ship, hotfix, docs] = snap.sessions as [Session, Session, Session];
+		ship.agents.forEach((a, k) => {
+			perform(a, RELEASE_SCRIPT[k]![1](t), at - k * 50, (i + k) % 2 === 0);
+			if (a.tools) a.tools = { ...a.tools, calls: releaseRate(t) };
+		});
 		hotfix.agents.forEach((a, k) => perform(a, HOTFIX_SCRIPT[k]![1](t), at - 1500 - k * 50, (i + k) % 2 === 0));
-		if (t === 18) ship.agents[2]!.commands = { failStreak: 1, repeats: 1, failed: 1, testsFailed: 1, last: { kind: "test", exitCode: 1, at } };
-		if (t === 33) ship.prs = [{ number: 300, url: "https://example.invalid/pull/300", at }];
+		// Every edit adds lines: the towers count them.
+		for (const a of [...ship.agents, ...hotfix.agents]) if (a.activity && a.activity.at > at - 3000 && /Edit|Write/.test(a.activity.tool)) a.changes = { ...a.changes!, added: a.changes!.added + 14, removed: a.changes!.removed + 3 };
+		if (t === 21) ship.agents[2]!.commands = { failStreak: 1, repeats: 1, failed: 1, testsFailed: 1, last: { kind: "test", exitCode: 1, at } };
+		if (t === 30) ship.prs = [{ number: 300, url: "https://example.invalid/pull/300", at }];
+		// The in-tray fills until it buries the lead at 9 s; a compaction at 12 s sends it to the shredder (back well before the PR at 30 s).
+		if (t < 12) ship.context = ctx(Math.min(0.97, 0.88 + t * 0.01), at);
+		if (t === 12) {
+			ship.compactions = { count: 1, lastAt: at - 200, trigger: "auto" };
+			ship.context = ctx(0.08, at - 200);
+		}
+		// Todos done at 9 s and 21 s: a crew member walks each note to the planner.
+		if (t === 9) ship.todos = { pending: 3, active: 1, done: 3 };
+		if (t === 21) ship.todos = { pending: 2, active: 1, done: 4 };
+		// Two sessions wait on you: they queue at your office, the first one in rings the bell.
+		if (t === 6) docs.waiting = { reason: "permission", since: at - 300, source: "hook" };
+		if (t === 12) hotfix.waiting = { reason: "question", since: at - 300, source: "transcript" };
+		if (t === 30) hotfix.waiting = undefined;
 		steps.push({ after: t * 1000, snapshot: snap });
 	}
 	return steps;
@@ -273,7 +333,10 @@ export function demoDay(): { after: number; snapshot: Snapshot }[] {
 	};
 
 	beat(4000, (s) => {
-		find(s, "Pagination for /orbits").agents.push({ ...agent("reviewer", "Review page two"), id: "demo-agent-hired-1", lastWriteAt: at(4000) });
+		const orbit = find(s, "Pagination for /orbits");
+		orbit.agents.push({ ...agent("reviewer", "Review page two"), id: "demo-agent-hired-1", lastWriteAt: at(4000) });
+		// A todo done: the builder walks its note to the planner.
+		orbit.todos = { pending: 2, active: 1, done: 3 };
 		s.sessions.push(session("Hotfix: cursor", "orbit-kit", "busy", 0, { branch: "fix/cursor", startedAt: at(3900), stateSince: at(3900) }));
 	});
 	beat(8000, (s) => {
@@ -286,6 +349,10 @@ export function demoDay(): { after: number; snapshot: Snapshot }[] {
 		const ship = find(s, "Ship release 2.4");
 		ship.prs = [{ number: 219, url: "https://example.invalid/pull/219", at: at(11900) }];
 		ship.agents = ship.agents.filter((a) => a.role !== "Explore");
+		// A second session waits on you: two in the queue at your office.
+		const rename = find(s, "Rename everything");
+		rename.state = "idle";
+		rename.waiting = { reason: "question", since: at(11800), source: "transcript" };
 	});
 	beat(17000, (s) => {
 		const flaky = find(s, "Flaky login test");
@@ -294,11 +361,17 @@ export function demoDay(): { after: number; snapshot: Snapshot }[] {
 		const orbit = find(s, "Pagination for /orbits");
 		const r = orbit.agents.find((a) => a.id === "demo-agent-hired-1")!;
 		r.status = "finished";
+		// A compaction: the pile goes to the shredder.
+		orbit.compactions = { count: 2, lastAt: at(16900), trigger: "auto" };
+		orbit.context = ctx(0.09, at(16900));
 		s.sessions = s.sessions.filter((x) => x.title !== "Webhook spike");
 	});
 	beat(23000, (s) => {
 		const hot = find(s, "Hotfix: cursor");
 		hot.running = { tool: "Bash", since: at(23000) - 25 * 60_000, kind: "build" };
+		const rename = find(s, "Rename everything");
+		rename.state = "busy";
+		rename.waiting = undefined;
 	});
 	return steps;
 }

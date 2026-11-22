@@ -5,7 +5,7 @@
 import { Container, Graphics, Text } from "pixi.js";
 import { EYES, FX, HELD, MOUTHS, WORKS } from "./vocab";
 import { ROLES, type Role } from "./roles";
-import { ANCHORS, AT, STATION, WORK } from "./reach";
+import { ANCHORS, AT, BELL, BELL_BASE, HANDOFF, PLANNER, STATION, STICKY, TRAY, WORK, handAt } from "./reach";
 
 export interface Palette {
 	ink: number;
@@ -58,6 +58,10 @@ const RED = 0xff4d5e;
 const HANDSET = 0xff8a7a;
 const CABINET = 0xc3cadb;
 const COPIER = 0xdfe4ef;
+/** Wave 2: a sticky note's yellow, the ticket's pink, the bell's brass. */
+const STICKY_Y = 0xffe66b;
+const TICKET = 0xffc9b0;
+const BRASS = 0xf2bd3c;
 
 /** Stroke weights. */
 const W = { body: 3.4, part: 2.6, fine: 1.8 };
@@ -335,6 +339,15 @@ export function paperTheme(p: Palette = PAPER_PALETTE): Theme {
 		g.rect(-6, A.eyeY - 4, 12, 6).fill(0x3a3f5c);
 	};
 
+	/** A clipboard held by its edge, on the hand's left (`side` -1, the left hand's board) or right. */
+	const clipboard = (g: Graphics, side: -1 | 1) => {
+		const x = (v: number) => (side < 0 ? v : -v);
+		g.roundRect(Math.min(x(-24), x(-4)), -20, 20, 27, 2.5).fill(0xc99a6b).stroke({ width: 2.2, color: ink });
+		g.rect(Math.min(x(-21.5), x(-6.5)), -16, 15, 21).fill(0xffffff);
+		for (const y of [-11, -6, -1, 3]) line(g, [x(-19), y, x(-9), y], 1.4, 0x9aa3bd);
+		g.roundRect(Math.min(x(-18), x(-10)), -23, 8, 5, 1.5).fill(p.steel).stroke({ width: 1.4, color: ink });
+	};
+
 	// Held props: drawn upright about the hand's centre.
 	const held: Record<(typeof HELD)[number], Painter> = {
 		sign: (g, add) => {
@@ -361,12 +374,8 @@ export function paperTheme(p: Palette = PAPER_PALETTE): Theme {
 			g.circle(7, -21, 9).fill({ color: 0xdff4ff, alpha: 0.85 }).stroke({ width: W.part, color: ink });
 			g.arc(7, -21, 5.5, Math.PI * 1.1, Math.PI * 1.5).stroke({ width: 1.6, color: 0xffffff });
 		},
-		clip: (g) => {
-			g.roundRect(-24, -20, 20, 27, 2.5).fill(0xc99a6b).stroke({ width: 2.2, color: ink });
-			g.rect(-21.5, -16, 15, 21).fill(0xffffff);
-			for (const y of [-11, -6, -1, 3]) line(g, [-19, y, -9, y], 1.4, 0x9aa3bd);
-			g.roundRect(-18, -23, 8, 5, 1.5).fill(p.steel).stroke({ width: 1.4, color: ink });
-		},
+		clip: (g) => clipboard(g, -1),
+		clipF: (g) => clipboard(g, 1),
 		pom: (g) => {
 			for (let i = 0; i < 9; i++) {
 				const a = (i / 9) * Math.PI * 2;
@@ -446,9 +455,10 @@ export function paperTheme(p: Palette = PAPER_PALETTE): Theme {
 		},
 		receiver: (g) => {
 			// A telephone handset held at its middle, earpiece and mouthpiece facing the face (to the
-			// right of the left hand), and its curly cord hanging down to the phone.
+			// right of the left hand), and the start of its curly cord: the rest of the cord runs to the
+			// phone's base with the notepad (notepad's phoneCord), since the base doesn't ride the hand.
 			const zig: number[] = [];
-			for (let i = 0; i <= 10; i++) zig.push(1 + (i % 2 ? 2.4 : -2.4) + i * 0.5, 13 + i * 2.2);
+			for (let i = 0; i <= 4; i++) zig.push(1 + (i % 2 ? 2.4 : -2.4) + i * 0.4, 13 + i * 2.5);
 			line(g, zig, 1.3, ink);
 			g.roundRect(-2.6, -11, 5.2, 22, 2.4).fill(HANDSET).stroke({ width: 1.8, color: ink });
 			g.roundRect(-3, -16, 9, 6.5, 2.8).fill(HANDSET).stroke({ width: 1.8, color: ink });
@@ -481,6 +491,46 @@ export function paperTheme(p: Palette = PAPER_PALETTE): Theme {
 		feed1: (g) => feedSheet(g, 12),
 		feed2: (g) => feedSheet(g, 7),
 		feed3: (g) => feedSheet(g, 3),
+		ticket: (g, add) => {
+			// A tear-off ticket pinched by its corner: notched ends where it tore off the roll, and
+			// its number. (One number for everyone: the queue's order is where they stand.)
+			const l = -3;
+			const r = 14;
+			const t = -13;
+			const b = -2;
+			const pts: number[] = [l, t, r, t];
+			for (let k = 1; k <= 4; k++) pts.push(r + (k % 2 ? -1.4 : 0), t + ((b - t) * k) / 4);
+			pts.push(l, b);
+			for (let k = 3; k >= 1; k--) pts.push(l + (k % 2 ? 1.4 : 0), t + ((b - t) * k) / 4);
+			g.poly(pts).fill(TICKET).stroke({ width: 1.4, color: ink, join: "round" });
+			line(g, [l + 3, t + 2.4, r - 3, t + 2.4], 0.9, RED);
+			const n = text("47", 6.4, ink);
+			n.position.set((l + r) / 2, (t + b) / 2 + 1.2);
+			add(n);
+		},
+		sticky: (g) => stickyNote(g, 0, -12, false),
+		stickyFlap: (g) => stickyNote(g, 0, -12, true),
+		finger: (g) => {
+			// White, so the puppet tints it the hand's colour: a finger out front, the thumb cocked.
+			g.roundRect(2, -3.2, 11, 5.4, 2.7).fill(0xffffff).stroke({ width: 1.8, color: ink });
+			g.roundRect(-2.2, -10.5, 4.8, 8, 2.4).fill(0xffffff).stroke({ width: 1.8, color: ink });
+		},
+		folderOut: (g) => {
+			// A closed folder held out flat by its near edge (HANDOFF.folder): its face, the tab on
+			// the far side, a sheet peeking out at the top.
+			const { from: a, to: b } = HANDOFF.folder;
+			g.rect(a + 2, -12.5, b - a - 5, 2).fill(0xffffff).stroke({ width: 1, color: ink });
+			g.roundRect(b - 7, -14.5, 6, 4, 1.4).fill(MANILA).stroke({ width: 1.3, color: ink });
+			g.roundRect(a, -11, b - a, 22, 1.8).fill(MANILA).stroke({ width: W.fine + 0.2, color: ink });
+			line(g, [a + 3, 6, b - 3, 6], 1.1, 0xc99a5a);
+			g.rect(a + 4, -6, 6, 3).fill(0xffffff).stroke({ width: 0.9, color: ink });
+		},
+		folderTuck: (g) => {
+			// The folder pinched upright between the forearm and the body, its tab showing at the top.
+			g.roundRect(-8.5, -24, 4, 4, 1.2).fill(MANILA).stroke({ width: 1.2, color: ink });
+			g.poly([-9, -21, -2, -22, -1, 4, -8, 5]).fill(MANILA).stroke({ width: W.fine, color: ink, join: "round" });
+			line(g, [-6, -18, -6.5, 1], 1, 0xc99a5a);
+		},
 	};
 	for (const h of HELD) parts[`held/${h}`] = held[h];
 
@@ -618,6 +668,24 @@ export function paperTheme(p: Palette = PAPER_PALETTE): Theme {
 		shred: (g) => shredder(g, 5, false),
 		shred4: (g) => shredder(g, 4, false),
 		shredBuzz: (g) => shredder(g, 4, true),
+		tray1: (g) => inTray(g, 3),
+		tray2: (g) => inTray(g, 7),
+		tray3: (g) => inTray(g, 14),
+		tray4: (g) => inTray(g, TRAY_FULL),
+		tray4L: (g) => inTray(g, TRAY_FULL, -1),
+		tray4R: (g) => inTray(g, TRAY_FULL, 1),
+		traySlide: (g) => inTray(g, TRAY_FULL - 1, 1, "slide"),
+		trayDrop: (g) => inTray(g, TRAY_FULL - 1, 0, "drop"),
+		bell: (g) => bell(g, 0),
+		bellDing: (g) => bell(g, 2),
+		bellHum: (g) => bell(g, 1),
+		stickyOn: (g) => {
+			// Pressed onto the planner: flat, a soft shadow under it.
+			g.rect(PLANNER.x - STICKY / 2 + 1.2, PLANNER.y - STICKY / 2 + 1.5, STICKY, STICKY).fill({ color: p.shadow, alpha: 0.14 });
+			stickyNote(g, PLANNER.x, PLANNER.y, false);
+		},
+		jabbed: (g) => copier(g, { light: "red", pressed: true }),
+		kickSpit: (g) => copier(g, { light: "red", bang: true, jam: "corner" }),
 	};
 	for (const w of WORKS) parts[`work/${w}`] = work[w];
 
@@ -671,7 +739,7 @@ export function paperTheme(p: Palette = PAPER_PALETTE): Theme {
 	 * office draws the copier's body under them. */
 	const copier = (
 		g: Graphics,
-		o: { lid?: number; sheet?: boolean; light?: "go" | "red"; glow?: boolean; copies?: 1 | 2; door?: boolean; jam?: "corner" | "inside" | "tugged"; bang?: boolean },
+		o: { lid?: number; sheet?: boolean; light?: "go" | "red"; glow?: boolean; copies?: 1 | 2; door?: boolean; jam?: "corner" | "inside" | "tugged"; bang?: boolean; pressed?: boolean },
 	) => {
 		const lidLen = 30;
 		// The out-tray on the far side, and the copies in it.
@@ -686,9 +754,12 @@ export function paperTheme(p: Palette = PAPER_PALETTE): Theme {
 		// The control plate: the start button and the status light.
 		const b = at(AT.button);
 		g.roundRect(b.x - 4, b.y - 3, 15, 6, 1.5).fill(0x56628a).stroke({ width: 1.2, color: ink });
-		g.circle(b.x, b.y, 2.4).fill(o.light === "go" ? p.go : 0xcfd6e6).stroke({ width: 1.2, color: ink });
-		g.circle(b.x + 7, b.y, 1.5).fill(o.light === "red" ? RED : o.light === "go" ? p.go : 0x3a3f5c).stroke({ width: 1, color: ink });
-		if (o.light === "red") for (const a of [-2.4, -1.57, -0.74]) line(g, [b.x + 7 + Math.cos(a) * 3, b.y + Math.sin(a) * 3, b.x + 7 + Math.cos(a) * 5, b.y + Math.sin(a) * 5], 1, RED);
+		// Jabbed, the button sinks into the plate and the red light flashes harder.
+		g.circle(b.x, b.y + (o.pressed ? 0.6 : 0), o.pressed ? 1.8 : 2.4).fill(o.light === "go" ? p.go : o.pressed ? 0x9aa3bd : 0xcfd6e6).stroke({ width: 1.2, color: ink });
+		g.circle(b.x + 7, b.y, o.pressed ? 2 : 1.5).fill(o.light === "red" ? RED : o.light === "go" ? p.go : 0x3a3f5c).stroke({ width: 1, color: ink });
+		const [r0, r1] = o.pressed ? [3.4, 7] : [3, 5];
+		const rays = o.pressed ? [-2.8, -2.1, -1.57, -1.05, -0.35] : [-2.4, -1.57, -0.74];
+		if (o.light === "red") for (const a of rays) line(g, [b.x + 7 + Math.cos(a) * r0, b.y + Math.sin(a) * r0, b.x + 7 + Math.cos(a) * r1, b.y + Math.sin(a) * r1], 1, RED);
 		// The jam door, shut or dropped open on its bottom hinge.
 		const d = at(AT.door);
 		const dl = d.x - 5;
@@ -772,6 +843,29 @@ export function paperTheme(p: Palette = PAPER_PALETTE): Theme {
 	/** The notepad on the phone table, with `n` bits jotted where the pencil went (AT.note); or its
 	 * page flipped over the top, a fresh one under it. */
 	const notepad = (g: Graphics, n: number, flip = false) => {
+		phoneCord(g);
+		notepadOnly(g, n, flip);
+	};
+
+	/** The handset's curly cord, from the end of its stub (the receiver at the ear, ARMS.ear) down in
+	 * a loose droop and across to the phone's base on the wall side of the table (AT.phoneBase). */
+	const phoneCord = (g: Graphics) => {
+		const ear = handAt("ear", "rest", -1);
+		const a = { x: ear.x + 2.6, y: ear.y + 23 };
+		const b = at(AT.phoneBase);
+		const c = { x: (a.x + b.x) / 2, y: Math.max(a.y, b.y) + 26 };
+		const pts: number[] = [];
+		const n = 46;
+		for (let i = 0; i <= n; i++) {
+			const t = i / n;
+			const x = (1 - t) * (1 - t) * a.x + 2 * (1 - t) * t * c.x + t * t * b.x;
+			const y = (1 - t) * (1 - t) * a.y + 2 * (1 - t) * t * c.y + t * t * b.y;
+			pts.push(x, y + (i % 2 ? 1.3 : -1.3));
+		}
+		line(g, pts, 1.2, ink);
+	};
+
+	const notepadOnly = (g: Graphics, n: number, flip = false) => {
 		const pad = (dy: number, fill: number) => g.poly([S.x - 8, S.y + 1 + dy, S.x + 14, S.y + 1 + dy, S.x + 16.5, S.y - 4 + dy, S.x - 5.5, S.y - 4 + dy]).fill(fill).stroke({ width: 1.3, color: ink, join: "round" });
 		pad(1.4, 0xc99a6b);
 		pad(0, 0xfff3a8);
@@ -853,7 +947,15 @@ export function paperTheme(p: Palette = PAPER_PALETTE): Theme {
 			const s = Math.sin(a);
 			return [x + dx * c - dy * s, y + dx * s + dy * c];
 		};
+		// The PR's envelope (prop/bigEnvelope, carried here): airmail ticks along its edges.
+		for (let k = 0; k < 5; k++) {
+			const dx = -8 + k * 4;
+			const c = k % 2 ? 0x3d7dff : RED;
+			line(g, [...pt(dx, -5.6), ...pt(dx + 1.6, -5.6)], 1.2, c);
+			line(g, [...pt(dx, 5.6), ...pt(dx + 1.6, 5.6)], 1.2, k % 2 ? RED : 0x3d7dff);
+		}
 		line(g, [...pt(-11, -7), ...pt(0, 0.5), ...pt(11, -7)], 1.3, ink);
+		g.circle(...(pt(0, 0.5) as [number, number]), 2.3).fill(RED).stroke({ width: 0.9, color: ink });
 		g.poly(rotRect(...(pt(7.2, -3.6) as [number, number]), 3.6, 3.6, a)).fill(0xff5c9a).stroke({ width: 0.9, color: ink });
 		line(g, [...pt(-7, 3), ...pt(1, 3)], 1, 0x9aa3bd);
 	};
@@ -887,12 +989,100 @@ export function paperTheme(p: Palette = PAPER_PALETTE): Theme {
 		g.restore();
 	};
 
+	/** The lead's in-tray (reach.ts TRAY): a wire tray with `n` sheets in it, bundled in threes so
+	 * the pile reads at office zoom. `lean` -1 or 1 sways its top that way (the pile teeters about
+	 * its foot, the top moving most); `slide` has the top sheet skidding off to the right, `drop`
+	 * has it falling past the pile's side. */
+	const inTray = (g: Graphics, n: number, lean = 0, top?: "slide" | "drop") => {
+		const { x, w, base, sheet: h } = TRAY;
+		let y = base - 2;
+		for (let i = 0; i < n; i += 3) {
+			const k = Math.min(3, n - i);
+			const up = (i + k) / TRAY_FULL;
+			const dx = lean * 9 * up * up + ((i / 3) % 2 ? 1 : -1) * 0.9;
+			g.rect(x - w / 2 + 1 + dx, y - k * h, w - 2, k * h).fill((i / 3) % 2 ? 0xf3f4f8 : 0xffffff).stroke({ width: 0.9, color: ink });
+			y -= k * h;
+		}
+		// The tray itself, in front of the pile's foot.
+		g.roundRect(x - w / 2 - 1, base - 4, w + 2, 4, 1.2).fill(p.steel).stroke({ width: 1.4, color: ink });
+		for (const sx of [x - w / 4, x + w / 4]) line(g, [sx, base - 3.4, sx, base - 0.6], 0.8, 0x56628a);
+		if (top === "slide") {
+			// The top sheet skidding off to the right, half over the edge and tipping, its face showing.
+			g.poly(rotRect(x + w / 2 - 1, y - 2.5, w - 2, 5, 0.32)).fill(0xffffff).stroke({ width: 1.3, color: ink, join: "round" });
+			line(g, [x + w / 2 + 2, y - 4.5, x + w / 2 + 9, y - 2.2], 1, 0x9aa3bd);
+			for (const dy of [-3, 1]) line(g, [x - w / 2 - 3, y + dy, x - w / 2 - 8, y + dy], 1.2, ink);
+		}
+		if (top === "drop") {
+			// Gone over the side: a whole sheet falling face-on past the pile, flutter lines over it.
+			const fx = x + w / 2 + 15;
+			const fy = y + 14;
+			g.poly(rotRect(fx, fy, 15, 19, 0.5)).fill(0xffffff).stroke({ width: 1.4, color: ink, join: "round" });
+			for (const d of [-3, 1, 5]) line(g, [fx - 4 + d * 0.5, fy - 3 + d, fx + 2 + d * 0.5, fy + d * 1.3], 1, 0x9aa3bd);
+			line(g, [fx - 5, fy - 15, fx - 2, fy - 19], 1.2, ink);
+			line(g, [fx + 3, fy - 15, fx + 7, fy - 18], 1.2, ink);
+		}
+	};
+
+	/** The bell on your desk (reach.ts BELL is the plunger's top): a brass dome on a base; the
+	 * plunger up, struck (`ring` 2: pressed down, ringing hard), or humming after (1). */
+	const bell = (g: Graphics, ring: 0 | 1 | 2) => {
+		const { x, y } = BELL;
+		const foot = y + BELL_BASE;
+		const down = ring === 2 ? 1.8 : 0;
+		g.ellipse(x, foot, 13.5, 3).fill(0x56628a).stroke({ width: 1.4, color: ink });
+		g.moveTo(x - 11.5, foot - 1).quadraticCurveTo(x - 11.5, y + 2.5, x, y + 2.5).quadraticCurveTo(x + 11.5, y + 2.5, x + 11.5, foot - 1).closePath().fill(BRASS).stroke({ width: W.fine + 0.2, color: ink, join: "round" });
+		g.ellipse(x - 3.5, y + 5.5, 2.4, 1.4).fill({ color: 0xffffff, alpha: 0.6 });
+		g.rect(x - 0.9, y + down, 1.8, 3).fill(p.steel).stroke({ width: 0.9, color: ink });
+		g.roundRect(x - 2.8, y - 1.4 + down, 5.6, 2, 1).fill(ink);
+		if (ring) {
+			// It rings: lines off the dome's shoulders, longer while it rings hard.
+			const len = ring === 2 ? 5 : 2.6;
+			for (const side of [-1, 1]) {
+				for (const [a, r] of [[0.5, 13], [0.95, 14.5]] as const) {
+					const dx = side * Math.sin(a);
+					const dy = -Math.cos(a);
+					line(g, [x + dx * r, foot - 3 + dy * r, x + dx * (r + len), foot - 3 + dy * (r + len)], 1.2, ink);
+				}
+			}
+		}
+	};
+
+	/** A sticky note, centred at (x, y); `flap` lifts its free (top) end in the breeze. */
+	const stickyNote = (g: Graphics, x: number, y: number, flap: boolean) => {
+		const s = STICKY / 2;
+		if (flap) g.poly([x - s, y + s, x + s, y + s, x + s + 0.8, y - s + 3, x - s + 1.5, y - s - 1.5]).fill(STICKY_Y).stroke({ width: 1.3, color: ink, join: "round" });
+		else g.rect(x - s, y - s, STICKY, STICKY).fill(STICKY_Y).stroke({ width: 1.3, color: ink });
+		if (!flap) g.rect(x - s + 0.7, y - s + 0.7, STICKY - 1.4, 2).fill(0xf5cf3a);
+		line(g, [x - s + 2.5, y - 0.5, x + s - 3, y - 1], 1, 0x3d7dff);
+		line(g, [x - s + 2.5, y + 2.5, x + s - 5, y + 2.2], 1, 0x3d7dff);
+	};
+
 	// Fronts and backs.
 	parts["prop/box"] = (g) => {
 		// Held at the belly, in torso space.
 		g.roundRect(-18, -30, 36, 24, 2.5).fill(p.kraft).stroke({ width: W.part, color: ink });
 		g.rect(-3, -30, 6, 24).fill(0xf3d29e);
 		line(g, [-18, -24, 18, -24], 1.2, 0xb07a40);
+	};
+	parts["prop/bigEnvelope"] = (g) => {
+		// The PR's big envelope, held up in front by its sides (ARMS.present), in torso space: an
+		// airmail border, the flap, and a red wax seal. Proud, not branded.
+		const l = -23;
+		const r = 23;
+		const t = -25;
+		const b = -1;
+		g.roundRect(l, t, r - l, b - t, 2).fill(0xffffff).stroke({ width: W.part, color: ink });
+		for (let x = l + 3; x < r - 6; x += 6) {
+			g.poly([x, t + 1.6, x + 3, t + 1.6, x + 1.6, t + 3.8, x - 1.4, t + 3.8]).fill(RED);
+			g.poly([x + 3, t + 1.6, x + 6, t + 1.6, x + 4.6, t + 3.8, x + 1.6, t + 3.8]).fill(0x3d7dff);
+			g.poly([x, b - 1.6, x + 3, b - 1.6, x + 1.6, b - 3.8, x - 1.4, b - 3.8]).fill(0x3d7dff);
+			g.poly([x + 3, b - 1.6, x + 6, b - 1.6, x + 4.6, b - 3.8, x + 1.6, b - 3.8]).fill(RED);
+		}
+		line(g, [l + 1.5, t + 4.5, 0, -11, r - 1.5, t + 4.5], 1.6, ink);
+		g.circle(0, -11, 5).fill(RED).stroke({ width: 1.6, color: ink });
+		g.star(0, -11, 5, 2.8, 1.2, 0).fill(0xffb3bd);
+		line(g, [l + 5, -6, l + 14, -6], 1.2, 0x9aa3bd);
+		g.roundRect(r - 9, t + 6, 5, 6, 0.8).fill(0xff5c9a).stroke({ width: 1, color: ink });
 	};
 	parts["prop/pls"] = (g, add) => {
 		// Held overhead, in torso space.
@@ -976,6 +1166,34 @@ export function paperTheme(p: Palette = PAPER_PALETTE): Theme {
 			for (const side of [-1, 1]) {
 				for (const [x, y, r] of [[32, -22, 3], [28, -12, 2.4], [35, -15, 1.8]] as const) g.circle(side * x, y, r).fill({ color: 0xd8d2c4, alpha: 0.9 }).stroke({ width: 1.1, color: ink, alpha: 0.5 });
 			}
+		},
+		ding: (g, add) => {
+			// "ding!" up off the bell (reach.ts BELL; fx are drawn as if the body stood at y = 0).
+			const x = BELL.x;
+			const y = BELL.y + 15;
+			for (const r of [7, 12]) g.arc(x, y - 3, r, -Math.PI * 0.85, -Math.PI * 0.15).stroke({ width: 1.4, color: ink, alpha: r > 8 ? 0.55 : 1 });
+			const t = text("ding!", 9, ink, "800");
+			t.position.set(x + 15, y - 19);
+			t.rotation = 0.12;
+			add(t);
+		},
+		rush1: (g) => rush(g, 1, ink, p.tear),
+		rush2: (g) => rush(g, 2, ink, p.tear),
+		rush3: (g) => rush(g, 3, ink, p.tear),
+		toss: (g) => {
+			// The crumpled ball, flung back over the shoulder, and the arc it took.
+			g.moveTo(28, -86).quadraticCurveTo(-4, -118, -40, -92).stroke({ width: 1.3, color: ink, alpha: 0.5, cap: "round" });
+			const r = [5, 4.2, 5.4, 4.4, 5, 3.9, 5.2, 4.3];
+			g.poly(r.flatMap((v, i) => [-44 + Math.cos((i / r.length) * Math.PI * 2) * v, -88 + Math.sin((i / r.length) * Math.PI * 2) * v])).fill(0xffffff).stroke({ width: 1.4, color: ink, join: "round" });
+			line(g, [-46, -90, -43, -87, -44, -84], 0.9, 0x9aa3bd);
+		},
+		pew: (g) => {
+			// A spark at the finger-gun's tip, where ARMS.recoil puts it.
+			const tip = handAt("recoil", "rest", 1, GUN_TIP);
+			const x = tip.x + 3;
+			const y = tip.y + 15 - 1.5;
+			sparkle(g, x, y, 5, p.sun, ink);
+			for (const a of [-0.5, 0, 0.5]) line(g, [x + Math.cos(a) * 7, y + Math.sin(a) * 7, x + Math.cos(a) * 11, y + Math.sin(a) * 11], 1.4, ink);
 		},
 		cobweb: (g) => {
 			// A web strung from the hat to the air, and a small spider.
@@ -1085,4 +1303,32 @@ function steam(g: Graphics, v: number, ink: number) {
 
 function sheet(g: Graphics, x: number, y: number, a: number, ink: number) {
 	g.poly(rotRect(x, y, 13, 16, a)).fill(0xffffff).stroke({ width: 1.6, color: ink, join: "round" });
+}
+
+/** The in-tray's sheets at its tallest: the pile's top at TRAY.buried. */
+const TRAY_FULL = Math.round((TRAY.base - 2 - TRAY.buried) / TRAY.sheet);
+
+/** The finger-gun's fingertip, from the hand's centre (held/finger). */
+const GUN_TIP = { x: 13, y: -0.5 };
+
+/** A run's trail, step `v` of three: sweat flung back off the head and sheets peeling off behind,
+ * each step further back and higher, a new one leaving. Drawn as if the body stood at y = 0. */
+function rush(g: Graphics, v: 1 | 2 | 3, ink: number, tear: number) {
+	const trail: [number, number, number][] = [
+		[-46, -60, -0.3],
+		[-64, -74, 0.45],
+		[-84, -66, 1.1],
+	];
+	for (let k = 0; k < v; k++) {
+		const [x, y, a] = trail[v - 1 - k]!;
+		g.poly(rotRect(x, y, 12, 15, a + k * 0.2)).fill(0xffffff).stroke({ width: 1.5, color: ink, join: "round" });
+		line(g, [x - 3, y - 2, x + 3, y - 2.5], 1, 0x9aa3bd);
+	}
+	const drops: [number, number, number][] = [
+		[-46, -86, 1],
+		[-56, -94, 0.8],
+		[-60, -82, 0.7],
+	];
+	for (let k = 0; k < v; k++) drop(g, drops[k]![0], drops[k]![1], tear, ink, drops[k]![2]);
+	for (const y of [-50, -38]) line(g, [-56 - v * 2, y, -68 - v * 3, y], 1.3, ink);
 }
