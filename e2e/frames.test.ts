@@ -97,6 +97,30 @@ describe("frame budgets", () => {
 	}, T);
 });
 
+describe("draw calls", () => {
+	test("a busy frame of the FloorBusy day takes at most 30 WebGL draws", async () => {
+		// Static rooms are cached textures and furniture, labels and characters batch; a regression
+		// here (a new unbatchable Graphics per desk, say) shows up long before it shows in fps.
+		const page = await open("demo&frozen");
+		const draws = await page.evaluate(() => {
+			const gl = document.querySelector("canvas")!.getContext("webgl2")!;
+			let n = 0;
+			const de = gl.drawElements.bind(gl);
+			const da = gl.drawArrays.bind(gl);
+			gl.drawElements = (...a: Parameters<typeof de>) => (n++, de(...a));
+			gl.drawArrays = (...a: Parameters<typeof da>) => (n++, da(...a));
+			const b = window.__busybodies!;
+			b.step(1);
+			n = 0;
+			b.step(1);
+			return n;
+		});
+		expect(draws).toBeGreaterThan(0);
+		expect(draws).toBeLessThanOrEqual(30);
+		await page.close();
+	}, T);
+});
+
 describe("camera", () => {
 	test("a move runs the ticker at 60 fps only while moving, then the idle office goes quiet", async () => {
 		const page = await open("demo=idle");
