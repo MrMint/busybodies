@@ -10,6 +10,7 @@ import type { SignText } from "../scene/office/paper";
 import type { Snapshot } from "../watcher/model";
 import type { ThemeId } from "../scene/theme/id";
 import type { Visibility } from "./visibility";
+import type { SoundState } from "./sound";
 
 export interface Inspector {
 	/** True once the first snapshot has been drawn. */
@@ -55,6 +56,11 @@ export interface Inspector {
 	arms(): Office["arms"];
 	/** Crew-build pieces moving now (or waiting on an arm). */
 	bricks(): Office["bricks"];
+	/** Sound: on or off, the AudioContext's state, the last earcons scheduled (undefined in the
+	 * compact window, which never plays sound). Set by main.ts. */
+	sound(): SoundState | undefined;
+	/** The tray's Sound and Calm office toggles, as the app sends them over RPC. Set by main.ts. */
+	setToggles(change: { sound?: boolean; calm?: boolean }): void;
 }
 
 /** The world without Maps, for JSON. */
@@ -167,6 +173,8 @@ export function installInspector(
 		setTheme: (id) => themes?.set(id),
 		arms: () => office.arms,
 		bricks: () => office.bricks,
+		sound: () => undefined,
+		setToggles: () => {},
 	};
 	window.__busybodies = inspector;
 	return inspector;

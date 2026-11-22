@@ -11,6 +11,7 @@ import { type ThemeId, sceneTheme, themeId } from "../scene/theme";
 import { installHud } from "./hud";
 import { installInspector } from "./inspector";
 import { watchVisibility } from "./visibility";
+import { Sound } from "./sound";
 import { type Bridge, installShell } from "./shell";
 import { placeholders } from "./placeholder";
 import { Atlas, buildPoseSheet, rigCharacters, rigTheme } from "../scene/rig";
@@ -104,18 +105,45 @@ function blank(): void {
 		if (!office.animating || !visibility.visible) app.ticker.stop();
 	});
 
-	// Calm mode: no life. From ?calm, or the system's "reduce motion" setting.
+	// Calm mode: no life, and no sound. From ?calm (the tray's Calm office, as saved; switched live
+	// over RPC), or the system's "reduce motion" setting.
 	const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)");
-	const calm = () => params.has("calm") || !!reduced?.matches;
+	let calmOn = params.has("calm");
+	const calm = () => calmOn || !!reduced?.matches;
 	const visibility = watchVisibility((visible) => {
 		office.life = visible && !calm();
+		sound?.update();
 		if (visible) scene.redraw();
 		else app.ticker.stop();
 	});
 	reduced?.addEventListener?.("change", () => {
 		office.life = visibility.visible && !calm();
+		sound?.update();
 		scene.redraw();
 	});
+	// Sound (src/mainview/sound.ts): from ?sound (the tray's Sound, as saved). Only the full office
+	// window plays it, so the compact one never doubles it.
+	const sound = compact
+		? undefined
+		: new Sound({
+				enabled: params.has("sound"),
+				visible: () => visibility.visible,
+				calm,
+				theme: () => theme,
+				floor: () => office.layoutData,
+				view: () => office.view,
+				stop: () => office.stop,
+				width: () => app.screen.width,
+			});
+	director.on((events, world) => sound?.hear(events, world));
+	/** The tray's Sound and Calm office toggles, live. */
+	const setToggles = (change: { sound?: boolean; calm?: boolean }) => {
+		if (change.calm !== undefined) calmOn = change.calm;
+		office.life = visibility.visible && !calm();
+		if (change.sound !== undefined) sound?.setEnabled(change.sound);
+		else sound?.update();
+		scene.redraw();
+	};
 
 	const scene = {
 		current: undefined as Snapshot | undefined,
@@ -193,12 +221,14 @@ function blank(): void {
 		office.setTheme(sceneTheme(id), charactersFor(atlas));
 		old.destroy();
 		if (!compact) app.renderer.background.color = sceneTheme(id).lawn;
+		sound?.themeChanged();
 		direct();
 		scene.redraw();
 	};
 	const show = scene.show;
 	const redraw = scene.redraw;
 	const inspector = import.meta.env.DEV || params.has("inspect") ? installInspector(app, office, scene, director, voice && { voice, now: () => director.now }, { current: () => theme, set: setTheme }, visibility) : undefined;
+	if (inspector) Object.assign(inspector, { sound: () => sound?.state(), setToggles });
 	let bridge: Bridge | undefined;
 	const shell = installShell({
 		bridge: { status: () => bridge!.status(), setCompact: (on) => bridge?.setCompact(on), showOffice: () => bridge?.showOffice(), openProjectPage: () => bridge?.openProjectPage() },
@@ -261,7 +291,7 @@ function blank(): void {
 	}
 
 	const rpc = Electroview.defineRPC<BusybodiesRPC>({
-		handlers: { messages: { snapshot: show, about: () => shell.about(), theme: ({ id }) => setTheme(themeId(id)) } },
+		handlers: { messages: { snapshot: show, about: () => shell.about(), theme: ({ id }) => setTheme(themeId(id)), settings: (s) => setToggles(s) } },
 	});
 	new Electroview({ rpc });
 	bridge = {

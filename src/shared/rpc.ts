@@ -39,6 +39,8 @@ export type BusybodiesRPC = {
 			about: undefined;
 			/** Switch the scene theme (from the tray's Theme menu): `office` or `factory`. */
 			theme: { id: string };
+			/** The tray's Sound and Calm office toggles, as saved. Only the full office window plays sound. */
+			settings: { sound: boolean; calm: boolean };
 		};
 	}>;
 };
