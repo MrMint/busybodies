@@ -50,7 +50,9 @@ async function measure(page: Page, ms = 2000) {
 
 describe("walks", () => {
 	test("a walk raises the frame rate while it lasts, then the idle office goes quiet", async () => {
-		const page = await open("demo=idle");
+		// The voice is held back (?settle) so the quiet window after the walk measures the walk alone;
+		// the voice has its own budget test below.
+		const page = await open("demo=idle&settle=600000");
 		expect((await measure(page, 1000)).animationFrames).toBe(0);
 		// A new session arrives: its lead walks in from the lobby door.
 		await page.evaluate(() => {
@@ -127,5 +129,32 @@ describe("the inspector", () => {
 			return out;
 		};
 		expect(await frame()).toEqual(await frame());
+	}, T);
+});
+
+describe("the voice", () => {
+	test("an idle office talks in single renders: no frame loop, and bubbles come down", async () => {
+		const page = await open("demo=idle&settle=0");
+		const c = await measure(page, 2500);
+		const sass = await page.evaluate(() => window.__busybodies!.sass()!);
+		// Someone is napping out loud, and the sign slots have their counters.
+		expect(sass.triggers.some((t) => t.kind === "idle")).toBe(true);
+		expect(Object.keys(sass.signs).length).toBeGreaterThan(0);
+		// Bubbles are drawn once each, on demand: no ticker, no animation frames.
+		expect(c.tickerRunning).toBe(false);
+		expect(c.animationFrames).toBe(0);
+		expect(c.renders).toBeLessThanOrEqual(8);
+		// At whole-office zoom, at most two bubbles at once.
+		expect(sass.bubbles.length).toBeLessThanOrEqual(2);
+		await page.close();
+	}, T);
+
+	test("the busy day speaks through the director's seam", async () => {
+		const page = await open("demo=day-2&frozen");
+		const sass = await page.evaluate(() => window.__busybodies!.sass()!);
+		expect(sass.bubbles.length).toBeGreaterThan(0);
+		const keys = await page.evaluate(() => window.__busybodies!.entities().map((e) => e.key));
+		for (const b of sass.bubbles) expect(keys).toContain(b.key);
+		await page.close();
 	}, T);
 });

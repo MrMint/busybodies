@@ -9,6 +9,8 @@ import { type LineVars, type Trigger, type TriggerKind, unit } from "./types";
 /** A bubble to show. */
 export interface Say {
 	who: string;
+	/** The session it belongs to: `who` for a lead. */
+	session: string;
 	text: string;
 	kind: "said" | "thought";
 	trigger: TriggerKind;
@@ -55,6 +57,11 @@ export interface SchedulerOptions {
 	longZoom?: number;
 	/** How rare a rare line is, against 1 for the rest. */
 	rareWeight?: number;
+	/**
+	 * After the first step, ongoing states (naps, waits, long builds) keep quiet this long, so
+	 * opening the app on a sleepy office doesn't greet you with a burst of bubbles. Events still speak.
+	 */
+	settleMs?: number;
 }
 
 export const DEFAULTS: Required<SchedulerOptions> = {
@@ -69,6 +76,7 @@ export const DEFAULTS: Required<SchedulerOptions> = {
 	longChars: 30,
 	longZoom: 1.2,
 	rareWeight: 0.15,
+	settleMs: 0,
 };
 
 /** Which triggers win a slot when there are more than fit. */
@@ -170,6 +178,7 @@ export class Scheduler {
 	#lastStart = -Infinity;
 	#picks = 0;
 	#view: View = { zoom: 1 };
+	#startedAt: number | undefined;
 
 	constructor(opts: SchedulerOptions = {}, lines: Line[] = LINES) {
 		this.opts = { ...DEFAULTS, ...opts };
@@ -188,6 +197,7 @@ export class Scheduler {
 	step(now: number, view: View, triggers?: Trigger[]): { says: Say[]; signs: SignLine[] } {
 		const o = this.opts;
 		this.#view = view;
+		this.#startedAt ??= now;
 		this.#active = this.active(now);
 		const signs: SignLine[] = [];
 		if (triggers) {
@@ -204,7 +214,7 @@ export class Scheduler {
 		}
 		this.#prune(now);
 
-		const cands: Trigger[] = [...this.#pending.map((p) => p.t), ...this.#ongoing.filter((t) => this.#due(t, now))];
+		const cands: Trigger[] = [...this.#pending.map((p) => p.t), ...(this.#settled(now) ? this.#ongoing.filter((t) => this.#due(t, now)) : [])];
 		cands.sort((a, b) => PRIORITY[b.kind] - PRIORITY[a.kind] || b.magnitude - a.magnitude || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
 
 		const says: Say[] = [];
@@ -228,7 +238,7 @@ export class Scheduler {
 				continue;
 			}
 			const text = options.find((c) => c.line === line)!.text;
-			const say: Say = { who: t.who, text, kind: line.kind === "thought" ? "thought" : "said", trigger: t.kind, project: t.project, line, at: now, until: now + bubbleMs(text) };
+			const say: Say = { who: t.who, session: t.session, text, kind: line.kind === "thought" ? "thought" : "said", trigger: t.kind, project: t.project, line, at: now, until: now + bubbleMs(text) };
 			says.push(say);
 			this.#active.push(say);
 			this.#lastStart = now;
@@ -255,10 +265,15 @@ export class Scheduler {
 		for (const p of this.#pending) times.push(Math.min(ready(p.t), p.since + o.eventTtlMs));
 		for (const t of this.#ongoing) {
 			const s = this.#states.get(t.key);
-			times.push(s ? Math.max(ready(t), s.saidAt + o.againMs) : ready(t));
+			const settled = (this.#startedAt ?? now) + o.settleMs;
+			times.push(Math.max(settled, s ? Math.max(ready(t), s.saidAt + o.againMs) : ready(t)));
 		}
 		const later = times.filter((x) => x > now);
 		return later.length ? Math.min(...later) : undefined;
+	}
+
+	#settled(now: number): boolean {
+		return now >= (this.#startedAt ?? now) + this.opts.settleMs;
 	}
 
 	#due(t: Trigger, now: number): boolean {

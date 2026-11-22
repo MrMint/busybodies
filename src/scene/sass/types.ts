@@ -1,5 +1,6 @@
 // The words the sass module shares between its parts: what sets a line off, who says it, and
 // where a sign goes. Pixi-free, so it runs in unit tests and the text dump.
+import { ROLES, type Role, roleFor } from "../rig/roles";
 
 /** What sets a line off. Each one has its own detector in `detect.ts` (or `signs.ts`). */
 export const TRIGGERS = [
@@ -30,9 +31,8 @@ export type TriggerKind = (typeof TRIGGERS)[number];
 
 export type LineKind = "said" | "thought" | "sign";
 
-/** The rig's seven costumes, plus "anyone" for a line any character can say and "room" for signs. */
-export const ROLES = ["lead", "builder", "scout", "explorer", "reviewer", "verifier", "designer"] as const;
-export type Role = (typeof ROLES)[number];
+/** The rig's seven costumes (src/scene/rig/roles.ts), plus "anyone" for a line any character can say and "room" for signs. */
+export { ROLES, roleFor, type Role };
 export type Speaker = Role | "anyone" | "room";
 
 /**
@@ -91,19 +91,6 @@ export interface Trigger {
 	/** Narrows the lines: a line with a tag is only used for a trigger with the same tag. */
 	tag?: string;
 	vars: LineVars;
-}
-
-/** The agent tool's subagent types are free text. Same mapping as the rig's `roleFor`. */
-export function roleFor(agentType: string | undefined): Role {
-	const t = (agentType ?? "").toLowerCase();
-	if (!t) return "builder";
-	if (/review/.test(t)) return "reviewer";
-	if (/verif|test|qa/.test(t)) return "verifier";
-	if (/design|\bui\b|\bart\b/.test(t)) return "designer";
-	if (/explor/.test(t)) return "explorer";
-	if (/scout|search|survey|find|research/.test(t)) return "scout";
-	if (/lead|main|session/.test(t)) return "lead";
-	return "builder";
 }
 
 /** A small, fast, seeded hash (FNV-1a) for deterministic choices. */

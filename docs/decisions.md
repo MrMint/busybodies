@@ -307,6 +307,24 @@ wiring maps the props the office doesn't draw yet, or drops them.
 reviewed by reading. `--zoom 0.4` shows what the whole-office view would show.
 ## 2026-11-21: the open-floor office (S2)
 
+**Wired through S4's seam** (`src/scene/sass/voice.ts`, `src/mainview/main.ts`). `Voice.run(snap,
+now, view)` feeds the engine and draws through `Office.say(key, text, kind)`, using the director's
+keys (`s:<session>`, `a:<session>:<agent>`). It takes each bubble down with `say(key, undefined)`
+when its time is up. Sign lines go to `Office.setSign(id, {title, body})`: the first sentence is
+the title, in capitals, and the rest is the body ("NOW SERVING: NOBODY" / "Your number: 1."). A
+slot the office doesn't draw (the plant, the mugs, the desk note, the fridge, the ticker) is kept
+in `Voice.dropped`, for the inspector and later art. A `leave` event from `Director.on` takes the
+leaver's bubble down. The app's one wake timer now runs to the earlier of the director's wake and
+the voice's. Bubbles are static, so each is one on-demand render going up and one coming down.
+They never start the ticker. `?toolvoice` brings back the director's placeholder voice.
+
+**A live office settles for 6 s before naps and waits talk** (`settleMs`). Events still speak at
+once. Without that, opening the app on a sleepy office greets you with a burst of bubbles. A
+frozen scene (shots, tests) settles at once, and `?settle=<ms>` sets it. The walk e2e holds the
+voice back so its quiet window measures the walk alone. The voice has its own e2e: an idle office
+talks with no ticker and no animation frames, at most two bubbles at office zoom. Clicking into a
+room re-runs the voice at the zoom the camera is heading for, so the longer lines can show there.
+
 **The floor plan is stable by memory, not by formula.** `FloorPlan` (`src/scene/office/layout.ts`)
 remembers which room each project has and which desk each session has, and folds each snapshot
 into that. Adding or removing a session never moves anyone else; unit tests replay random days of
