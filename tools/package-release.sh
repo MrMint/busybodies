@@ -47,7 +47,22 @@ lipo -archs "$APP/Contents/MacOS/launcher" | grep -qx arm64 || die "launcher isn
 
 mkdir -p "$OUT"
 tar --no-mac-metadata -czf "$OUT/Busybodies-macos-arm64.tar.gz" -C "$WORK" Busybodies.app
-cp "$ARTIFACTS"/*.dmg "$OUT/Busybodies-macos-arm64.dmg"
+if [ "${BUSYBODIES_CODESIGN:-}" = "1" ]; then
+	cp "$ARTIFACTS"/*.dmg "$OUT/Busybodies-macos-arm64.dmg"
+else
+	# Electrobun signs only the launcher binary, so the bundle's signature is invalid ("code has
+	# no resources"), and a quarantined copy is reported as "damaged" with no way to open it.
+	# A full ad-hoc signature makes Gatekeeper treat it as an unverified app instead, which
+	# System Settings > Privacy & Security > Open Anyway can let through.
+	hdiutil attach -quiet -nobrowse -readonly -mountpoint "$WORK/mnt" "$ARTIFACTS"/*.dmg
+	mkdir "$WORK/dmg"
+	ditto "$WORK/mnt/Busybodies.app" "$WORK/dmg/Busybodies.app"
+	hdiutil detach -quiet "$WORK/mnt"
+	codesign --force --deep --sign - "$WORK/dmg/Busybodies.app"
+	codesign --verify --deep --strict "$WORK/dmg/Busybodies.app" || die "the re-signed .dmg app doesn't verify"
+	ln -s /Applications "$WORK/dmg/Applications"
+	hdiutil create -quiet -volname Busybodies -srcfolder "$WORK/dmg" -format UDZO "$OUT/Busybodies-macos-arm64.dmg"
+fi
 cp "$ARTIFACTS/stable-macos-arm64-update.json" "$ARTIFACTS/stable-macos-arm64-checksum.json" \
 	"$ARTIFACTS/stable-macos-arm64-Busybodies.app.tar.zst" "$OUT/"
 (cd "$OUT" && shasum -a 256 -- * >SHA256SUMS)
