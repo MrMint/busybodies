@@ -11,49 +11,23 @@ import { Container, Graphics, Rectangle, type Renderer, Sprite, Text, type Textu
 import type { Session, Snapshot } from "../../watcher/model";
 import { CameraMove, type Stop, type View, type Viewport, viewFor } from "./camera";
 import { FloorPlan } from "./layout";
-import {
-	COMMON_COLOURS,
-	FONT,
-	type FurnitureKind,
-	INK,
-	ROOM_COLOURS,
-	SLAB,
-	type SignText,
-	door,
-	drawFurniture,
-	hallway,
-	label,
-	nameTab,
-	pill,
-	roomShell,
-	signboard,
-	text,
-	windowPane,
-} from "./paper";
+import { type FurnitureKind, INK, type SignText, hash, label, nameTab, pill } from "./paper";
 import { type Placed, Placement, crewOf } from "./placement";
 import type { DeskProps, Metrics } from "../director/metrics";
-import { PROP_FURNITURE, type PropFurniture, deskProps, drawPropFurniture, planner, plannerSig, propsSig, yourDoor } from "./props";
-import type { Character, CharacterFactory, Who } from "./slot";
-import { type Area, BUILD, type Desk, type Rect, type World } from "./world";
+import { deskProps, plannerSig, propsSig } from "./props";
+import type { Character, CharacterFactory } from "./slot";
+import type { Area, Desk, Rect, World } from "./world";
+import { OFFICE_THEME } from "../theme/office";
+import { FALLEN } from "../theme/build";
+import { type CrewBuild, FURNITURE_KINDS, type SceneTheme } from "../theme/types";
 
-/** Default text for the common areas' signs. The sass engine (S5) replaces these through setSign. */
-const DEFAULT_SIGNS: Record<string, SignText> = {
-	"meeting:sign": { title: "THIS MEETING", body: "could have been a diff." },
-	"kitchen:sign": { title: "1 CUP PER GREEN BUILD", body: "Finished? Close your own session." },
-	"lobby:frame": { title: "EMPLOYEE OF THE MONTH", body: "Nobody. Again." },
-};
-
-/** Your office's sign: the lowest ticket in the queue (the director's metrics). */
-const serving = (n: number | undefined): SignText => ({ title: "NOW SERVING", body: n === undefined ? "Nobody. Yet." : `No. ${n}` });
-
-const COMMON_SUBS: Record<string, string> = { meeting: "reviews", lobby: "in and out", yours: "waiting on you", kitchen: "idle, finished and sent home", vacant: "for lease" };
+export type { CrewBuild };
+export { NIGHT_WATCH } from "../theme/office";
 
 /** Bake resolutions: the smallest one at or above what the camera needs is used. */
 const STEPS = [0.5, 0.75, 1, 1.5, 2, 3, 4, 6, 8];
 const MAX_TEXTURE = 4096;
 const HALL_CHUNK = 640;
-
-const hash = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
 
 /** A sprite showing one of the baked furniture textures; re-pointed when they are re-baked. */
 class Baked extends Sprite {
@@ -85,16 +59,8 @@ export interface OfficeOptions {
 	/** Metrics as things (the director's): each desk's in-tray, drawers, skip, mugs and lamp, the
 	 * planners, and NOW SERVING at your office. */
 	metrics?: () => Pick<Metrics, "desks" | "planners" | "serving">;
-}
-
-/** A crew's build on the desk: a stack of blocks, one knocked off, a flag for the PR. */
-export interface CrewBuild {
-	pieces: number;
-	topped: boolean;
-	/** When the last brick fell off (it tumbles down once, then lies there). */
-	fellAt?: number;
-	/** When the last brick went on (it is set down with a little drop, once). */
-	addedAt?: number;
+	/** How it all looks and what the places are called (src/scene/theme/; default the office). */
+	theme?: SceneTheme;
 }
 
 /** A brick moving on a crew build: set down, or tumbling off. Only its transform changes. */
@@ -105,9 +71,6 @@ interface BrickMove {
 	/** Where it is `u` (0 to 1) of the way through. */
 	at: (u: number) => { x: number; y: number; r: number };
 }
-
-/** Who keeps an empty office company. */
-export const NIGHT_WATCH: Who = { key: "night-watch", kind: "lead", role: "lead", mood: "idle", size: 72, tint: "night-watch" };
 
 /** A bubble someone is saying (or thinking), anchored to its character. */
 interface Said {
@@ -147,7 +110,8 @@ export class Office extends Container {
 	#pulse = new Graphics();
 	#pulsing: string[] = [];
 	#pulseT = 0;
-	#signs = new Map<string, SignText>(Object.entries(DEFAULT_SIGNS));
+	#theme: SceneTheme;
+	#signs: Map<string, SignText>;
 	/** Bricks moving on crew builds, by desk item; and what each desk's build last moved for. */
 	#bricks = new Map<string, BrickMove[]>();
 	#brickSeen = new Map<string, { added?: number; fell?: number }>();
@@ -165,8 +129,10 @@ export class Office extends Container {
 	constructor(opts: OfficeOptions) {
 		super();
 		this.#opts = opts;
+		this.#theme = opts.theme ?? OFFICE_THEME;
+		this.#signs = new Map(Object.entries(this.#theme.words.signs));
 		this.world.addChild(this.#slab, this.#floor, this.#walls, this.#pulse, this.#depth, this.#tasks, this.#bubbles, this.#labels);
-		this.#signs.set("yours:serving", serving(undefined));
+		this.#signs.set("yours:serving", this.#theme.words.serving(undefined));
 		this.world.interactiveChildren = false;
 		this.addChild(this.world);
 	}
@@ -425,7 +391,7 @@ export class Office extends Container {
 		const slab = JSON.stringify(b);
 		if (slab !== this.#slabSig) {
 			this.#slabSig = slab;
-			this.#slab.clear().roundRect(b.x - 14, b.y - 14, b.w + 28, b.h + 28, 18).fill(SLAB);
+			this.#slab.clear().roundRect(b.x - 14, b.y - 14, b.w + 28, b.h + 28, 18).fill(this.#theme.slab);
 		}
 		this.#drawFloor(world);
 		// People first: the director runs in their cast, and the desks show its crew builds.
@@ -438,9 +404,9 @@ export class Office extends Container {
 	/** The director's metrics on the walls: each room's planner, and NOW SERVING at your office. */
 	#drawMetrics(world: World): void {
 		const m = this.#opts.metrics?.();
-		const sign = serving(m?.serving);
+		const sign = this.#theme.words.serving(m?.serving);
 		const was = this.#signs.get("yours:serving");
-		if (was?.body !== sign.body) {
+		if (was?.body !== sign.body || was?.title !== sign.title) {
 			this.#signs.set("yours:serving", sign);
 			this.#drawFloor(world);
 		}
@@ -454,7 +420,7 @@ export class Office extends Container {
 			const had = this.#planners.get(a.id);
 			if (had?.sig === sig) continue;
 			drop(had?.view);
-			const view = planner(wall.rect, rows);
+			const view = this.#theme.planner(wall.rect, rows);
 			this.#walls.addChild(view);
 			this.#planners.set(a.id, { view, sig });
 		}
@@ -504,7 +470,7 @@ export class Office extends Container {
 			for (let i = 0; i < chunks; i++) {
 				const r = { x: h.x + i * HALL_CHUNK, y: h.y, w: Math.min(HALL_CHUNK, h.w - i * HALL_CHUNK), h: h.h };
 				const g = new Graphics();
-				hallway(g, r);
+				this.#theme.hallway(g, r);
 				const c = new Container();
 				c.addChild(g);
 				this.#floor.addChildAt(c, 0);
@@ -518,17 +484,8 @@ export class Office extends Container {
 		const c = new Container({ label: a.id });
 		const g = new Graphics();
 		c.addChild(g);
-		const [wall, floor] =
-			a.kind === "project" ? ROOM_COLOURS[a.hue % ROOM_COLOURS.length]! : COMMON_COLOURS[a.kind as keyof typeof COMMON_COLOURS];
-		roomShell(g, a.rect, a.floorY, wall, floor, a.kind === "kitchen");
-		const seed = hash(a.id);
-		for (const [i, w] of a.wall.entries()) {
-			if (w.kind === "window") windowPane(g, w.rect, seed + i);
-			else if (w.kind === "door") door(g, w.rect);
-			else if (w.kind === "you") c.addChild(yourDoor(g, w.rect));
-			// The planner's board and notes change with the todos: their own layer (#drawMetrics).
-			else if (w.kind !== "planner") c.addChild(signboard(w.kind, w.rect, w.slot ? this.#signs.get(w.slot) : undefined, seed + i));
-		}
+		// The planner's board and notes change with the todos: their own layer (#drawMetrics).
+		this.#theme.room(g, c, a, (slot) => this.#signs.get(slot));
 		return c;
 	}
 
@@ -598,7 +555,7 @@ export class Office extends Container {
 			const was = this.#brickSeen.get(key);
 			this.#brickSeen.set(key, { added: build?.addedAt, fell: build?.fellAt });
 			if (build && (build.pieces > 0 || build.topped || build.fellAt !== undefined)) {
-				const t = crewBuild(build, s.id);
+				const t = this.#theme.crewBuild(build, s.id);
 				c.addChild(t.view);
 				const moves: BrickMove[] = [];
 				if (was && t.top && build.addedAt !== undefined && build.addedAt !== was.added) moves.push(setDown(t.top));
@@ -612,7 +569,7 @@ export class Office extends Container {
 		}
 		// The metrics as things on and by the desk (props.ts): the small ones only zoomed in.
 		if (s && props) {
-			const { always, detail } = deskProps(props, s.id);
+			const { always, detail } = deskProps(this.#theme, props, s.id);
 			detail.label = "detail";
 			detail.visible = this.#stop.kind !== "office";
 			c.addChild(always, detail);
@@ -661,11 +618,8 @@ export class Office extends Container {
 	#bake(res: number): void {
 		this.#res = res;
 		const old = [...this.#textures.values()];
-		const kinds: FurnitureKind[] = ["desk", "chair", "plant", "counter", "cooler", "fridge", "sofa", "table", "cabinet", "pod", "lamp", "screen-lit", "screen-off", "files", "catalogue", "copier", "stamps", "phone", "outbox", ...PROP_FURNITURE];
-		for (const kind of kinds) {
-			const prop = (PROP_FURNITURE as string[]).includes(kind);
-			const g = prop ? new Graphics() : drawFurniture(kind);
-			if (prop) drawPropFurniture(g, kind as PropFurniture);
+		for (const kind of FURNITURE_KINDS) {
+			const g = this.#theme.furniture(kind);
 			const b = g.getLocalBounds();
 			const frame = new Rectangle(Math.floor(b.x) - 3, Math.floor(b.y) - 3, Math.ceil(b.width) + 6, Math.ceil(b.height) + 6);
 			const tex = this.#opts.renderer.generateTexture({ target: g, frame, resolution: res, antialias: true });
@@ -699,7 +653,7 @@ export class Office extends Container {
 		// An empty office is never a blank one: the night watch naps in the lobby's pod.
 		if (placed.length === 0) {
 			const nap = world.areas.find((a) => a.kind === "lobby")?.spots.nap?.[0];
-			if (nap) placed.push({ who: NIGHT_WATCH, slot: nap, area: "lobby" });
+			if (nap) placed.push({ who: this.#theme.nightWatch, slot: nap, area: "lobby" });
 		}
 		const seen = new Set<string>();
 		const bubbles = new Set<string>();
@@ -773,19 +727,21 @@ export class Office extends Container {
 		for (const s of flat(snapshot.sessions)) byProject.set(s.project, [...(byProject.get(s.project) ?? []), s]);
 		const seen = new Set<string>();
 		for (const a of world.areas) {
-			let sub = COMMON_SUBS[a.kind] ?? "";
+			const words = this.#theme.words;
+			let sub = a.kind === "project" ? "" : words.subs[a.kind];
+			const name = a.kind === "project" ? a.name : words.areas[a.kind];
 			if (a.kind === "project") {
 				const list = byProject.get(a.name) ?? [];
 				const out = list.reduce((n, s) => n + crewOf(s.agents).filter((x) => x.status === "running").length, 0);
 				sub = `${list.length} session${list.length === 1 ? "" : "s"}${out ? ` · ${out} agent${out === 1 ? "" : "s"} out` : ""}`;
 			}
-			const sig = `${a.name}|${sub}`;
+			const sig = `${name}|${sub}`;
 			seen.add(a.id);
 			let item = this.#tabs.get(a.id);
 			if (item?.sig !== sig) {
 				drop(item?.view);
 				const c = new Container();
-				const tab = nameTab(a.name);
+				const tab = nameTab(name);
 				const p = pill(sub, 15);
 				p.position.set(tab.width + 6, 8);
 				c.addChild(tab, p);
@@ -843,65 +799,6 @@ function clip(t: { text: string; width: number }, max: number): void {
 }
 
 const clipText = (s: string, max: number) => (s.length > max ? `${s.slice(0, max - 1).trimEnd()}…` : s);
-
-/** Brick colours for crew builds: the kraft the builders carry (the rig's brick), in a few
- * shades so the courses read as bricks. */
-const BLOCKS = [0xe9bd80, 0xdca56a, 0xf0c994, 0xe3b074, 0xeec088];
-
-/**
- * A crew's build on the desk's left end, clear of the lead behind it: a tower of bricks three wide,
- * each course a little off the last, a knocked-off brick lying beside it after a red test, and a
- * flag on top once the PR is up. Drawn once per change, as part of the desk. The newest brick and
- * the fallen one are their own Graphics, centred on themselves, so they can be moved into place by
- * their transform (set down, or tumbling off) without redrawing anything.
- */
-function crewBuild(b: CrewBuild, seed: string): { view: Container; top?: Graphics; fallen?: Graphics; fellFrom?: { x: number; y: number } } {
-	const view = new Container();
-	const g = new Graphics();
-	view.addChild(g);
-	const { brickW: W, brickH: H, wide: WIDE, left, floor } = BUILD;
-	const colour = (k: number) => BLOCKS[(hash(seed) + k * 3) % BLOCKS.length]!;
-	// Every other course sits a little to one side, as stacked bricks do.
-	const at = (i: number) => {
-		const row = Math.floor(i / WIDE);
-		return { x: left + (i % WIDE) * W + (row % 2 ? 3 : 0), y: floor - (row + 1) * H };
-	};
-	const brick = (k: number) => new Graphics().roundRect(-W / 2, -H / 2, W, H, 2).fill(colour(k)).stroke({ width: 1.5, color: INK });
-	let top: { x: number; y: number } = { x: left + (WIDE * W) / 2, y: floor };
-	let last: Graphics | undefined;
-	for (let i = 0; i < b.pieces; i++) {
-		const { x, y } = at(i);
-		const row = Math.floor(i / WIDE);
-		if (i < b.pieces - 1) g.roundRect(x, y, W, H, 2).fill(colour(i)).stroke({ width: 1.5, color: INK });
-		else {
-			last = brick(i);
-			last.position.set(x + W / 2, y + H / 2);
-		}
-		if (i % WIDE === Math.min(WIDE, b.pieces - row * WIDE) >> 1 || i === 0) top = { x: x + W / 2, y };
-	}
-	if (last) view.addChild(last);
-	let fallen: Graphics | undefined;
-	let fellFrom: { x: number; y: number } | undefined;
-	if (b.fellAt !== undefined) {
-		// The one that fell: tipped over on the desk beside the tower, from where it sat on top.
-		fallen = brick(b.pieces);
-		const from = at(b.pieces);
-		fellFrom = { x: from.x + W / 2, y: from.y + H / 2 };
-		fallen.position.set(FALLEN.x, FALLEN.y);
-		fallen.rotation = Math.PI / 2;
-		view.addChild(fallen);
-	}
-	if (b.topped) {
-		const f = new Graphics();
-		f.moveTo(top.x, top.y).lineTo(top.x, top.y - 22).stroke({ width: 2.5, color: INK });
-		f.moveTo(top.x, top.y - 22).lineTo(top.x + 15, top.y - 16).lineTo(top.x, top.y - 10).closePath().fill(0xff6b6b).stroke({ width: 1.5, color: INK });
-		view.addChild(f);
-	}
-	return { view, top: last, fallen, fellFrom };
-}
-
-/** Where a fallen brick comes to rest: lying on the desk top just right of the tower. */
-const FALLEN = { x: BUILD.left + BUILD.wide * BUILD.brickW + 3 + 4 + BUILD.brickH / 2, y: BUILD.floor - BUILD.brickW / 2 };
 
 /** A brick set down on the tower: a short drop onto its place, a tiny rebound, still. No squash. */
 function setDown(view: Graphics): BrickMove {

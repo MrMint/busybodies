@@ -6,7 +6,7 @@ import { Application, Ticker } from "pixi.js";
 import type { BusybodiesRPC } from "../shared/rpc";
 import type { Snapshot } from "../watcher/model";
 import { Office } from "../scene/office/office";
-import { LAWN } from "../scene/office/paper";
+import { OFFICE_THEME } from "../scene/theme/office";
 import { installHud } from "./hud";
 import { installInspector } from "./inspector";
 import { type Bridge, installShell } from "./shell";
@@ -32,7 +32,7 @@ function blank(): void {
 	const app = new Application();
 	await app.init({
 		resizeTo: window,
-		background: LAWN,
+		background: OFFICE_THEME.lawn,
 		// The compact window is transparent: the office floats on the desktop.
 		backgroundAlpha: compact ? 0 : 1,
 		antialias: true,
