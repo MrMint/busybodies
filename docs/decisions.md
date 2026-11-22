@@ -619,6 +619,14 @@ stops drawing a hidden window (its WebContent used under a second of CPU), which
 scene soak runs in headless Chrome. The machine was loaded (load average 60–120 from another
 project), so only memory was measured, not CPU.
 
+**The CPU profile is deferred.** `tools/profile.sh` needs a quiet machine: the other project's
+load drowns a few percent of one core. S6 waited from 20:07 to 22:07, checking every 10 minutes,
+for a load average below 10. It read 96, 95, 123, 318, 371, 280, 267, 402, 217, 72, 34, 29 and
+26, and never got there. The last trustworthy busy numbers are still S2's, from before S1–S5
+landed: one clean pair at default load, main 5.4% Bun / 10.6% WebContent against the new office's
+5.1% / 8.1%. Run `tools/profile.sh` idle and busy on a quiet machine before the next release, and
+record the numbers here.
+
 **Installing a release on this Mac.** The 0.1.0 draft (a manual run of the release workflow; no
 tag) installed with `install.sh` from its downloaded assets (`BUSYBODIES_DOWNLOAD_URL`), the
 checksum matched, and the app reported 0.1.0. Its first launch never started, though: the
