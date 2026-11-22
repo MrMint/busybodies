@@ -13,3 +13,4 @@ export { rigCharacters, PUPPET_HEIGHT } from "./character";
 export { buildPoseSheet } from "./sheet";
 export { rigTheme } from "./themes";
 export { factoryTheme } from "./factory";
+export { officeTheme } from "./office";
