@@ -13,6 +13,7 @@ import { CameraMove, type Stop, type View, type Viewport, viewFor } from "./came
 import { FloorPlan } from "./layout";
 import {
 	COMMON_COLOURS,
+	FONT,
 	type FurnitureKind,
 	INK,
 	ROOM_COLOURS,
@@ -21,6 +22,7 @@ import {
 	door,
 	drawFurniture,
 	hallway,
+	label,
 	nameTab,
 	pill,
 	roomShell,
@@ -71,6 +73,7 @@ export interface OfficeOptions {
 export class Office extends Container {
 	readonly world = new Container({ isRenderGroup: true });
 	#slab = new Graphics();
+	#slabSig = "";
 	#floor = new Container();
 	#depth = new Container({ sortableChildren: true });
 	#bubbles = new Container();
@@ -264,7 +267,11 @@ export class Office extends Container {
 
 	#draw(world: World, snapshot: Snapshot): void {
 		const b = world.bounds;
-		this.#slab.clear().roundRect(b.x - 14, b.y - 14, b.w + 28, b.h + 28, 18).fill(SLAB);
+		const slab = JSON.stringify(b);
+		if (slab !== this.#slabSig) {
+			this.#slabSig = slab;
+			this.#slab.clear().roundRect(b.x - 14, b.y - 14, b.w + 28, b.h + 28, 18).fill(SLAB);
+		}
 		this.#drawFloor(world);
 		this.#drawFurniture(world, snapshot);
 		this.#drawPeople(world, snapshot);
@@ -384,9 +391,9 @@ export class Office extends Container {
 		if (s) {
 			const [title, sub] = deskCard(s);
 			const card = new Container();
-			const t = text(title, 13, { fontWeight: "800" });
+			const t = label(title, 13, "800");
 			clip(t, 128);
-			const d = text(sub, 9.5, { fontWeight: "600" });
+			const d = label(sub, 9.5, "600");
 			clip(d, 128);
 			const w = Math.max(t.width, d.width) + 14;
 			const g = new Graphics()
@@ -399,7 +406,6 @@ export class Office extends Container {
 			card.position.set(-w / 2, -40);
 			card.rotation = -0.02;
 			c.addChild(card);
-			for (const x of texts(card)) x.resolution = this.#res;
 		}
 		return c;
 	}
@@ -444,9 +450,6 @@ export class Office extends Container {
 		this.#bake(res);
 		for (const [id, item] of this.#areas) this.#cache(item.view, this.#data.areas.find((a) => a.id === id)!.rect);
 		for (const c of this.#halls) this.#cache(c, { x: 0, y: 0, w: HALL_CHUNK, h: this.#data.hallway.h });
-		for (const item of [...this.#items.values(), ...this.#tabs.values(), ...this.#bubbleFor.values()]) {
-			for (const t of texts(item.view)) t.resolution = res;
-		}
 	}
 
 	#drawPeople(world: World, snapshot: Snapshot): void {
@@ -470,12 +473,15 @@ export class Office extends Container {
 				const label = s.activity.tool.replace(/^mcp__[^_]+__/, "");
 				bubbles.add(who.key);
 				let b = this.#bubbleFor.get(who.key);
-				if (b?.sig !== label) {
-					b?.view.destroy({ children: true });
-					b = { view: bubble(label), sig: label };
-					for (const t of texts(b.view)) t.resolution = this.#res;
+				if (!b) {
+					b = { view: bubble(), sig: "" };
 					this.#bubbleFor.set(who.key, b);
 					this.#bubbles.addChild(b.view);
+				}
+				if (b.sig !== label) {
+					// Tool calls come many times a second: only the glyph quads and the outline change.
+					setBubble(b.view, label);
+					b.sig = label;
 				}
 				b.view.position.set(slot.x + 14, slot.y - who.size - 8);
 			}
@@ -514,7 +520,6 @@ export class Office extends Container {
 				const p = pill(sub, 15);
 				p.position.set(tab.width + 6, 8);
 				c.addChild(tab, p);
-				for (const t of texts(c)) t.resolution = this.#res;
 				item = { view: c, sig };
 				this.#tabs.set(a.id, item);
 				this.#labels.addChild(c);
@@ -549,7 +554,7 @@ function deskCard(s: Session): [string, string] {
 	return [s.title || "untitled", facts.join(" · ")];
 }
 
-function clip(t: Text, max: number): void {
+function clip(t: { text: string; width: number }, max: number): void {
 	if (t.width <= max) return;
 	let s = t.text;
 	while (s.length > 1 && t.width > max) {
@@ -558,21 +563,23 @@ function clip(t: Text, max: number): void {
 	}
 }
 
-function bubble(value: string): Container {
-	const t = text(value, 12, { fontWeight: "700" });
+function bubble(): Container {
 	const c = new Container();
-	const w = t.width + 14;
-	const h = t.height + 8;
-	c.addChild(
-		new Graphics()
-			.roundRect(0, -h, w, h, 9)
-			.fill(0xffffff)
-			.stroke({ width: 2.5, color: INK })
-			.poly([8, -1.5, 18, -1.5, 6, 8])
-			.fill(0xffffff)
-			.stroke({ width: 2.5, color: INK }),
-		t,
-	);
-	t.position.set(7, -h + 4);
+	c.addChild(new Graphics(), label("", 12, "800"));
 	return c;
+}
+
+function setBubble(c: Container, value: string): void {
+	const [g, t] = c.children as [Graphics, ReturnType<typeof label>];
+	t.text = value;
+	const w = t.width + 14;
+	const h = 22;
+	g.clear()
+		.roundRect(0, -h, w, h, 9)
+		.fill(0xffffff)
+		.stroke({ width: 2.5, color: INK })
+		.poly([8, -1.5, 18, -1.5, 6, 8])
+		.fill(0xffffff)
+		.stroke({ width: 2.5, color: INK });
+	t.position.set(7, -h + 4);
 }

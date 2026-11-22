@@ -29,8 +29,17 @@ export function installHud(office: Office) {
 <span class="gap"></span><button class="all">Whole office</button><button class="prev" aria-label="Previous room">‹</button><button class="next">Next room ›</button>`;
 	document.body.appendChild(bar);
 	const $ = (sel: string) => bar.querySelector(sel) as HTMLElement;
+	// Snapshots arrive many times a second; touching the DOM only on a real change keeps the
+	// webview from re-laying out the bar each time.
+	const set = (sel: string, value: string) => {
+		const el = $(sel);
+		if (el.textContent !== value) el.textContent = value;
+	};
 
-	const sync = () => $(".all").classList.toggle("on", office.stop.kind === "office");
+	const sync = () => {
+		const on = office.stop.kind === "office";
+		if ($(".all").classList.contains("on") !== on) $(".all").classList.toggle("on", on);
+	};
 	$(".all").onclick = () => (office.goTo({ kind: "office" }), sync());
 	$(".next").onclick = () => (office.nextRoom(1), sync());
 	$(".prev").onclick = () => (office.nextRoom(-1), sync());
@@ -50,8 +59,8 @@ export function installHud(office: Office) {
 			const sessions = flat(snapshot.sessions);
 			const out = sessions.reduce((n, s) => n + crewOf(s.agents).filter((a) => a.status === "running").length, 0);
 			const t = new Date(snapshot.at);
-			$(".clock").textContent = `${String(t.getHours()).padStart(2, "0")}:${String(t.getMinutes()).padStart(2, "0")}`;
-			$(".count").textContent = `${sessions.length} session${sessions.length === 1 ? "" : "s"} · ${out} agent${out === 1 ? "" : "s"} out`;
+			set(".clock", `${String(t.getHours()).padStart(2, "0")}:${String(t.getMinutes()).padStart(2, "0")}`);
+			set(".count", `${sessions.length} session${sessions.length === 1 ? "" : "s"} · ${out} agent${out === 1 ? "" : "s"} out`);
 			sync();
 		},
 	};

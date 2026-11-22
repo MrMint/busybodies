@@ -2,7 +2,7 @@
 // a soft offset shadow, after design/boards/FloorBusy. Every function draws in world pixels into a
 // Graphics or Container; nothing here is per-frame. Furniture is drawn around its base point
 // (0, 0): the bottom centre, where it meets the floor.
-import { Container, Graphics, Text, type TextStyleOptions } from "pixi.js";
+import { BitmapFont, BitmapText, Container, Graphics, Text, type TextStyleOptions } from "pixi.js";
 import type { Rect, WallItem } from "./world";
 
 export const INK = 0x1b2140;
@@ -39,6 +39,30 @@ export function text(value: string, size: number, opts: TextStyleOptions = {}): 
 		text: value,
 		style: { fill: INK, fontSize: size, fontWeight: "700", fontFamily: FONT, lineHeight: size * 1.18, ...opts },
 	});
+}
+
+/**
+ * Labels that sit over the live scene (room tabs, desk cards, bubbles) are bitmap text: they all
+ * draw from one shared glyph atlas, so they batch with the furniture instead of each bringing its
+ * own texture, and changing one redraws no canvas. Glyphs are drawn large (64 px at 2x), so they
+ * stay sharp at the desk stop. Text baked into a cached room uses plain Text.
+ */
+const LABEL_FONTS = { "800": "bb-label-800", "600": "bb-label-600" } as const;
+const installed = new Set<string>();
+
+export function label(value: string, size: number, weight: keyof typeof LABEL_FONTS = "800", fill = INK): BitmapText {
+	const name = LABEL_FONTS[weight];
+	if (!installed.has(name)) {
+		BitmapFont.install({
+			name,
+			style: { fontFamily: FONT, fontSize: 64, fontWeight: weight, fill: 0xffffff },
+			chars: [[" ", "~"], "·…‹›×"],
+			resolution: 2,
+			padding: 8,
+		});
+		installed.add(name);
+	}
+	return new BitmapText({ text: value, style: { fontFamily: name, fontSize: size, fill } });
 }
 
 // --- Rooms ------------------------------------------------------------------------------------
@@ -240,7 +264,7 @@ export function drawFurniture(kind: FurnitureKind): Graphics {
 /** A pill label: white, rounded ends, ink border. */
 export function pill(value: string, size: number, fill = 0xffffff): Container {
 	const c = new Container();
-	const t = text(value, size, { fontWeight: "700" });
+	const t = label(value, size, "800");
 	const g = new Graphics()
 		.roundRect(0, 0, t.width + size * 1.4, t.height + size * 0.45, (t.height + size * 0.45) / 2)
 		.fill(fill)
@@ -253,7 +277,7 @@ export function pill(value: string, size: number, fill = 0xffffff): Container {
 /** The dark name tab on a room's corner. */
 export function nameTab(value: string): Container {
 	const c = new Container();
-	const t = text(value, 30, { fill: 0xffffff, fontWeight: "800" });
+	const t = label(value, 30, "800", 0xffffff);
 	const g = new Graphics().roundRect(0, 0, t.width + 28, t.height + 14, 12).fill(INK);
 	t.position.set(14, 6);
 	c.addChild(g, t);

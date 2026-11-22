@@ -44,7 +44,7 @@ function blank(): void {
 		t.stop();
 	}
 
-	const office = new Office({ renderer: app.renderer, characters: placeholders, wake: () => scene.redraw() });
+	const office = new Office({ renderer: app.renderer, characters: placeholders(app.renderer), wake: () => scene.redraw() });
 	app.stage.addChild(office);
 
 	// Ambient motion doesn't need the display's full rate (120 Hz on ProMotion screens). A camera

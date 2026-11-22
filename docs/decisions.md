@@ -354,7 +354,16 @@ batch. Desks, furniture and characters share one container sorted by depth (zInd
 people in front cover people and desks behind them. When the camera settles at a new stop,
 everything baked is re-baked at the new scale (in steps: 0.5, 0.75, 1, 1.5, 2, 3, 4, 6, 8 times
 the device resolution, and never over 4096 pixels a side), so a zoomed-in desk stays sharp. A sign
-change re-bakes only its own room.
+change re-bakes only its own room. Labels over the live scene (room tabs, desk cards, bubbles) are
+bitmap text from one shared glyph atlas, so they batch with the furniture and a bubble that
+changes on every tool call uploads nothing.
+
+**Draw calls are the budget to watch, and characters dominate it.** Counting WebGL draws per busy
+frame in the FloorBusy demo: the placeholder office on main took 28; the new office with
+vector-drawn placeholder characters took 69, 50 of them the characters (a stroked Graphics
+doesn't batch). With each placeholder look (colour, size, mood) baked into a shared texture, a busy
+frame is 22 draws, of which the whole office is about 19. The rig (S1) should keep characters
+batchable the same way: parts from one atlas.
 
 **The camera has three stops**, the whole office, a room and a desk, with smooth moves between
 them (650 ms, eased, zooming in log space). Click a room to zoom to it, then a desk in it to zoom
