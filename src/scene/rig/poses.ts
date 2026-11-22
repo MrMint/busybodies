@@ -546,6 +546,21 @@ export const POSES: Pose[] = [
 			["e-happy m-grin ar-hip al-hip", 2],
 		],
 	}),
+	// Station placeholders (plan-next stream C/E): the director plays these at shared equipment; the
+	// rig pass replaces their frames. Each reaches to STATION_REACH (src/scene/director/stations.ts).
+	...(
+		[
+			["fileFolder", "Flipping through a folder", "loop", ["l-right m-small hl-paper al-raise ar-point", 3], ["e-half l-right b-one m-small hl-paper al-raise ar-chin", 3]],
+			["cardThumb", "Thumbing through the card catalogue", "loop", ["e-squint l-right m-small al-low ar-point", 2], ["e-squint l-right b-one m-blep al-low ar-poke", 2]],
+			["copierFeed", "Feeding the copier", "loop", ["l-right m-small hl-paper al-raise ar-point", 3], ["e-half l-right m-small al-low ar-out", 3]],
+			["copierKick", "Kicking the jammed copier", "once", ["e-squint b-angry m-frown al-hip ar-hip f-kick", 3], ["e-half b-flat m-pout al-cross ar-cross2", 4]],
+			["stampGreen", "Stamping it approved", "loop", ["l-right m-small al-low ar-raise", 2], ["e-happy l-right m-grin al-low ar-point x-spark", 2]],
+			["stampRed", "Stamping it rejected", "once", ["l-right b-angry m-flat al-low ar-raise", 2], ["e-squint b-angry m-frown al-low ar-point", 4]],
+			["phone", "On the phone", "loop", ["l-right m-open hr-phone ar-phone al-hip", 4], ["e-half l-upR b-one m-small hr-phone ar-phone al-chin", 4]],
+			["mailDrop", "Dropping the envelope in the outbox", "once", ["l-right m-small hl-paper al-raise ar-low", 3], ["e-happy m-grin al-low ar-hip", 3]],
+			["shred", "Feeding the shredder", "loop", ["l-right m-small hl-paper al-raise ar-point", 3], ["e-closed l-right m-smirk al-low ar-out", 3]],
+		] as [string, string, "loop" | "once", Row, Row][]
+	).map(([name, title, play, ...rows]) => pose({ name, title, trigger: "working", rarity: 1, play, lines: [], frames: rows })),
 	pose({
 		name: "rest", title: "Standing about", trigger: "idle", rarity: 1, play: "once",
 		lines: [],
