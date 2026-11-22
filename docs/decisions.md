@@ -593,3 +593,44 @@ The tray, the top bar's "?" and `?about` open it.
 scene frame by frame through a camera tour, so it doesn't depend on the machine's speed, and
 encodes it with ffmpeg (800 px, 12 fps, 128 colours: about 3 MB). Every text the frames draw goes
 through `tools/scan-private.sh`, which now also takes a list of files, before the GIF is written.
+
+## 2026-11-21: the full check and the 0.1.0 candidate (S6)
+
+**The full suite passes** on main with every stream in: `tsc`, 144 unit tests and 25 e2e tests
+before S6's step-5 fixes, then 26 e2e tests with the leak test below.
+
+**A scene soak found a leak, now fixed.** `tools/soak-scene.ts` replays a recorded busy day
+(`fixtures/busy-release`) on a loop at 8× in headless Chrome and samples the JS heap (after a
+forced GC), live WebGL textures and characters every 30 s. Over 30 minutes the heap grew from 7
+to 530 MB, about 15 MB a minute; a heap-snapshot diff showed WebGL buffers and their array data
+piling up (732 buffers in 90 s). The cause: the office destroyed bubbles, labels, desk cards and
+room tabs with `destroy({ children: true })`, which keeps each Graphics' own `GraphicsContext`
+and its GPU buffers (the PixiJS skill warns about exactly this). Every office teardown now goes
+through `drop()`, which adds `context: true`. After the fix, the same 30 minutes: heap 7.2 MB at
+start, 15.3 MB at the end (+3.1 MB after a 5-minute warm-up, a slow drift worth watching),
+textures flat at 43, 18,810 renders. An e2e test holds live WebGL buffers flat under replay; it
+saw 58 new buffers in 12 s before the fix.
+
+**The app soak shows no growth in the Bun process.** `tools/soak.sh 30` ran the dev app for 29
+minutes against a fake home (8 sessions, 4 agents each, half busy, 5 tool calls a second, plus 20
+writes a second to a dead project). The Bun process started at 105.5 MB, peaked at 117.1 MB and
+ended at 78.9 MB. The webview's numbers from that run mean little: with the screen locked, macOS
+stops drawing a hidden window (its WebContent used under a second of CPU), which is why the
+scene soak runs in headless Chrome. The machine was loaded (load average 60–120 from another
+project), so only memory was measured, not CPU.
+
+**Installing a release on this Mac.** The 0.1.0 draft (a manual run of the release workflow; no
+tag) installed with `install.sh` from its downloaded assets (`BUSYBODIES_DOWNLOAD_URL`), the
+checksum matched, and the app reported 0.1.0. Its first launch never started, though: the
+launcher sat in `_dyld_start` with nothing logged. Two causes, one fixed:
+- The app's bundle signature was invalid (Electrobun signs only the launcher, as R1 found for
+  the `.dmg`). `tools/package-release.sh` now re-signs the install archive's app ad hoc too (the
+  update bundle is left alone, since the updater checks its checksum). A copy re-signed on this
+  Mac then launched at once.
+- The installed copy still carries `com.apple.provenance` (it was unpacked by a process macOS
+  tracks), and its ad-hoc signature was made on the CI runner, so Gatekeeper treats it as
+  downloaded, unverified code: `spctl` says "rejected", and the first launch waits for the user
+  to allow it. R1's test, installed from a Terminal, didn't hit this. Approving it is a security
+  setting for the owner, not an agent; signing and notarization (configuration only, see
+  "releases") would remove the step. Until then the README's "Open Anyway" steps apply to the
+  script install too on some setups.

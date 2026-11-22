@@ -46,6 +46,14 @@ built="$(plutil -extract CFBundleVersion raw "$APP/Contents/Info.plist")"
 lipo -archs "$APP/Contents/MacOS/launcher" | grep -qx arm64 || die "launcher isn't arm64"
 
 mkdir -p "$OUT"
+if [ "${BUSYBODIES_CODESIGN:-}" != "1" ]; then
+	# The same invalid bundle signature (see the .dmg below) also stops the install archive's app:
+	# extracted by a process macOS tracks (com.apple.provenance), its first launch was parked
+	# before dyld ran, with nothing on screen to say why. A full ad-hoc signature lets it start.
+	# The update bundle is left as built: its checksum is what the updater checks.
+	codesign --force --deep --sign - "$APP"
+	codesign --verify --deep --strict "$APP" || die "the re-signed install app doesn't verify"
+fi
 tar --no-mac-metadata -czf "$OUT/Busybodies-macos-arm64.tar.gz" -C "$WORK" Busybodies.app
 if [ "${BUSYBODIES_CODESIGN:-}" = "1" ]; then
 	cp "$ARTIFACTS"/*.dmg "$OUT/Busybodies-macos-arm64.dmg"

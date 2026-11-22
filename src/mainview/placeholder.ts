@@ -89,7 +89,7 @@ export function placeholders(renderer: Renderer): CharacterFactory {
 			const texture = renderer.generateTexture({ target: body, frame, resolution: RESOLUTION, antialias: true });
 			look = { texture, anchor: { x: -frame.x / frame.width, y: -frame.y / frame.height } };
 			looks.set(key, look);
-			body.destroy({ children: true });
+			body.destroy({ children: true, context: true });
 		}
 		return look;
 	};

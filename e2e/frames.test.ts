@@ -235,6 +235,38 @@ describe("the app around the office", () => {
 	}, T);
 });
 
+describe("leaks", () => {
+	test("a replayed busy day keeps its GPU buffers flat: bubbles and labels free their geometry", async () => {
+		// Before the fix, every bubble and label the office destroyed kept its GraphicsContext and
+		// its WebGL buffers: about 8 a second at this speed, and the heap grew ~17 MB a minute.
+		const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+		await page.addInitScript(() => {
+			const w = window as unknown as { __buffers: number };
+			w.__buffers = 0;
+			const proto = WebGL2RenderingContext.prototype;
+			const create = proto.createBuffer;
+			const del = proto.deleteBuffer;
+			proto.createBuffer = function () {
+				w.__buffers++;
+				return create.call(this);
+			};
+			proto.deleteBuffer = function (b) {
+				if (b) w.__buffers--;
+				return del.call(this, b);
+			};
+		});
+		await page.goto(`http://localhost:${server.port}/?inspect&replay=busy-release&speed=16&loop`);
+		await page.waitForFunction(() => window.__busybodies?.ready === true, undefined, { timeout: 15_000 });
+		const buffers = () => page.evaluate(() => (window as unknown as { __buffers: number }).__buffers);
+		await page.waitForTimeout(4000);
+		const before = await buffers();
+		await page.waitForTimeout(12_000);
+		const after = await buffers();
+		expect(after - before).toBeLessThan(24);
+		await page.close();
+	}, 45_000);
+});
+
 describe("inspector", () => {
 	test("lists every character with a mood", async () => {
 		const page = await open("demo");

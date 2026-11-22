@@ -22,6 +22,9 @@ It downloads the latest release, checks it against the release's `SHA256SUMS`, a
 `Busybodies.app` in `/Applications` (or `~/Applications`), without `sudo`. Pin a version with
 `... | sh -s -- 0.1.0`.
 
+If macOS won't open it the first time (it can't verify an unsigned app), open **System Settings →
+Privacy & Security** and click **Open Anyway** next to Busybodies. That's needed once.
+
 <details><summary>The <code>.dmg</code>, updates and uninstalling</summary>
 
 **The `.dmg`.** Each [release](https://github.com/MrMint/busybodies/releases) also has
@@ -45,9 +48,9 @@ rm -rf /Applications/Busybodies.app ~/Library/Application\ Support/app.busybodie
 
 - **Rooms are projects**, off a hallway. **Desks are sessions**; a busy project fills rows of
   them. **Subagents** stand around their session's desk, smaller the deeper they're nested.
-- Busy agents type frantically; idle ones nap, doodle or play on their phones; finished ones queue
-  for coffee and go home. Reviews happen in the meeting room. A session **waiting on you** holds
-  up a paddle, and its room pulses.
+- Busy agents type frantically; idle ones put their feet up, spin their chairs or scroll their
+  phones; finished ones queue for coffee and go home. Reviews happen in the meeting room. A session **waiting on you** holds
+  up a sign, and its room pulses.
 - Click a room to zoom in, then a desk. **Escape** shows the whole office; **n** and **p** step
   through the rooms.
 - **The menu bar** shows a mochi face: busy, all idle, or someone waiting on you. Its menu opens
