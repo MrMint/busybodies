@@ -11,6 +11,10 @@ const CSS = `
 #hud .brand{background:#1b2140;color:#fff;font-size:20px;font-weight:800;padding:5px 14px 7px;border-radius:12px;transform:rotate(-2deg)}
 #hud .pill{background:#fff;border:3px solid #1b2140;border-radius:999px;padding:3px 12px;white-space:nowrap}
 #hud .gap{flex:1}
+#hud .waiting{background:#ffd23f;animation:bb-wait 1.2s ease-in-out infinite alternate}
+#hud .waiting[hidden]{display:none}
+@keyframes bb-wait{from{transform:scale(1)}to{transform:scale(1.06)}}
+@media (prefers-reduced-motion:reduce){#hud .waiting{animation:none}}
 #hud button{pointer-events:auto;font:inherit;color:inherit;background:#fff;border:3px solid #1b2140;border-radius:999px;
  padding:5px 14px;cursor:pointer;box-shadow:2px 3px 0 #1b2140}
 #hud button.on{background:#1b2140;color:#fff}
@@ -25,7 +29,7 @@ export function installHud(office: Office) {
 	document.head.appendChild(style);
 	const bar = document.createElement("div");
 	bar.id = "hud";
-	bar.innerHTML = `<span class="brand">Busybodies</span><span class="pill clock"></span><span class="pill count"></span>
+	bar.innerHTML = `<span class="brand">Busybodies</span><span class="pill clock"></span><span class="pill count"></span><span class="pill waiting" hidden></span>
 <span class="gap"></span><button class="all">Whole office</button><button class="prev" aria-label="Previous room">‹</button><button class="next">Next room ›</button>`;
 	document.body.appendChild(bar);
 	const $ = (sel: string) => bar.querySelector(sel) as HTMLElement;
@@ -55,6 +59,12 @@ export function installHud(office: Office) {
 	window.addEventListener("pointerup", () => setTimeout(sync));
 
 	return {
+		/** The top pill: how many sessions are waiting on you. Hidden when none are. */
+		waiting(n: number) {
+			const el = $(".waiting");
+			if (el.hidden !== (n === 0)) el.hidden = n === 0;
+			set(".waiting", n === 1 ? "1 waiting on you" : `${n} waiting on you`);
+		},
 		update(snapshot: Snapshot) {
 			const sessions = flat(snapshot.sessions);
 			const out = sessions.reduce((n, s) => n + crewOf(s.agents).filter((a) => a.status === "running").length, 0);

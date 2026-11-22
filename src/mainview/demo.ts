@@ -137,6 +137,64 @@ function crowd(): Snapshot {
 	return { at: NOW, sessions };
 }
 
+/**
+ * The FloorBusy day, played forward through the director: five beats a few seconds apart.
+ *   +4 s   a reviewer is hired on orbit-kit and walks to the meeting room; a new session arrives
+ *   +8 s   the flaky login test waits on you (paddle, pulsing room, top pill); its verifier fails
+ *   +12 s  the release opens a PR and celebrates with a scout; Explore, long finished, goes home
+ *   +17 s  the wait is answered; the review ends; the webhook spike closes and its lead leaves
+ *   +23 s  the new session's build has run long: grumpy
+ * Every name is invented; times run from the demo's clock.
+ */
+export function demoDay(): { after: number; snapshot: Snapshot }[] {
+	const base = floorBusy();
+	const steps: { after: number; snapshot: Snapshot }[] = [];
+	const at = (ms: number) => NOW + ms;
+	const clone = (x: Snapshot): Snapshot => structuredClone(x);
+	const find = (snap: Snapshot, title: string): Session => {
+		const all = (l: Session[]): Session[] => l.flatMap((x) => [x, ...all(x.children)]);
+		return all(snap.sessions).find((x) => x.title === title)!;
+	};
+
+	let snap = clone(base);
+	const beat = (after: number, change: (s: Snapshot) => void) => {
+		snap = clone(snap);
+		snap.at = at(after);
+		change(snap);
+		steps.push({ after, snapshot: snap });
+	};
+
+	beat(4000, (s) => {
+		find(s, "Pagination for /orbits").agents.push({ ...agent("reviewer", "Review page two"), id: "demo-agent-hired-1", lastWriteAt: at(4000) });
+		s.sessions.push(session("Hotfix: cursor", "orbit-kit", "busy", 0, { branch: "fix/cursor", startedAt: at(3900), stateSince: at(3900) }));
+	});
+	beat(8000, (s) => {
+		const flaky = find(s, "Flaky login test");
+		flaky.state = "idle";
+		flaky.waiting = { reason: "permission", since: at(7900), source: "hook" };
+		flaky.agents[0]!.commands = { failStreak: 2, repeats: 1, failed: 2, testsFailed: 2, last: { kind: "test", exitCode: 1, at: at(7800) } };
+	});
+	beat(12000, (s) => {
+		const ship = find(s, "Ship release 2.4");
+		ship.prs = [{ number: 219, url: "https://example.invalid/pull/219", at: at(11900) }];
+		ship.agents = ship.agents.filter((a) => a.role !== "Explore");
+	});
+	beat(17000, (s) => {
+		const flaky = find(s, "Flaky login test");
+		flaky.state = "busy";
+		flaky.waiting = undefined;
+		const orbit = find(s, "Pagination for /orbits");
+		const r = orbit.agents.find((a) => a.id === "demo-agent-hired-1")!;
+		r.status = "finished";
+		s.sessions = s.sessions.filter((x) => x.title !== "Webhook spike");
+	});
+	beat(23000, (s) => {
+		const hot = find(s, "Hotfix: cursor");
+		hot.running = { tool: "Bash", since: at(23000) - 25 * 60_000, kind: "build" };
+	});
+	return steps;
+}
+
 export interface DemoDay {
 	snapshot: Snapshot;
 	signs: Record<string, SignText>;

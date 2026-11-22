@@ -259,3 +259,8 @@ grumpy: Grumpy at a 40-minute build
    8   520ms  { eyes: 'closed', brows: 'flat', mouth: 'flat', armL: 'hip', armR: 'sip', holdR: 'mug' }
    9   780ms  { eyes: 'half', brows: 'one', mouth: 'pout', armL: 'hip', armR: 'raise', holdR: 'mug' }  says "Forty minutes. I have aged."
 
+walk: Walking somewhere
+  on walking, loop; 2 frames, 520 ms (4 beats)
+   1   260ms  { armL: 'low', armR: 'down', feet: 'swingL', body: 'leanR' }
+   2   260ms  { armL: 'down', armR: 'low', feet: 'swingR', body: 'hop' }
+

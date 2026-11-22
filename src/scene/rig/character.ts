@@ -1,6 +1,7 @@
 // The rig behind the office's Character interface (src/scene/office/slot.ts): one mochi puppet per
-// character, acting out its mood until the director (S4) drives poses from real events.
-import type { Character, CharacterFactory, Mood, Slot, Who } from "../office/slot";
+// character. Without a director it acts out its mood; with one (S4) it takes cues: a pose, and a
+// walk along the hallway to get there first.
+import type { Character, CharacterFactory, Cue, Mood, Slot, Who } from "../office/slot";
 import type { Atlas } from "./atlas";
 import { choosePose, hash } from "./player";
 import { Puppet } from "./puppet";
@@ -11,11 +12,36 @@ import { ACCENTS } from "./theme";
 export const PUPPET_HEIGHT = 85;
 
 const TRIGGER = { busy: "busy", idle: "idle", stalled: "stalled", done: "finished" } as const;
+const MS_PER_TICK = 1000 / 60;
+
+/** Where a walker is `ms` into a walk along `path` lasting `total` ms. */
+function along(path: { x: number; y: number }[], ms: number, total: number) {
+	const segs = path.slice(1).map((p, i) => Math.hypot(p.x - path[i]!.x, p.y - path[i]!.y));
+	const len = segs.reduce((a, b) => a + b, 0);
+	let d = total <= 0 ? len : Math.min(1, Math.max(0, ms / total)) * len;
+	for (let i = 0; i < segs.length; i++) {
+		const a = path[i]!;
+		const b = path[i + 1]!;
+		if (d <= segs[i]! || i === segs.length - 1) {
+			const t = segs[i]! > 0 ? Math.min(1, d / segs[i]!) : 1;
+			return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, dx: b.x - a.x };
+		}
+		d -= segs[i]!;
+	}
+	const last = path[path.length - 1] ?? { x: 0, y: 0 };
+	return { x: last.x, y: last.y, dx: 0 };
+}
 
 class RigCharacter implements Character {
 	readonly puppet: Puppet;
 	#who: Who;
 	#facing: 1 | -1 = 1;
+	#slot?: Slot;
+	#cue?: Cue;
+	/** The walk in progress: ms walked so far. */
+	#walked = 0;
+	#walkFrom = 0;
+	#gone = false;
 
 	constructor(atlas: Atlas, who: Who) {
 		this.#who = who;
@@ -30,33 +56,78 @@ class RigCharacter implements Character {
 		return this.puppet;
 	}
 
+	get moving(): boolean {
+		const w = this.#cue?.walk;
+		return !!w && !this.#gone && this.#walked < w.ms;
+	}
+
 	get animating(): boolean {
-		return this.puppet.animating;
+		return this.moving || (!this.#gone && this.puppet.animating);
 	}
 
 	update(who: Who): void {
 		const prev = this.#who;
 		this.#who = who;
 		if (who.size !== prev.size) this.#size();
-		if (who.mood !== prev.mood) this.#act(who.mood, false);
+		// With a director, cues choose the pose; on its own, the mood does.
+		if (!this.#cue && who.mood !== prev.mood) this.#act(who.mood, false);
+		this.puppet.alpha = who.mood === "done" ? 0.75 : 1;
 	}
 
 	place(slot: Slot): void {
+		this.#slot = slot;
+		if (this.moving) return;
 		this.puppet.position.set(slot.x, slot.y);
 		this.#facing = slot.facing;
 		this.#size();
 	}
 
+	act(cue: Cue): void {
+		if (this.#cue?.key === cue.key) return;
+		const first = !this.#cue;
+		this.#cue = cue;
+		this.#gone = false;
+		this.puppet.visible = true;
+		this.#walkFrom = cue.walk?.elapsed ?? 0;
+		this.#walked = this.#walkFrom;
+		if (cue.walk && this.#walked < cue.walk.ms) {
+			this.puppet.play("walk", { snap: first });
+			this.#walkTo(this.#walked);
+		} else this.#pose(first);
+	}
+
 	tick(dt: number): void {
+		const w = this.#cue?.walk;
+		if (w && !this.#gone && this.#walked < w.ms) {
+			this.#walked = Math.min(w.ms, this.#walked + dt * MS_PER_TICK);
+			this.#walkTo(this.#walked);
+			if (this.#walked >= w.ms) {
+				if (w.exit) {
+					// Out of the door: gone until the director drops it.
+					this.#gone = true;
+					this.puppet.visible = false;
+					return;
+				}
+				if (this.#slot) this.place(this.#slot);
+				this.#pose(false);
+			}
+		}
 		this.puppet.tick(dt);
 	}
 
 	rewind(): void {
-		this.puppet.rewind();
+		this.#walked = this.#walkFrom;
+		this.#gone = false;
+		this.puppet.visible = true;
+		if (this.moving) {
+			this.puppet.play("walk", { snap: true });
+			this.#walkTo(this.#walked);
+		} else this.puppet.rewind();
 	}
 
 	inspect() {
 		const s = this.puppet.state();
+		const w = this.#cue?.walk;
 		return {
 			mood: this.#who.mood,
 			size: Math.round(this.#who.size),
@@ -68,11 +139,28 @@ class RigCharacter implements Character {
 			params: Object.entries(s.params)
 				.map(([k, v]) => `${k}:${v}`)
 				.join(" "),
+			spot: this.#cue?.spot ?? "",
+			cue: this.#cue?.pose ?? "",
+			walk: w && this.moving ? `${Math.round(this.#walked)}/${w.ms}ms${w.exit ? " exit" : ""}` : "",
 		};
 	}
 
 	destroy(): void {
 		this.puppet.destroy({ children: true });
+	}
+
+	#walkTo(ms: number): void {
+		const w = this.#cue!.walk!;
+		const p = along(w.path, ms, w.ms);
+		this.puppet.position.set(p.x, p.y);
+		this.puppet.zIndex = p.y;
+		if (p.dx !== 0) this.#facing = p.dx < 0 ? -1 : 1;
+		this.#size();
+	}
+
+	#pose(first: boolean): void {
+		const c = this.#cue!;
+		this.puppet.play(c.pose, { as: c.as, loops: c.loops, at: c.at, snap: first || c.at === "end" });
 	}
 
 	#size(): void {
@@ -84,7 +172,7 @@ class RigCharacter implements Character {
 	 * idle while watched plays its habit through, then settles. */
 	#act(mood: Mood, first: boolean): void {
 		this.puppet.play(choosePose(TRIGGER[mood], this.#who.key, this.puppet.role), { snap: first, at: first && mood !== "busy" ? "end" : "start" });
-		this.puppet.alpha = mood === "done" ? 0.6 : 1;
+		this.puppet.alpha = mood === "done" ? 0.75 : 1;
 	}
 }
 

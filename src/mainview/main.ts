@@ -11,6 +11,7 @@ import { installHud } from "./hud";
 import { installInspector } from "./inspector";
 import { placeholders } from "./placeholder";
 import { Atlas, buildPoseSheet, paperTheme, rigCharacters } from "../scene/rig";
+import { Director, placeholderVoice } from "../scene/director";
 
 const params = new URLSearchParams(location.search);
 
@@ -61,28 +62,33 @@ function blank(): void {
 
 	// Mochi characters from the rig; ?placeholders draws the old stand-ins (for A/B profiling).
 	const characters = params.has("placeholders") ? placeholders(app.renderer) : rigCharacters(atlas);
-	const office = new Office({ renderer: app.renderer, characters, wake: () => scene.redraw() });
+	// The director decides who stands where and in which pose; the office draws it.
+	const director = new Director();
+	const office = new Office({ renderer: app.renderer, characters, wake: () => scene.redraw(), cast: director.cast });
 	app.stage.addChild(office);
 
 	// Ambient motion doesn't need the display's full rate (120 Hz on ProMotion screens). A camera
-	// move must be smooth, so it gets 60 for as long as it lasts.
+	// move and a walk must be smooth, so they get 60 for as long as they last.
 	const AMBIENT_FPS = 30;
 	const MOVING_FPS = 60;
 	app.ticker.maxFPS = AMBIENT_FPS;
 	app.ticker.add((t) => {
 		office.tick(t.deltaTime);
-		app.ticker.maxFPS = office.moving ? MOVING_FPS : AMBIENT_FPS;
+		app.ticker.maxFPS = office.moving || office.walking ? MOVING_FPS : AMBIENT_FPS;
 		if (!office.animating) app.ticker.stop();
 	});
 
 	const scene = {
 		current: undefined as Snapshot | undefined,
+		direct: () => {},
 		/** The clock is stopped and only the inspector's step() moves the scene. Set by the inspector,
 		 * or from load with ?frozen (for deterministic screenshots: tools/shoot.ts). */
 		frozen: params.has("frozen"),
+		/** Stops a scripted demo day: set while one plays. */
+		stopDemo: undefined as (() => void) | undefined,
 		redraw() {
 			if (office.animating && !scene.frozen) {
-				if (office.moving) app.ticker.maxFPS = MOVING_FPS;
+				if (office.moving || office.walking) app.ticker.maxFPS = MOVING_FPS;
 				if (!app.ticker.started) app.ticker.start();
 			} else {
 				app.render();
@@ -90,8 +96,8 @@ function blank(): void {
 		},
 		show(snapshot: Snapshot) {
 			scene.current = snapshot;
-			office.show(snapshot, app.screen.width, app.screen.height);
-			scene.redraw();
+			director.now = snapshot.at;
+			scene.direct();
 			hud.update(snapshot);
 			if (inspector) inspector.ready = true;
 			if (import.meta.env.DEV) {
@@ -100,9 +106,33 @@ function blank(): void {
 			}
 		},
 	};
+	/** Direct the current snapshot at `director.now`, draw it, voice it, and book the next wake-up. */
+	let wakeTimer: ReturnType<typeof setTimeout> | undefined;
+	const direct = () => {
+		const snap = scene.current;
+		if (!snap) return;
+		office.show(snap, app.screen.width, app.screen.height);
+		const world = director.world;
+		if (world) placeholderVoice(world, snap, (k, t, kind) => office.say(k, t, kind), director.now);
+		const waiting = director.waiting();
+		office.pulse(waiting.map((w) => w.area));
+		hud.waiting(waiting.length);
+		scene.redraw();
+		// The world changes on its own when an acted pose ends or a habit rotates: wake for it.
+		// A timer, not frames, so an idle office still costs nothing in between.
+		clearTimeout(wakeTimer);
+		const at = director.wake;
+		if (at !== undefined && !scene.frozen) {
+			wakeTimer = setTimeout(() => {
+				director.now = at;
+				direct();
+			}, Math.max(0, at - director.now));
+		}
+	};
+	Object.assign(scene, { direct });
 	const show = scene.show;
 	const redraw = scene.redraw;
-	const inspector = import.meta.env.DEV || params.has("inspect") ? installInspector(app, office, scene) : undefined;
+	const inspector = import.meta.env.DEV || params.has("inspect") ? installInspector(app, office, scene, director) : undefined;
 	const hud = installHud(office);
 
 	// Click a room to zoom to it, then a desk; click outside the rooms for the whole office.
@@ -117,10 +147,20 @@ function blank(): void {
 	});
 
 	if (params.has("demo")) {
-		const { demo } = await import("./demo");
-		const day = demo(params.get("demo"));
+		const { demo, demoDay } = await import("./demo");
+		const name = params.get("demo");
+		// ?demo=day-N: the demo day's first N beats, played at once (for screenshots of a beat).
+		const beat = name?.match(/^day-(\d)$/);
+		const day = demo(beat ? null : name);
 		for (const [id, sign] of Object.entries(day.signs)) office.setSign(id, sign);
 		show(day.snapshot);
+		if (beat) for (const b of demoDay().slice(0, Number(beat[1]))) show(b.snapshot);
+		// Plain ?demo plays the day through the director: arrivals, a review, a wait, departures.
+		// Frozen scenes (tests, screenshots) stay on its first moment.
+		if (!name && !params.has("frozen")) {
+			const timers = demoDay().map(({ after, snapshot }) => setTimeout(() => !scene.frozen && show(snapshot), after));
+			scene.stopDemo = () => timers.forEach(clearTimeout);
+		}
 		return;
 	}
 

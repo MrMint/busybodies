@@ -2,6 +2,7 @@
 // scene work through the browser pane or headless Chrome without reading pixels. Installed in dev
 // builds and whenever the URL has ?inspect.
 import type { Application } from "pixi.js";
+import type { Director, World, WorldEvent } from "../scene/director";
 import type { Stop } from "../scene/office/camera";
 import type { Office } from "../scene/office/office";
 import type { SignText } from "../scene/office/paper";
@@ -23,8 +24,14 @@ export interface Inspector {
 	unfreeze(): void;
 	/** Advance a frozen scene by n frames of 1/60 s each, then render once. */
 	step(n?: number): void;
-	/** Show a snapshot as if the watcher had sent it. */
+	/** Show a snapshot as if the watcher had sent it. Stops a scripted demo day. */
 	show(snapshot: Snapshot): void;
+	/** The director's world: every actor's spot, pose, walk and the signals it last saw. */
+	world(): World | undefined;
+	/** The director's last 200 events, oldest first. */
+	events(): WorldEvent[];
+	/** Rooms pulsing because their lead is waiting on you. */
+	pulsing(): Office["pulsing"];
 	/** The office as data: every area (rect, desks, fixtures, wall slots) and every desk's slot. */
 	layout(): ReturnType<typeof summarise> | undefined;
 	/** Where the camera is, and how sharp static layers are baked. */
@@ -68,8 +75,14 @@ declare global {
 export function installInspector(
 	app: Application,
 	office: Office,
-	scene: { show(s: Snapshot): void; frozen: boolean; redraw(): void; current?: Snapshot },
+	scene: { show(s: Snapshot): void; frozen: boolean; redraw(): void; current?: Snapshot; stopDemo?: () => void },
+	director?: Director,
 ): Inspector {
+	const log: WorldEvent[] = [];
+	director?.on((events) => {
+		log.push(...events);
+		if (log.length > 200) log.splice(0, log.length - 200);
+	});
 	let renders = 0;
 	let animationFrames = 0;
 
@@ -111,7 +124,13 @@ export function installInspector(
 			for (let i = 0; i < n; i++) office.tick(1);
 			app.render();
 		},
-		show: (s) => scene.show(s),
+		show: (s) => {
+			scene.stopDemo?.();
+			scene.show(s);
+		},
+		world: () => director?.world,
+		events: () => [...log],
+		pulsing: () => office.pulsing,
 		layout: () => summarise(office),
 		camera: () => ({ stop: office.stop, ...office.view, moving: office.moving, bake: office.bakeResolution }),
 		goTo: (stop, animate = true) => {
