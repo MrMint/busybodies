@@ -179,15 +179,17 @@ function blank(): void {
 	const inspector = import.meta.env.DEV || params.has("inspect") ? installInspector(app, office, scene, director, voice && { voice, now: () => director.now }, { current: () => theme, set: setTheme }) : undefined;
 	let bridge: Bridge | undefined;
 	const shell = installShell({
-		bridge: { status: () => bridge!.status(), setCompact: (on) => bridge?.setCompact(on), showOffice: () => bridge?.showOffice(), openProjectPage: () => bridge?.openProjectPage() },
+		bridge: { status: () => bridge!.status(), setCompact: (on) => bridge?.setCompact(on), showOffice: () => bridge?.showOffice(), openProjectPage: () => bridge?.openProjectPage(), setTheme: (id) => bridge?.setTheme(id) },
 		live: !params.has("demo") && !params.has("replay"),
 		compact,
+		theme: { current: () => theme, set: (id) => setTheme(id) },
 		// ?demo=nohome: the "no coding agent found" state, without a real home folder.
 		status: params.get("demo") === "nohome" ? { homeFound: false, home: "~/.claude" } : undefined,
 	});
 	const hud = installHud(office, {
 		compact,
 		about: () => shell.about(),
+		settings: () => shell.settings(),
 		expand: () => bridge?.showOffice(),
 		hide: () => bridge?.setCompact(false),
 	});
@@ -239,7 +241,7 @@ function blank(): void {
 	}
 
 	const rpc = Electroview.defineRPC<BusybodiesRPC>({
-		handlers: { messages: { snapshot: show, about: () => shell.about(), theme: ({ id }) => setTheme(themeId(id)) } },
+		handlers: { messages: { snapshot: show, about: () => shell.about(), theme: ({ id }) => (setTheme(themeId(id)), shell.themeChanged()) } },
 	});
 	new Electroview({ rpc });
 	bridge = {
@@ -247,6 +249,7 @@ function blank(): void {
 		setCompact: (on) => void rpc.request.setCompact({ on }),
 		showOffice: () => void rpc.request.showOffice(),
 		openProjectPage: () => void rpc.request.openProjectPage(),
+		setTheme: (id) => void rpc.request.setTheme({ id }),
 	};
 
 	const first = await rpc.request.snapshot();

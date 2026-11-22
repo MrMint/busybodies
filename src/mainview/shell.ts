@@ -2,6 +2,7 @@
 // talks to the Bun process through `bridge`; in a browser (?demo) there is no bridge and it shows
 // what it can. Fixtures: ?demo=empty (nobody's in), ?demo=nohome (no coding agent found), ?about.
 import type { AppStatus } from "../shared/rpc";
+import { THEME_IDS, type ThemeId } from "../scene/theme/id";
 import type { Session, Snapshot } from "../watcher/model";
 
 /** What the shell can ask of the Bun process. */
@@ -10,7 +11,14 @@ export interface Bridge {
 	setCompact(on: boolean): void;
 	showOffice(): void;
 	openProjectPage(): void;
+	setTheme(id: ThemeId): void;
 }
+
+/** What each theme is called in the settings sheet. */
+const THEME_NAMES: Record<ThemeId, { name: string; note: string }> = {
+	office: { name: "Office", note: "Desks, copiers and a lot of paper." },
+	factory: { name: "Factory", note: "Hard hats, machines and robot arms." },
+};
 
 const CSS = `
 html:has(body.compact),body.compact{background:transparent}
@@ -34,6 +42,20 @@ html:has(body.compact),body.compact{background:transparent}
 #bb-about button{font:700 14px ui-rounded,system-ui,sans-serif;color:#1b2140;background:#fff;border:3px solid #1b2140;border-radius:999px;
  padding:5px 14px;cursor:pointer;box-shadow:2px 3px 0 #1b2140}
 #bb-about button.primary{background:#1b2140;color:#fff}
+#bb-settings{position:fixed;inset:0;display:grid;place-items:center;background:rgba(27,33,64,.45);z-index:5}
+#bb-settings[hidden]{display:none}
+#bb-settings .sheet{width:min(440px,calc(100vw - 40px));background:#fffaf0;border:5px solid #1b2140;border-radius:16px;
+ box-shadow:8px 10px 0 rgba(27,33,64,.25);padding:22px 26px 20px;font:500 15px/1.45 ui-rounded,"SF Pro Rounded",system-ui,sans-serif;color:#1b2140}
+#bb-settings h2{margin:0 0 10px;font-size:26px;font-weight:800}
+#bb-settings h3{margin:0 0 6px;font-size:15px;font-weight:800}
+#bb-settings .choices{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#bb-settings .choice{text-align:left;font:600 13px/1.3 ui-rounded,system-ui,sans-serif;color:#1b2140;background:#fff;border:3px solid #1b2140;
+ border-radius:12px;padding:8px 12px 10px;cursor:pointer;box-shadow:2px 3px 0 #1b2140}
+#bb-settings .choice b{display:block;font-size:16px;font-weight:800}
+#bb-settings .choice[aria-checked="true"]{background:#1b2140;color:#fff}
+#bb-settings .row{display:flex;justify-content:flex-end;margin-top:16px}
+#bb-settings .close{font:700 14px ui-rounded,system-ui,sans-serif;color:#fff;background:#1b2140;border:3px solid #1b2140;border-radius:999px;
+ padding:5px 14px;cursor:pointer;box-shadow:2px 3px 0 #1b2140}
 `;
 
 const flat = (list: Session[]): Session[] => list.flatMap((s) => [s, ...flat(s.children)]);
@@ -45,6 +67,8 @@ export function installShell(opts: {
 	compact: boolean;
 	/** Overrides for fixtures. */
 	status?: Partial<AppStatus>;
+	/** The theme showing now, and how to switch it in this window. */
+	theme: { current(): ThemeId; set(id: ThemeId): void };
 }) {
 	const style = document.createElement("style");
 	style.textContent = CSS;
@@ -88,6 +112,46 @@ project's GitHub Releases. No analytics, no accounts.</p>
 		}
 	}, true);
 
+	// The settings sheet, behind the cog: every setting the app grows goes here.
+	const settings = document.createElement("div");
+	settings.id = "bb-settings";
+	settings.hidden = true;
+	settings.setAttribute("role", "dialog");
+	settings.setAttribute("aria-label", "Settings");
+	settings.innerHTML = `<div class="sheet"><h2>Settings</h2>
+<h3 id="bb-theme-label">Theme</h3><div class="choices" role="radiogroup" aria-labelledby="bb-theme-label"></div>
+<div class="row"><button class="close">Done</button></div></div>`;
+	const choices = settings.querySelector(".choices")!;
+	for (const id of THEME_IDS) {
+		const b = document.createElement("button");
+		b.className = "choice";
+		b.dataset.theme = id;
+		b.setAttribute("role", "radio");
+		b.innerHTML = "<b></b><span></span>";
+		b.querySelector("b")!.textContent = THEME_NAMES[id].name;
+		b.querySelector("span")!.textContent = THEME_NAMES[id].note;
+		b.onclick = () => {
+			// This window switches at once; the app saves the choice and switches the other window.
+			opts.theme.set(id);
+			if (opts.live) opts.bridge.setTheme(id);
+			markTheme();
+		};
+		choices.appendChild(b);
+	}
+	const markTheme = () => {
+		for (const b of choices.querySelectorAll<HTMLElement>(".choice")) b.setAttribute("aria-checked", String(b.dataset.theme === opts.theme.current()));
+	};
+	document.body.appendChild(settings);
+	const closeSettings = () => (settings.hidden = true);
+	settings.querySelector<HTMLButtonElement>(".close")!.onclick = closeSettings;
+	settings.addEventListener("pointerdown", (e) => e.target === settings && closeSettings());
+	window.addEventListener("keydown", (e) => {
+		if (e.key === "Escape" && !settings.hidden) {
+			closeSettings();
+			e.stopImmediatePropagation();
+		}
+	}, true);
+
 	let status: Partial<AppStatus> = { version: "dev", homeFound: true, ...opts.status };
 	const refreshStatus = async () => {
 		if (!opts.live) return;
@@ -122,6 +186,14 @@ Start a coding session there, or point <code>BUSYBODIES_AGENT_HOME</code> at the
 				about.querySelector<HTMLButtonElement>(".close")!.focus();
 			});
 		},
+		/** Show the settings sheet (the cog). */
+		settings() {
+			markTheme();
+			settings.hidden = false;
+			settings.querySelector<HTMLElement>('[aria-checked="true"]')?.focus();
+		},
+		/** The theme changed from elsewhere (the tray menu): keep the sheet's mark right. */
+		themeChanged: () => markTheme(),
 		/** Each snapshot: show or hide the empty-state sign. */
 		update(snapshot: Snapshot) {
 			const n = flat(snapshot.sessions).length;
