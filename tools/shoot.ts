@@ -14,7 +14,7 @@ type Aim = { kind: "office" } | { kind: "room"; name: string } | { kind: "desk";
 
 interface State {
 	name: string;
-	/** The ?demo fixture: "" for FloorBusy's day, or "idle", "one", "thirty". */
+	/** The ?demo fixture: "" for FloorBusy's day, "idle", "one", "thirty", or "day-N" (the demo day's Nth beat). */
 	demo: string;
 	aim: Aim;
 	size: [number, number];
@@ -34,6 +34,14 @@ const STATES: State[] = [
 	{ name: "floor-one", demo: "one", aim: { kind: "office" }, size: BOARD },
 	{ name: "floor-thirty", demo: "thirty", aim: { kind: "office" }, size: BOARD },
 	{ name: "floor-busy-small", demo: "", aim: { kind: "office" }, size: [960, 600] },
+	// The demo day through the director (S4): each beat, a second or so into its walks.
+	{ name: "day-0-start", demo: "day-0", aim: { kind: "office" }, size: BOARD, frames: 60 },
+	{ name: "day-1-review-and-arrival", demo: "day-1", aim: { kind: "office" }, size: BOARD, frames: 90 },
+	{ name: "day-2-waiting-on-you", demo: "day-2", aim: { kind: "room", name: "lanternfish" }, size: BOARD, frames: 40 },
+	{ name: "day-3-pr-and-home-time", demo: "day-3", aim: { kind: "room", name: "lanternfish" }, size: BOARD, frames: 50 },
+	{ name: "day-3-leaving", demo: "day-3", aim: { kind: "office" }, size: BOARD, frames: 150 },
+	{ name: "day-4-review-done", demo: "day-4", aim: { kind: "office" }, size: BOARD, frames: 120 },
+	{ name: "day-5-long-build", demo: "day-5", aim: { kind: "room", name: "orbit-kit" }, size: BOARD, frames: 600 },
 ];
 
 const ROOT = join(import.meta.dir, "..");
@@ -46,6 +54,7 @@ const { values: o } = parseArgs({
 		dpr: { type: "string", default: "1" },
 		check: { type: "boolean", default: false },
 		build: { type: "boolean", default: false },
+		title: { type: "string", default: "Busybodies · tools/shoot.ts" },
 	},
 });
 
@@ -88,7 +97,7 @@ async function shoot(browser: Browser, s: State, dpr: number): Promise<Buffer> {
 	return png;
 }
 
-function contactSheet(shots: { name: string; png: Buffer; size: [number, number] }[]): string {
+function contactSheet(shots: { name: string; png: Buffer; size: [number, number] }[], title: string): string {
 	const figs = shots
 		.map(
 			(s) =>
@@ -99,7 +108,7 @@ function contactSheet(shots: { name: string; png: Buffer; size: [number, number]
 body{margin:0;padding:20px;background:#1b2140;font:700 14px ui-rounded,system-ui,sans-serif;color:#fff}
 h1{margin:0 0 14px;font-size:20px}main{display:grid;grid-template-columns:repeat(3,480px);gap:16px}
 figure{margin:0}img{display:block;width:480px;border-radius:8px;background:#bfe8c6}figcaption{margin-top:5px;opacity:.85}
-</style><h1>Busybodies · open-floor office · tools/shoot.ts</h1><main>${figs}</main>`;
+</style><h1>${title}</h1><main>${figs}</main>`;
 }
 
 const browser = await chromium.launch({ channel: "chrome", headless: true, args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
@@ -123,7 +132,7 @@ try {
 		if (!o.check) console.log(`shot  ${s.name}`);
 	}
 	const sheet = await browser.newPage({ viewport: { width: 20 * 2 + 480 * 3 + 16 * 2, height: 400 } });
-	await sheet.setContent(contactSheet(shots));
+	await sheet.setContent(contactSheet(shots, o.title!));
 	await sheet.evaluate(() => Promise.all([...document.images].map((i) => i.decode())));
 	writeFileSync(join(o.out!, "contact-sheet.png"), await sheet.screenshot({ type: "png", fullPage: true }));
 	console.log(`wrote ${shots.length} shots and contact-sheet.png to ${o.out}`);

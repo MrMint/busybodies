@@ -8,7 +8,7 @@
 // Each agent keeps its crew spot while it stays, so a newcomer doesn't shuffle the others.
 import type { Agent, Session, Snapshot } from "../../watcher/model";
 import { seats } from "./layout";
-import type { Mood, Who } from "./slot";
+import type { Cue, Mood, Who } from "./slot";
 import { type Slot, type World, crewSlot } from "./world";
 
 export interface Placed {
@@ -18,6 +18,8 @@ export interface Placed {
 	desk?: string;
 	/** Where it is: the area's id. */
 	area?: string;
+	/** What the director (S4) asks of the character, if a director is placing people. */
+	cue?: Cue;
 }
 
 export const LEAD_SIZE = 72;

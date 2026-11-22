@@ -36,6 +36,11 @@ export interface Character {
 	tick(dt: number): void;
 	/** What the inspector reports about this character, besides its key and position. */
 	inspect(): Record<string, string | number>;
+	/** Optional: take a cue from the director. */
+	act?(cue: Cue): void;
+	/** Optional: true while walking. The office raises the frame rate for walkers and lets each
+	 * walker keep its own depth. */
+	readonly moving?: boolean;
 	/** Optional: back to the start of its pose, settled (the inspector's freeze, so step(n) is the
 	 * same however long the page ran first). */
 	rewind?(): void;
@@ -43,3 +48,38 @@ export interface Character {
 }
 
 export type CharacterFactory = (who: Who) => Character;
+
+/** A point in world pixels. */
+export interface Point {
+	x: number;
+	y: number;
+}
+
+/** A walk: the points to follow, how long it takes, and whether the walker leaves at the end. */
+export interface Walk {
+	path: Point[];
+	ms: number;
+	/** Fade out at the end: the character is leaving through the door. */
+	exit?: boolean;
+	/** How far into the walk it already is, in ms (a cue sent mid-walk). */
+	elapsed?: number;
+}
+
+/**
+ * What the director (S4) asks a character to do: a pose, and maybe a walk to get there first. A
+ * character that understands cues implements `act`; one that doesn't just stands at its slot.
+ */
+export interface Cue {
+	/** Changes whenever the character must start over: a new pose, or the same pose again. */
+	key: string;
+	pose: string;
+	/** Which part of a two-hander. */
+	as: "lead" | "partner";
+	/** Passes before holding the last frame; Infinity loops. */
+	loops: number;
+	/** `end`: start already played through (a character found mid-habit). */
+	at: "start" | "end";
+	/** Where it stands, by name: `desk`, `crew:3`, `meeting:seat:0`, `kitchen:queue:1`, `door`. */
+	spot: string;
+	walk?: Walk;
+}

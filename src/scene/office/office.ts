@@ -30,7 +30,7 @@ import {
 	text,
 	windowPane,
 } from "./paper";
-import { Placement, crewOf } from "./placement";
+import { type Placed, Placement, crewOf } from "./placement";
 import type { Character, CharacterFactory } from "./slot";
 import type { Area, Desk, Rect, World } from "./world";
 
@@ -68,6 +68,19 @@ export interface OfficeOptions {
 	characters: CharacterFactory;
 	/** Ask for a render, or frames if something started moving (a camera move, a sign changed). */
 	wake: () => void;
+	/**
+	 * Who stands where, and what they do: the director (S4). Without one, the provisional
+	 * placement stands everyone at their spot and the office bubbles busy leads' tool names itself.
+	 */
+	cast?: (snapshot: Snapshot, floor: World) => Placed[];
+}
+
+/** A bubble someone is saying (or thinking), anchored to its character. */
+interface Said {
+	view: Container;
+	text: string;
+	kind: "said" | "thought";
+	size: number;
 }
 
 export class Office extends Container {
@@ -90,6 +103,10 @@ export class Office extends Container {
 	#tabs = new Map<string, Item>();
 	#people = new Map<string, Character>();
 	#bubbleFor = new Map<string, Item>();
+	#said = new Map<string, Said>();
+	#pulse = new Graphics();
+	#pulsing: string[] = [];
+	#pulseT = 0;
 	#signs = new Map<string, SignText>(Object.entries(DEFAULT_SIGNS));
 
 	#textures = new Map<FurnitureKind, Texture>();
@@ -105,7 +122,7 @@ export class Office extends Container {
 	constructor(opts: OfficeOptions) {
 		super();
 		this.#opts = opts;
-		this.world.addChild(this.#slab, this.#floor, this.#depth, this.#bubbles, this.#labels);
+		this.world.addChild(this.#slab, this.#floor, this.#pulse, this.#depth, this.#bubbles, this.#labels);
 		this.world.interactiveChildren = false;
 		this.addChild(this.world);
 	}
@@ -114,7 +131,14 @@ export class Office extends Container {
 
 	get animating(): boolean {
 		if (this.#move) return true;
+		if (this.#pulsing.length) return true;
 		for (const p of this.#people.values()) if (p.animating) return true;
+		return false;
+	}
+
+	/** True while anyone walks: the app raises the frame rate for it, as for a camera move. */
+	get walking(): boolean {
+		for (const p of this.#people.values()) if (p.moving) return true;
 		return false;
 	}
 
@@ -152,7 +176,72 @@ export class Office extends Container {
 		for (const p of this.#people.values()) p.rewind?.();
 	}
 
+	/**
+	 * Say something: a bubble over the character with this key, until it says something else or
+	 * `undefined`. "thought" draws a thought bubble. The sass engine (S5) drives this through the
+	 * director's `say` hook.
+	 */
+	say(key: string, text: string | undefined, kind: "said" | "thought" = "said"): void {
+		const was = this.#said.get(key);
+		const p = this.#people.get(key);
+		if (!text || !p) {
+			if (was) {
+				was.view.destroy({ children: true });
+				this.#said.delete(key);
+				this.#opts.wake();
+			}
+			return;
+		}
+		if (was && was.text === text && was.kind === kind) return;
+		const s = was ?? { view: bubble(), text: "", kind, size: 0 };
+		if (!was) this.#bubbles.addChild(s.view);
+		setBubble(s.view, text, kind);
+		s.text = text;
+		s.kind = kind;
+		s.size = Number(p.inspect().size ?? 60);
+		this.#said.set(key, s);
+		this.#anchor(key);
+		this.#opts.wake();
+	}
+
+	/** The rooms pulsing now, and how bright the pulse is. */
+	get pulsing(): { areas: string[]; alpha: number; bounds: { x: number; y: number; w: number; h: number } } {
+		const b = this.#pulse.getLocalBounds();
+		return { areas: [...this.#pulsing], alpha: Math.round(this.#pulse.alpha * 100) / 100, bounds: { x: b.x, y: b.y, w: b.width, h: b.height } };
+	}
+
+	/** Rooms whose lead is waiting on you: their outline pulses until the set is empty. */
+	pulse(areaIds: string[]): void {
+		const next = [...areaIds].sort();
+		if (next.join("|") === this.#pulsing.join("|")) return;
+		this.#pulsing = next;
+		this.#drawPulse();
+		this.#opts.wake();
+	}
+
+	#drawPulse(): void {
+		const g = this.#pulse.clear();
+		const w = this.#data;
+		if (!w) return;
+		for (const id of this.#pulsing) {
+			const a = w.areas.find((x) => x.id === id);
+			if (a) g.roundRect(a.rect.x - 7, a.rect.y - 7, a.rect.w + 14, a.rect.h + 14, 22).stroke({ width: 14, color: 0xffd23f });
+		}
+		this.#pulse.alpha = 0.65 + 0.35 * Math.sin(this.#pulseT);
+	}
+
+	#anchor(key: string): void {
+		const s = this.#said.get(key);
+		const p = this.#people.get(key);
+		if (!s || !p) return;
+		s.view.position.set(p.view.x + 14, p.view.y - s.size - 8);
+	}
+
 	tick(dt: number): void {
+		if (this.#pulsing.length) {
+			this.#pulseT += dt * 0.09;
+			this.#pulse.alpha = 0.65 + 0.35 * Math.sin(this.#pulseT);
+		}
 		if (this.#move) {
 			const v = this.#move.step(dt * (1000 / 60), this.#centre());
 			this.#apply(v);
@@ -162,6 +251,8 @@ export class Office extends Container {
 			}
 		}
 		for (const p of this.#people.values()) p.tick(dt);
+		// Bubbles follow walkers.
+		for (const [key, p] of this.#people) if (p.moving) this.#anchor(key);
 	}
 
 	// --- Input ---------------------------------------------------------------------------------
@@ -458,11 +549,11 @@ export class Office extends Container {
 	}
 
 	#drawPeople(world: World, snapshot: Snapshot): void {
-		const placed = this.#placement.place(snapshot, world);
+		const placed = this.#opts.cast ? this.#opts.cast(snapshot, world) : this.#placement.place(snapshot, world);
 		const seen = new Set<string>();
 		const bubbles = new Set<string>();
 		const sessions = new Map(flat(snapshot.sessions).map((s) => [s.id, s]));
-		for (const { who, slot, desk } of placed) {
+		for (const { who, slot, desk, cue } of placed) {
 			seen.add(who.key);
 			let p = this.#people.get(who.key);
 			if (!p) {
@@ -471,9 +562,11 @@ export class Office extends Container {
 				this.#depth.addChild(p.view);
 			} else p.update(who);
 			p.place(slot);
-			p.view.zIndex = slot.depth;
-			// A busy lead says what it is doing. The sass engine (S5) will have better lines.
-			const s = who.kind === "lead" && desk ? sessions.get(desk) : undefined;
+			if (cue) p.act?.(cue);
+			// A walker keeps its own depth as it moves; everyone else stands at the slot's.
+			if (!p.moving) p.view.zIndex = slot.depth;
+			// Without a director, a busy lead says what it is doing (with one, its voice does).
+			const s = !this.#opts.cast && who.kind === "lead" && desk ? sessions.get(desk) : undefined;
 			if (s?.state === "busy" && s.activity) {
 				const label = s.activity.tool.replace(/^mcp__[^_]+__/, "");
 				bubbles.add(who.key);
@@ -485,7 +578,7 @@ export class Office extends Container {
 				}
 				if (b.sig !== label) {
 					// Tool calls come many times a second: only the glyph quads and the outline change.
-					setBubble(b.view, label);
+					setBubble(b.view, label, "said");
 					b.sig = label;
 				}
 				b.view.position.set(slot.x + 14, slot.y - who.size - 8);
@@ -495,7 +588,10 @@ export class Office extends Container {
 			if (seen.has(key)) continue;
 			p.destroy();
 			this.#people.delete(key);
+			this.say(key, undefined);
 		}
+		for (const key of this.#said.keys()) this.#anchor(key);
+		this.#drawPulse();
 		for (const [key, b] of this.#bubbleFor) {
 			if (bubbles.has(key)) continue;
 			b.view.destroy({ children: true });
@@ -574,17 +670,14 @@ function bubble(): Container {
 	return c;
 }
 
-function setBubble(c: Container, value: string): void {
+function setBubble(c: Container, value: string, kind: "said" | "thought"): void {
 	const [g, t] = c.children as [Graphics, ReturnType<typeof label>];
 	t.text = value;
 	const w = t.width + 14;
 	const h = 22;
-	g.clear()
-		.roundRect(0, -h, w, h, 9)
-		.fill(0xffffff)
-		.stroke({ width: 2.5, color: INK })
-		.poly([8, -1.5, 18, -1.5, 6, 8])
-		.fill(0xffffff)
-		.stroke({ width: 2.5, color: INK });
+	g.clear().roundRect(0, -h, w, h, kind === "thought" ? 11 : 9).fill(0xffffff).stroke({ width: 2.5, color: INK });
+	// A said line has a tail; a thought trails off in two little puffs.
+	if (kind === "said") g.poly([8, -1.5, 18, -1.5, 6, 8]).fill(0xffffff).stroke({ width: 2.5, color: INK });
+	else g.circle(9, 5, 3.5).fill(0xffffff).stroke({ width: 2, color: INK }).circle(4, 12, 2.2).fill(0xffffff).stroke({ width: 1.8, color: INK });
 	t.position.set(7, -h + 4);
 }

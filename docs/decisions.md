@@ -467,3 +467,76 @@ Slow CI renders a few real frames before a test can freeze.
 (85 rig units, ground to the top of the body), and `facing` mirrors the puppet. The office draws
 the desks, so the rig's own stays off. `?placeholders` swaps S2's baked stand-ins back in, for A/B
 profiling. The slot gains an optional `rewind()`, which the inspector's `freeze()` calls.
+
+## 2026-11-21: the director (S4)
+
+**The director is pure: `direct(prev, snap, now, floor) → { world, events, wake }`**
+(`src/scene/director/direct.ts`). The brief's three arguments gained a fourth: the floor plan
+for this snapshot (S2's layout), because spots and walks are positions on it. The world holds
+one `Actor` per character: its named spot (`desk`, `crew:3`, `meeting:seat:0`,
+`kitchen:queue:1`, `door`) and slot, its pose (and which half of a two-hander), whether that pose
+is acted (a one-off, held until its frames run out) or standing (the mood's), any walk in
+progress, and the signals it last saw. Events say what changed: `arrive`, `leave`, `walk`,
+`pose`, `handover`, `review` start and end, `waiting` start and end. `wake` is the next time the
+world changes with no new snapshot (an acted pose ends, a habit rotates, a build turns long, a
+walker leaves the stage). The app sets a timer for it, not frames, so an idle office still costs
+nothing between changes.
+
+**Spots are sticky.** Leads stand at their desks. Crew keep their spot around the desk while they
+stay. A running reviewer takes a meeting-room seat. Finished agents fill the kitchen queue, the
+nap pod, the cooler, the rest of the queue and the sofas, in that order (S2's provisional order).
+Each keeps its spot from one snapshot to the next, so an unrelated change moves nobody; a unit
+test holds this.
+
+**Signals map to poses, in priority order.**
+- Stalled → the cobweb; finished → `done`; waiting on you → the paddle, with the rare "please?"
+  rolled once per wait from the id and how many waits came before.
+- Acted, on a new signal: a new hire → the handover, the boss leading and the hire playing the
+  partner half; a PR opened → the celebration with the first busy teammate at the desk, else the
+  solo PR pose; a failed command or test → the failed-test pose; a compaction → the stretch.
+- Busy: a shell command running 20 minutes or more, the same command 3 times in a row, or an API
+  retry in the last 5 minutes → grumpy; any other tool running 2 minutes or more → thinking hard;
+  otherwise the role's own work (typing for leads, hammering for builders, and so on).
+- Idle → one of the seven slacking habits: `HABITS[(hash(key) + turn) % 7]`, where `turn` counts
+  10-minute spans since the character went idle.
+
+On the first snapshot, only events from the last minute count as news. A character found idle,
+stalled or done starts already played through and settled.
+
+**Walks never cross a wall** (`src/scene/director/paths.ts`). Rooms above the hallway are open
+along it; rooms below put their back wall on it, so a walk goes through that wall's door. A walk
+between areas leaves its room, follows the middle of the hallway and enters the other room. A
+walk inside a room is a straight line. Speed is 170 world pixels per second, between 0.6 and 9
+seconds a walk. New sessions walk in from the lobby door. A new hire whose job is elsewhere (a
+reviewer) starts at its desk and walks there. Anyone gone from the snapshot walks out through the
+lobby door, then leaves the stage. The app raises the frame cap to 60 while anyone walks, as for
+a camera move, and drops back to 30 (or to nothing) when walks end.
+
+**The office takes a cast and characters take cues** (interfaces widened in
+`src/scene/office/slot.ts`). `Office` gained a `cast(snapshot, floor) → Placed[]` option, which
+replaces its provisional placement. `Placed` gained an optional `cue`, and `Character` gained
+optional `act(cue)` and `moving`. A cue is a pose, which half of a two-hander, loops, start or
+end, the spot's name, and maybe a walk (points, ms, exit, elapsed). The rig's character plays the
+walk cycle (a new `walk` pose in the rig), faces the way it goes, keeps its own depth as it
+moves, then plays the cued pose; it fades out at the end of an exit walk. Without a director, the
+office behaves as before.
+
+**The sass seam.** `Director.on(listener)` publishes every batch of events with the world.
+`Office.say(key, text, kind)` draws a said or thought bubble over a character until it says
+something else or `undefined`; bubbles follow walkers. Signs go through `Office.setSign` (S2).
+The built-in voice (`placeholderVoice`) bubbles each busy lead's current tool, as the office did
+before; S5 replaces it.
+
+**Waiting on you is loud.** The waiting room's outline pulses yellow, and a yellow pill in the top
+bar counts the sessions waiting. Both clear when the wait does. The pulse animates only while
+someone waits, and the waiting pose loops then anyway.
+
+**`?demo` plays a day.** The FloorBusy morning is followed by five beats a few seconds apart:
+- a reviewer is hired and walks to the meeting room, and a session arrives
+- a session waits on you while its verifier's test fails
+- the release opens a PR and celebrates; a long-finished agent goes home
+- the wait is answered, the review ends, and a session closes and its lead leaves
+- a long build makes someone grumpy
+
+`?demo=day-N&frozen` jumps to beat N for screenshots (`tools/shoot.ts` has a state per beat).
+Frozen scenes and the named demos (`idle`, `one`, `thirty`, `crowd`) stay still, as before.

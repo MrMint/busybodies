@@ -52,6 +52,7 @@ v7-era APIs that look right and silently draw the wrong thing. Update it only wi
 | `src/mainview/` | The webview's entry: app setup, the top bar, the inspector, demo days |
 | `src/scene/office/` | The open-floor office: floor plan, camera, cut-paper drawing, the character slot interface |
 | `src/scene/rig/` | The mochi character rig: parts atlas, springs, frames, poses, and the office's character factory (`?sheet`, `?demo=crowd`) |
+| `src/scene/director.ts`, `src/scene/director/` | The director: snapshot to world (spots, poses, walks) and events; the sass seam (`say`, `sign`) |
 | `test/` | Unit tests (`bun test test/`). Fixtures are built in a temp folder from invented data |
 | `e2e/` | Scene tests in headless Chrome (`bun test e2e/`) |
 | `tools/watch-tree.ts` | Prints the live session/agent tree in a terminal |

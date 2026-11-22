@@ -19,7 +19,8 @@ export type Trigger =
 	| "finished"
 	| "thinking"
 	| "subagent-green"
-	| "long-build";
+	| "long-build"
+	| "walking";
 
 export interface Pose {
 	name: string;
@@ -377,6 +378,14 @@ export const POSES: Pose[] = [
 			["e-squint b-angry m-shout al-low ar-low bd-puff x-steam2", 2],
 			["e-closed b-flat m-flat hr-mug ar-sip al-hip", 4],
 			["e-half b-one m-pout hr-mug ar-raise al-hip", 6, "Forty minutes. I have aged."],
+		],
+	}),
+	pose({
+		name: "walk", title: "Walking somewhere", trigger: "walking", rarity: 1, play: "loop",
+		lines: [],
+		frames: [
+			["f-swingL al-low ar-down bd-leanR", 2],
+			["f-swingR al-down ar-low bd-hop", 2],
 		],
 	}),
 	pose({
