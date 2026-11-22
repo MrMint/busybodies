@@ -34,5 +34,10 @@ for (const p of poses) {
 	} else {
 		console.log(block("", p.frames));
 	}
+	// Variant passes that now and then replace a pass of the loop (player.ts passBeat).
+	for (const b of p.beats?.passes ?? []) {
+		console.log(`  beat "${b.name}", rolled for ${Math.round(p.beats!.share * 100)}% of passes, never twice running:`);
+		console.log(block("", b.frames));
+	}
 	console.log();
 }

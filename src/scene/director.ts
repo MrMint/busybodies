@@ -48,9 +48,9 @@ export class Director {
 	view: View = {};
 
 	/** The office's `cast` option: direct this snapshot and place everyone with a cue. */
-	cast = (snap: Snapshot, floor: Floor): Placed[] => {
+	cast = (snap: Snapshot, floor: Floor, opts: { life?: boolean } = {}): Placed[] => {
 		const now = this.now || snap.at;
-		const d = direct(this.#world, snap, now, floor, this.view);
+		const d = direct(this.#world, snap, now, floor, { life: opts.life ?? false, view: this.view });
 		this.#world = d.world;
 		this.#last = d;
 		if (d.events.length) for (const fn of this.#listeners) fn(d.events, d.world);

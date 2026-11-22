@@ -55,7 +55,7 @@ export interface OfficeOptions {
 	 * Who stands where, and what they do: the director (S4). Without one, the provisional
 	 * placement stands everyone at their spot and the office bubbles busy leads' tool names itself.
 	 */
-	cast?: (snapshot: Snapshot, floor: World) => Placed[];
+	cast?: (snapshot: Snapshot, floor: World, opts: { life: boolean }) => Placed[];
 	/** Screen pixels kept clear above the office for the top bar (default 64). */
 	top?: number;
 	/** Each session's crew build, drawn on its desk (the director's). */
@@ -776,7 +776,7 @@ export class Office extends Container {
 	}
 
 	#drawPeople(world: World, snapshot: Snapshot): void {
-		const placed = this.#opts.cast ? this.#opts.cast(snapshot, world) : this.#placement.place(snapshot, world);
+		const placed = this.#opts.cast ? this.#opts.cast(snapshot, world, { life: this.#life }) : this.#placement.place(snapshot, world);
 		this.#placed = placed;
 		// An empty office is never a blank one: the night watch naps in the lobby's pod.
 		if (placed.length === 0) {

@@ -7,7 +7,7 @@ import { Container, Sprite } from "pixi.js";
 import type { Atlas } from "./atlas";
 import { CHANNELS, type ChannelName, type Frame, REST, type TimedFrame, channels, diff } from "./frame";
 import { FEEL, Spring, SpringSet } from "./motion";
-import { frameAt, unit } from "./player";
+import { type Passes, frameAt, passBeat, unit } from "./player";
 import { POSE, type Pose, duration } from "./poses";
 import { COSTUMES, type Role } from "./roles";
 import { ANCHORS as A, ACCENTS, PAPER_PALETTE } from "./theme";
@@ -64,6 +64,8 @@ export interface PuppetState {
 	settled: boolean;
 	/** The current frame's parts that differ from rest. */
 	params: Record<string, string>;
+	/** The variant pass playing (`Pose.beats`), by name; "" for the pose's own frames. */
+	beat: string;
 }
 
 type ArmParts = { root: Container; upper: Sprite; fore: Container; foreSprite: Sprite; hand: Container; handSprite: Sprite; held: Sprite };
@@ -92,6 +94,10 @@ export class Puppet extends Container {
 	#offset = 0;
 	#tempo = 1;
 	#index = -1;
+	/** Which pass is showing: 0 the pose's own frames, k its k-th beat. */
+	#beatPass = 0;
+	/** The pose's variant passes and their picker, when it has any (lead parts of loops only). */
+	#passes?: Passes<TimedFrame>;
 	#holding = true;
 	#frame: Frame = REST;
 	#legsUp = false;
@@ -256,7 +262,13 @@ export class Puppet extends Container {
 		// two-hander's parts must stay in step with each other, so they start together.
 		this.#offset = p.play === "loop" && !p.partner && opts.at !== "end" ? Math.floor(unit(this.id, p.name) * duration(frames)) : 0;
 		this.#tempo = opts.tempo ?? 1;
+		// A looping pose may break its rhythm now and then with a variant pass (Pose.beats).
+		const beats = as === "lead" && !p.partner && p.play === "loop" ? p.beats : undefined;
+		this.#passes = beats
+			? { sets: beats.passes.map((b) => b.frames), pick: (pass) => passBeat(this.id, p.name, pass, beats.passes.length, beats.share) }
+			: undefined;
 		this.#index = -1;
+		this.#beatPass = 0;
 		this.#advance(0);
 		if (opts.snap || opts.at === "end") this.snap();
 		this.#apply();
@@ -284,6 +296,8 @@ export class Puppet extends Container {
 	showFrame(frame: Frame): void {
 		this.#pose = POSE.rest!;
 		this.#frames = [{ ...frame, ms: 1 }];
+		this.#passes = undefined;
+		this.#beatPass = 0;
 		this.#loops = 1;
 		this.#ms = 1;
 		this.#index = 0;
@@ -369,6 +383,7 @@ export class Puppet extends Container {
 			holding: this.#holding,
 			settled: this.settled,
 			params: diff(this.#frame),
+			beat: this.#beatPass > 0 ? (this.#pose.beats?.passes[this.#beatPass - 1]?.name ?? "") : "",
 		};
 	}
 
@@ -385,11 +400,14 @@ export class Puppet extends Container {
 	#advance(ms: number): void {
 		if (this.#holding && this.#index >= 0 && ms > 0) return;
 		this.#ms += ms;
-		const at = frameAt(this.#frames, this.#ms + this.#offset, this.#loops);
+		const at = frameAt(this.#frames, this.#ms + this.#offset, this.#loops, this.#passes);
 		this.#holding = at.holding;
-		if (at.index !== this.#index) {
+		const pass = at.beat ?? 0;
+		if (at.index !== this.#index || pass !== this.#beatPass) {
 			this.#index = at.index;
-			this.#setFrame(this.#frames[at.index]!);
+			this.#beatPass = pass;
+			const set = pass > 0 ? this.#passes!.sets[pass - 1]! : this.#frames;
+			this.#setFrame(set[at.index]!);
 		}
 	}
 

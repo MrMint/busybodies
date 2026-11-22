@@ -1,14 +1,23 @@
 // The rig behind the office's Character interface (src/scene/office/slot.ts): one mochi puppet per
 // character. Without a director it acts out its mood; with one (S4) it takes cues: a pose, and a
 // walk along the hallway to get there first.
+//
+// A walk has a start, a turn and a stop (plan-alive stream B). The feet stay put for the walk's
+// first moment while the face looks where it is going; the distance eases in and out inside the
+// walk's own ms and corners are rounded (both in director/paths.ts, so the director knows where
+// everyone is); a change of direction is a quick front-facing turn, not a mirror flip; and on
+// arrival the walker plants for a beat, looking ahead, before its eyes go to the job.
+import { along, heading, lookMs } from "../director/paths";
 import type { Character, CharacterFactory, Cue, Mood, Slot, Who } from "../office/slot";
 import type { Atlas } from "./atlas";
 import { choosePose, hash } from "./player";
+import { BEAT_MS } from "./poses";
 import { Puppet } from "./puppet";
 import { COSTUMES, roleFor } from "./roles";
 import { PUPPET_HEIGHT } from "./reach";
 import { ACCENTS } from "./theme";
 import { AT_VIEWER, type Aim, type LookAt, aimAt, eyesOf, isViewer } from "./gaze";
+import { LOOKS } from "./vocab";
 
 export { PUPPET_HEIGHT };
 
@@ -18,37 +27,41 @@ type Cast = Map<string, RigCharacter>;
 const TRIGGER = { busy: "busy", idle: "idle", stalled: "stalled", done: "finished" } as const;
 const MS_PER_TICK = 1000 / 60;
 
-/** Where a walker is `ms` into a walk along `path` lasting `total` ms. */
-function along(path: { x: number; y: number }[], ms: number, total: number) {
-	const segs = path.slice(1).map((p, i) => Math.hypot(p.x - path[i]!.x, p.y - path[i]!.y));
-	const len = segs.reduce((a, b) => a + b, 0);
-	let d = total <= 0 ? len : Math.min(1, Math.max(0, ms / total)) * len;
-	for (let i = 0; i < segs.length; i++) {
-		const a = path[i]!;
-		const b = path[i + 1]!;
-		if (d <= segs[i]! || i === segs.length - 1) {
-			const t = segs[i]! > 0 ? Math.min(1, d / segs[i]!) : 1;
-			return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, dx: b.x - a.x };
-		}
-		d -= segs[i]!;
-	}
-	const last = path[path.length - 1] ?? { x: 0, y: 0 };
-	return { x: last.x, y: last.y, dx: 0 };
-}
+export const WALKING = {
+	/** A turn: the face comes round to the front, the body flips at the midpoint, the face goes on
+	 * round to the new side. */
+	turnMs: 120,
+	/** Standing still on arrival, looking ahead, before the eyes go to the job. */
+	plantMs: BEAT_MS,
+	/** How far the face looks along the way it is going, in rig units (a pose's full side look). */
+	look: LOOKS.right[0],
+	/** A direction of travel turns the walker only when it is this sideways (a unit vector's x):
+	 * straight up or down a corridor keeps the way it faced. */
+	sideways: 0.3,
+} as const;
 
 class RigCharacter implements Character {
 	readonly puppet: Puppet;
 	#who: Who;
+	/** The way it faces as drawn (the scale's sign). */
 	#facing: 1 | -1 = 1;
 	#slot?: Slot;
 	#cue?: Cue;
 	/** The walk in progress: ms walked so far. */
 	#walked = 0;
 	#walkFrom = 0;
+	/** The walk pose is on: the feet have started moving. */
+	#stepping = false;
 	#gone = false;
 	// Gaze: what the director's cue says to look at (rig/gaze.ts), and the cast to find it in.
 	#lookAt?: LookAt;
 	#cast: Cast;
+	/** A turn under way: the way it is turning to, and ms into it. */
+	#turn?: { to: 1 | -1; ms: number };
+	/** Ms left of the plant on arrival. */
+	#plant = 0;
+	/** The gaze this walking code last set, so it only ever clears its own. */
+	#aimed?: readonly [number, number];
 
 	constructor(atlas: Atlas, who: Who, cast: Cast = new Map()) {
 		this.#who = who;
@@ -71,7 +84,8 @@ class RigCharacter implements Character {
 	}
 
 	get animating(): boolean {
-		return this.moving || (!this.#gone && this.puppet.animating);
+		if (this.#gone) return false;
+		return this.moving || this.#turn !== undefined || this.#plant > 0 || this.puppet.animating;
 	}
 
 	set life(on: boolean) {
@@ -92,10 +106,13 @@ class RigCharacter implements Character {
 	}
 
 	place(slot: Slot): void {
+		const first = !this.#slot;
 		this.#slot = slot;
 		if (this.moving) return;
 		this.puppet.position.set(slot.x, slot.y);
-		this.#facing = slot.facing;
+		// Turning to face a new way where it stands is a turn too; the first placing just is.
+		if (first) this.#face(slot.facing);
+		else this.#turnTo(slot.facing);
 		this.#size();
 	}
 
@@ -113,43 +130,86 @@ class RigCharacter implements Character {
 		const first = !this.#cue;
 		this.#cue = cue;
 		this.#gone = false;
+		this.#plant = 0;
 		this.puppet.visible = true;
 		this.#walkFrom = cue.walk?.elapsed ?? 0;
 		this.#walked = this.#walkFrom;
+		this.#stepping = false;
 		if (cue.walk && this.#walked < cue.walk.ms) {
-			this.puppet.play(cue.walkPose ?? "walk", { snap: first, tempo: cue.walkTempo });
-			this.#walkTo(this.#walked);
-		} else this.#pose(first);
+			const look = lookMs(cue.walk.ms);
+			if (this.#walked >= look || first) {
+				// Already under way (or first seen mid-walk): straight into the stride, facing the way it goes.
+				this.#step(first);
+				this.#walkTo(this.#walked, true);
+			} else {
+				// The start: the feet wait while it turns to where it is going and looks there.
+				const h = heading(cue.walk.path);
+				if (Math.abs(h.x) >= WALKING.sideways) this.#turnTo(h.x < 0 ? -1 : 1);
+				this.#walkTo(this.#walked, false);
+			}
+		} else {
+			this.#turn = undefined;
+			this.#pose(first);
+		}
+		this.#aim();
 	}
 
 	tick(dt: number): void {
+		const ms = dt * MS_PER_TICK;
 		const w = this.#cue?.walk;
 		if (w && !this.#gone && this.#walked < w.ms) {
-			this.#walked = Math.min(w.ms, this.#walked + dt * MS_PER_TICK);
-			this.#walkTo(this.#walked);
+			this.#walked = Math.min(w.ms, this.#walked + ms);
+			if (!this.#stepping && this.#walked >= lookMs(w.ms)) this.#step(false);
+			this.#walkTo(this.#walked, false);
 			if (this.#walked >= w.ms) {
 				if (w.exit) {
 					// Out of the door: gone until the director drops it.
 					this.#gone = true;
 					this.puppet.visible = false;
+					this.#turn = undefined;
 					return;
 				}
 				if (this.#slot) this.place(this.#slot);
 				this.#pose(false);
+				this.#plant = WALKING.plantMs;
 			}
+		} else if (this.#plant > 0) this.#plant = Math.max(0, this.#plant - ms);
+		if (this.#turn) {
+			this.#turn.ms += ms;
+			// Round to the front, flip at the midpoint, on round to the new side.
+			if (this.#turn.ms >= WALKING.turnMs / 2 && this.#facing !== this.#turn.to) {
+				this.#facing = this.#turn.to;
+				this.#size();
+			}
+			if (this.#turn.ms >= WALKING.turnMs) this.#turn = undefined;
 		}
 		this.#look();
+		this.#aim();
 		this.puppet.tick(dt);
 	}
 
 	rewind(): void {
 		this.#walked = this.#walkFrom;
 		this.#gone = false;
+		this.#plant = 0;
+		this.#turn = undefined;
+		this.#stepping = false;
 		this.puppet.visible = true;
-		if (this.moving) {
-			this.puppet.play(this.#cue?.walkPose ?? "walk", { snap: true, tempo: this.#cue?.walkTempo });
-			this.#walkTo(this.#walked);
-		} else this.puppet.rewind();
+		const w = this.#cue?.walk;
+		if (w && this.moving) {
+			if (this.#walked >= lookMs(w.ms)) this.#step(true);
+			else {
+				// Still looking where it will go: already turned that way.
+				this.puppet.rewind();
+				const h = heading(w.path);
+				if (Math.abs(h.x) >= WALKING.sideways) this.#face(h.x < 0 ? -1 : 1);
+			}
+			this.#walkTo(this.#walked, true);
+		} else {
+			if (this.#slot) this.#face(this.#slot.facing);
+			this.puppet.rewind();
+		}
+		this.#aim();
 	}
 
 	inspect() {
@@ -163,15 +223,19 @@ class RigCharacter implements Character {
 			pose: s.pose,
 			frame: s.frame,
 			frames: s.frames,
+			beat: s.beat,
 			params: Object.entries(s.params)
 				.map(([k, v]) => `${k}:${v}`)
 				.join(" "),
 			spot: this.#cue?.spot ?? "",
 			cue: this.#cue?.pose ?? "",
 			tempo: Math.round(this.puppet.tempo * 100) / 100,
-			walk: w && this.moving ? `${Math.round(this.#walked)}/${w.ms}ms${w.exit ? " exit" : ""}` : "",
 			lookAt: lookAtText(this.#lookAt),
 			look: aimText(this.puppet.aimed),
+			walk: w && this.moving ? `${Math.round(this.#walked)}/${w.ms}ms${w.exit ? " exit" : ""}${this.#stepping ? "" : " look"}` : "",
+			facing: this.#facing,
+			turn: this.#turn ? `${this.#turn.to < 0 ? "left" : "right"} ${Math.round(this.#turn.ms)}/${WALKING.turnMs}ms` : "",
+			plant: Math.round(this.#plant),
 		};
 	}
 
@@ -190,7 +254,9 @@ class RigCharacter implements Character {
 	/** Point the face at the cue's `lookAt`, in rig units against the way it faces now. Not while
 	 * walking (the walk looks where it goes), and nothing to look at is no aim. */
 	#look(): void {
-		this.puppet.aim(this.moving || this.#gone ? undefined : this.#aimFor(this.#lookAt));
+		// The walk's own looks (setting off, a turn, the plant on arrival) win while they last.
+		const walking = this.moving || this.#gone || this.#turn !== undefined || this.#plant > 0;
+		this.puppet.aim(walking ? undefined : this.#aimFor(this.#lookAt));
 	}
 
 	#aimFor(at: LookAt | undefined): Aim | undefined {
@@ -200,13 +266,67 @@ class RigCharacter implements Character {
 		return to ? aimAt(this.face, this.#facing, to) : undefined;
 	}
 
-	#walkTo(ms: number): void {
+	/** The feet start: the walk pose on. */
+	#step(snap: boolean): void {
+		this.#stepping = true;
+		this.puppet.play(this.#cue?.walkPose ?? "walk", { snap, tempo: this.#cue?.walkTempo });
+	}
+
+	#walkTo(ms: number, snapFacing: boolean): void {
 		const w = this.#cue!.walk!;
 		const p = along(w.path, ms, w.ms);
 		this.puppet.position.set(p.x, p.y);
 		this.puppet.zIndex = p.y;
-		if (p.dx !== 0) this.#facing = p.dx < 0 ? -1 : 1;
+		if (this.#stepping && Math.abs(p.dx) >= WALKING.sideways) {
+			const f = p.dx < 0 ? -1 : 1;
+			if (snapFacing) this.#face(f);
+			else this.#turnTo(f);
+		}
 		this.#size();
+	}
+
+	/** Face a way at once, with no turn (a first appearance, a rewind). */
+	#face(f: 1 | -1): void {
+		this.#turn = undefined;
+		this.#facing = f;
+		this.#size();
+	}
+
+	/** Turn to face a way: a quick turn through the front, unless it already faces (or is turning) that way. */
+	#turnTo(f: 1 | -1): void {
+		if (this.#turn) {
+			if (this.#turn.to === f) return;
+			// Turning back before the flip: it never left this side.
+			if (this.#facing === f) this.#turn = undefined;
+			else this.#turn = { to: f, ms: 0 };
+			return;
+		}
+		if (this.#facing !== f) this.#turn = { to: f, ms: 0 };
+	}
+
+	/**
+	 * Where the walking puts the face, through the puppet's gaze (rig units on top of the pose's own
+	 * look): to the front through a turn, where it is going before the feet move, straight ahead for
+	 * the plant. Otherwise it leaves the gaze alone, so the pose's look (the job) takes over.
+	 */
+	#aim(): void {
+		const [lx, ly] = LOOKS[this.puppet.frame.look];
+		let at: readonly [number, number] | undefined;
+		const w = this.#cue?.walk;
+		if (this.#turn) at = [-lx, -ly * 0.5];
+		else if (w && this.moving && !this.#stepping) {
+			const h = heading(w.path);
+			// Ahead in its own facing (it turned to the way it goes), and up or down with the path.
+			at = [Math.abs(h.x) * WALKING.look - lx, h.y * WALKING.look * 0.6 - ly];
+		} else if (this.#plant > 0) at = [WALKING.look - lx, -ly];
+		if (at) {
+			const r: readonly [number, number] = [Math.round(at[0] * 10) / 10, Math.round(at[1] * 10) / 10];
+			this.#aimed = r;
+			this.puppet.gaze(r);
+		} else if (this.#aimed) {
+			this.#aimed = undefined;
+			this.puppet.gaze(undefined);
+		}
 	}
 
 	#pose(first: boolean): void {

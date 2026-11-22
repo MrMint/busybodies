@@ -58,7 +58,7 @@ function stage() {
 		step(sessions: Session[], now: number, view?: View) {
 			const snap: Snapshot = { at: now, sessions };
 			const floor = plan.update(snap);
-			const d = direct(world, snap, now, floor, view);
+			const d = direct(world, snap, now, floor, { view });
 			world = d.world;
 			return { ...d, floor };
 		},

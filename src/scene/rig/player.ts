@@ -9,22 +9,61 @@ export interface FrameAt {
 	holding: boolean;
 	/** Completed passes through the pose. */
 	pass: number;
+	/** Which pass is playing, when the pose has variant passes: 0 is the pose's own frames, k its
+	 * k-th beat (`Pose.beats`). */
+	beat?: number;
+}
+
+/** A looping pose's variant passes, and which one each pass plays (0 for the pose's own). Every
+ * variant lasts as long as the pose's own pass, so where a pass starts never depends on the
+ * passes before it. */
+export interface Passes<F extends { ms: number } = { ms: number }> {
+	sets: F[][];
+	pick: (pass: number) => number;
 }
 
 /** Which frame of `frames` shows `ms` after the pose started. `loops` caps the passes (Infinity
- * loops forever); past the cap, the last frame holds. */
-export function frameAt(frames: { ms: number }[], ms: number, loops: number): FrameAt {
+ * loops forever); past the cap, the last frame holds. With `passes`, each pass may play a variant. */
+export function frameAt(frames: { ms: number }[], ms: number, loops: number, passes?: Passes): FrameAt {
 	const total = duration(frames);
 	if (frames.length === 0 || total <= 0) return { index: 0, holding: true, pass: 0 };
 	const t = Math.max(0, ms);
 	const pass = Math.floor(t / total);
-	if (pass >= loops) return { index: frames.length - 1, holding: true, pass: loops };
+	if (pass >= loops) return { index: frames.length - 1, holding: true, pass: loops, ...(passes ? { beat: 0 } : {}) };
+	const beat = passes ? passes.pick(pass) : 0;
+	const set = beat > 0 ? (passes!.sets[beat - 1] ?? frames) : frames;
+	const tag = passes ? { beat: set === frames ? 0 : beat } : {};
 	let u = t - pass * total;
-	for (let i = 0; i < frames.length; i++) {
-		if (u < frames[i]!.ms) return { index: i, holding: false, pass };
-		u -= frames[i]!.ms;
+	for (let i = 0; i < set.length; i++) {
+		if (u < set[i]!.ms) return { index: i, holding: false, pass, ...tag };
+		u -= set[i]!.ms;
 	}
-	return { index: frames.length - 1, holding: false, pass };
+	return { index: set.length - 1, holding: false, pass, ...tag };
+}
+
+/**
+ * Which pass a looping pose plays on pass `pass` (0 its own frames, k its k-th of `count` beats):
+ * a share of passes, picked from the id, the pose and the pass number, so the same character
+ * breaks the same loop the same way every time. The first pass is always the pose's own, and a
+ * beat never follows a beat, so the loop's own rhythm stays the one you see most.
+ */
+export function passBeat(id: string, pose: string, pass: number, count: number, share: number): number {
+	if (count <= 0 || pass < 1) return 0;
+	// Pass numbers run in sequence, and FNV-1a barely moves its top bits for a last digit that
+	// counts up: a finaliser spreads them so the share holds.
+	const rolls = (p: number) => mix(hash(`${id}|${pose}#${p}`)) / 0x1_0000_0000 < share;
+	if (!rolls(pass) || (pass > 1 && rolls(pass - 1))) return 0;
+	return 1 + (mix(hash(`${id}|${pose}|${pass}|beat`)) % count);
+}
+
+/** A 32-bit finaliser (MurmurHash3's fmix32): every input bit moves every output bit. */
+function mix(h: number): number {
+	h ^= h >>> 16;
+	h = Math.imul(h, 0x85ebca6b);
+	h ^= h >>> 13;
+	h = Math.imul(h, 0xc2b2ae35);
+	h ^= h >>> 16;
+	return h >>> 0;
 }
 
 /** A stable 32-bit hash of a string (FNV-1a). All variation comes from here, never Math.random. */

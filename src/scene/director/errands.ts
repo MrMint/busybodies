@@ -24,8 +24,8 @@ export const ERRANDS = {
 	/** The pose walked in to the planner, and played there. */
 	stickyWalk: "stickyCarry",
 	stickyPose: "stickyPost",
-	/** At your door: holding a ticket, and the first one in ringing the bell. */
-	ticketPose: "ticketWait",
+	/** At your door: holding a ticket (the first, polite stage of WAITING), and the first one in ringing the bell. */
+	ticketPose: "ticketPolite",
 	bellPose: "bellRing",
 } as const;
 
@@ -197,13 +197,49 @@ export function queueUp(list: Member[], floor: Floor, was: Metrics): Queue {
 	return { places, tickets, next, ...(order.length ? { serving: order[0]![1].n } : {}) };
 }
 
+/**
+ * Waiting gets worse the longer you leave it (plan-alive stream B): polite with the ticket held up,
+ * then a look at the door and a tapping foot, then a sigh and a word with the one behind (only with
+ * someone there; alone it keeps tapping), then a slump with the ticket drooping. By time since the
+ * wait started, so an office opened mid-wait shows how long it has been.
+ */
+export const WAITING = {
+	stages: [
+		{ fromMs: 0, pose: ERRANDS.ticketPose },
+		{ fromMs: 45_000, pose: "ticketWait" },
+		{ fromMs: 120_000, pose: "ticketChat", behind: true },
+		{ fromMs: 300_000, pose: "ticketSlump" },
+	],
+} as const;
+
+/** The pose for a wait that started at `since`, at `now`, and when it next gets worse. */
+export function waitStage(since: number, now: number, behind: boolean): { pose: string; stage: number; next?: number } {
+	const stages = WAITING.stages;
+	let k = 0;
+	for (let i = 0; i < stages.length; i++) if (now - since >= stages[i]!.fromMs) k = i;
+	let pose: string = stages[k]!.pose;
+	// Nobody behind to talk to: the stage before it.
+	if ("behind" in stages[k]! && !behind) pose = stages[k - 1]!.pose;
+	const after = stages[k + 1];
+	return { pose, stage: k, ...(after ? { next: since + after.fromMs } : {}) };
+}
+
 /** What a lead in the queue plays: the bell once (the first one in, when it gets to the counter),
- * then holding its ticket. */
-export function atYourDoor(t: Ticket, k: number, was: Actor | undefined, spot: string, continuing: Actor | undefined, now: number): { pose: string; acted: boolean; rang?: number } {
+ * then holding its ticket, more fed up the longer it waits; and when that next changes. */
+export function atYourDoor(
+	t: Ticket,
+	k: number,
+	was: Actor | undefined,
+	spot: string,
+	continuing: Actor | undefined,
+	now: number,
+	behind = false,
+): { pose: string; acted: boolean; rang?: number; next?: number } {
 	if (continuing?.pose === ERRANDS.bellPose) return { pose: ERRANDS.bellPose, acted: true };
 	const arrived = k === 0 && was !== undefined && was.spot === spot && still(was, now);
 	if (t.bell && t.rang === undefined && arrived) return { pose: ERRANDS.bellPose, acted: true, rang: now };
-	return { pose: ERRANDS.ticketPose, acted: false };
+	const w = waitStage(t.since, now, behind);
+	return { pose: w.pose, acted: false, ...(w.next !== undefined ? { next: w.next } : {}) };
 }
 
 /** The lead's own room, for the pulse: where its desk is, wherever it stands. */
