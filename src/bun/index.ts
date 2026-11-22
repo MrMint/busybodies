@@ -1,6 +1,7 @@
 import { BrowserView, BrowserWindow, Updater } from "electrobun/main";
 import type { BusybodiesRPC } from "../shared/rpc";
 import { Watcher } from "../watcher/watch";
+import { startUpdates } from "./updates";
 
 const DEV_SERVER_URL = "http://localhost:5173";
 
@@ -40,3 +41,4 @@ new BrowserWindow({
 
 watcher.onChange((snapshot) => rpc.send.snapshot(snapshot));
 await watcher.start();
+void startUpdates();
