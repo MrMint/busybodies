@@ -131,12 +131,14 @@ describe("the inspector", () => {
 			b.step(5);
 			const pill = document.querySelector("#hud .waiting") as HTMLElement;
 			const lead = b.entities().find((e) => e.key === "s:demo-session-16")!;
-			return { pulsing: b.pulsing().areas, pill: pill.hidden ? "" : pill.textContent, pose: String(lead.pose) };
+			return { pulsing: b.pulsing().areas, pill: pill.hidden ? "" : pill.textContent, pose: String(lead.pose), cue: String(lead.cue), walk: String(lead.walk) };
 		});
 		expect(r.pulsing).toEqual(["room:lanternfish"]);
 		expect(r.pill).toBe("1 waiting on you");
-		// It takes a ticket to your office: walking there, or holding the ticket in the queue.
-		expect(["walk", "ticketWait", "bellRing", "waitingPlease"]).toContain(r.pose);
+		// It takes a ticket to your office: walking there (looking where it is going before its feet
+		// move, so still in its last pose), or holding the ticket in the queue.
+		expect(["ticketPolite", "ticketWait", "bellRing", "waitingPlease"]).toContain(r.cue);
+		if (!r.walk.endsWith(" look")) expect(["walk", r.cue]).toContain(r.pose);
 		await page.close();
 	}, T);
 
