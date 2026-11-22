@@ -191,7 +191,7 @@ export class Office extends Container {
 		const p = this.#people.get(key);
 		if (!text || !p) {
 			if (was) {
-				was.view.destroy({ children: true });
+				drop(was.view);
 				this.#said.delete(key);
 				this.#opts.wake();
 			}
@@ -388,7 +388,7 @@ export class Office extends Container {
 			seen.add(a.id);
 			const had = this.#areas.get(a.id);
 			if (had?.sig === sig) continue;
-			had?.view.destroy({ children: true });
+			drop(had?.view);
 			const view = this.#area(a);
 			this.#floor.addChild(view);
 			this.#areas.set(a.id, { view, sig });
@@ -396,14 +396,14 @@ export class Office extends Container {
 		}
 		for (const [id, item] of this.#areas) {
 			if (seen.has(id)) continue;
-			item.view.destroy({ children: true });
+			drop(item.view);
 			this.#areas.delete(id);
 		}
 		// The hallway, in chunks so each cached texture stays small enough to zoom into.
 		const h = world.hallway;
 		const chunks = Math.ceil(h.w / HALL_CHUNK);
 		if (this.#halls.length !== chunks) {
-			for (const c of this.#halls) c.destroy({ children: true });
+			for (const c of this.#halls) drop(c);
 			this.#halls = [];
 			for (let i = 0; i < chunks; i++) {
 				const r = { x: h.x + i * HALL_CHUNK, y: h.y, w: Math.min(HALL_CHUNK, h.w - i * HALL_CHUNK), h: h.h };
@@ -449,7 +449,7 @@ export class Office extends Container {
 			seen.add(key);
 			let item = this.#items.get(key);
 			if (item?.sig !== sig) {
-				item?.view.destroy({ children: true });
+				drop(item?.view);
 				item = { view: make(), sig };
 				this.#items.set(key, item);
 				this.#depth.addChild(item.view);
@@ -478,7 +478,7 @@ export class Office extends Container {
 		}
 		for (const [key, item] of this.#items) {
 			if (seen.has(key)) continue;
-			item.view.destroy({ children: true });
+			drop(item.view);
 			this.#items.delete(key);
 		}
 	}
@@ -604,7 +604,7 @@ export class Office extends Container {
 		this.#drawPulse();
 		for (const [key, b] of this.#bubbleFor) {
 			if (bubbles.has(key)) continue;
-			b.view.destroy({ children: true });
+			drop(b.view);
 			this.#bubbleFor.delete(key);
 		}
 	}
@@ -625,7 +625,7 @@ export class Office extends Container {
 			seen.add(a.id);
 			let item = this.#tabs.get(a.id);
 			if (item?.sig !== sig) {
-				item?.view.destroy({ children: true });
+				drop(item?.view);
 				const c = new Container();
 				const tab = nameTab(a.name);
 				const p = pill(sub, 15);
@@ -639,13 +639,23 @@ export class Office extends Container {
 		}
 		for (const [id, item] of this.#tabs) {
 			if (seen.has(id)) continue;
-			item.view.destroy({ children: true });
+			drop(item.view);
 			this.#tabs.delete(id);
 		}
 	}
 }
 
 // --- Helpers ----------------------------------------------------------------------------------
+
+/**
+ * Destroy a view and everything in it, including each Graphics' own GraphicsContext: a plain
+ * `{ children: true }` keeps those, with their geometry and GPU buffers. Bubbles and labels come
+ * and go all day, and a scene soak found ~4 GPU buffers a second leaking that way. Nothing in the
+ * office shares a context, and baked furniture shares only textures, which this keeps.
+ */
+function drop(view: Container | undefined): void {
+	view?.destroy({ children: true, context: true });
+}
 
 const differs = (a: View, b: View) => Math.abs(a.scale - b.scale) > 1e-4 || Math.abs(a.x - b.x) > 0.5 || Math.abs(a.y - b.y) > 0.5;
 

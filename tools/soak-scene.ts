@@ -2,23 +2,24 @@
 // sampling the page's JS heap, its WebGL textures and the number of characters, to catch leaks
 // in the office, the rig, the director or the sass. Headless Chrome keeps drawing however the
 // machine's screen is (a real window's webview is throttled when it is hidden or locked).
-//   bun tools/soak-scene.ts [--minutes 30] [--fixture busy-release] [--speed 8]
-// Renders the bundled scene in dist/ (built if missing).
+//   bun tools/soak-scene.ts [--minutes 30] [--fixture busy-release] [--speed 8] [--dist dist]
+// Renders the bundled scene in dist/ (built if missing), or another build with --dist.
 import { existsSync } from "node:fs";
 import { join, normalize } from "node:path";
 import { parseArgs } from "node:util";
 import { chromium } from "playwright-core";
 
 const ROOT = join(import.meta.dir, "..");
-const DIST = join(ROOT, "dist");
 const { values: o } = parseArgs({
 	options: {
+		dist: { type: "string", default: join(ROOT, "dist") },
 		minutes: { type: "string", default: "30" },
 		fixture: { type: "string", default: "busy-release" },
 		speed: { type: "string", default: "8" },
 	},
 });
 
+const DIST = o.dist!;
 if (!existsSync(join(DIST, "index.html"))) {
 	const build = Bun.spawnSync(["bun", "x", "vite", "build"], { cwd: ROOT, stdout: "inherit", stderr: "inherit" });
 	if (build.exitCode !== 0) throw new Error("vite build failed");
