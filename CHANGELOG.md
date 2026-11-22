@@ -1,5 +1,11 @@
 # busybodies
 
+## 0.4.0
+
+### Minor Changes
+
+- e0d5e79: A settings cog in the office's top bar opens a Settings sheet, starting with the theme (Office or Factory). The choice is saved and both windows switch, as from the tray menu. The top bar now fits narrow windows.
+
 ## 0.3.0
 
 ### Minor Changes
