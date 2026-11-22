@@ -540,3 +540,38 @@ someone waits, and the waiting pose loops then anyway.
 
 `?demo=day-N&frozen` jumps to beat N for screenshots (`tools/shoot.ts` has a state per beat).
 Frozen scenes and the named demos (`idle`, `one`, `thirty`, `crowd`) stay still, as before.
+
+## 2026-11-21: polish (S6)
+
+**Busybodies lives in the menu bar.** A tray icon shows the office's overall mood as a mochi face:
+someone waiting on you, else busy, else all idle (`src/bun/mood.ts`, unit-tested). The faces are
+template images (black on clear, eyes cut out) so macOS tints them for light and dark menu bars;
+`tools/tray-icons.ts` draws them into `assets/tray/`, which the build copies into the bundle's
+views. Its menu: a one-line summary, Show office, Compact mode, About, Quit. Closing the office
+window no longer quits the app (`runtime.exitOnLastWindowClosed: false`); Show office opens it
+again.
+
+**Compact mode is a second window, not a resized first one.** It is frameless (`titleBarStyle:
+"hidden"`), transparent, always on top and on every Space, 440 × 300 in the top-right corner of
+the main display. It loads the same scene with `?compact`: a transparent background (the office's
+dark base floats on the desktop), a slim top strip to drag it by (Electrobun's
+`electrobun-webkit-app-region-drag` class), and buttons to open the full office or hide it. Both
+windows get every snapshot. Turning compact mode on hides the office window, and turning it off
+brings the office back. Toggle it from the tray or with ⌘⌥B. ⌘⇧B was the first idea, but it is
+Chrome's bookmarks-bar shortcut, and a global shortcut would steal it.
+
+**Empty states are never blank.** With no sessions, the office keeps its common areas, a "night
+watch" naps in the lobby's pod (the office adds it when the cast is empty), and a paper sign says
+nobody's in. When the agent's home folder doesn't exist, the sign says no coding agent was found,
+names the folder it looked in, and mentions `BUSYBODIES_AGENT_HOME`. The webview asks the Bun
+process for that (`status` on the RPC), and asks again whenever the office empties, since the
+folder can appear later. `?demo=empty` and `?demo=nohome` show both.
+
+**About says what is read and what leaves the machine,** in plain words: the agent's own local
+files, read-only; nothing you're working on leaves; the only network request is the update check.
+The tray, the top bar's "?" and `?about` open it.
+
+**The README's GIF is recorded, not captured.** `tools/record-gif.ts` steps the frozen `?demo`
+scene frame by frame through a camera tour, so it doesn't depend on the machine's speed, and
+encodes it with ffmpeg (800 px, 12 fps, 128 colours: about 3 MB). Every text the frames draw goes
+through `tools/scan-private.sh`, which now also takes a list of files, before the GIF is written.

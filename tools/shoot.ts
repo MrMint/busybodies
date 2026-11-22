@@ -20,6 +20,8 @@ interface State {
 	size: [number, number];
 	/** Frames to step the frozen scene before the shot. */
 	frames?: number;
+	/** More of the URL's query, such as "compact" or "about". */
+	query?: string;
 }
 
 const BOARD: [number, number] = [1440, 900];
@@ -42,6 +44,12 @@ const STATES: State[] = [
 	{ name: "day-3-leaving", demo: "day-3", aim: { kind: "office" }, size: BOARD, frames: 150 },
 	{ name: "day-4-review-done", demo: "day-4", aim: { kind: "office" }, size: BOARD, frames: 120 },
 	{ name: "day-5-long-build", demo: "day-5", aim: { kind: "room", name: "orbit-kit" }, size: BOARD, frames: 600 },
+	// The app around the office (S6): empty states, About, and the compact floating window.
+	{ name: "empty-office", demo: "empty", aim: { kind: "office" }, size: BOARD },
+	{ name: "no-agent-found", demo: "nohome", aim: { kind: "office" }, size: BOARD },
+	{ name: "about", demo: "", aim: { kind: "office" }, size: BOARD, query: "about" },
+	{ name: "compact-busy", demo: "", aim: { kind: "office" }, size: [440, 300], query: "compact" },
+	{ name: "compact-empty", demo: "empty", aim: { kind: "office" }, size: [440, 300], query: "compact" },
 ];
 
 const ROOT = join(import.meta.dir, "..");
@@ -74,7 +82,7 @@ const server = Bun.serve({
 
 async function shoot(browser: Browser, s: State, dpr: number): Promise<Buffer> {
 	const page = await browser.newPage({ viewport: { width: s.size[0], height: s.size[1] }, deviceScaleFactor: dpr });
-	await page.goto(`http://localhost:${server.port}/?inspect&frozen&demo=${s.demo}`);
+	await page.goto(`http://localhost:${server.port}/?inspect&frozen&demo=${s.demo}${s.query ? `&${s.query}` : ""}`);
 	await page.waitForFunction(() => window.__busybodies?.ready === true, undefined, { timeout: 20_000 });
 	await page.evaluate(
 		({ aim, frames }) => {

@@ -4,6 +4,7 @@
 # put your own username and real project names there). This repo is public, and a pushed
 # object can't be taken back.
 #   tools/scan-private.sh          scan every tracked file
+#   tools/scan-private.sh FILE...  scan just these files (say, the text drawn in a GIF's frames)
 # Runs as the pre-push hook (.githooks/pre-push) and in CI.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -11,7 +12,11 @@ cd "$(dirname "$0")/.."
 fail=0
 report() { echo "scan-private: $1" >&2; echo "$2" | sed 's/^/  /' >&2; fail=1; }
 
-files=$(git ls-files -z | xargs -0 grep -IlE . 2>/dev/null | grep -vE '^tools/scan-private\.sh$' || true)
+if [ $# -gt 0 ]; then
+	files=$(printf '%s\n' "$@")
+else
+	files=$(git ls-files -z | xargs -0 grep -IlE . 2>/dev/null | grep -vE '^tools/scan-private\.sh$' || true)
+fi
 [ -n "$files" ] || exit 0
 
 hits=$(echo "$files" | xargs grep -InE '/(Users|home)/[A-Za-z0-9._-]+/' 2>/dev/null \

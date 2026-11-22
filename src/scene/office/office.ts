@@ -31,7 +31,7 @@ import {
 	windowPane,
 } from "./paper";
 import { type Placed, Placement, crewOf } from "./placement";
-import type { Character, CharacterFactory } from "./slot";
+import type { Character, CharacterFactory, Who } from "./slot";
 import type { Area, Desk, Rect, World } from "./world";
 
 /** Default text for the common areas' signs. The sass engine (S5) replaces these through setSign. */
@@ -73,7 +73,12 @@ export interface OfficeOptions {
 	 * placement stands everyone at their spot and the office bubbles busy leads' tool names itself.
 	 */
 	cast?: (snapshot: Snapshot, floor: World) => Placed[];
+	/** Screen pixels kept clear above the office for the top bar (default 64). */
+	top?: number;
 }
+
+/** Who keeps an empty office company. */
+export const NIGHT_WATCH: Who = { key: "night-watch", kind: "lead", role: "lead", mood: "idle", size: 72, tint: "night-watch" };
 
 /** A bubble someone is saying (or thinking), anchored to its character. */
 interface Said {
@@ -346,7 +351,7 @@ export class Office extends Container {
 	}
 
 	#viewport(): Viewport {
-		const top = 64;
+		const top = this.#opts.top ?? 64;
 		return { x: 8, y: top, w: Math.max(1, this.#screen.w - 16), h: Math.max(1, this.#screen.h - top - 8) };
 	}
 
@@ -550,6 +555,11 @@ export class Office extends Container {
 
 	#drawPeople(world: World, snapshot: Snapshot): void {
 		const placed = this.#opts.cast ? this.#opts.cast(snapshot, world) : this.#placement.place(snapshot, world);
+		// An empty office is never a blank one: the night watch naps in the lobby's pod.
+		if (placed.length === 0) {
+			const nap = world.areas.find((a) => a.kind === "lobby")?.spots.nap?.[0];
+			if (nap) placed.push({ who: NIGHT_WATCH, slot: nap, area: "lobby" });
+		}
 		const seen = new Set<string>();
 		const bubbles = new Set<string>();
 		const sessions = new Map(flat(snapshot.sessions).map((s) => [s.id, s]));

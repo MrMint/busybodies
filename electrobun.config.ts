@@ -22,6 +22,7 @@ export default {
 		copy: {
 			"dist/index.html": "views/mainview/index.html",
 			"dist/assets": "views/mainview/assets",
+			"assets/tray": "views/tray",
 		},
 		watchIgnore: ["dist/**"],
 		mac: {
@@ -36,6 +37,10 @@ export default {
 		win: {
 			bundleCEF: false,
 		},
+	},
+	runtime: {
+		// Closing the office window leaves Busybodies in the menu bar; Quit is in the tray menu.
+		exitOnLastWindowClosed: false,
 	},
 	release: {
 		baseUrl: updateBaseUrl,
