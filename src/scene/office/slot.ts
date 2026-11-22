@@ -4,6 +4,7 @@
 // by implementing the same Character and passing its factory to the Office.
 import type { Container } from "pixi.js";
 import type { Slot } from "./world";
+import type { LookAt } from "../rig/gaze";
 
 export type { Slot };
 
@@ -93,4 +94,9 @@ export interface Cue {
 	/** How fast the walk's steps run, matching its pace (a jog 1.3, a run 1.65; pace.ts). The walk's
 	 * `ms` already covers the ground at that pace. */
 	walkTempo?: number;
+	/** What to look at while the pose plays (rig/gaze.ts): another character's key, a world point
+	 * (the YOU door), or `{ viewer: true }`, out of the screen. The character turns it into a look
+	 * against its own facing; a frame with eyes on the work wins. Changing it alone doesn't restart
+	 * the pose. */
+	lookAt?: LookAt;
 }

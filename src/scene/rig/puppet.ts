@@ -13,6 +13,7 @@ import { COSTUMES, type Role } from "./roles";
 import { ANCHORS as A, ACCENTS, PAPER_PALETTE } from "./theme";
 import { CHEEKS, LOOKS } from "./vocab";
 import { type LifeBeat, STILL, lifeAt } from "./life";
+import { type Aim, SIDE_EYES, WORK_LOOKS } from "./gaze";
 
 const RAD = Math.PI / 180;
 const MS_PER_TICK = 1000 / 60;
@@ -103,6 +104,9 @@ export class Puppet extends Container {
 	/** Where something else asked the face to look (a teammate walking past), in rig units on top
 	 * of the pose's own look; it wins over a glance. */
 	#gaze?: readonly [number, number];
+	/** Where the director pointed the face (gaze.ts): a look in rig units that replaces the pose's
+	 * own, except on frames whose eyes are on the work. It wins over a glance and over `gaze`. */
+	#aim?: Aim;
 
 	// Parts, back to front.
 	#shadow: Sprite;
@@ -328,6 +332,19 @@ export class Puppet extends Container {
 		this.#setBeat(this.#lifeBeat());
 	}
 
+	/** Look at something the director chose (gaze.ts `aimAt`), or stop. */
+	aim(at: Aim | undefined): void {
+		const was = this.#aim;
+		if (at === was || (at && was && at.x === was.x && at.y === was.y && at.side === was.side)) return;
+		this.#aim = at;
+		this.#beatFrame();
+	}
+
+	/** The aim in force on this frame, if any (a frame with eyes on the work ignores it). */
+	get aimed(): Aim | undefined {
+		return this.#aim && !WORK_LOOKS.has(this.#frame.look) ? this.#aim : undefined;
+	}
+
 	/** Advance by `dt` ticks (1 = 1/60 s, as Pixi's ticker counts). */
 	tick(dt: number): void {
 		const ms = dt * MS_PER_TICK;
@@ -439,15 +456,27 @@ export class Puppet extends Container {
 		this.#beatFrame();
 	}
 
-	/** The current frame's eyes and look, with life's beat on top. No pop: a blink just happens. */
+	/** The current frame's eyes and look, with life's beat and the director's aim on top. No pop: a
+	 * blink just happens. */
 	#beatFrame(): void {
 		const f = this.#frame;
-		const eyes = this.#beat.blink ? "closed" : f.eyes;
+		const aim = this.aimed;
+		const eyes = this.#beat.blink ? "closed" : aim?.side && SIDE_EYES.has(f.eyes) ? "side" : f.eyes;
 		const tex = this.#atlas.get(`eye/${eyes}`);
 		if (this.#eyeL.texture !== tex) {
 			this.#eyeL.texture = tex;
 			this.#eyeR.texture = tex;
-			this.#eyeR.scale.x = eyes === "side" ? 1 : -1;
+		}
+		// Side-eye looks the same way with both eyes (right as drawn, both mirrored for an aim to the
+		// left); everything else mirrors the right eye.
+		const side = eyes === "side";
+		const sx = side && aim && aim.x < 0 ? -1 : 1;
+		this.#eyeL.scale.x = side ? sx : 1;
+		this.#eyeR.scale.x = side ? sx : -1;
+		if (aim) {
+			this.#springs.springs.lookX.target = aim.x;
+			this.#springs.springs.lookY.target = aim.y;
+			return;
 		}
 		const [x, y] = LOOKS[f.look];
 		this.#springs.springs.lookX.target = x + this.#beat.lookX;

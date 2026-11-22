@@ -14,7 +14,7 @@ import { watchVisibility } from "./visibility";
 import { type Bridge, installShell } from "./shell";
 import { placeholders } from "./placeholder";
 import { Atlas, buildPoseSheet, rigCharacters, rigTheme } from "../scene/rig";
-import { Director, placeholderVoice } from "../scene/director";
+import { Director, NOTICE, placeholderVoice } from "../scene/director";
 import { Voice } from "../scene/sass";
 
 const params = new URLSearchParams(location.search);
@@ -107,10 +107,23 @@ function blank(): void {
 	// Calm mode: no life. From ?calm, or the system's "reduce motion" setting.
 	const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)");
 	const calm = () => params.has("calm") || !!reduced?.matches;
+	// Back on screen after a while away, the cast notices you (director/social.ts): the director
+	// takes it as an input, like the voice takes the view. ?away=<ms> sets how long counts.
+	const awayMs = params.has("away") ? Number(params.get("away")) : NOTICE.awayMs;
+	let hiddenAt: number | undefined;
 	const visibility = watchVisibility((visible) => {
 		office.life = visible && !calm();
-		if (visible) scene.redraw();
-		else app.ticker.stop();
+		if (!visible) {
+			hiddenAt = performance.now();
+			app.ticker.stop();
+			return;
+		}
+		const away = hiddenAt === undefined ? 0 : performance.now() - hiddenAt;
+		hiddenAt = undefined;
+		if (away >= awayMs && !calm() && scene.current) {
+			director.view = { back: director.now };
+			scene.direct();
+		} else scene.redraw();
 	});
 	reduced?.addEventListener?.("change", () => {
 		office.life = visibility.visible && !calm();

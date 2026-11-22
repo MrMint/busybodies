@@ -10,12 +10,13 @@
 // Until S5 plugs in, `placeholderVoice` bubbles each busy lead's current tool, as the office did.
 import type { Placed } from "./office/placement";
 import type { World as Floor } from "./office/world";
-import { type Direction, cueFor, direct, here } from "./director/direct";
+import { type Direction, type View, cueFor, direct, here } from "./director/direct";
 import { type Metrics, NO_METRICS } from "./director/metrics";
 import type { Actor, Build, World, WorldEvent } from "./director/types";
 import type { Snapshot } from "../watcher/model";
 
 export { direct, RULES, here, cueFor } from "./director/direct";
+export { NOTICE, type View } from "./director/social";
 export type { Actor, Build, Cue, Run, World, WorldEvent } from "./director/types";
 export { pathBetween, walkMs, WALK_SPEED } from "./director/paths";
 
@@ -42,11 +43,14 @@ export class Director {
 	#listeners = new Set<Listener>();
 	/** The time the next cast is for. The app sets it from the snapshot (and to `wake` on a wake-up). */
 	now = 0;
+	/** What the director knows about the viewer: when the window last came back on screen after a
+	 * while away (main.ts sets it from page visibility; director/social.ts acts on it). */
+	view: View = {};
 
 	/** The office's `cast` option: direct this snapshot and place everyone with a cue. */
 	cast = (snap: Snapshot, floor: Floor): Placed[] => {
 		const now = this.now || snap.at;
-		const d = direct(this.#world, snap, now, floor);
+		const d = direct(this.#world, snap, now, floor, this.view);
 		this.#world = d.world;
 		this.#last = d;
 		if (d.events.length) for (const fn of this.#listeners) fn(d.events, d.world);
