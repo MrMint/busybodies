@@ -27,9 +27,20 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.4
+      # The installer's host has had outages; keep Hutch and its toolchains between runs.
+      - name: Cache Hutch
+        id: hutch-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.hutch
+          key: hutch-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('hutch.lock') }}
+          restore-keys: hutch-${{ runner.os }}-${{ runner.arch }}-
       - name: Install Hutch, the devkit and locked dependencies
         run: |
-          curl -fsSL https://artifacts.electrobun.dev/hutch/install.sh | sh
+          if [ ! -x ~/.hutch/bin/hutch ]; then
+            curl -fsSL --retry 6 --retry-all-errors --retry-delay 15 https://artifacts.electrobun.dev/hutch/install.sh -o "$RUNNER_TEMP/hutch-install.sh"
+            sh "$RUNNER_TEMP/hutch-install.sh"
+          fi
           ~/.hutch/bin/hutch install --frozen-lockfile
           ~/.hutch/bin/hutch electrobun prepare
       - run: ~/.hutch/bin/hutch pm exec -- tsc --noEmit
