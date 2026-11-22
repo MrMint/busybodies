@@ -237,6 +237,8 @@ export class Sound {
 	}
 
 	setEnabled(on: boolean): void {
+		// Off, it doesn't listen at all; back on, the next world is a fresh baseline (no stale news).
+		if (on && !this.#enabled) this.#ears = new Ears();
 		this.#enabled = on;
 		this.update();
 	}
@@ -280,6 +282,7 @@ export class Sound {
 
 	/** From `director.on`: play what the events call for. */
 	hear(events: WorldEvent[], world: World): void {
+		if (!this.#enabled) return;
 		const cues = this.#ears.hear(events, world);
 		this.#heat = heatOf(world);
 		for (const cue of cues) this.#play(cue);

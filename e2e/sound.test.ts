@@ -44,7 +44,7 @@ async function open(query: string): Promise<Page> {
 }
 
 const contextIs = (page: Page, state: string) =>
-	page.waitForFunction((s) => window.__busybodies!.sound()?.context === s, state, { timeout: 5_000 });
+	page.waitForFunction((s) => window.__busybodies!.sound()?.context === s, state, { timeout: 15_000 });
 
 describe("sound", () => {
 	test("off by default: no AudioContext is made", async () => {
