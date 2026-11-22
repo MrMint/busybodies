@@ -11,6 +11,7 @@ import type { Snapshot } from "../watcher/model";
 import type { ThemeId } from "../scene/theme/id";
 import type { Visibility } from "./visibility";
 import type { SoundState } from "./sound";
+import type { Camerawork, ShotReport } from "./shots";
 
 export interface Inspector {
 	/** True once the first snapshot has been drawn. */
@@ -61,6 +62,11 @@ export interface Inspector {
 	sound(): SoundState | undefined;
 	/** The tray's Sound and Calm office toggles, as the app sends them over RPC. Set by main.ts. */
 	setToggles(change: { sound?: boolean; calm?: boolean }): void;
+	/** The following camera (compact, or ?follow): its stop, why, until when, pinned, cuts made,
+	 * and the room tiles. Undefined when the camera doesn't follow. */
+	shot(): ShotReport | undefined;
+	/** Pin the following camera on a room (as its tile does); undefined unpins. */
+	pin(area?: string): void;
 }
 
 /** The world without Maps, for JSON. */
@@ -95,12 +101,13 @@ declare global {
 export function installInspector(
 	app: Application,
 	office: Office,
-	scene: { show(s: Snapshot): void; frozen: boolean; redraw(): void; current?: Snapshot; stopDemo?: () => void },
+	scene: { show(s: Snapshot): void; direct?(): void; frozen: boolean; redraw(): void; current?: Snapshot; stopDemo?: () => void },
 	director?: Director,
 	voice?: { voice: Voice; now(): number },
 	themes?: { current(): ThemeId; set(id: ThemeId): void },
 	visibility?: Visibility,
-): Inspector {
+): Inspector & { shots(c: Camerawork): void } {
+	let shots: Camerawork | undefined;
 	const log: WorldEvent[] = [];
 	director?.on((events) => {
 		log.push(...events);
@@ -175,7 +182,12 @@ export function installInspector(
 		bricks: () => office.bricks,
 		sound: () => undefined,
 		setToggles: () => {},
+		shot: () => shots?.report(),
+		pin: (area) => {
+			shots?.pin(area);
+			scene.direct?.();
+		},
 	};
 	window.__busybodies = inspector;
-	return inspector;
+	return Object.assign(inspector, { shots: (c: Camerawork) => void (shots = c) });
 }

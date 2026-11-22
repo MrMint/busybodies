@@ -8,7 +8,8 @@ import type { BusybodiesRPC } from "../shared/rpc";
 import type { Snapshot } from "../watcher/model";
 import { Office } from "../scene/office/office";
 import { type ThemeId, sceneTheme, themeId } from "../scene/theme";
-import { installHud } from "./hud";
+import { TILES_H, installHud } from "./hud";
+import { type Camerawork, installCamerawork } from "./shots";
 import { installInspector } from "./inspector";
 import { watchVisibility } from "./visibility";
 import { Sound } from "./sound";
@@ -21,6 +22,9 @@ import { Voice } from "../scene/sass";
 const params = new URLSearchParams(location.search);
 /** ?compact: the small floating window (transparent, always on top; src/bun/compact.ts). */
 const compact = params.has("compact");
+/** The camera cuts to what just happened (mainview/shots.ts): always in compact; in the full
+ * office only with ?follow (off by default there: the person drives that camera). */
+const follow = compact || params.has("follow");
 /** ?theme=factory: which world the cast works in (src/scene/theme/). The app passes the saved
  * choice the same way, and switches it live over RPC (the tray's Theme menu). */
 let theme: ThemeId = themeId(params.get("theme"));
@@ -36,8 +40,11 @@ function blank(): void {
 (async () => {
 	if (params.has("blank")) return blank();
 	const app = new Application();
+	const stage = document.getElementById("stage")!;
+	// Compact keeps a strip clear under the picture for the room tiles (hud.ts).
+	if (compact) stage.style.bottom = `${TILES_H}px`;
 	await app.init({
-		resizeTo: window,
+		resizeTo: compact ? stage : window,
 		background: sceneTheme(theme).lawn,
 		// The compact window is transparent: the office floats on the desktop.
 		backgroundAlpha: compact ? 0 : 1,
@@ -47,7 +54,7 @@ function blank(): void {
 		preference: "webgl",
 		autoStart: false,
 	});
-	document.getElementById("stage")!.appendChild(app.canvas);
+	stage.appendChild(app.canvas);
 
 	// Pixi's global tickers each run a 60 fps requestAnimationFrame loop from load, even with the
 	// app's own ticker stopped: an idle scene still cost ~4% in the webview and ~5% in the Bun
@@ -122,12 +129,12 @@ function blank(): void {
 			app.ticker.stop();
 			return;
 		}
+		// Back on screen, a following camera starts over: it cuts to the most important thing.
+		camerawork?.back();
 		const away = hiddenAt === undefined ? 0 : performance.now() - hiddenAt;
 		hiddenAt = undefined;
-		if (away >= awayMs && !calm() && scene.current) {
-			director.view = { back: director.now };
-			scene.direct();
-		} else if (scene.current) scene.direct();
+		if (away >= awayMs && !calm() && scene.current) director.view = { back: director.now };
+		if (scene.current) scene.direct();
 		else scene.redraw();
 	});
 	reduced?.addEventListener?.("change", () => {
@@ -203,6 +210,8 @@ function blank(): void {
 		// Zooming into a room or a desk counts from the click, before the camera gets there.
 		return { zoom: stop.kind === "office" ? office.view.scale : Math.max(office.view.scale, 1.5), room };
 	};
+	/** The following camera (compact, or ?follow): set once the top bar is up. */
+	let camerawork: Camerawork | undefined;
 	/** Direct the current snapshot at `director.now`, draw it, voice it, and book the next wake-up. */
 	let wakeTimer: ReturnType<typeof setTimeout> | undefined;
 	const direct = () => {
@@ -215,11 +224,12 @@ function blank(): void {
 		const waiting = director.waiting();
 		office.pulse(waiting.map((w) => w.area));
 		hud.waiting(waiting.length);
+		camerawork?.update(snap, director.now);
 		scene.redraw();
 		// The world changes on its own when an acted pose ends or a habit rotates: wake for it.
 		// A timer, not frames, so an idle office still costs nothing in between.
 		clearTimeout(wakeTimer);
-		const wakes = [director.wake, voice?.nextWake(director.now)].filter((t): t is number => t !== undefined);
+		const wakes = [director.wake, voice?.nextWake(director.now), camerawork?.wake(director.now)].filter((t): t is number => t !== undefined);
 		const at = wakes.length ? Math.min(...wakes) : undefined;
 		if (at !== undefined && !scene.frozen) {
 			wakeTimer = setTimeout(() => {
@@ -260,7 +270,15 @@ function blank(): void {
 		about: () => shell.about(),
 		expand: () => bridge?.showOffice(),
 		hide: () => bridge?.setCompact(false),
+		pin: (area) => {
+			camerawork?.pin(area);
+			direct();
+		},
 	});
+	if (follow) {
+		camerawork = installCamerawork(office, director, { visible: () => visibility.visible, tiles: (t, shot) => hud.tiles(t, shot), redraw: () => scene.redraw() });
+		inspector?.shots(camerawork);
+	}
 	if (params.has("about")) shell.about();
 
 	// Click a room to zoom to it, then a desk; click outside the rooms for the whole office.
@@ -268,6 +286,11 @@ function blank(): void {
 	app.stage.hitArea = app.screen;
 	app.stage.cursor = "zoom-in";
 	app.stage.on("pointertap", (e) => {
+		// Compact: a click on a room pins the camera there, like its tile; elsewhere it unpins.
+		if (compact && camerawork) {
+			camerawork.pin(office.hit(e.global.x, e.global.y).area?.id);
+			return direct();
+		}
 		office.click(e.global.x, e.global.y);
 		// Zoomed into a room, the longer lines can show: let the voice look again.
 		if (voice) direct();

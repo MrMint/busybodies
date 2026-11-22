@@ -1,10 +1,16 @@
 // The top bar, in plain DOM over the canvas: the time, a head count, and the camera buttons. Keys:
 // Escape, 0 or Home for the whole office; n or → for the next room; p or ← for the previous one.
 // Being DOM, it costs the scene no frames. In compact mode it is a slim strip you drag the
-// frameless window by, with buttons to open the full office or hide the compact one.
+// frameless window by, with buttons to open the full office or hide the compact one, and under the
+// picture a strip of tiny room tiles tinted by state (busy, rush, waiting on you): click one to pin
+// the camera there, click it again (or the pin) to let the camera cut again (mainview/shots.ts).
+import type { Shot, Tile } from "../scene/director/shots";
 import type { Office } from "../scene/office/office";
 import { crewOf } from "../scene/office/placement";
 import type { Session, Snapshot } from "../watcher/model";
+
+/** Compact only: the height kept clear under the picture for the room tiles. */
+export const TILES_H = 24;
 
 const CSS = `
 #hud{position:fixed;left:0;right:0;top:0;height:56px;display:flex;align-items:center;gap:10px;padding:0 16px;
@@ -27,7 +33,21 @@ const CSS = `
 #hud.compact button{border-width:2px;padding:2px 9px;box-shadow:1px 2px 0 #1b2140}
 #hud.compact .clock,#hud.compact .all,#hud.compact .prev,#hud.compact .next,#hud.compact .about{display:none}
 #hud:not(.compact) .expand,#hud:not(.compact) .hide{display:none}
+#bb-tiles{position:fixed;left:6px;right:6px;bottom:4px;height:${TILES_H - 6}px;display:flex;gap:3px;padding:2px 3px;box-sizing:border-box;
+ background:#1b2140;border-radius:7px;z-index:2;font:700 9px/1 ui-rounded,"SF Pro Rounded",system-ui,sans-serif}
+#bb-tiles[hidden]{display:none}
+#bb-tiles .tile{flex:1 1 0;min-width:0;border:0;border-radius:4px;padding:0 3px;cursor:pointer;color:#1b2140;font:inherit;
+ white-space:nowrap;overflow:hidden;text-overflow:clip;background:#e9e3d3;position:relative}
+#bb-tiles .tile.busy{background:#8fd19e}
+#bb-tiles .tile.rush{background:#ff8a5b}
+#bb-tiles .tile.waiting{background:#ffd23f}
+#bb-tiles .tile.on{outline:2px solid #fff;outline-offset:-1px}
+#bb-tiles .tile.pinned::after{content:"";position:absolute;right:2px;top:2px;width:5px;height:5px;border-radius:50%;background:#e5484d;box-shadow:0 0 0 1px #fff}
+#bb-tiles .unpin{flex:0 0 auto;border:0;border-radius:4px;padding:0 4px;background:#fff;color:#1b2140;cursor:pointer;display:flex;align-items:center}
+#bb-tiles .unpin[hidden]{display:none}
 `;
+
+const PIN = `<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="3.4" r="2.6" fill="#e5484d"/><path d="M5 5.5v4" stroke="#1b2140" stroke-width="1.4" stroke-linecap="round"/></svg>`;
 
 export interface HudOptions {
 	/** The compact floating window's strip. */
@@ -37,6 +57,8 @@ export interface HudOptions {
 	expand?: () => void;
 	/** Compact only: hide the compact window. */
 	hide?: () => void;
+	/** Compact only: a room tile was clicked to pin it (or unpin: undefined). */
+	pin?: (area: string | undefined) => void;
 }
 
 const flat = (list: Session[]): Session[] => list.flatMap((s) => [s, ...flat(s.children)]);
@@ -85,12 +107,63 @@ export function installHud(office: Office, opts: HudOptions = {}) {
 	});
 	window.addEventListener("pointerup", () => setTimeout(sync));
 
+	// Compact: the room tiles under the picture. Rebuilt only when a room comes or goes; restyled
+	// only when a state changes.
+	const strip = document.createElement("div");
+	strip.id = "bb-tiles";
+	strip.hidden = true;
+	if (opts.compact) document.body.appendChild(strip);
+	let roomsSig = "";
+	let pinnedArea: string | undefined;
+	strip.onclick = (e) => {
+		const el = (e.target as HTMLElement).closest("button");
+		if (!el) return;
+		if (el.classList.contains("unpin")) return opts.pin?.(undefined);
+		const id = el.dataset.area!;
+		opts.pin?.(pinnedArea === id ? undefined : id);
+	};
+
 	return {
 		/** The top pill: how many sessions are waiting on you. Hidden when none are. */
 		waiting(n: number) {
 			const el = $(".waiting");
 			if (el.hidden !== (n === 0)) el.hidden = n === 0;
 			set(".waiting", n === 1 ? "1 waiting on you" : `${n} waiting on you`);
+		},
+		/** Compact: the room tiles, the room on camera and whether it is pinned. */
+		tiles(tiles: Tile[], shot: Pick<Shot, "area" | "pinned">) {
+			if (!opts.compact) return;
+			const sig = tiles.map((t) => `${t.id}=${t.name}`).join("|");
+			if (sig !== roomsSig) {
+				roomsSig = sig;
+				strip.replaceChildren(
+					...tiles.map((t) => {
+						const b = document.createElement("button");
+						b.className = "tile";
+						b.dataset.area = t.id;
+						b.title = `${t.name}: click to keep the camera here`;
+						b.textContent = t.name;
+						return b;
+					}),
+				);
+				const unpin = document.createElement("button");
+				unpin.className = "unpin";
+				unpin.setAttribute("aria-label", "Unpin: let the camera cut again");
+				unpin.title = "Unpin: let the camera cut again";
+				unpin.innerHTML = PIN;
+				strip.appendChild(unpin);
+			}
+			pinnedArea = shot.pinned ? shot.area : undefined;
+			tiles.forEach((t, i) => {
+				const b = strip.children[i] as HTMLElement;
+				const cls = `tile ${t.state}${shot.area === t.id ? " on" : ""}${pinnedArea === t.id ? " pinned" : ""}`;
+				if (b.className !== cls) b.className = cls;
+				const label = `${t.name} (${t.state})`;
+				if (b.getAttribute("aria-label") !== label) b.setAttribute("aria-label", label);
+			});
+			const unpin = strip.lastElementChild as HTMLElement;
+			if (unpin.hidden !== !pinnedArea) unpin.hidden = !pinnedArea;
+			if (strip.hidden !== (tiles.length === 0)) strip.hidden = tiles.length === 0;
 		},
 		update(snapshot: Snapshot) {
 			const sessions = flat(snapshot.sessions);
