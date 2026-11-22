@@ -10,7 +10,7 @@ import { PACE } from "../src/scene/director/pace";
 import { TRAITS } from "../src/scene/director/traits";
 import type { World } from "../src/scene/director/types";
 import { FloorPlan } from "../src/scene/office/layout";
-import { PROPS } from "../src/scene/office/props";
+import { PROPS } from "../src/scene/office/propspots";
 import { RIG_PLANNER, bellFrom } from "../src/scene/office/rigpoints";
 import { POSE, duration } from "../src/scene/rig/poses";
 import type { Agent, Session, Snapshot } from "../src/watcher/model";

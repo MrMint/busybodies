@@ -14,8 +14,10 @@
 import { Container, Graphics } from "pixi.js";
 import type { DeskProps, Lamp, PlannerRow, Tray } from "../director/metrics";
 import { GREEN, INK, RED, SHADOW, SUN, label } from "./paper";
-import { trayOnDesk } from "./rigpoints";
+import { PROPS } from "./propspots";
 import type { Rect } from "./world";
+
+export { PROPS };
 
 /** A Graphics that always joins the batch: a pile of sheets or a planner of notes is more than the
  * ~200 vertices Pixi batches by default, and each would cost its own draw call (and break the
@@ -31,18 +33,6 @@ const hash = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >
 /** A small, fixed wobble from a seed: -1 to 1. */
 const wob = (seed: number, i: number) => (((seed + i * 2654435761) >>> 0) % 1000) / 500 - 1;
 
-/** Where the desk props sit, from the desk front's centre. */
-export const PROPS = {
-	/** The in-tray: at the rig's TRAY point for the lead behind the desk (layout.ts puts the lead at
-	 * (-26, -42) from the desk front's centre; leads are 72 px), so the rig's pile in `buried` lands
-	 * exactly where the office's was. */
-	tray: trayOnDesk({ x: -26, y: -42 }, 72),
-	/** Between the crew build and the in-tray. */
-	mugs: { x: -46, y: -44, w: 7, h: 6 },
-	lamp: { x: 80, y: -66 },
-	drawers: { x: 88, w: 20, h: 11 },
-	skip: { x: 85, y: 16, w: 28, h: 12 },
-} as const;
 
 const PAPER = 0xffffff;
 const PAPER_EDGE = 0xdfe4f2;
