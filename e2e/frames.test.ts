@@ -183,6 +183,58 @@ describe("camera", () => {
 	}, T);
 });
 
+describe("the app around the office", () => {
+	test("an empty office is never blank: a night watch naps, a sign explains, and it costs no frames", async () => {
+		const page = await open("demo=empty");
+		const keys = await page.evaluate(() => window.__busybodies!.entities().map((e) => e.key));
+		expect(keys).toEqual(["night-watch"]);
+		const card = page.locator(".bb-card");
+		await expect(card.isVisible()).resolves.toBe(true);
+		expect(await card.innerText()).toContain("Nobody's in");
+		const c = await measure(page);
+		expect(c.animationFrames).toBe(0);
+		await page.close();
+	}, T);
+
+	test("with no coding agent found, it says so plainly", async () => {
+		const page = await open("demo=nohome");
+		const text = await page.locator(".bb-card").innerText();
+		expect(text).toContain("No coding agent found");
+		expect(text).toContain("BUSYBODIES_AGENT_HOME");
+		await page.close();
+	}, T);
+
+	test("About says what it reads and that nothing leaves the machine; Escape closes it", async () => {
+		const page = await open("demo=idle");
+		await page.click("#hud .about");
+		const about = page.locator("#bb-about");
+		await page.waitForFunction(() => !document.querySelector<HTMLElement>("#bb-about")!.hidden);
+		const text = await about.innerText();
+		expect(text).toContain("Read-only");
+		expect(text).toContain("Nothing you're working on");
+		await page.keyboard.press("Escape");
+		expect(await page.evaluate(() => document.querySelector<HTMLElement>("#bb-about")!.hidden)).toBe(true);
+		// Escape closed About without also moving the camera.
+		expect(await page.evaluate(() => window.__busybodies!.camera().stop)).toEqual({ kind: "office" });
+		await page.close();
+	}, T);
+
+	test("compact mode: a slim draggable strip over a transparent office, still idle at zero frames", async () => {
+		const page = await browser.newPage({ viewport: { width: 440, height: 300 } });
+		await page.goto(`http://localhost:${server.port}/?inspect&demo=idle&compact`);
+		await page.waitForFunction(() => window.__busybodies?.ready === true, undefined, { timeout: 15_000 });
+		const hud = await page.evaluate(() => {
+			const bar = document.getElementById("hud")!;
+			return { compact: bar.classList.contains("compact"), drag: bar.classList.contains("electrobun-webkit-app-region-drag"), height: bar.offsetHeight };
+		});
+		expect(hud).toEqual({ compact: true, drag: true, height: 34 });
+		expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe("rgba(0, 0, 0, 0)");
+		const c = await measure(page);
+		expect(c.animationFrames).toBe(0);
+		await page.close();
+	}, T);
+});
+
 describe("inspector", () => {
 	test("lists every character with a mood", async () => {
 		const page = await open("demo");

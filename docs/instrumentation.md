@@ -22,6 +22,8 @@ code showed it. A test that counts animation frames would have caught it on day 
 | `window.__busybodies` | The inspector (dev builds, or `?inspect`): snapshot, characters, frame counters, `freeze()` and `step(n)`, the office `layout()`, `camera()` and `goTo(stop)`, and the sign slots |
 | `bun test e2e/` | Frame budgets in headless Chrome, in CI: idle makes zero frames, busy renders at 30 fps or less, camera moves run at 60 only while moving, and a frozen scene steps identically |
 | `bun tools/shoot.ts` | Named scene states (fixture, camera stop, size) to PNGs plus a contact sheet, from a frozen clock; `--check` renders each twice and fails on any difference |
+| `bun tools/record-gif.ts` | The README's GIF, stepped from the frozen demo; the text it draws is scanned for private data first |
+| `?demo=empty`, `?demo=nohome`, `?compact`, `?about` | The empty office, "no coding agent found", the compact window's scene, and the About screen |
 | `?frozen` | Starts the scene with its clock stopped; only the inspector's `step(n)` moves it |
 
 ## Planned, in order

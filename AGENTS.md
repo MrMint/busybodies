@@ -47,7 +47,7 @@ v7-era APIs that look right and silently draw the wrong thing. Update it only wi
 
 | Path | What |
 |---|---|
-| `src/bun/` | The Electrobun main process: windows |
+| `src/bun/` | The Electrobun main process: the office and compact windows, the tray, updates |
 | `src/watcher/` | Capture: reads the agent tool's files into a `Snapshot` (`model.ts` is the contract) |
 | `src/mainview/` | The webview's entry: app setup, the top bar, the inspector, demo days |
 | `src/scene/office/` | The open-floor office: floor plan, camera, cut-paper drawing, the character slot interface |
@@ -58,6 +58,7 @@ v7-era APIs that look right and silently draw the wrong thing. Update it only wi
 | `tools/watch-tree.ts` | Prints the live session/agent tree in a terminal |
 | `tools/fake-home.ts`, `tools/profile.sh` | Synthetic load, and CPU per process under it |
 | `tools/shoot.ts` | Deterministic screenshots of named scene states, and a contact sheet |
+| `tools/record-gif.ts`, `tools/tray-icons.ts` | The README's GIF from `?demo`, and the menu-bar faces |
 | `tools/pose-dump.ts`, `tools/pose-sheet.ts` | Every pose as text, and as one PNG (`docs/rig/pose-sheet.png`) |
 | `docs/instrumentation.md` | How to measure and check the app, and what's planned |
 | `docs/plan.md` | The build plan: world model, streams, how work lands |

@@ -4,6 +4,7 @@
 //   ?demo=idle    the same office after hours: everyone idle, every agent finished
 //   ?demo=one     a single session
 //   ?demo=thirty  thirty sessions over eight projects
+//   ?demo=empty   nobody's in; ?demo=nohome: no coding agent found (add &compact for the small window)
 // The clock is fixed, so the same demo always draws the same frames.
 import type { SignText } from "../scene/office/paper";
 import type { Agent, Session, Snapshot } from "../watcher/model";
@@ -212,6 +213,10 @@ export function demo(name: string | null): DemoDay {
 			return { snapshot: crowd(), signs: {} };
 		case "crowd-idle":
 			return { snapshot: asleep(crowd()), signs: {} };
+		// Nobody's in; and nobody's in because no coding agent was found (the shell says which).
+		case "empty":
+		case "nohome":
+			return { snapshot: { at: NOW, sessions: [] }, signs: {} };
 		default:
 			return { snapshot: floorBusy(), signs: FLOOR_BUSY_SIGNS };
 	}
