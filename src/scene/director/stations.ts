@@ -12,6 +12,7 @@ export const STATION_FOR: Partial<Record<WorkKind, StationKind>> = {
 	search: "search",
 	shell: "build",
 	test: "test",
+	web: "web",
 };
 
 /**

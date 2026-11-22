@@ -95,12 +95,14 @@ export interface Area {
 }
 
 /** The office's furniture for each station kind (the office theme). Kinds without one get no station yet. */
-export type StationFurniture = "files" | "catalogue" | "copier" | "stamps";
+export type StationFurniture = "files" | "catalogue" | "copier" | "stamps" | "phone" | "outbox";
 export const STATION_FURNITURE: Partial<Record<StationKind, StationFurniture>> = {
 	reference: "files",
 	search: "catalogue",
 	build: "copier",
 	test: "stamps",
+	web: "phone",
+	outbox: "outbox",
 };
 
 /**
@@ -152,11 +154,12 @@ export const COMMON_W = { meeting: 340, lobby: 260, kitchen: 460 } as const;
  */
 export const STRIP = {
 	w: 130,
-	pitch: 66,
+	/** Six stations fit a two-row room at this pitch (wave 2 added the phone and the outbox). */
+	pitch: 52,
 	/** A room below the hallway: the first station's base, down from where its floor begins. */
-	first: 80,
+	first: 64,
 	/** A room above: the first station's base, up from its front edge. */
-	front: 18,
+	front: 16,
 	/** The tallest station, so the far one stays clear of the back wall's signs. */
 	tall: 76,
 	/** Each station's centre, in from the room's left edge. */
@@ -167,8 +170,9 @@ export const STRIP = {
 	queue: 2,
 } as const;
 
-/** The four every project room gets, from the hallway side; then the extras a big crew earns. */
-export const STATIONS_BASE: StationKind[] = ["build", "test", "reference", "search"];
+/** The six every project room gets, from the hallway side (the wave-1 four, then the phone and the
+ * outbox); then the extras a big crew earns. */
+export const STATIONS_BASE: StationKind[] = ["build", "test", "reference", "search", "web", "outbox"];
 export const STATIONS_EXTRA: StationKind[] = ["build", "test", "reference", "search"];
 /** A second station of a kind: one per this many busy crew in the room past the first four. */
 export const STATION_CREW = 4;

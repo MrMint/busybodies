@@ -1,7 +1,7 @@
 // What a busy character is working on, from the tool it is using, and how hard: the director's
 // answer to "six builders all hammering in step". Pure, so it is unit-tested with invented agents.
 //
-//   workKind(running, activity)  -> read | search | edit | shell | test | undefined
+//   workKind(running, activity)  -> read | web | search | edit | shell | test | undefined
 //   nextWork(was, kind, now)     -> the kind to show, held a few seconds so a burst of tool calls
 //                                   doesn't flicker the pose
 //   WORK_POSE[role][kind]        -> the pose for it (builders only, for now)
@@ -10,7 +10,7 @@ import { unit } from "../rig/player";
 import type { Role } from "../rig/roles";
 import type { Activity, RunningTool } from "../../watcher/model";
 
-export type WorkKind = "read" | "search" | "edit" | "shell" | "test";
+export type WorkKind = "read" | "web" | "search" | "edit" | "shell" | "test";
 
 export interface Work {
 	kind: WorkKind;
@@ -32,7 +32,8 @@ export const WORK = {
 	jitter: 0.08,
 } as const;
 
-const READ = /^(Read|NotebookRead|WebFetch|WebSearch)$/;
+const READ = /^(Read|NotebookRead)$/;
+const WEB = /^(WebFetch|WebSearch)$/;
 const SEARCH = /^(Grep|Glob|LS|ToolSearch)$/;
 const EDIT = /^(Edit|MultiEdit|Write|NotebookEdit)$/;
 const SHELL = /^(Bash|BashOutput|KillShell|Monitor)$/;
@@ -47,6 +48,7 @@ export function workKind(running: RunningTool | undefined, activity: Activity | 
 	const tool = running?.tool ?? activity?.tool;
 	if (!tool) return undefined;
 	if (READ.test(tool)) return "read";
+	if (WEB.test(tool)) return "web";
 	if (SEARCH.test(tool)) return "search";
 	if (EDIT.test(tool)) return "edit";
 	if (SHELL.test(tool)) return "shell";
@@ -63,7 +65,7 @@ export function nextWork(was: Work | undefined, kind: WorkKind | undefined, now:
 
 /** The pose for each kind of work, by role. A role or kind missing here keeps the role's own pose. */
 export const WORK_POSE: Partial<Record<Role, Partial<Record<WorkKind, string>>>> = {
-	builder: { read: "blueprint", search: "rummage", edit: "hammer", shell: "tinker", test: "poke" },
+	builder: { read: "blueprint", web: "blueprint", search: "rummage", edit: "hammer", shell: "tinker", test: "poke" },
 };
 
 /** How fast a busy character's loop runs, from when it last did something. */

@@ -2,7 +2,10 @@
 // world can be compared, logged and replayed.
 import type { Cue, Mood, Walk, Who } from "../office/slot";
 import type { Slot } from "../office/world";
+import type { HandOff, Mail } from "./handoff";
 import type { PaceName } from "./pace";
+import type { Rush } from "./rush";
+import type { StationKind } from "./stations";
 import type { Trip } from "./trips";
 import type { Work } from "./work";
 
@@ -54,6 +57,9 @@ export interface Actor {
 	trip?: Trip;
 	/** The pace of the walk under way, when quicker than a stroll (pace.ts). */
 	pace?: PaceName;
+	/** Took a folder from a teammate for the stretch of work that started then (`work.since`): no
+	 * trip for it (handoff.ts). */
+	handed?: number;
 }
 
 /** A brick on its way to the build: one crew builder walks it over, sets it down, walks back. */
@@ -111,6 +117,12 @@ export interface World {
 	actors: Record<string, Actor>;
 	/** Crew builds, by session id. */
 	builds: Record<string, Build>;
+	/** Sessions in rush, by session id (rush.ts). */
+	rush?: Record<string, Rush>;
+	/** Hand-offs under way, by the giver's key (handoff.ts). */
+	handoffs?: Record<string, HandOff>;
+	/** Leads walking a PR to the outbox, by session id (handoff.ts). */
+	mail?: Record<string, Mail>;
 }
 
 export type WorldEvent =
@@ -122,4 +134,7 @@ export type WorldEvent =
 	| { type: "review"; key: string; at: number; state: "start" | "end" }
 	| { type: "waiting"; key: string; at: number; state: "start" | "end"; area: string }
 	| { type: "trip"; key: string; at: number; station: string; state: "start" | "queue" | "use" | "end" }
+	| { type: "rush"; session: string; at: number; state: "start" | "end"; heat: number }
+	| { type: "dodge"; key: string; at: number; from: string }
+	| { type: "handoff"; key: string; at: number; to: string; kind: StationKind }
 	| { type: "build"; session: string; at: number; pieces: number; change: "start" | "add" | "fall" | "top" | "carry"; key?: string };

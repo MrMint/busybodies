@@ -11,12 +11,15 @@ import { seats } from "../office/layout";
 import { LEAD_SIZE, crewOf } from "../office/placement";
 import type { Mood } from "../office/slot";
 import type { Area, Slot, World as Floor } from "../office/world";
-import { buildSlot, crewSlot, crewSpot, crewSpots } from "../office/world";
+import { buildSlot, crewSlot, crewSpot, crewSpots, useFor } from "../office/world";
 import { choosePose, hash } from "../rig/player";
 import { HABITS, POSE, duration } from "../rig/poses";
 import { type Role, roleFor } from "../rig/roles";
 import type { Activity, Agent, Commands, RunningTool, Session, Snapshot } from "../../watcher/model";
-import { PACE, RUNS, editRate, paceOf, runCooldown } from "./pace";
+import { dodges } from "./dodge";
+import { HANDOFF, type HandOff, MAIL, type Mail, handOffSlot, pickTaker } from "./handoff";
+import { type Pace, PACE, RUNS, editRate, paceOf, runCooldown } from "./pace";
+import { RUSH, type Rush, heatOf, nextDash, nextRush, rushWake } from "./rush";
 import { type Point, along, pathBetween, walkMs } from "./paths";
 import { STATION_FOR, STATION_POSE, type StationKind } from "./stations";
 import { TRIP, type Trip, type Want, planTrips, tripPlace } from "./trips";
@@ -271,6 +274,9 @@ interface Choice {
 	acted: boolean;
 	/** For a rare roll and the events: which trigger this was. */
 	trigger?: string;
+	/** When it started, for a pose timed by something else (a hand-off, the outbox): it doesn't
+	 * restart while it plays. */
+	since?: number;
 }
 
 /** The standing pose for a character's mood and running state, when nothing acted is playing. */
@@ -362,10 +368,55 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 		pre.set(s.key, { want, work, news: acted(s, was?.seen, now), continuing, follow: followUp(s, live, continuing) });
 	}
 
+	// Rush: a session whose work is very hot puts its room in rush (rush.ts). The heat counts the
+	// edits the build saw up to last time.
+	const rush: Record<string, Rush> = {};
+	const hotRooms = new Set<string>();
+	for (const s of list) {
+		if (s.kind !== "lead") continue;
+		const id = s.session.id;
+		const was = prev?.rush?.[id];
+		const edits = prev?.builds[id]?.edits;
+		const heat = heatOf(s.session, edits, now);
+		const r = s.busy ? nextRush(was, heat, now) : undefined;
+		if (r) {
+			rush[id] = r;
+			const desk = floor.desks.get(id);
+			if (desk) hotRooms.add(desk.areaId);
+			const w = rushWake(r, now);
+			if (w !== undefined) wakes.push(w);
+			// The heat drops on its own as edits age out of the last minute.
+			const oldest = (edits ?? []).filter((t) => t > now - RUNS.windowMs).sort((a, b) => a - b)[0];
+			if (oldest !== undefined) wakes.push(oldest + RUNS.windowMs);
+		}
+		if (r && !was) events.push({ type: "rush", session: id, at: now, state: "start", heat });
+		if (!r && was) events.push({ type: "rush", session: id, at: now, state: "end", heat });
+	}
+	const rushing = new Set(Object.keys(rush));
+	/** How fast someone walks to a place in `area`: its heat's pace, and at least a run in a rush. */
+	const gaitOf = (s: Spec, area: string): Pace => {
+		const g = paceOf(s.agent ? s.agent.tools : s.session.tools, lastAtOf(s), now);
+		return hotRooms.has(area) && g.speed < PACE.speed.run ? { name: "run", speed: PACE.speed.run } : g;
+	};
+
+	// Hand-offs: back from the filing cabinet (or the card catalogue), a crew member passes its folder
+	// to a teammate whose work wants the same station, and that one skips the trip (handoff.ts).
+	const handoffs = handOffsFor(list, pre, places, before, prev?.handoffs ?? {}, hiredBy, floor, now, gaitOf, events);
+	const takers = new Set(Object.values(handoffs).map((h) => h.taker));
+	const handed = new Map<string, number>();
+	for (const s of list) {
+		const w = pre.get(s.key)!.work;
+		const was = before[s.key];
+		if (!w) continue;
+		if (takers.has(s.key)) handed.set(s.key, w.since);
+		else if (was && !was.gone && was.handed === w.since) handed.set(s.key, w.since);
+	}
+
 	// Trips: crew whose held work has a station walk to it (or queue for it), leaving their crew spot
 	// to come back to. Nobody on a trip is visited on the foreman's round.
 	const homes = new Map<string, string>();
-	const trips = tripsFor(list, pre, places, before, floor, runs, hiredBy, now, wakes);
+	const skip = new Set([...Object.keys(handoffs), ...handed.keys()]);
+	const trips = tripsFor(list, pre, places, before, floor, runs, hiredBy, now, wakes, rushing, skip);
 	const stationById = new Map(floor.areas.flatMap((a) => a.stations ?? []).map((st) => [st.id, st]));
 	const sizes = new Map(list.map((s) => [s.key, s.size]));
 	for (const [key, t] of trips) {
@@ -373,9 +424,46 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 		places.set(key, tripPlace(t, stationById.get(t.station)!, sizes.get(key)!));
 		away.add(key);
 	}
+	for (const h of Object.values(handoffs)) {
+		const taker = places.get(h.taker);
+		if (!taker) continue;
+		homes.set(h.giver, h.home);
+		places.set(h.giver, { spot: `handoff:${h.taker}`, area: taker.area, slot: handOffSlot(taker.slot, sizes.get(h.giver)!) });
+		away.add(h.giver);
+		wakes.push(h.meets, h.done);
+	}
 
-	// The foreman's round: a lead whose crew is hard at it walks over to look.
+	// The PR goes to the outbox: the lead walks the envelope over, drops it in, walks back.
+	const mail = mailFor(list, pre, places, before, prev?.mail ?? {}, stationById, floor, now, gaitOf, events);
+	for (const m of Object.values(mail)) {
+		const st = stationById.get(m.station)!;
+		if (now < m.drops) places.set(m.key, { spot: `station:${st.id}`, area: st.areaId, slot: useFor(st, LEAD_SIZE) });
+		wakes.push(m.drops);
+		if (m.back !== undefined) wakes.push(m.back, m.back + celebrateMs());
+	}
+	const mailing = new Set(Object.values(mail).map((m) => m.key));
+
+	// The foreman's round: a lead whose crew is hard at it walks over to look. In a rush, it dashes
+	// instead, straight to whoever just went red or has queued longest (rush.ts).
 	const visits = foremanVisits(list, places, now, wakes, away);
+	for (const s of list) {
+		const r = rush[s.session.id];
+		if (s.kind !== "lead" || !r || !s.busy || s.seen.waiting !== undefined || mailing.has(s.key)) continue;
+		const crew = list.filter((m) => m.session.id === s.session.id && m.kind === "crew" && m.mood === "busy" && places.has(m.key) && !Object.hasOwn(handoffs, m.key));
+		const cands = crew.map((m) => {
+			const t = trips.get(m.key);
+			return { key: m.key, failAt: m.seen.failAt, queuedSince: t && t.queue > 0 ? t.since : undefined };
+		});
+		const next = nextDash(r, cands, new Set(crew.map((m) => m.key)), now);
+		rush[s.session.id] = next;
+		if (!next.dash) continue;
+		const p = places.get(next.dash.key)!;
+		const x = p.slot.x - p.slot.facing * 34;
+		const y = p.slot.y - 10;
+		visits.set(s.key, { spot: `dash:${next.dash.key}`, area: p.area, slot: { x, y, depth: y, facing: p.slot.facing } });
+		wakes.push(next.dash.since + RUSH.dashStayMs);
+	}
+	for (const key of mailing) visits.delete(key);
 	for (const [key, v] of visits) places.set(key, v);
 
 	// A PR with a teammate near: the lead celebrates with the first busy crew member at its desk.
@@ -399,6 +487,10 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 		if (s.mood === "stalled" || s.mood === "done" || st.trigger === "waiting") choice = st;
 		else if (hiredBy.has(s.key)) choice = { pose: "handover", as: "partner", acted: true, trigger: "hired" };
 		else if (handing.has(s.key)) choice = { pose: "handover", as: "lead", acted: true, trigger: "hire" };
+		else if (mailing.has(s.key)) choice = mailChoice(mail[s.session.id]!, now, news);
+		else if (celebratesMail(mail[s.session.id], s.key, now)) choice = { pose: "celebrate", as: "partner", acted: true, trigger: "pr", since: mail[s.session.id]!.back! };
+		else if (Object.hasOwn(handoffs, s.key)) choice = { pose: HANDOFF.pose, as: "lead", acted: true, trigger: "handoff", since: handoffs[s.key]!.since };
+		else if (takers.has(s.key) && takingAt(handoffs, s.key, now) !== undefined) choice = { pose: HANDOFF.pose, as: "partner", acted: true, trigger: "handoff", since: takingAt(handoffs, s.key, now)! };
 		else if (news?.trigger === "pr") {
 			const mate = list.find((m) => m.session.id === s.session.id && m.kind === "crew" && m.mood === "busy" && places.get(m.key)?.spot.startsWith("crew:") && !celebrating.has(m.key) && !hiredBy.has(m.key));
 			if (s.kind === "lead" && mate) {
@@ -418,8 +510,8 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 		// A brick run: a builder with a new edit walks it to the build, sets it down, walks back.
 		// How fast it walks, from how hot its work is.
 		const lastAt = Math.max(s.activity?.at ?? -Infinity, s.agent?.lastWriteAt ?? -Infinity);
-		const gait = paceOf(s.agent ? s.agent.tools : s.session.tools, Number.isFinite(lastAt) ? lastAt : undefined, now);
-		const run = brickRun(s, was, place, choice, runs, prev?.builds[s.session.id], visits, byKey, floor, now, gait.speed);
+		const gait = gaitOf(s, place.area);
+		const run = brickRun(s, was, place, choice, runs, prev?.builds[s.session.id], visits, byKey, floor, now, gait.speed, rushing.has(s.session.id) ? RUSH.runShare : 1);
 		if (run) {
 			place = run.place;
 			choice = { pose: "place", as: "lead", acted: true, ...(run.run.since === now ? { trigger: "run" } : {}) };
@@ -429,10 +521,12 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 		// The same pose carries on; anything else starts now.
 		const same = run
 			? was !== undefined && !was.gone && was.pose === "place" && was.poseSince === run.run.since
-			: was && !was.gone && was.pose === choice.pose && was.as === choice.as && !(choice.acted && !continuing);
+			: choice.since !== undefined
+				? was !== undefined && !was.gone && was.pose === choice.pose && was.as === choice.as && was.poseSince === choice.since
+				: was && !was.gone && was.pose === choice.pose && was.as === choice.as && !(choice.acted && !continuing);
 		if (!same && choice.trigger) count[choice.trigger] = (count[choice.trigger] ?? 0) + 1;
 		const once = POSE[choice.pose]?.play !== "loop";
-		const poseSince = run ? run.run.since : same ? was!.poseSince : now;
+		const poseSince = run ? run.run.since : (choice.since ?? (same ? was!.poseSince : now));
 		// Found mid-habit (or already stalled, or done) on arrival: start settled, costing nothing.
 		const at: "start" | "end" = same ? was!.at : !was && once && !choice.acted && s.mood !== "busy" ? "end" : "start";
 
@@ -512,6 +606,14 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 			task: s.task,
 			...(run ? { home: run.run.from, walkPose: "carry" } : trip ? { home: homes.get(s.key)!, trip } : {}),
 			...(walk && walk === was?.walk ? (was.pace ? { pace: was.pace } : {}) : walk && gait.name !== "stroll" ? { pace: gait.name } : {}),
+			...(!run && Object.hasOwn(handoffs, s.key) ? { home: handoffs[s.key]!.home } : {}),
+			// A walk in a room in rush is a run with papers flying; an envelope is carried with care.
+			...(!run && mailing.has(s.key) && now < mail[s.session.id]!.drops
+				? { walkPose: MAIL.walkPose }
+				: !run && walk && hotRooms.has(place.area)
+					? { walkPose: RUSH.walkPose }
+					: {}),
+			...(handed.has(s.key) ? { handed: handed.get(s.key)! } : {}),
 		};
 		if (s.mood === "busy" && !choice.acted) {
 			const w = tempoWake(lastAt, now);
@@ -550,11 +652,162 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 		wakes.push(now + ms);
 	}
 
+	// Dodges: a walk starting now that would pass through another walker in its area sidesteps. Walks
+	// whose timing something else counts on (a brick, a folder, an envelope, a leaver) keep their path.
+	const timed = new Set([...runs.active.values()].map((r) => r.key));
+	for (const h of Object.values(handoffs)) if (now < h.meets) timed.add(h.giver);
+	for (const m of Object.values(mail)) timed.add(m.key);
+	const walkers = Object.values(actors)
+		.filter((a) => a.walk && now < a.walk.since + a.walk.ms)
+		.map((a) => ({ key: a.key, area: a.area, walk: a.walk!, free: a.walk!.since === now && !a.walk!.exit && a.gone === undefined && !timed.has(a.key) }));
+	for (const [key, d] of dodges(walkers)) {
+		const a = actors[key]!;
+		actors[key] = { ...a, walk: { ...a.walk!, path: d.walk.path, ms: d.walk.ms } };
+		for (const e of events) if (e.type === "walk" && e.key === key && e.at === now) e.ms = d.walk.ms;
+		events.push({ type: "dodge", key, at: now, from: d.from });
+		wakes.push(now + d.walk.ms);
+	}
+
 	const builds = buildsFor(list, prev?.builds ?? {}, failed, runs, now, events, wakes);
 
 	const due = wakes.filter((t) => t > now);
-	return { world: { at: now, actors, builds }, events, wake: due.length ? Math.min(...due) : undefined };
+	const world: World = { at: now, actors, builds };
+	if (Object.keys(rush).length) world.rush = rush;
+	if (Object.keys(handoffs).length) world.handoffs = handoffs;
+	if (Object.keys(mail).length) world.mail = mail;
+	return { world, events, wake: due.length ? Math.min(...due) : undefined };
 }
+
+const lastAtOf = (s: Spec): number | undefined => {
+	const t = Math.max(s.activity?.at ?? -Infinity, s.agent?.lastWriteAt ?? -Infinity);
+	return Number.isFinite(t) ? t : undefined;
+};
+
+/** How long a PR's celebration lasts, the longer of its two parts. */
+const celebrateMs = () => Math.max(poseMs("celebrate", "lead"), poseMs("celebrate", "partner"));
+
+/**
+ * The hand-offs this direction: those still under way, and new ones. A giver is a busy crew member
+ * leaving a station whose errand is a folder (it was using it, and its work no longer wants it); its
+ * taker is a teammate at its own spot, standing still, whose work wants that same kind of station
+ * and hasn't sent it there yet. The giver walks over; the two-hander starts when it gets there.
+ */
+function handOffsFor(
+	list: Spec[],
+	pre: Map<string, Pre>,
+	places: Map<string, Place>,
+	before: Record<string, Actor>,
+	was: Record<string, HandOff>,
+	hiredBy: Map<string, string>,
+	floor: Floor,
+	now: number,
+	gaitOf: (s: Spec, area: string) => Pace,
+	events: WorldEvent[],
+): Record<string, HandOff> {
+	const out: Record<string, HandOff> = {};
+	const byKey = new Map(list.map((s) => [s.key, s]));
+	const live = (k: string) => {
+		const a = before[k];
+		return a && !a.gone ? a : undefined;
+	};
+	for (const [g, h] of Object.entries(was)) {
+		if (now < h.done && byKey.get(g)?.mood === "busy" && byKey.get(h.taker)?.mood === "busy" && places.has(h.taker)) out[g] = h;
+	}
+	const taken = new Set(Object.values(out).map((h) => h.taker));
+	const still = (a: Actor) => !a.walk || now >= a.walk.since + a.walk.ms;
+	const takers = list
+		.filter((m) => {
+			const a = live(m.key);
+			return m.kind === "crew" && m.mood === "busy" && !hiredBy.has(m.key) && a && !a.trip && still(a) && places.get(m.key)?.spot.startsWith("crew:") && a.handed !== pre.get(m.key)!.work?.since;
+		})
+		.map((m) => ({ key: m.key, session: m.session.id, kind: stationKind(m, pre.get(m.key)!), since: pre.get(m.key)!.work?.since ?? now }));
+	for (const s of list) {
+		const a = live(s.key);
+		const p = pre.get(s.key)!;
+		if (s.kind !== "crew" || s.mood !== "busy" || !a?.trip || a.trip.queue !== 0 || out[s.key] || taken.has(s.key)) continue;
+		if (p.news || p.continuing || p.follow || stationKind(s, p) === a.trip.kind) continue;
+		const home = places.get(s.key);
+		if (!home?.spot.startsWith("crew:")) continue;
+		const taker = pickTaker({ key: s.key, session: s.session.id, kind: a.trip.kind }, takers.filter((t) => !out[t.key]), taken);
+		if (!taker) continue;
+		const there = places.get(taker)!;
+		const slot = handOffSlot(there.slot, s.size);
+		const path = pathBetween(floor, a.area, here(a, now), there.area, slot);
+		const meets = now + walkMs(path, gaitOf(s, there.area).speed);
+		const done = meets + Math.max(poseMs(HANDOFF.pose, "lead"), poseMs(HANDOFF.pose, "partner"));
+		out[s.key] = { giver: s.key, taker, kind: a.trip.kind, since: now, meets, done, home: home.spot };
+		taken.add(taker);
+		events.push({ type: "handoff", key: s.key, at: now, to: taker, kind: a.trip.kind });
+	}
+	return out;
+}
+
+/** When a taker's part of a hand-off starts, if it is playing now. */
+function takingAt(handoffs: Record<string, HandOff>, key: string, now: number): number | undefined {
+	const h = Object.values(handoffs).find((x) => x.taker === key);
+	return h && now >= h.meets ? h.meets : undefined;
+}
+
+/**
+ * The leads walking a PR to the outbox. A new PR (a lead at its desk, not waiting on you, in a room
+ * with an outbox) sets one off; it drops the envelope when it gets there and `mailDrop` has played,
+ * then walks back to its desk and celebrates with a busy teammate (or alone).
+ */
+function mailFor(
+	list: Spec[],
+	pre: Map<string, Pre>,
+	places: Map<string, Place>,
+	before: Record<string, Actor>,
+	was: Record<string, Mail>,
+	stations: Map<string, NonNullable<Area["stations"]>[number]>,
+	floor: Floor,
+	now: number,
+	gaitOf: (s: Spec, area: string) => Pace,
+	events: WorldEvent[],
+): Record<string, Mail> {
+	const out: Record<string, Mail> = {};
+	for (const s of list) {
+		if (s.kind !== "lead") continue;
+		const a = before[s.key];
+		if (!a || a.gone || s.seen.waiting !== undefined) continue;
+		const desk = places.get(s.key);
+		const id = s.session.id;
+		let m: Mail | undefined = was[id];
+		if (m && m.back !== undefined && now >= m.back + celebrateMs()) m = undefined;
+		if (!m && pre.get(s.key)!.news?.trigger === "pr" && desk?.spot === "desk") {
+			const st = floor.areas.find((x) => x.id === desk.area)?.stations?.find((x) => x.kind === "outbox");
+			if (!st) continue;
+			const use = useFor(st, LEAD_SIZE);
+			const path = pathBetween(floor, a.area, here(a, now), st.areaId, use);
+			const drops = now + walkMs(path, gaitOf(s, st.areaId).speed) + poseMs(MAIL.pose, "lead");
+			m = { key: s.key, station: st.id, pr: s.seen.prs[s.seen.prs.length - 1] ?? 0, since: now, drops };
+			events.push({ type: "trip", key: s.key, at: now, station: st.id, state: "start" });
+		}
+		if (!m) continue;
+		if (now >= m.drops && m.returns === undefined && desk) {
+			// The envelope is in: back to the desk, and the celebration when it gets there.
+			const path = pathBetween(floor, a.area, here(a, now), desk.area, desk.slot);
+			const back = now + walkMs(path, gaitOf(s, desk.area).speed);
+			const mate = list.find((x) => x.session.id === id && x.kind === "crew" && x.mood === "busy" && places.get(x.key)?.spot.startsWith("crew:"));
+			m = { ...m, returns: now, back, ...(mate ? { mate: mate.key } : {}) };
+			events.push({ type: "trip", key: s.key, at: now, station: m.station, state: "end" });
+		}
+		if (!stations.has(m.station)) continue;
+		out[id] = m;
+	}
+	return out;
+}
+
+/** The lead's pose on its way to the outbox and back: `mailDrop` there, then the celebration (or
+ * the PR pose, alone) once it is back. */
+function mailChoice(m: Mail, now: number, news: Choice | undefined): Choice {
+	if (now < m.drops) return { pose: MAIL.pose, as: "lead", acted: true, ...(news?.trigger === "pr" ? { trigger: "pr" } : {}), since: m.since };
+	return { pose: m.mate ? "celebrate" : "prOpened", as: "lead", acted: true, since: m.returns ?? now };
+}
+
+/** True while `key` plays its half of the celebration after the lead's walk back from the outbox. */
+const celebratesMail = (m: Mail | undefined, key: string, now: number): boolean =>
+	m !== undefined && m.mate === key && m.back !== undefined && now >= m.back && now < m.back + poseMs("celebrate", "partner");
 
 /** How far into `place` the brick leaves the builder's hands: the end of the last frame that
  * still shows it (in a hand, or set down out front). The tower takes it from there. */
@@ -613,10 +866,14 @@ function tripsFor(
 	hiredBy: Map<string, string>,
 	now: number,
 	wakes: number[],
+	/** Sessions in rush: a held kind sends its crew sooner (rush.ts). */
+	rushing: Set<string> = new Set(),
+	/** Crew who don't go this time: handing a folder over, or handed one (handoff.ts). */
+	skip: Set<string> = new Set(),
 ): Map<string, Trip> {
 	const wants: Want[] = [];
 	for (const s of list) {
-		if (s.kind !== "crew" || !s.busy || s.mood !== "busy" || hiredBy.has(s.key)) continue;
+		if (s.kind !== "crew" || !s.busy || s.mood !== "busy" || hiredBy.has(s.key) || skip.has(s.key)) continue;
 		const place = places.get(s.key);
 		const was = before[s.key];
 		if (!place?.spot.startsWith("crew:") || !was || was.gone) continue;
@@ -627,8 +884,9 @@ function tripsFor(
 		const p = pre.get(s.key)!;
 		const stay = was.trip !== undefined && (p.news !== undefined || p.continuing !== undefined || p.follow !== undefined);
 		let kind = stationKind(s, p);
-		if (kind && was.trip?.kind !== kind && now - p.work!.since < TRIP.holdMs) {
-			wakes.push(p.work!.since + TRIP.holdMs);
+		const hold = rushing.has(s.session.id) ? RUSH.tripHoldMs : TRIP.holdMs;
+		if (kind && was.trip?.kind !== kind && now - p.work!.since < hold) {
+			wakes.push(p.work!.since + hold);
 			kind = undefined;
 		}
 		wants.push({ key: s.key, stations, kind, stay, was: was.trip, since: p.work?.since ?? now });
@@ -636,11 +894,15 @@ function tripsFor(
 	return planTrips(wants, now);
 }
 
-/** At a station: its work pose (or the jammed copier's kick on a long build); in its queue, waiting. */
+/** A long build at the copier: a running feud with it, looped until the build ends (instead of the
+ * one-off kick, `STATION_POSE.build.bad`). */
+export const COPIER_FEUD = "copierFeud";
+
+/** At a station: its work pose (or the feud with the jammed copier on a long build); in its queue, waiting. */
 function atStation(st: Choice, trip: Trip): Choice {
 	if (trip.queue > 0) return { pose: TRIP.queuePose, as: "lead", acted: false };
 	const pose = STATION_POSE[trip.kind];
-	if (st.pose === "grumpy") return pose.bad && trip.kind === "build" ? { pose: pose.bad, as: "lead", acted: false } : st;
+	if (st.pose === "grumpy") return trip.kind === "build" ? { pose: COPIER_FEUD, as: "lead", acted: false } : st;
 	return { pose: pose.work, as: "lead", acted: false };
 }
 
@@ -704,6 +966,8 @@ function brickRun(
 	floor: Floor,
 	now: number,
 	speed = 1,
+	/** The cooldown's share (less in a rush). */
+	cool = 1,
 ): { place: Place; run: Run } | undefined {
 	const id = s.session.id;
 	const desk = floor.desks.get(id);
@@ -723,7 +987,7 @@ function brickRun(
 	if (run || s.mood !== "busy" || choice.acted || build.pieces >= RULES.buildMax) return undefined;
 	const a = s.activity;
 	if (!a || !isEdit(a.tool) || build.seen[s.agent!.id] === a.at) return undefined;
-	if (build.ranAt !== undefined && now - build.ranAt < runCooldown(id, editRate(build.edits, now))) return undefined;
+	if (build.ranAt !== undefined && now - build.ranAt < runCooldown(id, editRate(build.edits, now)) * cool) return undefined;
 	if (!was || was.gone || was.spot !== place.spot || !place.spot.startsWith("crew:")) return undefined;
 	if (was.walk && now < was.walk.since + was.walk.ms) return undefined;
 	const lead = `s:${id}`;

@@ -44,9 +44,9 @@ function checkSane(world: World, sessions: Session[]): void {
 			expect(d.cell.y).toBeGreaterThanOrEqual(a.floorY);
 		}
 		for (const f of a.fixtures) expect(f.x > a.rect.x && f.x < a.rect.x + a.rect.w && f.y > a.floorY && f.y < a.rect.y + a.rect.h).toBe(true);
-		// Every project room has its four stations, in the strip left of the desks, users and queues
+		// Every project room has its six stations, in the strip left of the desks, users and queues
 		// on the floor.
-		if (a.kind === "project") expect(a.stations.map((st) => st.kind).slice(0, 4)).toEqual(STATIONS_BASE);
+		if (a.kind === "project") expect(a.stations.map((st) => st.kind).slice(0, STATIONS_BASE.length)).toEqual(STATIONS_BASE);
 		for (const st of a.stations) {
 			for (const c of a.cells) expect(st.base.x + 30).toBeLessThanOrEqual(c.x);
 			for (const p of [st.use, ...st.queue]) {
@@ -219,7 +219,7 @@ describe("stations", () => {
 			// Two projects, so one room is above the hallway and one below.
 			const list = [session("lanternfish"), session("orbit-kit")];
 			const before = where(plan.update(snap(list)), project);
-			expect(before.size).toBe(4);
+			expect(before.size).toBe(STATIONS_BASE.length);
 			// A room gaining rows (and losing them again) keeps every station where it was.
 			const more = [...list, ...Array.from({ length: 6 }, () => session(project))];
 			const grown = where(plan.update(snap(more)), project);
@@ -234,14 +234,14 @@ describe("stations", () => {
 		const list = Array.from({ length: 7 }, () => session("lanternfish"));
 		const small = plan.update(snap(list)).areas.find((a) => a.name === "lanternfish")!;
 		expect(small.rows).toBeGreaterThanOrEqual(3);
-		expect(small.stations).toHaveLength(4);
+		expect(small.stations).toHaveLength(STATIONS_BASE.length);
 		list[0] = { ...list[0]!, agents: crew(STATION_CREW * 3) };
 		const big = plan.update(snap(list)).areas.find((a) => a.name === "lanternfish")!;
-		expect(big.stations.map((st) => st.id.split(":").slice(2).join(":"))).toEqual(["build:0", "test:0", "reference:0", "search:0", "build:1", "test:1"]);
-		// The first four stay put.
+		expect(big.stations.map((st) => st.id.split(":").slice(2).join(":"))).toEqual(["build:0", "test:0", "reference:0", "search:0", "web:0", "outbox:0", "build:1", "test:1"]);
+		// The base six stay put.
 		for (const st of small.stations) expect(big.stations.find((x) => x.id === st.id)!.base).toEqual(st.base);
 		// A two-row room has no space for more, however big the crew.
 		const tight = new FloorPlan().update(snap([session("pebble", { agents: crew(20) })])).areas.find((a) => a.name === "pebble")!;
-		expect(tight.stations).toHaveLength(4);
+		expect(tight.stations).toHaveLength(STATIONS_BASE.length);
 	});
 });

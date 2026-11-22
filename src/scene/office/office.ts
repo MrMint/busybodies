@@ -589,7 +589,7 @@ export class Office extends Container {
 	#bake(res: number): void {
 		this.#res = res;
 		const old = [...this.#textures.values()];
-		const kinds: FurnitureKind[] = ["desk", "chair", "plant", "counter", "cooler", "fridge", "sofa", "table", "cabinet", "pod", "lamp", "screen-lit", "screen-off", "files", "catalogue", "copier", "stamps"];
+		const kinds: FurnitureKind[] = ["desk", "chair", "plant", "counter", "cooler", "fridge", "sofa", "table", "cabinet", "pod", "lamp", "screen-lit", "screen-off", "files", "catalogue", "copier", "stamps", "phone", "outbox"];
 		for (const kind of kinds) {
 			const g = drawFurniture(kind);
 			const b = g.getLocalBounds();

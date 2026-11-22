@@ -5,8 +5,10 @@
 //   ?demo=one     a single session
 //   ?demo=thirty  thirty sessions over eight projects
 //   ?demo=release a release with six builders: they walk to the room's stations for their work and
-//                 queue for them, a long build kicks the copier, a test goes red at the stamp desk,
-//                 one finishes, a PR; builders carry bricks to their crew build (and a two-builder
+//                 queue for them, a long build feuds with the copier, one is on the phone, the work
+//                 heats up into a rush (runs, papers flying, the lead dashing about, walkers dodging),
+//                 a folder is handed over, a test goes red at the stamp desk, one finishes, a PR is
+//                 walked to the outbox; builders carry bricks to their crew build (and a two-builder
 //                 hotfix next door shares the stations)
 //   ?demo=empty   nobody's in; ?demo=nohome: no coding agent found (add &compact for the small window)
 // The clock is fixed, so the same demo always draws the same frames.
@@ -132,22 +134,26 @@ type Script = (t: number) => Step;
 
 /**
  * What each of the release crew has in hand from second `t` of the day. A kind has to hold six
- * seconds before anyone walks for it, so the first trips set off at 6 s.
+ * seconds before anyone walks for it (three in a rush), so the first trips set off at 6 s.
  */
 const RELEASE_SCRIPT: [task: string, script: Script][] = [
 	// Edits all day, at its bench: the brick runs.
 	["Bump the versions", () => ({ tool: "Edit" })],
-	// Reads at the filing cabinet from 6 s, then back to write at 15 s.
-	["Changelog entries", (t) => (t < 15 ? { tool: "Read" } : { tool: "Edit" })],
-	// Runs the export test: at the stamp desk from 12 s; red at 18 s (a red stamp, then the thumb).
-	["Fix the export test", (t) => (t < 3 ? { tool: "Grep" } : t < 18 ? { tool: "Bash", run: "test" } : t < 21 ? { tool: "Bash" } : { tool: "Edit" })],
-	// Reads too: queues at the filing cabinet behind the changelog, gives up to write at 12 s.
-	["Migrate the settings", (t) => (t < 12 ? { tool: "Read" } : { tool: "Edit" })],
-	// A build 25 minutes in: at the copier from 6 s, kicking it; fixed at 27 s.
+	// Reads at the filing cabinet from 6 s; back to write at 18 s, it hands its folder on.
+	["Changelog entries", (t) => (t < 18 ? { tool: "Read" } : { tool: "Edit" })],
+	// Runs the export test: at the stamp desk from 9 s; red at 21 s (a red stamp, then the thumb).
+	["Fix the export test", (t) => (t < 3 ? { tool: "Grep" } : t < 21 ? { tool: "Bash", run: "test" } : t < 24 ? { tool: "Bash" } : { tool: "Edit" })],
+	// Reads too: queues at the filing cabinet behind the changelog, gives up to write at 12 s; wants
+	// to read again at 18 s, just as the changelog comes back, and takes its folder instead.
+	["Migrate the settings", (t) => (t < 12 ? { tool: "Read" } : t < 18 ? { tool: "Edit" } : t < 30 ? { tool: "Read" } : { tool: "Edit" })],
+	// A build 25 minutes in: at the copier from 6 s, feuding with it; fixed at 27 s.
 	["Build the installer", (t) => (t < 27 ? { tool: "Bash", run: "build" } : { tool: "Edit" })],
-	// Writes, looks things up at the card catalogue from 15 s, finishes at 24 s.
-	["Release notes", (t) => (t < 9 ? { tool: "Write" } : t < 24 ? { tool: "Grep" } : "done")],
+	// Writes, then searches the web on the phone from 12 s, writes again at 21 s, finishes at 24 s.
+	["Release notes", (t) => (t < 9 ? { tool: "Write" } : t < 21 ? { tool: "WebSearch" } : t < 24 ? { tool: "Edit" } : "done")],
 ];
+/** The release crew's tool rate (calls a minute, each): it heats up into a rush at 6 s, and cools
+ * from 27 s (the rush ends once the heat has dropped below the line, rush.ts). */
+const releaseRate = (t: number) => (t < 6 ? 6 : t < 27 ? 16 : 2);
 /** The hotfix pair next door shares the room's stations, at a run (a hot tool rate). */
 const HOTFIX_SCRIPT: [task: string, script: Script][] = [
 	["Patch the signing step", (t) => (t < 3 ? { tool: "Read" } : { tool: "Edit" })],
@@ -181,7 +187,7 @@ const crewOf = (script: [string, Script][], rate: number) =>
 /** A release crew: a lead waiting on six builders, each on its own errand. */
 function release(): Snapshot {
 	n = 0;
-	const crew = crewOf(RELEASE_SCRIPT, 6);
+	const crew = crewOf(RELEASE_SCRIPT, releaseRate(0));
 	// The installer build has been going a while: long enough to jam the copier.
 	crew[4]!.running = { tool: "Bash", since: min(25), kind: "build" };
 	return {
@@ -198,7 +204,7 @@ function release(): Snapshot {
 				branch: "fix/installer",
 				activity: { tool: "Task", at: min(0.5) },
 				running: { tool: "Task", since: min(0.5) },
-				agents: crewOf(HOTFIX_SCRIPT, 24),
+				agents: crewOf(HOTFIX_SCRIPT, 20),
 			}),
 			session("Docs sweep", "mossy-docs", "idle", 60, { branch: "docs/sweep" }),
 		],
@@ -207,9 +213,12 @@ function release(): Snapshot {
 
 /**
  * The release, played forward: a beat every 3 s. Crew walk to the stations their work needs and
- * queue when one is taken (filing cabinet and copier); the long build kicks the copier; a test goes
- * red at the stamp desk at 18 s; a builder finishes at 24 s; the PR goes up at 33 s. Edits keep
- * landing, so bricks run to the builds. Every name is invented.
+ * queue when one is taken (filing cabinet and copier); the long build feuds with the copier; one
+ * searches the web on the phone; from 6 s the room is in a rush (walkers run with papers flying,
+ * sidestep each other, and the lead dashes to whoever is queued or red); at 18 s a folder is handed
+ * over instead of a second trip to the cabinet; a test goes red at the stamp desk at 21 s; a builder
+ * finishes at 24 s; the PR goes up at 30 s and the lead walks it to the outbox. Edits keep landing,
+ * so bricks run to the builds. Every name is invented.
  */
 export function releaseDay(): { after: number; snapshot: Snapshot }[] {
 	let snap = release();
@@ -220,10 +229,13 @@ export function releaseDay(): { after: number; snapshot: Snapshot }[] {
 		const at = NOW + t * 1000;
 		snap.at = at;
 		const [ship, hotfix] = snap.sessions as [Session, Session];
-		ship.agents.forEach((a, k) => perform(a, RELEASE_SCRIPT[k]![1](t), at - k * 50, (i + k) % 2 === 0));
+		ship.agents.forEach((a, k) => {
+			perform(a, RELEASE_SCRIPT[k]![1](t), at - k * 50, (i + k) % 2 === 0);
+			if (a.tools) a.tools = { ...a.tools, calls: releaseRate(t) };
+		});
 		hotfix.agents.forEach((a, k) => perform(a, HOTFIX_SCRIPT[k]![1](t), at - 1500 - k * 50, (i + k) % 2 === 0));
-		if (t === 18) ship.agents[2]!.commands = { failStreak: 1, repeats: 1, failed: 1, testsFailed: 1, last: { kind: "test", exitCode: 1, at } };
-		if (t === 33) ship.prs = [{ number: 300, url: "https://example.invalid/pull/300", at }];
+		if (t === 21) ship.agents[2]!.commands = { failStreak: 1, repeats: 1, failed: 1, testsFailed: 1, last: { kind: "test", exitCode: 1, at } };
+		if (t === 30) ship.prs = [{ number: 300, url: "https://example.invalid/pull/300", at }];
 		steps.push({ after: t * 1000, snapshot: snap });
 	}
 	return steps;

@@ -93,7 +93,7 @@ describe("trips", () => {
 		);
 		const at = await page.evaluate(() => window.__busybodies!.entities().filter((e) => /^(station|queue):/.test(String(e.spot))).map((e) => `${e.spot}|${e.cue}`));
 		expect(at.some((s) => s.startsWith("station:room:lanternfish:reference:0|fileFolder"))).toBe(true);
-		expect(at.some((s) => s.startsWith("station:room:lanternfish:build:0|copierKick"))).toBe(true);
+		expect(at.some((s) => s.startsWith("station:room:lanternfish:build:0|copierFeud"))).toBe(true);
 		const trips = await page.evaluate(() => window.__busybodies!.events().filter((e) => e.type === "trip").length);
 		expect(trips).toBeGreaterThan(2);
 		await page.close();

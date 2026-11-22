@@ -184,7 +184,9 @@ export type FurnitureKind =
 	| "files"
 	| "catalogue"
 	| "copier"
-	| "stamps";
+	| "stamps"
+	| "phone"
+	| "outbox";
 
 /** A desk: the top surface behind, the front panel below. 150 wide, its front 44 tall. */
 function desk(g: Graphics, front: number, top: number, w = 150): void {
@@ -319,6 +321,26 @@ function station(g: Graphics, kind: FurnitureKind): void {
 			g.rect(ST_L + 4, -32, 5, 32).rect(ST_R - 9, -32, 5, 32).fill(INK);
 			g.rect(ST_L + 6, -14, w - 12, 3).fill(INK);
 			g.roundRect(ST_L - 2, -38, w + 4, 8, 3).fill(WOOD_TOP).stroke(line(4));
+			break;
+		}
+		case "phone": {
+			// The phone table: a slim stand with a shelf, and the phone's base toward the wall, where
+			// the handset's cord goes (the receiver and the notepad at the working point: the rig).
+			g.rect(ST_L + 8, -38 + 5, w - 8, 38).fill(SHADOW);
+			g.roundRect(-5, -32, 10, 30, 3).fill(WOOD).stroke(line(3));
+			g.roundRect(ST_L + 2, -4, w - 4, 6, 3).fill(WOOD).stroke(line(3));
+			g.roundRect(ST_L - 2, -38, w + 4, 7, 3).fill(WOOD_TOP).stroke(line(4));
+			g.roundRect(ST_L + 1, -50, 22, 13, 5).fill(0x3d4256).stroke(line(3));
+			g.roundRect(ST_L + 5, -47, 14, 3, 1.5).fill(0x9aa3bd);
+			break;
+		}
+		case "outbox": {
+			// A mail cart: a canvas bin on a frame with wheels (the wire tray on top: the rig).
+			g.rect(ST_L + 4, -40 + 5, w, 36).fill(SHADOW);
+			g.roundRect(ST_L, -40, w, 30, 5).fill(0xb9c7e6).stroke(line(4));
+			g.moveTo(ST_L + 6, -30).quadraticCurveTo(0, -22, ST_R - 6, -30).stroke({ width: 2, color: INK, alpha: 0.5 });
+			g.rect(ST_L + 3, -10, 4, 6).rect(ST_R - 7, -10, 4, 6).fill(INK);
+			g.circle(ST_L + 5, -3, 3.5).circle(ST_R - 5, -3, 3.5).fill(INK);
 			break;
 		}
 	}

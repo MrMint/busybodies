@@ -145,15 +145,20 @@ describe("acted poses", () => {
 		expect(actor(d.world, "s:a").pose).toBe("typing");
 	});
 
-	test("a PR opened: celebrate with a busy teammate at the desk, else alone", () => {
+	test("a PR opened: walked to the outbox, then celebrate with a busy teammate at the desk, else alone", () => {
 		const s = stage();
 		const crew = [agent("v", "verifier")];
-		s.step(snap(T0, [session("a", "teapot", { agents: crew }), session("bb", "kettle")]));
+		const both = (prs: boolean) => [session("a", "teapot", { agents: crew, ...(prs ? { prs: pr(7) } : {}) }), session("bb", "kettle", prs ? { prs: pr(8) } : {})];
 		const pr = (n: number) => [{ number: n, url: `https://example.invalid/pr/${n}`, at: T0 + 1000 }];
-		const d = s.step(snap(T0 + 1000, [session("a", "teapot", { agents: crew, prs: pr(7) }), session("bb", "kettle", { prs: pr(8) })]));
-		expect(actor(d.world, "s:a").pose).toBe("celebrate");
-		expect(actor(d.world, "a:a:v")).toMatchObject({ pose: "celebrate", as: "partner" });
-		expect(actor(d.world, "s:bb").pose).toBe("prOpened");
+		s.step(snap(T0, both(false)));
+		const d = s.step(snap(T0 + 1000, both(true)));
+		expect(actor(d.world, "s:a").pose).toBe("mailDrop");
+		const drops = Math.max(d.world.mail!.a!.drops, d.world.mail!.bb!.drops);
+		const back = s.step(snap(drops, both(true)));
+		expect(actor(back.world, "s:a").pose).toBe("celebrate");
+		expect(actor(back.world, "s:bb").pose).toBe("prOpened");
+		const home = s.step(snap(back.world.mail!.a!.back!, both(true)));
+		expect(actor(home.world, "a:a:v")).toMatchObject({ pose: "celebrate", as: "partner" });
 	});
 
 	test("a new subagent: the boss hands over and the hire plays the other half", () => {
