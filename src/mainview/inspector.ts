@@ -67,6 +67,11 @@ export interface Inspector {
 	shot(): ShotReport | undefined;
 	/** Pin the following camera on a room (as its tile does); undefined unpins. */
 	pin(area?: string): void;
+	/** The light: the time-of-day phase and its hour (forced by ?hour= or the clock's), the room in
+	 * focus, lamps and overhead lights on, glow, how often it re-baked, rooms in rush, clouds. */
+	light(): Office["light"];
+	/** Force the hour (0 to 23) as ?hour= does, or undefined to follow the clock. */
+	setHour(hour: number | undefined): void;
 }
 
 /** The world without Maps, for JSON. */
@@ -186,6 +191,11 @@ export function installInspector(
 		pin: (area) => {
 			shots?.pin(area);
 			scene.direct?.();
+		},
+		light: () => office.light,
+		setHour: (hour) => {
+			office.setHour(hour);
+			scene.redraw();
 		},
 	};
 	window.__busybodies = inspector;

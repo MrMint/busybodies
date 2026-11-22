@@ -28,6 +28,14 @@ const follow = compact || params.has("follow");
 /** ?theme=factory: which world the cast works in (src/scene/theme/). The app passes the saved
  * choice the same way, and switches it live over RPC (the tray's Theme menu). */
 let theme: ThemeId = themeId(params.get("theme"));
+/** The office's light (src/scene/office/light.ts): ?hour=<0-23> pins the time of day (screenshots,
+ * tests), the director's rush flickers a room's lights, and the compact window floats on the
+ * desktop with no lawn round it. */
+const lightOptions = (director: Director) => ({
+	hour: params.get("hour") && Number.isFinite(Number(params.get("hour"))) ? Number(params.get("hour")) : undefined,
+	rush: () => Object.keys(director.world?.rush ?? {}),
+	outside: !compact,
+});
 
 /** Profiling modes: ?blank draws nothing but still takes snapshots; ?blank&norpc does neither. */
 function blank(): void {
@@ -84,7 +92,7 @@ function blank(): void {
 	const charactersFor = (a: Atlas) => (params.has("placeholders") ? undefined : rigCharacters(a));
 	// The director decides who stands where and in which pose; the office draws it.
 	const director = new Director();
-	const office = new Office({ renderer: app.renderer, characters, wake: () => scene.redraw(), cast: director.cast, builds: director.builds, metrics: director.metrics, top: compact ? 40 : 64, theme: sceneTheme(theme) });
+	const office = new Office({ renderer: app.renderer, characters, wake: () => scene.redraw(), cast: director.cast, builds: director.builds, metrics: director.metrics, top: compact ? 40 : 64, theme: sceneTheme(theme), ...lightOptions(director) });
 	app.stage.addChild(office);
 	// The office's voice (src/scene/sass): bubbles and signs from what the sessions are doing.
 	// ?toolvoice keeps the director's placeholder (each busy lead says its tool). A live scene lets
