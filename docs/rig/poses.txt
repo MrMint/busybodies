@@ -192,6 +192,40 @@ inspect: Checking on the crew
    5   260ms  { eyes: 'happy', mouth: 'grin', armL: 'hip', armR: 'hip' }
    6   390ms  { eyes: 'half', look: 'left', mouth: 'smirk', armL: 'hip', armR: 'hip' }
 
+lookUp: Noticing you
+  on reacting, once; 5 frames, 2340 ms (18 beats)
+   1   260ms  { eyes: 'wide', look: 'up', brows: 'up', mouth: 'small' }
+   2   910ms  { eyes: 'shine', look: 'up', brows: 'up', mouth: 'grin' }
+   3   130ms  { eyes: 'closed', look: 'up', brows: 'up', mouth: 'grin' }
+   4   650ms  { eyes: 'shine', look: 'up', brows: 'up', mouth: 'grin' }
+   5   390ms  { eyes: 'half', mouth: 'smirk' }
+
+wave: Waving at you
+  on reacting, once; 8 frames, 2340 ms (18 beats)
+   1   260ms  { eyes: 'wide', look: 'up', brows: 'up', mouth: 'open', armR: 'raise' }
+   2   260ms  { eyes: 'happy', look: 'up', brows: 'up', mouth: 'grin', armR: 'wave1' }
+   3   260ms  { eyes: 'happy', look: 'up', brows: 'up', mouth: 'grin', armR: 'wave2' }
+   4   260ms  { eyes: 'happy', look: 'up', brows: 'up', mouth: 'grin', armR: 'wave1' }
+   5   260ms  { eyes: 'happy', look: 'up', brows: 'up', mouth: 'grin', armR: 'wave2' }
+   6   260ms  { eyes: 'happy', look: 'up', brows: 'up', mouth: 'grin', armR: 'wave1' }
+   7   390ms  { eyes: 'shine', look: 'up', mouth: 'grin', armR: 'low' }
+   8   390ms  { eyes: 'half', mouth: 'smirk' }
+
+ticketHigh: Holding the ticket up for you
+  on working, once; 7 frames, 3250 ms (25 beats)
+   1   260ms  { eyes: 'wide', look: 'up', brows: 'up', mouth: 'open', armL: 'hip', armR: 'raise', holdR: 'ticket' }
+   2   780ms  { eyes: 'shine', look: 'up', brows: 'up', mouth: 'grin', armL: 'hip', armR: 'up', feet: 'tip', holdR: 'ticket' }
+   3   260ms  { eyes: 'shine', look: 'up', brows: 'up', mouth: 'grin', armL: 'hip', armR: 'hi', feet: 'tip', holdR: 'ticket' }
+   4   780ms  { eyes: 'shine', look: 'up', brows: 'up', mouth: 'grin', armL: 'hip', armR: 'up', feet: 'tip', holdR: 'ticket' }
+   5   130ms  { eyes: 'closed', look: 'up', brows: 'up', mouth: 'grin', armL: 'hip', armR: 'up', feet: 'tip', holdR: 'ticket' }
+   6   780ms  { eyes: 'wide', look: 'up', brows: 'up', mouth: 'small', armL: 'hip', armR: 'up', feet: 'tip', holdR: 'ticket' }
+   7   260ms  { look: 'right', mouth: 'flat', armL: 'hip', armR: 'low', holdR: 'ticket' }
+
+handReady: Ready to take the folder
+  on working, once; 2 frames, 520 ms (4 beats)
+   1   130ms  { eyes: 'wide', look: 'right', brows: 'up', mouth: 'small', armL: 'low', armR: 'low' }
+   2   390ms  { look: 'right', brows: 'up', mouth: 'open', armL: 'low', armR: 'offer' }
+
 feetUp: Feet up
   on idle, once, slacking habit; 5 frames, 1950 ms (15 beats)
   may say: "Strategic pause."
