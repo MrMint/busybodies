@@ -444,3 +444,64 @@ describe("a recorded day", () => {
 		expect(run().log).toEqual(a.log);
 	});
 });
+
+describe("the voice: the seam to the office", () => {
+	const { Voice, keyFor, signText } = require("../src/scene/sass") as typeof import("../src/scene/sass");
+	const fake = (slots: string[]) => {
+		const calls: string[] = [];
+		const signs = new Map<string, { title: string; body?: string }>();
+		return {
+			calls,
+			signs,
+			say: (key: string, text: string | undefined, kind: string) => calls.push(`${key} ${kind} ${text ?? "-"}`),
+			setSign: (id: string, v: { title: string; body?: string } | undefined) => (v ? signs.set(id, v) : signs.delete(id)),
+			signs_: slots,
+			signsList: () => slots.map((id) => ({ id })),
+		};
+	};
+	const stage = (f: ReturnType<typeof fake>) => ({ say: f.say, setSign: f.setSign, signs: f.signsList });
+
+	test("keys follow the director: s:<session> for a lead, a:<session>:<agent> for crew", () => {
+		expect(keyFor({ who: "s1", session: "s1" })).toBe("s:s1");
+		expect(keyFor({ who: "x", session: "s1" })).toBe("a:s1:x");
+	});
+
+	test("sign lines become a title and a body", () => {
+		expect(signText("Now serving: nobody. Your number: 1.")).toEqual({ title: "NOW SERVING: NOBODY", body: "Your number: 1." });
+		expect(signText("Days since a test broke: 0")).toEqual({ title: "DAYS SINCE A TEST BROKE: 0" });
+		expect(signText("Caution: scouts running")).toEqual({ title: "CAUTION: SCOUTS RUNNING" });
+		expect(signText("Top\nbottom")).toEqual({ title: "TOP", body: "bottom" });
+	});
+
+	test("says, takes bubbles down when their time is up, and drops slots the office lacks", () => {
+		const f = fake(["room:teapot:sign"]);
+		const v = new Voice(stage(f), { ...OPTS, gapMs: 0 });
+		const s = snap(session("a", { waiting: { reason: "permission", since: NOW, source: "hook" } }));
+		v.run(s, NOW, { zoom: 2 });
+		expect(f.calls[0]).toMatch(/^s:a said /);
+		expect(f.signs.get("room:teapot:sign")).toEqual({ title: "NOW SERVING: NOBODY", body: "Your number: 1." });
+		expect([...v.dropped.keys()]).toContain("room:teapot:plant");
+		const until = v.bubbles(NOW)[0]!.until;
+		expect(v.nextWake(NOW)).toBeLessThanOrEqual(until);
+		v.run(s, until, { zoom: 2 });
+		expect(f.calls.at(-1)).toBe("s:a said -");
+		expect(v.bubbles(until)).toEqual([]);
+	});
+
+	test("settles before an idle room starts talking, then goes quiet", () => {
+		const f = fake([]);
+		const v = new Voice(stage(f), { ...OPTS, gapMs: 0, settleMs: 6_000 });
+		const s = snap(session("a", { state: "idle", stateSince: NOW - 20 * MIN }));
+		v.run(s, NOW, { zoom: 2 });
+		expect(f.calls).toEqual([]);
+		const at = v.nextWake(NOW)!;
+		expect(at).toBe(NOW + 6_000);
+		v.run(s, at, { zoom: 2 });
+		expect(f.calls).toHaveLength(1);
+		const end = v.nextWake(at)!;
+		v.run(s, end, { zoom: 2 });
+		expect(f.calls.at(-1)).toBe("s:a said -");
+		// Next: only when the nap is due again, minutes away, not a frame loop.
+		expect(v.nextWake(end)! - end).toBeGreaterThan(60_000);
+	});
+});

@@ -3,6 +3,7 @@
 // builds and whenever the URL has ?inspect.
 import type { Application } from "pixi.js";
 import type { Director, World, WorldEvent } from "../scene/director";
+import type { Trigger, Voice } from "../scene/sass";
 import type { Stop } from "../scene/office/camera";
 import type { Office } from "../scene/office/office";
 import type { SignText } from "../scene/office/paper";
@@ -11,6 +12,8 @@ import type { Snapshot } from "../watcher/model";
 export interface Inspector {
 	/** True once the first snapshot has been drawn. */
 	ready: boolean;
+	/** The sass engine: bubbles up now, the last triggers, signs it wrote and slots it had no place for. */
+	sass(): { bubbles: ReturnType<Voice["bubbles"]>; triggers: readonly Trigger[]; signs: Record<string, string>; dropped: Record<string, string>; nextWake?: number } | undefined;
 	snapshot(): Snapshot | undefined;
 	/** Every character: key, mood, size, position, how high it is bouncing right now, and from the
 	 * rig its role, pose, frame (of frames) and the frame's non-rest params. */
@@ -77,6 +80,7 @@ export function installInspector(
 	office: Office,
 	scene: { show(s: Snapshot): void; frozen: boolean; redraw(): void; current?: Snapshot; stopDemo?: () => void },
 	director?: Director,
+	voice?: { voice: Voice; now(): number },
 ): Inspector {
 	const log: WorldEvent[] = [];
 	director?.on((events) => {
@@ -103,6 +107,12 @@ export function installInspector(
 
 	const inspector: Inspector = {
 		ready: false,
+		sass: () => {
+			if (!voice) return undefined;
+			const now = voice.now();
+			const v = voice.voice;
+			return { bubbles: v.bubbles(now), triggers: v.sass.triggers, signs: Object.fromEntries(v.written), dropped: Object.fromEntries(v.dropped), nextWake: v.nextWake(now) };
+		},
 		snapshot: () => scene.current,
 		entities: () => office.entities(),
 		counters: () => ({ renders, animationFrames, tickerRunning: app.ticker.started, maxFPS: app.ticker.maxFPS }),

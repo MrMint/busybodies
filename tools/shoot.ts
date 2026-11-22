@@ -44,6 +44,12 @@ const STATES: State[] = [
 	{ name: "day-3-leaving", demo: "day-3", aim: { kind: "office" }, size: BOARD, frames: 150 },
 	{ name: "day-4-review-done", demo: "day-4", aim: { kind: "office" }, size: BOARD, frames: 120 },
 	{ name: "day-5-long-build", demo: "day-5", aim: { kind: "room", name: "orbit-kit" }, size: BOARD, frames: 600 },
+	// The voice (S5): bubbles from the sass engine, and the signs and whiteboards its counters write.
+	{ name: "voice-floor-busy", demo: "", aim: { kind: "office" }, size: BOARD },
+	{ name: "voice-floor-idle", demo: "idle", aim: { kind: "office" }, size: BOARD },
+	{ name: "voice-waiting-on-you", demo: "day-2", aim: { kind: "room", name: "lanternfish" }, size: BOARD, frames: 40 },
+	{ name: "voice-pr-and-home-time", demo: "day-3", aim: { kind: "office" }, size: BOARD, frames: 50 },
+	{ name: "voice-kitchen", demo: "idle", aim: { kind: "room", name: "kitchen" }, size: BOARD },
 	// The app around the office (S6): empty states, About, and the compact floating window.
 	{ name: "empty-office", demo: "empty", aim: { kind: "office" }, size: BOARD },
 	{ name: "no-agent-found", demo: "nohome", aim: { kind: "office" }, size: BOARD },

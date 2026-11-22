@@ -13,6 +13,7 @@ import { type Bridge, installShell } from "./shell";
 import { placeholders } from "./placeholder";
 import { Atlas, buildPoseSheet, paperTheme, rigCharacters } from "../scene/rig";
 import { Director, placeholderVoice } from "../scene/director";
+import { Voice } from "../scene/sass";
 
 const params = new URLSearchParams(location.search);
 /** ?compact: the small floating window (transparent, always on top; src/bun/compact.ts). */
@@ -71,6 +72,15 @@ function blank(): void {
 	const director = new Director();
 	const office = new Office({ renderer: app.renderer, characters, wake: () => scene.redraw(), cast: director.cast, top: compact ? 40 : 64 });
 	app.stage.addChild(office);
+	// The office's voice (src/scene/sass): bubbles and signs from what the sessions are doing.
+	// ?toolvoice keeps the director's placeholder (each busy lead says its tool). A live scene lets
+	// the room settle a few seconds before the naps and waits start talking; a frozen one (tests,
+	// screenshots) speaks at once; ?settle=<ms> sets it (the walk e2e keeps the voice out of its way).
+	const settleMs = params.has("settle") ? Number(params.get("settle")) : params.has("frozen") ? 0 : 6_000;
+	const voice = params.has("toolvoice") ? undefined : new Voice(office, { settleMs });
+	director.on((events) => {
+		for (const e of events) if (e.type === "leave") voice?.gone(e.key);
+	});
 
 	// Ambient motion doesn't need the display's full rate (120 Hz on ProMotion screens). A camera
 	// move and a walk must be smooth, so they get 60 for as long as they last.
@@ -112,6 +122,13 @@ function blank(): void {
 			}
 		},
 	};
+	/** What the camera shows, for the voice: its scale, and the project whose room it is on. */
+	const viewOf = () => {
+		const stop = office.stop;
+		const room = stop.kind === "room" && stop.id.startsWith("room:") ? stop.id.slice(5) : undefined;
+		// Zooming into a room or a desk counts from the click, before the camera gets there.
+		return { zoom: stop.kind === "office" ? office.view.scale : Math.max(office.view.scale, 1.5), room };
+	};
 	/** Direct the current snapshot at `director.now`, draw it, voice it, and book the next wake-up. */
 	let wakeTimer: ReturnType<typeof setTimeout> | undefined;
 	const direct = () => {
@@ -119,7 +136,8 @@ function blank(): void {
 		if (!snap) return;
 		office.show(snap, app.screen.width, app.screen.height);
 		const world = director.world;
-		if (world) placeholderVoice(world, snap, (k, t, kind) => office.say(k, t, kind), director.now);
+		if (voice) voice.run(snap, director.now, viewOf());
+		else if (world) placeholderVoice(world, snap, (k, t, kind) => office.say(k, t, kind), director.now);
 		const waiting = director.waiting();
 		office.pulse(waiting.map((w) => w.area));
 		hud.waiting(waiting.length);
@@ -127,7 +145,8 @@ function blank(): void {
 		// The world changes on its own when an acted pose ends or a habit rotates: wake for it.
 		// A timer, not frames, so an idle office still costs nothing in between.
 		clearTimeout(wakeTimer);
-		const at = director.wake;
+		const wakes = [director.wake, voice?.nextWake(director.now)].filter((t): t is number => t !== undefined);
+		const at = wakes.length ? Math.min(...wakes) : undefined;
 		if (at !== undefined && !scene.frozen) {
 			wakeTimer = setTimeout(() => {
 				director.now = at;
@@ -138,7 +157,7 @@ function blank(): void {
 	Object.assign(scene, { direct });
 	const show = scene.show;
 	const redraw = scene.redraw;
-	const inspector = import.meta.env.DEV || params.has("inspect") ? installInspector(app, office, scene, director) : undefined;
+	const inspector = import.meta.env.DEV || params.has("inspect") ? installInspector(app, office, scene, director, voice && { voice, now: () => director.now }) : undefined;
 	let bridge: Bridge | undefined;
 	const shell = installShell({
 		bridge: { status: () => bridge!.status(), setCompact: (on) => bridge?.setCompact(on), showOffice: () => bridge?.showOffice(), openProjectPage: () => bridge?.openProjectPage() },
@@ -159,7 +178,11 @@ function blank(): void {
 	app.stage.eventMode = "static";
 	app.stage.hitArea = app.screen;
 	app.stage.cursor = "zoom-in";
-	app.stage.on("pointertap", (e) => office.click(e.global.x, e.global.y));
+	app.stage.on("pointertap", (e) => {
+		office.click(e.global.x, e.global.y);
+		// Zoomed into a room, the longer lines can show: let the voice look again.
+		if (voice) direct();
+	});
 
 	app.renderer.on("resize", (w, h) => {
 		office.layout(w, h);
