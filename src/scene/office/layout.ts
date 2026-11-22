@@ -40,6 +40,8 @@ import {
 	shredderFor,
 	stationsFor,
 } from "./world";
+import { LEAD_SIZE } from "./placement";
+import { bellFrom } from "./rigpoints";
 
 interface Room {
 	/** Stable for the room's life: "meeting", "lobby", "kitchen", or "room-<n>". */
@@ -265,20 +267,18 @@ function dressRoom(a: Area): void {
 	const { x, y, w } = a.rect;
 	const wy = y + 14;
 	const key = a.id;
-	a.wall.push({ kind: "sign", rect: { x: x + 18, y: wy + 4, w: 132, h: 62 }, slot: `${key}:sign` });
+	// The todo planner over the station strip (office/props.ts draws its sticky notes): whoever posts
+	// a note stands clear of the desks. The room's sign takes the first window's place.
+	a.wall.push({ kind: "planner", rect: { x: x + 18, y: wy - 2, w: 132, h: 84 } });
 	let at = x + 168;
-	// The todo planner takes the first window's place (office/props.ts draws its sticky notes).
-	const items: WallItem["kind"][] = ["planner", "whiteboard", "window", "window"];
+	const items: WallItem["kind"][] = ["sign", "whiteboard", "window", "window"];
 	for (const kind of items) {
 		const ww = kind === "whiteboard" ? 150 : 116;
 		if (at + ww > x + w - (a.band === "bottom" ? 90 : 18)) break;
-		const board = kind === "whiteboard" || kind === "planner";
-		a.wall.push({ kind, rect: { x: at, y: board ? wy - 2 : wy + 4, w: ww, h: board ? 84 : 74 }, slot: kind === "whiteboard" ? `${key}:board` : undefined });
+		const rect = kind === "whiteboard" ? { x: at, y: wy - 2, w: ww, h: 84 } : kind === "sign" ? { x: at, y: wy + 4, w: ww, h: 62 } : { x: at, y: wy + 4, w: ww, h: 74 };
+		a.wall.push({ kind, rect, slot: kind === "whiteboard" ? `${key}:board` : kind === "sign" ? `${key}:sign` : undefined });
 		at += ww + 26;
 	}
-	// Where a note is posted on the planner from: on the floor below its left edge, facing it.
-	const planner = a.wall.find((item) => item.kind === "planner");
-	if (planner) a.spots.planner = [slot(planner.rect.x + 12, a.floorY + 22)];
 	if (a.band === "bottom") a.wall.push({ kind: "door", rect: { x: x + w - 82, y: y + 14, w: 60, h: WALL - 14 } });
 	const front = a.band === "top" ? y + a.rect.h - FRONT - 4 : y + a.rect.h - FRONT - 4;
 	a.fixtures.push(fixture("plant", x + w - 26, front));
@@ -320,10 +320,14 @@ function yours(a: Area): void {
 	a.wall.push({ kind: "door", rect: { x: x + 16, y: a.rect.y + 14, w: 60, h: WALL - 14 } });
 	a.wall.push({ kind: "sign", rect: { x: x + 90, y: a.rect.y + 14, w: 116, h: 62 }, slot: "yours:serving" });
 	a.wall.push({ kind: "you", rect: { x: x + 218, y: a.rect.y + 14, w: 64, h: WALL - 14 } });
-	a.fixtures.push(fixture("tickets", x + 100, f + 40), fixture("bell", x + 206, f + 48), fixture("plant", x + w - 26, f + 340));
 	a.spots.line = Array.from({ length: YOURS_LINE }, (_, k) =>
 		k < 5 ? slot(x + 160 - 30 * k, f + 52 + 34 * k) : slot(x + 66 + 34 * (k - 5), f + 232 + 30 * (k - 5)),
 	);
+	// The counter stands where the first in line rings the bell (rigpoints.ts): its base just behind
+	// the ringer's feet, its top under the plunger (the bell itself is the rig's while it rings).
+	const front = a.spots.line[0]!;
+	const bell = bellFrom(front, LEAD_SIZE);
+	a.fixtures.push(fixture("tickets", x + 100, f + 40), fixture("bell", Math.round(bell.plunger.x), front.y - 1), fixture("plant", x + w - 26, f + 340));
 }
 
 function kitchen(a: Area): void {

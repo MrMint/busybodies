@@ -55,6 +55,8 @@ export interface Tray {
 	buried: boolean;
 	/** The lead has taken the pile to the shredder: the tray is empty until it's back. */
 	out?: boolean;
+	/** The lead is playing `buried`: the rig draws the tray and pile, so the office draws none. */
+	rig?: boolean;
 }
 
 /** The in-tray for a context: a few sheets to a teetering stack; none without a window. */
@@ -180,8 +182,9 @@ export interface Metrics {
 export const NO_METRICS: Metrics = { desks: {}, planners: {}, tickets: {}, next: 1 };
 
 /** A desk's things this snapshot. `out`: its lead is off at the shredder with the pile. */
-export function deskState(s: Session, was: DeskState | undefined, out: boolean): DeskState {
-	const tray = trayFor(s.context);
+export function deskState(s: Session, was: DeskState | undefined, out: boolean, rig = false): DeskState {
+	const found = trayFor(s.context);
+	const tray = found && rig ? { ...found, rig: true } : found;
 	const ch = changesOf(s);
 	const lamp = lampFor([s, ...agentsOf(s.agents)], was && { lamp: was.lamp, at: was.testAt });
 	const word = familyWord(s.family);
@@ -224,8 +227,9 @@ export function metricsFor(sessions: Map<string, Session>, was: Metrics, actors:
 	const carried = new Set<string>();
 	for (const a of Object.values(actors)) if (a.errand?.kind === "sticky" && now < a.errand.until) carried.add(a.errand.session);
 	for (const [id, s] of sessions) {
-		const e = actors[`s:${id}`]?.errand;
-		desks[id] = deskState(s, was.desks[id], e?.kind === "shred" && now < e.until);
+		const lead = actors[`s:${id}`];
+		const e = lead?.errand;
+		desks[id] = deskState(s, was.desks[id], e?.kind === "shred" && now < e.until, lead?.pose === "buried");
 	}
 	return { desks, planners: planners(floor, sessions, carried), tickets: queue.tickets, next: queue.next, ...(queue.serving !== undefined ? { serving: queue.serving } : {}) };
 }

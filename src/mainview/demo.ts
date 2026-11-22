@@ -66,9 +66,9 @@ function floorBusy(): Snapshot {
 		sessions: [
 			session("Ship release 2.4", "lanternfish", "busy", 320, {
 				branch: "release/2.4",
-				// Nearly out of room: buried in its in-tray.
+				// Nearly out of room: papers sliding off its in-tray.
 				family: "opus",
-				context: ctx(0.97),
+				context: ctx(0.93),
 				changes: { files: 34, added: 1240, removed: 380 },
 				todos: { pending: 3, active: 2, done: 6 },
 				cost: { outputTokens: 520_000 },
@@ -102,7 +102,8 @@ function floorBusy(): Snapshot {
 			session("Rename everything", "orbit-kit", "busy", 90, { branch: "chore/rename", family: "fable", context: ctx(0.3), changes: { files: 48, added: 60, removed: 610 }, agents: [agent("scout", "Find usages of paginate")] }),
 			session("Crumb cache rewrite", "breadbox", "idle", 240, { branch: "crumb-cache", agents: [agent("scout", "Paused by you", "stalled")] }),
 			session("Changelog draft", "mossy-docs", "idle", 230, { branch: "docs/changelog", agents: [agent("builder", "Sent home by you", "stopped")] }),
-			session("Docs sweep", "mossy-docs", "busy", 60, { branch: "docs/sweep" }),
+			// Buried to the eyebrows in its in-tray.
+			session("Docs sweep", "mossy-docs", "busy", 60, { branch: "docs/sweep", family: "sonnet", context: ctx(0.97), changes: { files: 22, added: 90, removed: 40 }, cost: { outputTokens: 160_000 } }),
 			session("Webhook spike", "kettle-api", "idle", 210, { branch: "spike/webhooks" }),
 		],
 	};
@@ -255,7 +256,7 @@ export function releaseDay(): { after: number; snapshot: Snapshot }[] {
 		ship.agents.forEach((a, k) => perform(a, RELEASE_SCRIPT[k]![1](t), at - k * 50, (i + k) % 2 === 0));
 		hotfix.agents.forEach((a, k) => perform(a, HOTFIX_SCRIPT[k]![1](t), at - 1500 - k * 50, (i + k) % 2 === 0));
 		// Every edit adds lines: the towers count them.
-		for (const a of [...ship.agents, ...hotfix.agents]) if (a.activity?.at === at - 0 || (a.activity && a.activity.at > at - 3000 && /Edit|Write/.test(a.activity.tool))) a.changes = { ...a.changes!, added: a.changes!.added + 14, removed: a.changes!.removed + 3 };
+		for (const a of [...ship.agents, ...hotfix.agents]) if (a.activity && a.activity.at > at - 3000 && /Edit|Write/.test(a.activity.tool)) a.changes = { ...a.changes!, added: a.changes!.added + 14, removed: a.changes!.removed + 3 };
 		if (t === 18) ship.agents[2]!.commands = { failStreak: 1, repeats: 1, failed: 1, testsFailed: 1, last: { kind: "test", exitCode: 1, at } };
 		if (t === 33) ship.prs = [{ number: 300, url: "https://example.invalid/pull/300", at }];
 		// The in-tray fills until it buries the lead at 9 s; a compaction at 27 s sends it to the shredder.

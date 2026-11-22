@@ -232,16 +232,17 @@ export function stationsFor(area: Pick<Area, "id" | "band" | "rect" | "floorY">,
 
 /**
  * A project room's shredder (a lead feeds its in-tray in on a compaction): off the station strip,
- * against the right wall opposite it, in the narrow gap the desks and crew leave there, at the
- * hallway end (just in from the back wall below the hallway, from the front edge above it), so
- * like the strip it never moves as rows come and go. Its user stands to its left, facing it (the
- * strip's stand to the right), its feet STATION_REACH (scaled) from the working point.
+ * against the right wall opposite it, just under the back wall: the one gap the desks leave there
+ * (above the back-right desk's filing drawers; the front corner has the plant, and the front-right
+ * desk's drawers and skip). Like the planner and the signs it belongs to the back wall: in a room
+ * below the hallway it never moves; in one above, it moves up with the wall when a row is added.
+ * Its user stands to its left, facing it (the strip's stand to the right), its feet STATION_REACH
+ * (scaled) from the working point.
  */
-export const SHREDDER = { inset: 34, back: 40, front: 50, reach: -10 } as const;
+export const SHREDDER = { inset: 34, back: 28, reach: -10 } as const;
 
-export function shredderFor(area: Pick<Area, "id" | "band" | "rect" | "floorY">): Station {
-	const y = area.band === "bottom" ? area.floorY + SHREDDER.back : area.rect.y + area.rect.h - FRONT - SHREDDER.front;
-	const base = { x: area.rect.x + area.rect.w - SHREDDER.inset, y };
+export function shredderFor(area: Pick<Area, "id" | "rect" | "floorY">): Station {
+	const base = { x: area.rect.x + area.rect.w - SHREDDER.inset, y: area.floorY + SHREDDER.back };
 	const at = { x: base.x + SHREDDER.reach, y: base.y + STATION_REACH.y };
 	const use = shredderUse({ at, base }, STATION_CREW_PX);
 	return { id: `${area.id}:shredder:0`, kind: "shredder", areaId: area.id, base, at, use, queue: [] };

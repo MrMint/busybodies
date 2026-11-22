@@ -256,24 +256,26 @@ describe("stations", () => {
 		expect(tight.stations).toHaveLength(4);
 	});
 
-	test("each project room has a shredder off the strip, by the wall opposite it, that never moves", () => {
+	test("each project room has a shredder off the strip, under its back wall by the wall opposite it", () => {
 		for (const project of ["lanternfish", "orbit-kit"]) {
 			const plan = new FloorPlan();
 			const list = [session("lanternfish"), session("orbit-kit")];
 			const room = plan.update(snap(list)).areas.find((a) => a.name === project)!;
 			const st = room.shredder!;
 			expect(room.stations.some((s) => s.kind === "shredder")).toBe(false);
-			// By the right wall, at the hallway end; its user to its left, facing it, inside the room.
+			// By the right wall, just under the back wall; its user to its left, facing it, inside the room.
 			expect(st.base.x).toBeGreaterThan(room.rect.x + room.rect.w - 60);
-			const hallwaySide = room.band === "bottom" ? room.floorY : room.rect.y + room.rect.h;
-			expect(Math.abs(st.base.y - hallwaySide)).toBeLessThan(70);
+			expect(st.base.y - room.floorY).toBeGreaterThan(0);
+			expect(st.base.y - room.floorY).toBeLessThan(40);
 			expect(st.use.y).toBeGreaterThan(room.floorY);
 			expect(st.use.y).toBeLessThan(room.rect.y + room.rect.h);
 			expect(st.use.facing).toBe(1);
 			expect(st.use.x).toBeLessThan(st.at.x);
 			expect(room.fixtures.some((f) => f.kind === "shredder" && f.x === st.base.x && f.y === st.base.y)).toBe(true);
 			const grown = plan.update(snap([...list, ...Array.from({ length: 6 }, () => session(project))])).areas.find((a) => a.name === project)!;
-			expect(grown.shredder).toEqual(st);
+			// It keeps its place on the back wall: fixed below the hallway, moving up with the wall above it.
+			if (room.band === "bottom") expect(grown.shredder).toEqual(st);
+			else expect(grown.shredder!.base.y - grown.floorY).toBe(st.base.y - room.floorY);
 		}
 	});
 });

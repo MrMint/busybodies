@@ -14,7 +14,17 @@
 import { Container, Graphics } from "pixi.js";
 import type { DeskProps, Lamp, PlannerRow, Tray } from "../director/metrics";
 import { GREEN, INK, RED, SHADOW, SUN, label } from "./paper";
+import { trayOnDesk } from "./rigpoints";
 import type { Rect } from "./world";
+
+/** A Graphics that always joins the batch: a pile of sheets or a planner of notes is more than the
+ * ~200 vertices Pixi batches by default, and each would cost its own draw call (and break the
+ * batch around it). They change only when their numbers do, so batching them is cheap. */
+function batched(): Graphics {
+	const g = new Graphics();
+	g.context.batchMode = "batch";
+	return g;
+}
 
 const line = (width: number) => ({ width, color: INK, join: "round" as const, cap: "round" as const });
 const hash = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
@@ -23,9 +33,12 @@ const wob = (seed: number, i: number) => (((seed + i * 2654435761) >>> 0) % 1000
 
 /** Where the desk props sit, from the desk front's centre. */
 export const PROPS = {
-	/** The in-tray's left edge and its floor (the desk top), and the pile's sheet. */
-	tray: { x: -44, y: -54, w: 30, sheet: 2.4 },
-	mugs: { x: -6, y: -52, w: 7, h: 6 },
+	/** The in-tray: at the rig's TRAY point for the lead behind the desk (layout.ts puts the lead at
+	 * (-26, -42) from the desk front's centre; leads are 72 px), so the rig's pile in `buried` lands
+	 * exactly where the office's was. */
+	tray: trayOnDesk({ x: -26, y: -42 }, 72),
+	/** Between the crew build and the in-tray. */
+	mugs: { x: -46, y: -44, w: 7, h: 6 },
 	lamp: { x: 80, y: -66 },
 	drawers: { x: 88, w: 20, h: 11 },
 	skip: { x: 85, y: 16, w: 28, h: 12 },
@@ -34,9 +47,12 @@ export const PROPS = {
 const PAPER = 0xffffff;
 const PAPER_EDGE = 0xdfe4f2;
 
-/** The in-tray: a wire tray and its pile, sheets off it past 80%, empty while the lead has it out. */
+/** The in-tray: a wire tray and its pile, sheets off it past 80%, empty while the lead has it out.
+ * While the lead plays `buried` the rig draws the tray and pile (and the sheets going), so the
+ * office draws nothing, or there would be two. */
 export function inTray(t: Tray, seed: string): Graphics {
-	const g = new Graphics();
+	const g = batched();
+	if (t.rig) return g;
 	const { x, y, w, sheet } = PROPS.tray;
 	const s = hash(seed);
 	// The tray.
@@ -75,7 +91,7 @@ export function inTray(t: Tray, seed: string): Graphics {
 
 /** Mugs stacked on the desk: three, two, one. */
 export function mugPile(n: number): Graphics {
-	const g = new Graphics();
+	const g = batched();
 	const { x, y, w, h } = PROPS.mugs;
 	const rows = [3, 2, 1];
 	let k = 0;
@@ -94,7 +110,7 @@ export function mugPile(n: number): Graphics {
 export function testLamp(lamp: Lamp): Graphics {
 	const { x, y } = PROPS.lamp;
 	const colour = lamp === "red" ? RED : GREEN;
-	const g = new Graphics();
+	const g = batched();
 	g.roundRect(x - 5, y + 10, 10, 3, 1.5).fill(INK);
 	g.rect(x - 1, y - 2, 2, 12).fill(INK);
 	g.circle(x, y - 6, 9).fill({ color: colour, alpha: 0.25 });
@@ -104,7 +120,7 @@ export function testLamp(lamp: Lamp): Graphics {
 
 /** A filing cabinet beside the desk: a drawer per ~10 files; the full ones bulge open with folders. */
 export function drawers(n: number, full: number): Graphics {
-	const g = new Graphics();
+	const g = batched();
 	const { x, w, h } = PROPS.drawers;
 	const top = -(n * h + 4);
 	g.rect(x + 3, top + 3, w, -top).fill(SHADOW);
@@ -125,7 +141,7 @@ export function drawers(n: number, full: number): Graphics {
 
 /** A skip on the floor in front of the cabinet, filled 0 to 5 loads with removed lines. */
 export function skip(load: number): Graphics {
-	const g = new Graphics();
+	const g = batched();
 	const { x, y, w, h } = PROPS.skip;
 	if (load > 0) {
 		// Rubble: crumpled lines heaped over the rim as the loads go in.
@@ -156,7 +172,7 @@ export function deskProps(p: DeskProps, seed: string): { always: Container; deta
 
 /** The signature a desk's props redraw on. */
 export const propsSig = (p: DeskProps | undefined): string =>
-	p ? [p.tray ? `${p.tray.sheets},${p.tray.spill},${p.tray.buried},${!!p.tray.out}` : "", p.word ?? "", p.drawers ? `${p.drawers.drawers},${p.drawers.full}` : "", p.skip, p.mugs, p.lamp ?? ""].join("/") : "";
+	p ? [p.tray ? `${p.tray.sheets},${p.tray.spill},${p.tray.buried},${!!p.tray.out},${!!p.tray.rig}` : "", p.word ?? "", p.drawers ? `${p.drawers.drawers},${p.drawers.full}` : "", p.skip, p.mugs, p.lamp ?? ""].join("/") : "";
 
 // --- The planner -------------------------------------------------------------------------------
 
@@ -167,7 +183,7 @@ const COLUMNS = ["TO DO", "DOING", "DONE"] as const;
  * session, as many as fit and a "+n" for the rest. */
 export function planner(r: Rect, rows: PlannerRow[]): Container {
 	const c = new Container();
-	const g = new Graphics();
+	const g = batched();
 	c.addChild(g);
 	g.roundRect(r.x, r.y, r.w, r.h, 8).fill(0xf7e7c6).stroke(line(5));
 	const colW = (r.w - 12) / 3;
@@ -240,13 +256,15 @@ export function drawPropFurniture(g: Graphics, kind: PropFurniture): void {
 			break;
 		}
 		case "bell": {
-			// The counter by your door, with the bell on it.
-			g.rect(-16 + 4, -38 + 5, 32, 38).fill(SHADOW);
-			g.rect(-14, -32, 4, 32).rect(10, -32, 4, 32).fill(INK);
-			g.roundRect(-18, -40, 36, 8, 3).fill(0xf0c48a).stroke(line(3));
-			g.roundRect(-8, -43, 16, 3, 1.5).fill(INK);
-			g.moveTo(-6, -43).arc(0, -43, 6, Math.PI, 0).closePath().fill(SUN).stroke(line(2));
-			g.circle(0, -51, 1.8).fill(INK);
+			// The counter by your door, centred under the bell's plunger (rigpoints.ts: its top 31 px
+			// up, the plunger's top 42 for a lead), with the bell resting on it. While the bell rings
+			// the rig draws it, exactly over this one.
+			g.rect(-14, -31 + 5, 32, 31).fill(SHADOW);
+			g.rect(-14, -27, 4, 27).rect(10, -27, 4, 27).fill(INK);
+			g.roundRect(-18, -31, 36, 7, 3).fill(0xf0c48a).stroke(line(3));
+			g.moveTo(-6, -31).arc(0, -31, 6, Math.PI, 0).closePath().fill(SUN).stroke(line(2));
+			g.rect(-1, -41, 2, 4).fill(INK);
+			g.circle(0, -41.5, 1.8).fill(INK);
 			break;
 		}
 	}

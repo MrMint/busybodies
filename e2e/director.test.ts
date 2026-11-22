@@ -133,7 +133,8 @@ describe("the inspector", () => {
 		});
 		expect(r.pulsing).toEqual(["room:lanternfish"]);
 		expect(r.pill).toBe("1 waiting on you");
-		expect(["waiting", "waitingPlease"]).toContain(r.pose);
+		// It takes a ticket to your office: walking there, or holding the ticket in the queue.
+		expect(["walk", "ticketWait", "bellRing", "waitingPlease"]).toContain(r.pose);
 		await page.close();
 	}, T);
 

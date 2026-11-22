@@ -8,6 +8,7 @@
 // An errand is kept on the actor: it sets off at `since` (after the character's pause, traits.ts),
 // arrives `walkMs` later, plays its pose until `until`, then the director walks it home as it
 // would anyone whose spot changed.
+import { plannerNote, posterFor } from "../office/rigpoints";
 import { type Slot, type World as Floor, shredderUse } from "../office/world";
 import { POSE, duration } from "../rig/poses";
 import type { Session } from "../../watcher/model";
@@ -140,14 +141,16 @@ export function newErrands(x: NewErrands): Map<string, Errand> {
 		// A todo done: a note walks to the planner (one at a time per session).
 		const done = s.todos?.done ?? 0;
 		if (desk.todos && done > desk.todos.done && ![...x.ongoing.values(), ...out.values()].some((e) => e.kind === "sticky" && e.session === s.id)) {
-			const spot = x.floor.areas.find((a) => a.id === place.area)?.spots.planner?.[0];
-			if (!spot) continue;
+			const board = x.floor.areas.find((a) => a.id === place.area)?.wall.find((w) => w.kind === "planner");
+			if (!board) continue;
 			const crew = x.list
 				.filter((m) => m.kind === "crew" && m.session.id === s.id && m.busy && m.mood === "busy" && !x.busyElsewhere.has(m.key) && !errandFor(m.key))
 				.filter((m) => x.places.get(m.key)?.spot.startsWith("crew:") && still(x.before[m.key], x.now))
 				.sort((a, b) => (a.key < b.key ? -1 : 1));
 			const who = crew[0] ?? (atDesk(lead) && !x.busyElsewhere.has(lead.key) ? lead : undefined);
-			if (who) go(who, "sticky", { spot: `planner:${s.id}`, area: place.area, slot: spot }, ERRANDS.stickyPose, poseMs(ERRANDS.stickyPose), { walkPose: ERRANDS.stickyWalk });
+			// It stands so the note it presses on lands in the DONE column (the rig's PLANNER point).
+			const feet = who && posterFor(plannerNote(board.rect), who.size);
+			if (who && feet) go(who, "sticky", { spot: `planner:${s.id}`, area: place.area, slot: { ...feet, depth: feet.y, facing: 1 } }, ERRANDS.stickyPose, poseMs(ERRANDS.stickyPose), { walkPose: ERRANDS.stickyWalk });
 		}
 	}
 	return out;

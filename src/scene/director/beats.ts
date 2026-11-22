@@ -24,7 +24,7 @@ export interface Acting {
 
 export const BEATS = {
 	/** A beat before these (two-handers, runs and errands keep their timing). */
-	deferrable: new Set(["prOpened", "testFailed", "thumb", "stretch", "glance", "flourish", "stampRed"]),
+	deferrable: new Set(["prOpened", "testFailed", "thumb", "stretch", "glance", "stampRed"]),
 	/** Finishing one of these may earn a flourish... */
 	finishes: new Set(["prOpened", "celebrate", "handover", "stickyPost", "mailDrop", "bellRing"]),
 	/** ...this often. */
