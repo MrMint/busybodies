@@ -12,6 +12,17 @@ typing: Typing, frantic
    9   130ms  { eyes: 'wide', look: 'down', brows: 'worry', mouth: 'flat', armL: 'type1', armR: 'type3', body: 'fwd', fx: 'sweat2', front: 'desk' }
   10   130ms  { eyes: 'wide', look: 'down', brows: 'worry', mouth: 'flat', armL: 'type3', armR: 'type1', body: 'fwd', front: 'desk' }
   11   390ms  { eyes: 'closed', brows: 'worry', mouth: 'small', armL: 'type1', armR: 'sip', holdR: 'mug', front: 'desk' }
+  beat "read", rolled for 22% of passes, never twice running:
+   1   130ms  { eyes: 'wide', look: 'down', brows: 'worry', mouth: 'flat', armL: 'type1', armR: 'type3', body: 'fwd', front: 'desk' }
+   2   130ms  { eyes: 'wide', look: 'down', brows: 'worry', mouth: 'flat', armL: 'type3', armR: 'type1', body: 'fwd', front: 'desk' }
+   3   390ms  { eyes: 'half', look: 'right', brows: 'one', mouth: 'pout', armL: 'type2', armR: 'chin', front: 'desk' }
+   4   130ms  { eyes: 'closed', look: 'right', brows: 'one', mouth: 'pout', armL: 'type2', armR: 'chin', front: 'desk' }
+   5   390ms  { eyes: 'half', look: 'right', brows: 'one', mouth: 'small', armL: 'type2', armR: 'chin', front: 'desk' }
+   6   130ms  { eyes: 'wide', look: 'down', brows: 'up', mouth: 'small', armL: 'type2', armR: 'chin', front: 'desk' }
+   7   130ms  { eyes: 'wide', look: 'down', brows: 'worry', mouth: 'flat', armL: 'type1', armR: 'type3', body: 'fwd', front: 'desk' }
+   8   130ms  { eyes: 'wide', look: 'down', brows: 'worry', mouth: 'flat', armL: 'type3', armR: 'type1', body: 'fwd', fx: 'sweat1', front: 'desk' }
+   9   130ms  { eyes: 'wide', look: 'down', brows: 'worry', mouth: 'flat', armL: 'type1', armR: 'type3', body: 'fwd', front: 'desk' }
+  10   130ms  { eyes: 'wide', look: 'down', brows: 'worry', mouth: 'flat', armL: 'type3', armR: 'type1', body: 'fwd', front: 'desk' }
 
 hammer: Hammering until it compiles
   on busy, loop, roles builder; 12 frames, 2340 ms (18 beats)
@@ -28,6 +39,18 @@ hammer: Hammering until it compiles
   10   390ms  { eyes: 'half', look: 'downR', brows: 'one', mouth: 'small', armL: 'hip', armR: 'sling', body: 'fwd', holdR: 'hammer', work: 'nail3' }
   11   130ms  { eyes: 'closed', look: 'downR', mouth: 'small', armL: 'hip', armR: 'sling', body: 'fwd', holdR: 'hammer', work: 'nail3' }
   12   260ms  { eyes: 'happy', mouth: 'grin', armL: 'hip', armR: 'sling', holdR: 'hammer', work: 'nail3' }
+  beat "check", rolled for 25% of passes, never twice running:
+   1   260ms  { look: 'downR', brows: 'flat', mouth: 'flat', armL: 'hip', armR: 'wind', holdR: 'hammer', work: 'nail1' }
+   2   130ms  { eyes: 'squint', look: 'downR', brows: 'angry', mouth: 'flat', armL: 'hip', armR: 'hit1', holdR: 'hammer', work: 'nail1' }
+   3   130ms  { eyes: 'squint', look: 'downR', brows: 'angry', mouth: 'flat', armL: 'hip', armR: 'hit2', fx: 'hit', holdR: 'hammer', work: 'nail2' }
+   4   390ms  { eyes: 'half', look: 'downR', brows: 'one', mouth: 'pout', armL: 'hip', armR: 'sling', body: 'fwd', holdR: 'hammer', work: 'nail2' }
+   5   130ms  { eyes: 'closed', look: 'downR', brows: 'one', mouth: 'pout', armL: 'hip', armR: 'sling', body: 'fwd', holdR: 'hammer', work: 'nail2' }
+   6   260ms  { eyes: 'wide', look: 'downR', brows: 'up', mouth: 'small', armL: 'hip', armR: 'sling', body: 'fwd', holdR: 'hammer', work: 'nail2' }
+   7   260ms  { eyes: 'half', look: 'downR', brows: 'one', mouth: 'flat', armL: 'hip', armR: 'sling', body: 'nod', holdR: 'hammer', work: 'nail2' }
+   8   260ms  { look: 'downR', brows: 'flat', mouth: 'small', armL: 'hip', armR: 'wind', holdR: 'hammer', work: 'nail2' }
+   9   130ms  { eyes: 'squint', look: 'downR', brows: 'angry', mouth: 'flat', armL: 'hip', armR: 'hit2', holdR: 'hammer', work: 'nail2' }
+  10   130ms  { eyes: 'squint', look: 'downR', brows: 'angry', mouth: 'flat', armL: 'hip', armR: 'hit3', fx: 'hit', holdR: 'hammer', work: 'nail3' }
+  11   260ms  { eyes: 'happy', mouth: 'grin', armL: 'hip', armR: 'sling', holdR: 'hammer', work: 'nail3' }
 
 scouting: Scouting with binoculars
   on busy, loop, roles scout; 5 frames, 1560 ms (12 beats)
@@ -147,6 +170,17 @@ glance: Glancing at a teammate
    2   520ms  { eyes: 'side', look: 'right', brows: 'one', mouth: 'smirk', body: 'leanR' }
    3   130ms  { eyes: 'closed', mouth: 'small' }
    4   390ms  { eyes: 'half', mouth: 'flat' }
+
+consider: Considering it first
+  on reacting, once; 3 frames, 650 ms (5 beats)
+   1   260ms  { eyes: 'half', look: 'upR', brows: 'one', mouth: 'small', armL: 'low', armR: 'chin' }
+   2   130ms  { eyes: 'closed', look: 'upR', brows: 'one', mouth: 'pout', armL: 'low', armR: 'chin' }
+   3   260ms  { eyes: 'half', look: 'upR', brows: 'one', mouth: 'pout', armL: 'low', armR: 'chin' }
+
+nod: A small nod
+  on reacting, once; 2 frames, 260 ms (2 beats)
+   1   130ms  { look: 'right', brows: 'up', mouth: 'small', body: 'nod' }
+   2   130ms  { eyes: 'happy', look: 'right', mouth: 'small' }
 
 inspect: Checking on the crew
   on inspecting, loop, roles lead; 6 frames, 1950 ms (15 beats)
@@ -505,6 +539,15 @@ queueWait: Waiting in line
    7   260ms  { eyes: 'side', look: 'upR', brows: 'one', mouth: 'pout', armL: 'hip', armR: 'low', feet: 'tip', body: 'peer', holdR: 'clipF' }
    8   130ms  { eyes: 'half', brows: 'flat', mouth: 'flat', armL: 'hip', armR: 'low', feet: 'tapR', holdR: 'clipF' }
    9   260ms  { eyes: 'half', brows: 'flat', mouth: 'flat', armL: 'hip', armR: 'low', fx: 'sigh', holdR: 'clipF' }
+  beat "ahead", rolled for 30% of passes, never twice running:
+   1   390ms  { eyes: 'half', look: 'downR', brows: 'flat', mouth: 'flat', armL: 'low', armR: 'check', holdR: 'clipF' }
+   2   260ms  { look: 'right', brows: 'up', mouth: 'small', armL: 'hip', armR: 'low', feet: 'tip', body: 'peer', holdR: 'clipF' }
+   3   390ms  { eyes: 'side', look: 'right', brows: 'one', mouth: 'pout', armL: 'hip', armR: 'low', feet: 'tip', body: 'peer', holdR: 'clipF' }
+   4   130ms  { eyes: 'closed', look: 'right', brows: 'one', mouth: 'pout', armL: 'hip', armR: 'low', feet: 'tip', body: 'peer', holdR: 'clipF' }
+   5   130ms  { eyes: 'half', look: 'right', brows: 'flat', mouth: 'flat', armL: 'hip', armR: 'low', feet: 'tapR', holdR: 'clipF' }
+   6   130ms  { eyes: 'half', look: 'right', brows: 'flat', mouth: 'flat', armL: 'hip', armR: 'low', holdR: 'clipF' }
+   7   130ms  { eyes: 'half', look: 'right', brows: 'flat', mouth: 'flat', armL: 'hip', armR: 'low', feet: 'tapR', holdR: 'clipF' }
+   8   390ms  { eyes: 'half', look: 'downR', brows: 'flat', mouth: 'pout', armL: 'low', armR: 'check', fx: 'sigh', holdR: 'clipF' }
 
 buried: Buried under the in-tray
   on working, loop; 14 frames, 2470 ms (19 beats)
@@ -538,6 +581,32 @@ ticketWait: Waiting at your door with a ticket
   11   130ms  { eyes: 'half', look: 'right', brows: 'flat', mouth: 'flat', armL: 'hip', armR: 'low', feet: 'tapR', holdR: 'ticket' }
   12   130ms  { eyes: 'half', look: 'right', brows: 'flat', mouth: 'flat', armL: 'hip', armR: 'low', holdR: 'ticket' }
   13   130ms  { eyes: 'half', look: 'right', brows: 'flat', mouth: 'flat', armL: 'hip', armR: 'low', feet: 'tapR', holdR: 'ticket' }
+
+ticketPolite: Waiting politely with a ticket
+  on working, loop; 5 frames, 2080 ms (16 beats)
+   1   650ms  { look: 'right', mouth: 'small', armL: 'low', armR: 'check', holdR: 'ticket' }
+   2   130ms  { eyes: 'closed', look: 'right', mouth: 'small', armL: 'low', armR: 'check', holdR: 'ticket' }
+   3   390ms  { look: 'right', mouth: 'small', armL: 'low', armR: 'check', holdR: 'ticket' }
+   4   390ms  { eyes: 'happy', look: 'upR', brows: 'up', mouth: 'small', armL: 'low', armR: 'check', holdR: 'ticket' }
+   5   520ms  { look: 'right', cheeks: 'blush', mouth: 'small', armL: 'low', armR: 'check', holdR: 'ticket' }
+
+ticketChat: Sighing to the one behind
+  on working, loop; 7 frames, 1820 ms (14 beats)
+   1   390ms  { eyes: 'half', look: 'right', brows: 'flat', mouth: 'flat', armL: 'hip', armR: 'low', fx: 'sigh', holdR: 'ticket' }
+   2   260ms  { eyes: 'side', look: 'left', brows: 'one', mouth: 'open', armL: 'out', armR: 'low', holdR: 'ticket' }
+   3   260ms  { eyes: 'side', look: 'left', brows: 'one', mouth: 'small', armL: 'shrug', armR: 'low', holdR: 'ticket' }
+   4   260ms  { eyes: 'side', look: 'left', brows: 'up', mouth: 'open', armL: 'out', armR: 'low', holdR: 'ticket' }
+   5   130ms  { eyes: 'closed', look: 'left', brows: 'one', mouth: 'smirk', armL: 'hip', armR: 'low', holdR: 'ticket' }
+   6   260ms  { eyes: 'half', look: 'right', brows: 'flat', mouth: 'pout', armL: 'hip', armR: 'low', feet: 'tapR', holdR: 'ticket' }
+   7   260ms  { eyes: 'half', look: 'right', brows: 'flat', mouth: 'pout', armL: 'hip', armR: 'low', holdR: 'ticket' }
+
+ticketSlump: Slumped in line, ticket drooping
+  on working, loop; 5 frames, 2600 ms (20 beats)
+   1   780ms  { eyes: 'half', look: 'down', brows: 'worry', mouth: 'pout', armL: 'low', armR: 'droop', body: 'slump', holdR: 'ticket' }
+   2   260ms  { eyes: 'closed', look: 'down', brows: 'worry', mouth: 'pout', armL: 'low', armR: 'droop', body: 'slump', holdR: 'ticket' }
+   3   520ms  { eyes: 'half', look: 'right', brows: 'worry', mouth: 'flat', armL: 'low', armR: 'droop', body: 'slump', fx: 'sigh', holdR: 'ticket' }
+   4   390ms  { eyes: 'half', look: 'upR', brows: 'worry', mouth: 'pout', armL: 'low', armR: 'low', body: 'slump', holdR: 'ticket' }
+   5   650ms  { eyes: 'half', look: 'down', brows: 'worry', mouth: 'pout', armL: 'low', armR: 'droop', body: 'slump', holdR: 'ticket' }
 
 bellRing: Ringing the bell on your desk
   on working, once; 7 frames, 2080 ms (16 beats)

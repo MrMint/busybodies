@@ -13,10 +13,11 @@ import type { Mood } from "../office/slot";
 import type { Area, Slot, World as Floor } from "../office/world";
 import { buildSlot, crewSlot, crewSpot, crewSpots, useFor } from "../office/world";
 import { choosePose, hash } from "../rig/player";
-import { HABITS, POSE, duration } from "../rig/poses";
+import { POSE, duration } from "../rig/poses";
 import { type Role, roleFor } from "../rig/roles";
 import type { Activity, Agent, Commands, RunningTool, Session, Snapshot } from "../../watcher/model";
-import { beat, flourishAfter } from "./beats";
+import { beat, flourishAfter, overlapOf } from "./beats";
+import { habitAt } from "./habits";
 import { dodges } from "./dodge";
 import { atYourDoor, errandPlace, errandUnderWay, newErrands, ongoingErrands, pauseOf, queueUp } from "./errands";
 import { HANDOFF, type HandOff, MAIL, type Mail, handOffSlot, pickTaker } from "./handoff";
@@ -292,7 +293,7 @@ interface Choice {
 }
 
 /** The standing pose for a character's mood and running state, when nothing acted is playing. */
-function standing(s: Spec, now: number, count: Record<string, number>, work?: Work): Choice {
+function standing(s: Spec, now: number, count: Record<string, number>, work?: Work, life = false): Choice {
 	if (s.mood === "stalled") return { pose: "stalled", as: "lead", acted: false };
 	if (s.mood === "done") return { pose: "done", as: "lead", acted: false };
 	if (s.seen.waiting !== undefined) return { pose: choosePose("waiting", s.key, s.rig, count.waiting ?? 0).name, as: "lead", acted: false, trigger: "waiting" };
@@ -306,9 +307,10 @@ function standing(s: Spec, now: number, count: Record<string, number>, work?: Wo
 		const byTool = s.kind === "crew" && work ? WORK_POSE[s.rig]?.[work.kind] : undefined;
 		return { pose: byTool ?? choosePose("busy", s.key, s.rig).name, as: "lead", acted: false };
 	}
-	// Idle: one of the seven habits, from the id, moving on to the next every few minutes.
-	const turn = Math.max(0, Math.floor((now - s.since) / (RULES.habitRotateMin * MIN)));
-	return { pose: HABITS[(hash(s.key) + turn) % HABITS.length]!.name, as: "lead", acted: false };
+	// Idle: one of the seven habits, from the id (habits.ts): with life on, rotating every minute or
+	// two and played again every half minute or so; calm, moving on every ten minutes.
+	const h = habitAt(s.key, s.since, now, life);
+	return { pose: h.pose, as: "lead", acted: false, ...(h.since !== undefined ? { since: h.since } : {}) };
 }
 
 /** A new signal since last time, worth an acted pose. */
@@ -325,7 +327,15 @@ function acted(s: Spec, was: Seen | undefined, now: number): Choice | undefined 
 
 // --- The director -----------------------------------------------------------------------------
 
-export function direct(prev: World | undefined, snap: Snapshot, now: number, floor: Floor): Direction {
+/** What the director is told besides the snapshot. */
+export interface DirectOptions {
+	/** Life on: the window is on screen and the office isn't calm, so idle habits rotate and loop
+	 * gently (habits.ts). Off (the default) is calm mode: one habit played once, every ten minutes. */
+	life?: boolean;
+}
+
+export function direct(prev: World | undefined, snap: Snapshot, now: number, floor: Floor, opts: DirectOptions = {}): Direction {
+	const life = opts.life ?? false;
 	const before = prev?.actors ?? {};
 	const first = prev === undefined;
 	const list = specs(snap);
@@ -376,7 +386,8 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 		const live = was && !was.gone ? was : undefined;
 		const want = s.busy ? workKind(s.running, s.activity) : undefined;
 		const work = s.busy ? nextWork(live?.work, want, now) : undefined;
-		const continuing = live && live.acted && now < live.poseSince + poseMs(live.pose, live.as) ? live : undefined;
+		// A quick model's acted pose is over a touch early: the next one overlaps its end (beats.ts).
+		const continuing = live && live.acted && now < live.poseSince + poseMs(live.pose, live.as) - overlapOf(traitFor(s), live.pose) ? live : undefined;
 		pre.set(s.key, { want, work, news: acted(s, was?.seen, now), continuing, follow: followUp(s, live, continuing) ?? flourishAfter(live, continuing, traitFor(s)) });
 	}
 
@@ -515,7 +526,7 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 
 		let choice: Choice;
 		if (work && want && want !== work.kind) wakes.push(work.since + WORK.holdMs);
-		let st = standing(s, now, count, work);
+		let st = standing(s, now, count, work, life);
 		// Buried in the in-tray: past 95% of the context window, a busy lead at its desk (metrics.ts).
 		if (s.kind === "lead" && s.busy && !st.trigger && place.spot === "desk" && st.pose !== "grumpy" && st.pose !== "thinking" && trayFor(s.session.context)?.buried) st = { pose: "buried", as: "lead", acted: false };
 		if (visits.has(s.key) && st.pose !== "grumpy") st = { pose: "inspect", as: "lead", acted: false };
@@ -549,9 +560,13 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 		// or, for a deliberate model, a beat before an acted pose (errands.ts, beats.ts).
 		const live = was && !was.gone ? was : undefined;
 		const q = queue.places.get(s.key);
+		const trait = traitFor(s);
 		if (q) {
 			const t = queue.tickets[s.key]!;
-			const door = atYourDoor(t, q.k, live, q.spot, continuing, now);
+			// The wait gets worse the longer it goes on; a word with the one behind needs someone there.
+			const behind = [...queue.places.values()].some((o) => o.k === q.k + 1);
+			const door = atYourDoor(t, q.k, live, q.spot, continuing, now, behind);
+			if (door.next !== undefined) wakes.push(door.next);
 			// The rare waiting variant (a "please" paddle) holds that instead of a ticket.
 			const rare = !door.acted && st.trigger === "waiting" && (POSE[st.pose]?.rarity ?? 1) < 1;
 			choice = rare ? st : { pose: door.pose, as: "lead", acted: door.acted, ...(door.rang !== undefined ? { trigger: "bell" } : {}) };
@@ -560,13 +575,14 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 		const errand = errands.get(s.key);
 		const doing = errandUnderWay(errand, now) ? errand : undefined;
 		if (doing) choice = { pose: doing.pose, as: "lead", acted: true, ...(doing.since === now ? { trigger: doing.kind } : {}) };
+		// About to set off on an errand, a deliberate model takes its beat first, visibly.
+		else if (errand && now < errand.since && trait.beat && live && !choice.acted) choice = { pose: trait.beat, as: "lead", acted: false };
 		let pending: Actor["pending"];
-		if (!q && !doing) ({ choice, pending } = beat(choice, live, continuing, pauseOf(s), now, wakes));
+		if (!q && !doing) ({ choice, pending } = beat(choice, live, continuing, trait, now, wakes));
 
 		// A brick run: a builder with a new edit walks it to the build, sets it down, walks back.
 		// How fast it walks, from how hot its work is (and its model's stride).
 		const lastAt = Math.max(s.activity?.at ?? -Infinity, s.agent?.lastWriteAt ?? -Infinity);
-		const trait = traitFor(s);
 		const gait = gaitOf(s, place.area);
 		const run = doing ? undefined : brickRun(s, was, place, choice, runs, prev?.builds[s.session.id], visits, byKey, floor, now, gait.speed, rushing.has(s.session.id) ? RUSH.runShare : 1);
 		if (run) {
@@ -686,8 +702,8 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 		}
 
 		// When this picture changes on its own.
-		if (choice.acted) wakes.push(poseSince + poseMs(choice.pose, choice.as));
-		if (s.mood === "idle") wakes.push(s.since + (Math.floor((now - s.since) / (RULES.habitRotateMin * MIN)) + 1) * RULES.habitRotateMin * MIN);
+		if (choice.acted) wakes.push(poseSince + poseMs(choice.pose, choice.as) - overlapOf(trait, choice.pose));
+		if (s.mood === "idle") wakes.push(habitAt(s.key, s.since, now, life).wake);
 		if (s.busy && s.running) {
 			for (const m of [RULES.thinkingMin, RULES.longBuildMin]) if (now < s.running.since + m * MIN) wakes.push(s.running.since + m * MIN);
 		}

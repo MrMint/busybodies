@@ -44,16 +44,30 @@ export interface Pose {
 	frames: TimedFrame[];
 	/** The second character of a two-hander, timed alongside. */
 	partner?: { role: Role; frames: TimedFrame[] };
+	/**
+	 * Breaking the metronome (plan-alive stream B): a looping pose's variant passes. Now and then
+	 * (`share` of passes, picked from the id, the pose and the pass: player.ts passBeat) a pass
+	 * plays one of these instead of `frames`. Each lasts exactly as long as `frames`, starts and
+	 * ends where `frames` does (so the loop joins up), and is named for the sheet and the inspector.
+	 */
+	beats?: { share: number; passes: { name: string; frames: TimedFrame[] }[] };
 }
 
 type Row = [tokens: string, beats: number, say?: string];
 const frames = (rows: Row[]): TimedFrame[] =>
 	rows.map(([t, beats, say]) => ({ ...parseFrame(t), ms: beats * BEAT_MS, ...(say ? { say } : {}) }));
 
-const pose = ({ partner, ...p }: Omit<Pose, "frames" | "partner"> & { frames: Row[]; partner?: { role: Role; frames: Row[] } }): Pose => ({
+type PoseRows = Omit<Pose, "frames" | "partner" | "beats"> & {
+	frames: Row[];
+	partner?: { role: Role; frames: Row[] };
+	beats?: { share: number; passes: { name: string; frames: Row[] }[] };
+};
+
+const pose = ({ partner, beats, ...p }: PoseRows): Pose => ({
 	...p,
 	frames: frames(p.frames),
 	...(partner ? { partner: { role: partner.role, frames: frames(partner.frames) } } : {}),
+	...(beats ? { beats: { share: beats.share, passes: beats.passes.map((b) => ({ name: b.name, frames: frames(b.frames) })) } } : {}),
 });
 
 // Acting, not wobbling: the body doesn't squash, stretch or hop. Hands and tools do a job you can
@@ -79,6 +93,27 @@ export const POSES: Pose[] = [
 			["e-wide l-down b-worry m-flat al-type3 ar-type1 bd-fwd fr-desk", 1],
 			["e-closed b-worry m-small hr-mug ar-sip al-type1 fr-desk", 3],
 		],
+		beats: {
+			share: 0.22,
+			passes: [
+				{
+					// Stops to read what it wrote: chin on a hand, eyes on the screen, a blink, an "ah", back at it.
+					name: "read",
+					frames: [
+						["e-wide l-down b-worry m-flat al-type1 ar-type3 bd-fwd fr-desk", 1],
+						["e-wide l-down b-worry m-flat al-type3 ar-type1 bd-fwd fr-desk", 1],
+						["e-half l-right b-one m-pout al-type2 ar-chin fr-desk", 3],
+						["e-closed l-right b-one m-pout al-type2 ar-chin fr-desk", 1],
+						["e-half l-right b-one m-small al-type2 ar-chin fr-desk", 3],
+						["e-wide l-down b-up m-small al-type2 ar-chin fr-desk", 1],
+						["e-wide l-down b-worry m-flat al-type1 ar-type3 bd-fwd fr-desk", 1],
+						["e-wide l-down b-worry m-flat al-type3 ar-type1 bd-fwd fr-desk x-sweat1", 1],
+						["e-wide l-down b-worry m-flat al-type1 ar-type3 bd-fwd fr-desk", 1],
+						["e-wide l-down b-worry m-flat al-type3 ar-type1 bd-fwd fr-desk", 1],
+					],
+				},
+			],
+		},
 	}),
 	pose({
 		// Edit/Write: a nail driven home in three strokes, checked, and the next one started. Each
@@ -100,6 +135,29 @@ export const POSES: Pose[] = [
 			["e-closed l-downR m-small hr-hammer ar-sling al-hip bd-fwd w-nail3", 1],
 			["e-happy m-grin hr-hammer ar-sling al-hip w-nail3", 2],
 		],
+		beats: {
+			share: 0.25,
+			passes: [
+				{
+					// One strike, then it stops to check the nail: hammer on the shoulder, a lean in and a
+					// squint, a doubtful brow, a nod, and the last two strikes drive it home.
+					name: "check",
+					frames: [
+						["l-downR b-flat m-flat hr-hammer ar-wind al-hip w-nail1", 2],
+						["e-squint l-downR b-angry m-flat hr-hammer ar-hit1 al-hip w-nail1", 1],
+						["e-squint l-downR b-angry m-flat hr-hammer ar-hit2 al-hip w-nail2 x-hit", 1],
+						["e-half l-downR b-one m-pout hr-hammer ar-sling al-hip bd-fwd w-nail2", 3],
+						["e-closed l-downR b-one m-pout hr-hammer ar-sling al-hip bd-fwd w-nail2", 1],
+						["e-wide l-downR b-up m-small hr-hammer ar-sling al-hip bd-fwd w-nail2", 2],
+						["e-half l-downR b-one m-flat hr-hammer ar-sling al-hip bd-nod w-nail2", 2],
+						["l-downR b-flat m-small hr-hammer ar-wind al-hip w-nail2", 2],
+						["e-squint l-downR b-angry m-flat hr-hammer ar-hit2 al-hip w-nail2", 1],
+						["e-squint l-downR b-angry m-flat hr-hammer ar-hit3 al-hip w-nail3 x-hit", 1],
+						["e-happy m-grin hr-hammer ar-sling al-hip w-nail3", 2],
+					],
+				},
+			],
+		},
 	}),
 	pose({
 		name: "scouting", title: "Scouting with binoculars", trigger: "busy", rarity: 1, play: "loop", roles: ["scout"],
@@ -251,6 +309,27 @@ export const POSES: Pose[] = [
 			["e-side l-right b-one m-smirk bd-leanR", 4],
 			["e-closed m-small", 1],
 			["e-half m-flat", 3],
+		],
+	}),
+	// Model traits as acting (plan-alive stream B; director/traits.ts): what a character does in the
+	// beat before it acts.
+	pose({
+		// A deliberate model: eyes up, chin on a hand, a slow blink, then it acts.
+		name: "consider", title: "Considering it first", trigger: "reacting", rarity: 1, play: "once",
+		lines: [],
+		frames: [
+			["e-half l-upR b-one m-small al-low ar-chin", 2],
+			["e-closed l-upR b-one m-pout al-low ar-chin", 1],
+			["e-half l-upR b-one m-pout al-low ar-chin", 2],
+		],
+	}),
+	pose({
+		// A quick model's go-ahead: a small nod, and on with it.
+		name: "nod", title: "A small nod", trigger: "reacting", rarity: 1, play: "once",
+		lines: [],
+		frames: [
+			["l-right b-up m-small bd-nod", 1],
+			["e-happy l-right m-small", 1],
 		],
 	}),
 	pose({
@@ -738,6 +817,25 @@ export const POSES: Pose[] = [
 			["e-half b-flat m-flat hr-clipF ar-low al-hip f-tapR", 1],
 			["e-half b-flat m-flat hr-clipF ar-low al-hip x-sigh", 2],
 		],
+		beats: {
+			share: 0.3,
+			passes: [
+				{
+					// Sizes up the one ahead: up on its toes, a long side-eye at them, back down, a sigh.
+					name: "ahead",
+					frames: [
+						["e-half l-downR b-flat m-flat hr-clipF ar-check al-low", 3],
+						["l-right b-up m-small hr-clipF ar-low al-hip bd-peer f-tip", 2],
+						["e-side l-right b-one m-pout hr-clipF ar-low al-hip bd-peer f-tip", 3],
+						["e-closed l-right b-one m-pout hr-clipF ar-low al-hip bd-peer f-tip", 1],
+						["e-half l-right b-flat m-flat hr-clipF ar-low al-hip f-tapR", 1],
+						["e-half l-right b-flat m-flat hr-clipF ar-low al-hip", 1],
+						["e-half l-right b-flat m-flat hr-clipF ar-low al-hip f-tapR", 1],
+						["e-half l-downR b-flat m-pout hr-clipF ar-check al-low x-sigh", 3],
+					],
+				},
+			],
+		},
 	}),
 	// Wave 2 (plan-next streams B and C2; the director plays these by name). Names, triggers and
 	// play modes are the contract; the working points are reach.ts TRAY, BELL, PLANNER and HANDOFF.
@@ -785,6 +883,50 @@ export const POSES: Pose[] = [
 			["e-half l-right b-flat m-flat hr-ticket ar-low al-hip f-tapR", 1],
 			["e-half l-right b-flat m-flat hr-ticket ar-low al-hip", 1],
 			["e-half l-right b-flat m-flat hr-ticket ar-low al-hip f-tapR", 1],
+		],
+	}),
+	// Waiting gets worse the longer you leave it (plan-alive stream B; director/errands.ts
+	// WAITING): polite, then ticketWait (the door, the foot), then a sigh and a word with the one
+	// behind, then a slump with the ticket drooping. The line runs down and to the left of the
+	// counter, so the one behind is on the walker's left.
+	pose({
+		// Just arrived: the ticket held up under the chin, a small smile, a hopeful look at the sign.
+		name: "ticketPolite", title: "Waiting politely with a ticket", trigger: "working", rarity: 1, play: "loop",
+		lines: [],
+		frames: [
+			["l-right m-small hr-ticket ar-check al-low", 5],
+			["e-closed l-right m-small hr-ticket ar-check al-low", 1],
+			["l-right m-small hr-ticket ar-check al-low", 3],
+			["e-happy l-upR b-up m-small hr-ticket ar-check al-low", 3],
+			["l-right c-blush m-small hr-ticket ar-check al-low", 4],
+		],
+	}),
+	pose({
+		// A while in: a sigh, then it turns to the one behind with an open hand ("can you believe"),
+		// a shrug, a smirk, and back to facing the front with the foot going.
+		name: "ticketChat", title: "Sighing to the one behind", trigger: "working", rarity: 1, play: "loop",
+		lines: [],
+		frames: [
+			["e-half l-right b-flat m-flat hr-ticket ar-low al-hip x-sigh", 3],
+			["e-side l-left b-one m-open hr-ticket ar-low al-out", 2],
+			["e-side l-left b-one m-small hr-ticket ar-low al-shrug", 2],
+			["e-side l-left b-up m-open hr-ticket ar-low al-out", 2],
+			["e-closed l-left b-one m-smirk hr-ticket ar-low al-hip", 1],
+			["e-half l-right b-flat m-pout hr-ticket ar-low al-hip f-tapR", 2],
+			["e-half l-right b-flat m-pout hr-ticket ar-low al-hip", 2],
+		],
+	}),
+	pose({
+		// Left far too long: slumped, the ticket drooping from a limp wrist, a glance up at the sign
+		// now and then, nothing.
+		name: "ticketSlump", title: "Slumped in line, ticket drooping", trigger: "working", rarity: 1, play: "loop",
+		lines: [],
+		frames: [
+			["e-half l-down b-worry m-pout hr-ticket ar-droop al-low bd-slump", 6],
+			["e-closed l-down b-worry m-pout hr-ticket ar-droop al-low bd-slump", 2],
+			["e-half l-right b-worry m-flat hr-ticket ar-droop al-low bd-slump x-sigh", 4],
+			["e-half l-upR b-worry m-pout hr-ticket ar-low al-low bd-slump", 3],
+			["e-half l-down b-worry m-pout hr-ticket ar-droop al-low bd-slump", 5],
 		],
 	}),
 	pose({
