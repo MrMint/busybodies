@@ -1055,3 +1055,45 @@ The AudioContext is made only once sound is on and the window visible, and suspe
 calm or off. Only the full office window plays sound. The tray menu is pure data (`bun/menu.ts`).
 Left to check by ear in the app: levels, mix, and whether a tray toggle can start audio in
 WKWebView before a click in the window.
+
+## 2026-11-22: lived in, wave 2, stream C (light, material and labels)
+
+**Light is baked, never animated.** Five phases from the local hour (morning 6–10, noon 10–15, late
+afternoon 15–18, dusk 18–20, night; `office/daylight.ts`). `?hour=` pins one; otherwise a timer
+re-lights the office as each phase starts. The light layer (`office/light.ts`) is a light map at 1/6
+world resolution, multiplied over floor, furniture and cast: each area's ambient light for the
+phase, vacant rooms and empty desks a shade darker, desk lamps (a pool appears when a session
+starts), overhead light (round pools in the office, fluorescent strips per row in the factory).
+Neighbouring rooms dim at a room or desk stop, so the focused room reads as a stage. Halos after
+dark and sunlight patches under the windows are a few additive sprites where they fall. The map is
+re-made only when its signature changes (phase, focus, layout, busy desks, occupied areas). A rush
+room's flicker is the only moving light, on the life clock at the acting rate, only while life is
+on. The pulse ring stays above the light so a waiting room shows at night. A theme supplies only
+values (`SceneLight`), so the painters are untouched.
+
+**The room's paper pass is baked with the room.** Floor material, a rug or work zone, the walls' sun
+shadows, the view out of each window (sky bands, a skyline laid out by world x so neighbouring
+windows agree, the sun in the east window in the morning and the west late in the day, the moon at
+night), a hand-cut wobble on the shell, hash-generated grain and the room's painted name all go into
+the room's cached texture; a room re-bakes on a phase change. Clouds are pane-sized sprites on the
+life clock. Furniture casts stacked two-offset shadows in a layer under the depth layer. The lawn is
+the renderer's background; the yard is baked sprites (many small vector shapes measured ~30% of a
+software-rendered frame), with a little parallax on tree tops, so they move only with the camera.
+
+**Fewer labels.** Floating room tabs cost 18 of the 29 WebGL draws in a busy frame. Room names are
+painted in the hallway at each room's threshold (a vinyl decal with an arrow; a stencil in the
+factory), and the room camera frames the threshold. Counts show as one pill for the focused room, at
+room and desk stops; desk name cards only there too. Signs, whiteboards and frames hang between
+`SIGN_TOP` and `SIGN_FOOT` (12 to 64 px down the back wall), clear of a back-row lead's head
+(tested). A busy frame is now 13–17 draws in the office and 6–12 in the factory, at any hour.
+
+## 2026-11-22: lived in, wave 2 merged
+
+The six streams merged here in the order A, B, F, E, D, C, then main (#19, the settings cog). Where
+they met: the walk's own looks (setting off, a turn, the plant) win over the director's `lookAt`
+while they last; the director takes one options object (`{ life, view }`); coming back on screen
+re-directs (life changes how habits run, the cast notices you, the compact camera starts over); the
+settings sheet gained Sound and Calm office beside Theme, saved and synced with the tray through a
+new `setToggles` RPC request. Every stream's e2e run was under a load average of 40 to 370 from the
+others, where the unchanged base failed the same way; the suite was rerun here once the machine was
+quiet.

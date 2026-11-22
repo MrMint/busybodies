@@ -50,6 +50,9 @@ summarised in the streams below.
 
 ## Wave 2: six streams in parallel
 
+**Landed** (merged in this branch; see the wave 2 entries in `docs/decisions.md`). What each
+stream left is listed there and folded into wave 3 below.
+
 Each stream is one agent in its own worktree, branched from wave 1, landing back here. File
 ownership is listed so the streams don't collide; where two must touch a file, each keeps to its
 named region. Every stream: deterministic, checked through `window.__busybodies` before pixels,
