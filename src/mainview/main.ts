@@ -9,11 +9,14 @@ import { Office } from "../scene/office/office";
 import { LAWN } from "../scene/office/paper";
 import { installHud } from "./hud";
 import { installInspector } from "./inspector";
+import { type Bridge, installShell } from "./shell";
 import { placeholders } from "./placeholder";
 import { Atlas, buildPoseSheet, paperTheme, rigCharacters } from "../scene/rig";
 import { Director, placeholderVoice } from "../scene/director";
 
 const params = new URLSearchParams(location.search);
+/** ?compact: the small floating window (transparent, always on top; src/bun/compact.ts). */
+const compact = params.has("compact");
 
 /** Profiling modes: ?blank draws nothing but still takes snapshots; ?blank&norpc does neither. */
 function blank(): void {
@@ -29,6 +32,8 @@ function blank(): void {
 	await app.init({
 		resizeTo: window,
 		background: LAWN,
+		// The compact window is transparent: the office floats on the desktop.
+		backgroundAlpha: compact ? 0 : 1,
 		antialias: true,
 		autoDensity: true,
 		resolution: window.devicePixelRatio,
@@ -64,7 +69,7 @@ function blank(): void {
 	const characters = params.has("placeholders") ? placeholders(app.renderer) : rigCharacters(atlas);
 	// The director decides who stands where and in which pose; the office draws it.
 	const director = new Director();
-	const office = new Office({ renderer: app.renderer, characters, wake: () => scene.redraw(), cast: director.cast });
+	const office = new Office({ renderer: app.renderer, characters, wake: () => scene.redraw(), cast: director.cast, top: compact ? 40 : 64 });
 	app.stage.addChild(office);
 
 	// Ambient motion doesn't need the display's full rate (120 Hz on ProMotion screens). A camera
@@ -99,6 +104,7 @@ function blank(): void {
 			director.now = snapshot.at;
 			scene.direct();
 			hud.update(snapshot);
+			shell.update(snapshot);
 			if (inspector) inspector.ready = true;
 			if (import.meta.env.DEV) {
 				const count = (l: Snapshot["sessions"]): number => l.reduce((n, s) => n + 1 + count(s.children), 0);
@@ -133,7 +139,21 @@ function blank(): void {
 	const show = scene.show;
 	const redraw = scene.redraw;
 	const inspector = import.meta.env.DEV || params.has("inspect") ? installInspector(app, office, scene, director) : undefined;
-	const hud = installHud(office);
+	let bridge: Bridge | undefined;
+	const shell = installShell({
+		bridge: { status: () => bridge!.status(), setCompact: (on) => bridge?.setCompact(on), showOffice: () => bridge?.showOffice(), openProjectPage: () => bridge?.openProjectPage() },
+		live: !params.has("demo") && !params.has("replay"),
+		compact,
+		// ?demo=nohome: the "no coding agent found" state, without a real home folder.
+		status: params.get("demo") === "nohome" ? { homeFound: false, home: "~/.claude" } : undefined,
+	});
+	const hud = installHud(office, {
+		compact,
+		about: () => shell.about(),
+		expand: () => bridge?.showOffice(),
+		hide: () => bridge?.setCompact(false),
+	});
+	if (params.has("about")) shell.about();
 
 	// Click a room to zoom to it, then a desk; click outside the rooms for the whole office.
 	app.stage.eventMode = "static";
@@ -174,9 +194,15 @@ function blank(): void {
 	}
 
 	const rpc = Electroview.defineRPC<BusybodiesRPC>({
-		handlers: { messages: { snapshot: show } },
+		handlers: { messages: { snapshot: show, about: () => shell.about() } },
 	});
 	new Electroview({ rpc });
+	bridge = {
+		status: () => rpc.request.status(),
+		setCompact: (on) => void rpc.request.setCompact({ on }),
+		showOffice: () => void rpc.request.showOffice(),
+		openProjectPage: () => void rpc.request.openProjectPage(),
+	};
 
 	const first = await rpc.request.snapshot();
 	if (first) show(first);

@@ -1,6 +1,17 @@
 // The typed channel between the Bun process (which runs the watcher) and the scene in the webview.
+// Both windows (the full office and the compact one) speak it.
 import type { RPCSchema } from "electrobun/view";
 import type { Snapshot } from "../watcher/model";
+
+/** What the app knows about itself and where it looks, for the About screen and empty states. */
+export interface AppStatus {
+	version: string;
+	/** The agent tool's folder the watcher reads. */
+	home: string;
+	/** False when that folder doesn't exist: no coding agent found. */
+	homeFound: boolean;
+	compact: boolean;
+}
 
 export type BusybodiesRPC = {
 	/** What the Bun process answers. */
@@ -8,6 +19,13 @@ export type BusybodiesRPC = {
 		requests: {
 			/** The current snapshot, for a scene that just loaded or reloaded. */
 			snapshot: { params: undefined; response: Snapshot | null };
+			status: { params: undefined; response: AppStatus };
+			/** Switch the compact floating window on or off. */
+			setCompact: { params: { on: boolean }; response: boolean };
+			/** Bring the full office forward (and leave compact mode). */
+			showOffice: { params: undefined; response: boolean };
+			/** Open the project's page in the browser. Only the project's own URL is allowed. */
+			openProjectPage: { params: undefined; response: boolean };
 		};
 		messages: {};
 	}>;
@@ -17,6 +35,8 @@ export type BusybodiesRPC = {
 		messages: {
 			/** Sent whenever the snapshot's content changes. */
 			snapshot: Snapshot;
+			/** Show the About screen (from the tray menu). */
+			about: undefined;
 		};
 	}>;
 };

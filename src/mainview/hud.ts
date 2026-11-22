@@ -1,6 +1,7 @@
 // The top bar, in plain DOM over the canvas: the time, a head count, and the camera buttons. Keys:
 // Escape, 0 or Home for the whole office; n or → for the next room; p or ← for the previous one.
-// Being DOM, it costs the scene no frames.
+// Being DOM, it costs the scene no frames. In compact mode it is a slim strip you drag the
+// frameless window by, with buttons to open the full office or hide the compact one.
 import type { Office } from "../scene/office/office";
 import { crewOf } from "../scene/office/placement";
 import type { Session, Snapshot } from "../watcher/model";
@@ -19,18 +20,41 @@ const CSS = `
  padding:5px 14px;cursor:pointer;box-shadow:2px 3px 0 #1b2140}
 #hud button.on{background:#1b2140;color:#fff}
 @media (max-width:640px){#hud .pill.count{display:none}}
+#hud .icon{padding:5px 11px}
+#hud.compact{height:34px;gap:6px;padding:0 6px 0 10px;pointer-events:auto;cursor:grab;font-size:12px}
+#hud.compact .brand{font-size:13px;padding:2px 9px 4px;border-radius:8px}
+#hud.compact .pill{border-width:2px;padding:1px 8px}
+#hud.compact button{border-width:2px;padding:2px 9px;box-shadow:1px 2px 0 #1b2140}
+#hud.compact .clock,#hud.compact .all,#hud.compact .prev,#hud.compact .next,#hud.compact .about{display:none}
+#hud:not(.compact) .expand,#hud:not(.compact) .hide{display:none}
 `;
+
+export interface HudOptions {
+	/** The compact floating window's strip. */
+	compact?: boolean;
+	about?: () => void;
+	/** Compact only: open the full office. */
+	expand?: () => void;
+	/** Compact only: hide the compact window. */
+	hide?: () => void;
+}
 
 const flat = (list: Session[]): Session[] => list.flatMap((s) => [s, ...flat(s.children)]);
 
-export function installHud(office: Office) {
+export function installHud(office: Office, opts: HudOptions = {}) {
 	const style = document.createElement("style");
 	style.textContent = CSS;
 	document.head.appendChild(style);
 	const bar = document.createElement("div");
 	bar.id = "hud";
 	bar.innerHTML = `<span class="brand">Busybodies</span><span class="pill clock"></span><span class="pill count"></span><span class="pill waiting" hidden></span>
-<span class="gap"></span><button class="all">Whole office</button><button class="prev" aria-label="Previous room">‹</button><button class="next">Next room ›</button>`;
+<span class="gap"></span><button class="all">Whole office</button><button class="prev" aria-label="Previous room">‹</button><button class="next">Next room ›</button>
+<button class="about icon" aria-label="About Busybodies">?</button><button class="expand" title="Open the full office">Office ⤢</button><button class="hide" aria-label="Hide the compact window">×</button>`;
+	if (opts.compact) {
+		// Electrobun drags a frameless window by elements with this class; buttons opt out.
+		bar.classList.add("compact", "electrobun-webkit-app-region-drag");
+		for (const b of bar.querySelectorAll("button")) b.classList.add("electrobun-webkit-app-region-no-drag");
+	}
 	document.body.appendChild(bar);
 	const $ = (sel: string) => bar.querySelector(sel) as HTMLElement;
 	// Snapshots arrive many times a second; touching the DOM only on a real change keeps the
@@ -47,6 +71,9 @@ export function installHud(office: Office) {
 	$(".all").onclick = () => (office.goTo({ kind: "office" }), sync());
 	$(".next").onclick = () => (office.nextRoom(1), sync());
 	$(".prev").onclick = () => (office.nextRoom(-1), sync());
+	$(".about").onclick = () => opts.about?.();
+	$(".expand").onclick = () => opts.expand?.();
+	$(".hide").onclick = () => opts.hide?.();
 	window.addEventListener("keydown", (e) => {
 		if (e.metaKey || e.ctrlKey || e.altKey) return;
 		if (e.key === "Escape" || e.key === "0" || e.key === "Home") office.goTo({ kind: "office" });
