@@ -190,7 +190,18 @@ describe("layout scaling", () => {
 
 	test("an empty snapshot still has the common areas", () => {
 		const world = new FloorPlan().update(snap([]));
-		expect(world.areas.map((a) => a.kind)).toEqual(["meeting", "lobby", "kitchen"]);
+		expect(world.areas.map((a) => a.kind)).toEqual(["meeting", "lobby", "yours", "kitchen"]);
+		// Your office sits beside the lobby, its way in first on the wall (walks use it), a line to queue in.
+		const yours = world.areas.find((a) => a.kind === "yours")!;
+		expect(yours.rect.x).toBe(world.areas.find((a) => a.kind === "lobby")!.rect.x + world.areas.find((a) => a.kind === "lobby")!.rect.w);
+		expect(yours.wall.find((w) => w.kind === "door" || w.kind === "you")!.kind).toBe("door");
+		expect(yours.spots.line!.length).toBeGreaterThanOrEqual(6);
+		for (const p of yours.spots.line!) {
+			expect(p.x).toBeGreaterThan(yours.rect.x + 20);
+			expect(p.x).toBeLessThan(yours.rect.x + yours.rect.w - 20);
+			expect(p.y).toBeGreaterThan(yours.floorY);
+			expect(p.y).toBeLessThan(yours.rect.y + yours.rect.h - 10);
+		}
 		expect(world.areas.find((a) => a.kind === "kitchen")!.spots.queue).toHaveLength(5);
 	});
 
@@ -243,5 +254,26 @@ describe("stations", () => {
 		// A two-row room has no space for more, however big the crew.
 		const tight = new FloorPlan().update(snap([session("pebble", { agents: crew(20) })])).areas.find((a) => a.name === "pebble")!;
 		expect(tight.stations).toHaveLength(4);
+	});
+
+	test("each project room has a shredder off the strip, by the wall opposite it, that never moves", () => {
+		for (const project of ["lanternfish", "orbit-kit"]) {
+			const plan = new FloorPlan();
+			const list = [session("lanternfish"), session("orbit-kit")];
+			const room = plan.update(snap(list)).areas.find((a) => a.name === project)!;
+			const st = room.shredder!;
+			expect(room.stations.some((s) => s.kind === "shredder")).toBe(false);
+			// By the right wall, at the hallway end; its user to its left, facing it, inside the room.
+			expect(st.base.x).toBeGreaterThan(room.rect.x + room.rect.w - 60);
+			const hallwaySide = room.band === "bottom" ? room.floorY : room.rect.y + room.rect.h;
+			expect(Math.abs(st.base.y - hallwaySide)).toBeLessThan(70);
+			expect(st.use.y).toBeGreaterThan(room.floorY);
+			expect(st.use.y).toBeLessThan(room.rect.y + room.rect.h);
+			expect(st.use.facing).toBe(1);
+			expect(st.use.x).toBeLessThan(st.at.x);
+			expect(room.fixtures.some((f) => f.kind === "shredder" && f.x === st.base.x && f.y === st.base.y)).toBe(true);
+			const grown = plan.update(snap([...list, ...Array.from({ length: 6 }, () => session(project))])).areas.find((a) => a.name === project)!;
+			expect(grown.shredder).toEqual(st);
+		}
 	});
 });

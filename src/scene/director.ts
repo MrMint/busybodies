@@ -11,6 +11,7 @@
 import type { Placed } from "./office/placement";
 import type { World as Floor } from "./office/world";
 import { type Direction, cueFor, direct, here } from "./director/direct";
+import { type Metrics, NO_METRICS } from "./director/metrics";
 import type { Actor, Build, World, WorldEvent } from "./director/types";
 import type { Snapshot } from "../watcher/model";
 
@@ -75,8 +76,12 @@ export class Director {
 	waiting(): { key: string; area: string }[] {
 		return Object.values(this.#world?.actors ?? {})
 			.filter((a) => a.kind === "lead" && !a.gone && a.seen.waiting !== undefined)
-			.map((a) => ({ key: a.key, area: a.area }));
+			.map((a) => ({ key: a.key, area: a.homeArea ?? a.area }));
 	}
+
+	/** Metrics as things, for the office to draw: each desk's in-tray, drawers, skip, mugs and
+	 * lamp, the planners, and NOW SERVING (director/metrics.ts). */
+	metrics = (): Metrics => this.#world?.metrics ?? NO_METRICS;
 
 	on(fn: Listener): () => void {
 		this.#listeners.add(fn);

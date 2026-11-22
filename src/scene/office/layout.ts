@@ -37,6 +37,7 @@ import {
 	type World,
 	roomHeight,
 	roomWidth,
+	shredderFor,
 	stationsFor,
 } from "./world";
 
@@ -74,7 +75,7 @@ export class FloorPlan {
 
 	constructor() {
 		this.#bands.top.push(common("meeting", "top"));
-		this.#bands.bottom.push(common("lobby", "bottom"), common("kitchen", "bottom"));
+		this.#bands.bottom.push(common("lobby", "bottom"), common("yours", "bottom"), common("kitchen", "bottom"));
 	}
 
 	/** Fold a snapshot into the plan and return the world it gives. */
@@ -176,7 +177,7 @@ export class FloorPlan {
 	}
 }
 
-function common(kind: "meeting" | "lobby" | "kitchen", band: Band): Room {
+function common(kind: "meeting" | "lobby" | "yours" | "kitchen", band: Band): Room {
 	return { key: kind, kind, band, width: COMMON_W[kind], cols: 0, cells: [] };
 }
 
@@ -202,7 +203,7 @@ function nearestFree(room: Room, from: number): number {
 
 // --- Geometry ---------------------------------------------------------------------------------
 
-const NAMES = { meeting: "meeting room", lobby: "lobby", kitchen: "kitchen" } as const;
+const NAMES = { meeting: "meeting room", lobby: "lobby", yours: "your office", kitchen: "kitchen" } as const;
 
 function build(room: Room, x: number): Area {
 	const rows = room.cols ? room.cells.length / room.cols : MIN_ROWS;
@@ -228,9 +229,13 @@ function build(room: Room, x: number): Area {
 				const kind = STATION_FURNITURE[st.kind];
 				if (kind) area.fixtures.push(fixture(kind, st.base.x, st.base.y));
 			}
+			// The shredder, in the back corner opposite the strip.
+			area.shredder = shredderFor(area);
+			area.fixtures.push(fixture("shredder", area.shredder.base.x, area.shredder.base.y));
 		}
 	} else if (room.kind === "meeting") meeting(area);
 	else if (room.kind === "lobby") lobby(area);
+	else if (room.kind === "yours") yours(area);
 	else kitchen(area);
 	return area;
 }
@@ -262,13 +267,18 @@ function dressRoom(a: Area): void {
 	const key = a.id;
 	a.wall.push({ kind: "sign", rect: { x: x + 18, y: wy + 4, w: 132, h: 62 }, slot: `${key}:sign` });
 	let at = x + 168;
-	const items: WallItem["kind"][] = ["window", "whiteboard", "window", "window"];
+	// The todo planner takes the first window's place (office/props.ts draws its sticky notes).
+	const items: WallItem["kind"][] = ["planner", "whiteboard", "window", "window"];
 	for (const kind of items) {
 		const ww = kind === "whiteboard" ? 150 : 116;
 		if (at + ww > x + w - (a.band === "bottom" ? 90 : 18)) break;
-		a.wall.push({ kind, rect: { x: at, y: kind === "whiteboard" ? wy - 2 : wy + 4, w: ww, h: kind === "whiteboard" ? 84 : 74 }, slot: kind === "whiteboard" ? `${key}:board` : undefined });
+		const board = kind === "whiteboard" || kind === "planner";
+		a.wall.push({ kind, rect: { x: at, y: board ? wy - 2 : wy + 4, w: ww, h: board ? 84 : 74 }, slot: kind === "whiteboard" ? `${key}:board` : undefined });
 		at += ww + 26;
 	}
+	// Where a note is posted on the planner from: on the floor below its left edge, facing it.
+	const planner = a.wall.find((item) => item.kind === "planner");
+	if (planner) a.spots.planner = [slot(planner.rect.x + 12, a.floorY + 22)];
 	if (a.band === "bottom") a.wall.push({ kind: "door", rect: { x: x + w - 82, y: y + 14, w: 60, h: WALL - 14 } });
 	const front = a.band === "top" ? y + a.rect.h - FRONT - 4 : y + a.rect.h - FRONT - 4;
 	a.fixtures.push(fixture("plant", x + w - 26, front));
@@ -294,6 +304,26 @@ function lobby(a: Area): void {
 	a.spots.nap = [{ x: x + w / 2 - 36, y: f + 128, depth: f + 141, facing: 1 }];
 	a.spots.sofa = [slot(x + 70, f + 262), slot(x + 130, f + 262, -1)];
 	a.spots.door = [slot(x + 204, f + 30, -1)];
+}
+
+/**
+ * Your office, beside the lobby: where sessions waiting on you queue. Its back wall has the door
+ * in from the hallway (first, so walks use it), the NOW SERVING sign, and your door, marked YOU.
+ * The ticket machine stands by the way in, the counter with the bell by your door; the queue runs
+ * from the counter down and to the left, then back right, in the order of `spots.line`.
+ */
+export const YOURS_LINE = 9;
+
+function yours(a: Area): void {
+	const { x, w } = a.rect;
+	const f = a.floorY;
+	a.wall.push({ kind: "door", rect: { x: x + 16, y: a.rect.y + 14, w: 60, h: WALL - 14 } });
+	a.wall.push({ kind: "sign", rect: { x: x + 90, y: a.rect.y + 14, w: 116, h: 62 }, slot: "yours:serving" });
+	a.wall.push({ kind: "you", rect: { x: x + 218, y: a.rect.y + 14, w: 64, h: WALL - 14 } });
+	a.fixtures.push(fixture("tickets", x + 100, f + 40), fixture("bell", x + 206, f + 48), fixture("plant", x + w - 26, f + 340));
+	a.spots.line = Array.from({ length: YOURS_LINE }, (_, k) =>
+		k < 5 ? slot(x + 160 - 30 * k, f + 52 + 34 * k) : slot(x + 66 + 34 * (k - 5), f + 232 + 30 * (k - 5)),
+	);
 }
 
 function kitchen(a: Area): void {

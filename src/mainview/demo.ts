@@ -35,6 +35,11 @@ function agent(role: string, task: string, status: Agent["status"] = "running", 
 }
 const relevel = (a: Agent, depth: number): Agent => ({ ...a, depth, children: a.children.map((c) => relevel(c, depth + 1)) });
 
+/** A context this full of a 1M window, as of `at` (metrics: the in-tray). */
+const ctx = (share: number, at = NOW) => ({ used: Math.round(share * 1_000_000), window: 1_000_000, at });
+/** A last test result (metrics: the desk's lamp). */
+const tested = (ok: boolean, at = min(2)): Agent["commands"] => ({ failStreak: ok ? 0 : 1, repeats: 1, failed: ok ? 0 : 1, testsFailed: ok ? 0 : 1, last: { kind: "test", exitCode: ok ? 0 : 1, at } });
+
 function session(title: string, project: string, state: string, started: number, extra: Partial<Session> = {}): Session {
 	const id = `demo-session-${++n}`;
 	return {
@@ -61,6 +66,12 @@ function floorBusy(): Snapshot {
 		sessions: [
 			session("Ship release 2.4", "lanternfish", "busy", 320, {
 				branch: "release/2.4",
+				// Nearly out of room: buried in its in-tray.
+				family: "opus",
+				context: ctx(0.97),
+				changes: { files: 34, added: 1240, removed: 380 },
+				todos: { pending: 3, active: 2, done: 6 },
+				cost: { outputTokens: 520_000 },
 				agents: [
 					agent("scout", "Find callers of saveDraft", "running", [agent("scout", "Also find callers", "running", [agent("scout", "Actually looking")])]),
 					agent("reviewer", "PR #212, round 2"),
@@ -70,17 +81,25 @@ function floorBusy(): Snapshot {
 					agent("scout", "Count the flags", "finished"),
 				],
 				children: [
-					session("Export endpoint", "lanternfish", "busy", 200, { worktree: "export-endpoint", agents: [agent("verifier", "Run export tests")] }),
-					session("Settings screen", "lanternfish", "busy", 190, { worktree: "settings-screen", agents: [agent("scout", "Where is the toggle read?")] }),
+					session("Export endpoint", "lanternfish", "busy", 200, { worktree: "export-endpoint", family: "sonnet", context: ctx(0.42), changes: { files: 6, added: 140, removed: 20 }, commands: tested(true), agents: [agent("verifier", "Run export tests")] }),
+					session("Settings screen", "lanternfish", "busy", 190, { worktree: "settings-screen", family: "haiku", context: ctx(0.18), agents: [agent("scout", "Where is the toggle read?")] }),
 					session("Fork: slow CI?", "lanternfish", "idle", 150, { branch: "fork/slow-ci" }),
 				],
 			}),
-			session("Flaky login test", "lanternfish", "busy", 100, { branch: "fix/flaky-login", agents: [agent("verifier", "Same red. Hello again.")] }),
+			session("Flaky login test", "lanternfish", "busy", 100, { branch: "fix/flaky-login", family: "sonnet", context: ctx(0.55), agents: [agent("verifier", "Same red. Hello again.")] }),
 			session("Pagination for /orbits", "orbit-kit", "busy", 260, {
 				branch: "feat/pagination",
+				// Over 80%: papers sliding off. It compacts at +17 s and walks the pile to the shredder.
+				family: "haiku",
+				context: ctx(0.86),
+				compactions: { count: 1, lastAt: min(90) },
+				changes: { files: 12, added: 260, removed: 90 },
+				todos: { pending: 3, active: 1, done: 2 },
+				cost: { outputTokens: 210_000 },
+				commands: tested(true),
 				agents: [agent("builder", "Page two"), agent("verifier", "Page two loads"), agent("verifier", "Old cursor test", "finished")],
 			}),
-			session("Rename everything", "orbit-kit", "busy", 90, { branch: "chore/rename", agents: [agent("scout", "Find usages of paginate")] }),
+			session("Rename everything", "orbit-kit", "busy", 90, { branch: "chore/rename", family: "fable", context: ctx(0.3), changes: { files: 48, added: 60, removed: 610 }, agents: [agent("scout", "Find usages of paginate")] }),
 			session("Crumb cache rewrite", "breadbox", "idle", 240, { branch: "crumb-cache", agents: [agent("scout", "Paused by you", "stalled")] }),
 			session("Changelog draft", "mossy-docs", "idle", 230, { branch: "docs/changelog", agents: [agent("builder", "Sent home by you", "stopped")] }),
 			session("Docs sweep", "mossy-docs", "busy", 60, { branch: "docs/sweep" }),
@@ -171,9 +190,12 @@ function perform(a: Agent, step: Step, at: number, fresh: boolean): void {
 	a.running = step.run ? (a.running?.kind === step.run ? a.running : { tool: step.tool, since: at, kind: step.run }) : undefined;
 }
 
+/** A crew of mixed models: each family walks and works at its own pace (director/traits.ts). */
+const FAMILIES: Agent["family"][] = ["haiku", "sonnet", "opus", "fable", "haiku", "sonnet"];
+
 const crewOf = (script: [string, Script][], rate: number) =>
 	script.map(([task, play], i) => {
-		const a: Agent = { ...agent("general-purpose", task), tools: { calls: rate, errors: 0, windowMs: 60_000 } };
+		const a: Agent = { ...agent("general-purpose", task), tools: { calls: rate, errors: 0, windowMs: 60_000 }, family: FAMILIES[i % FAMILIES.length], changes: { files: 2 + i, added: 30 + i * 12, removed: 6 + i * 3 } };
 		perform(a, play(0), min(0.05 + i * 0.1), true);
 		return a;
 	});
@@ -191,6 +213,12 @@ function release(): Snapshot {
 				branch: "release/3.0",
 				activity: { tool: "Task", at: min(1) },
 				running: { tool: "Task", since: min(1) },
+				// A deliberate lead, its in-tray nearly full (papers sliding off); it compacts at 27 s.
+				family: "opus",
+				context: ctx(0.88),
+				compactions: { count: 0 },
+				todos: { pending: 4, active: 1, done: 2 },
+				cost: { outputTokens: 380_000 },
 				agents: crew,
 			}),
 			// A second, smaller crew next door: its own brick runs, on its own cooldown.
@@ -198,9 +226,13 @@ function release(): Snapshot {
 				branch: "fix/installer",
 				activity: { tool: "Task", at: min(0.5) },
 				running: { tool: "Task", since: min(0.5) },
+				family: "haiku",
+				context: ctx(0.35),
+				commands: tested(true),
+				cost: { outputTokens: 120_000 },
 				agents: crewOf(HOTFIX_SCRIPT, 24),
 			}),
-			session("Docs sweep", "mossy-docs", "idle", 60, { branch: "docs/sweep" }),
+			session("Docs sweep", "mossy-docs", "idle", 60, { branch: "docs/sweep", family: "fable", context: ctx(0.22), changes: { files: 9, added: 120, removed: 45 } }),
 		],
 	};
 }
@@ -219,11 +251,26 @@ export function releaseDay(): { after: number; snapshot: Snapshot }[] {
 		snap = structuredClone(snap);
 		const at = NOW + t * 1000;
 		snap.at = at;
-		const [ship, hotfix] = snap.sessions as [Session, Session];
+		const [ship, hotfix, docs] = snap.sessions as [Session, Session, Session];
 		ship.agents.forEach((a, k) => perform(a, RELEASE_SCRIPT[k]![1](t), at - k * 50, (i + k) % 2 === 0));
 		hotfix.agents.forEach((a, k) => perform(a, HOTFIX_SCRIPT[k]![1](t), at - 1500 - k * 50, (i + k) % 2 === 0));
+		// Every edit adds lines: the towers count them.
+		for (const a of [...ship.agents, ...hotfix.agents]) if (a.activity?.at === at - 0 || (a.activity && a.activity.at > at - 3000 && /Edit|Write/.test(a.activity.tool))) a.changes = { ...a.changes!, added: a.changes!.added + 14, removed: a.changes!.removed + 3 };
 		if (t === 18) ship.agents[2]!.commands = { failStreak: 1, repeats: 1, failed: 1, testsFailed: 1, last: { kind: "test", exitCode: 1, at } };
 		if (t === 33) ship.prs = [{ number: 300, url: "https://example.invalid/pull/300", at }];
+		// The in-tray fills until it buries the lead at 9 s; a compaction at 27 s sends it to the shredder.
+		if (t < 27) ship.context = ctx(Math.min(0.97, 0.88 + t * 0.01), at);
+		if (t === 27) {
+			ship.compactions = { count: 1, lastAt: at - 200, trigger: "auto" };
+			ship.context = ctx(0.08, at - 200);
+		}
+		// Todos done at 9 s and 21 s: a crew member walks each note to the planner.
+		if (t === 9) ship.todos = { pending: 3, active: 1, done: 3 };
+		if (t === 21) ship.todos = { pending: 2, active: 1, done: 4 };
+		// Two sessions wait on you: they queue at your office, the first one in rings the bell.
+		if (t === 6) docs.waiting = { reason: "permission", since: at - 300, source: "hook" };
+		if (t === 12) hotfix.waiting = { reason: "question", since: at - 300, source: "transcript" };
+		if (t === 30) hotfix.waiting = undefined;
 		steps.push({ after: t * 1000, snapshot: snap });
 	}
 	return steps;
@@ -273,7 +320,10 @@ export function demoDay(): { after: number; snapshot: Snapshot }[] {
 	};
 
 	beat(4000, (s) => {
-		find(s, "Pagination for /orbits").agents.push({ ...agent("reviewer", "Review page two"), id: "demo-agent-hired-1", lastWriteAt: at(4000) });
+		const orbit = find(s, "Pagination for /orbits");
+		orbit.agents.push({ ...agent("reviewer", "Review page two"), id: "demo-agent-hired-1", lastWriteAt: at(4000) });
+		// A todo done: the builder walks its note to the planner.
+		orbit.todos = { pending: 2, active: 1, done: 3 };
 		s.sessions.push(session("Hotfix: cursor", "orbit-kit", "busy", 0, { branch: "fix/cursor", startedAt: at(3900), stateSince: at(3900) }));
 	});
 	beat(8000, (s) => {
@@ -286,6 +336,10 @@ export function demoDay(): { after: number; snapshot: Snapshot }[] {
 		const ship = find(s, "Ship release 2.4");
 		ship.prs = [{ number: 219, url: "https://example.invalid/pull/219", at: at(11900) }];
 		ship.agents = ship.agents.filter((a) => a.role !== "Explore");
+		// A second session waits on you: two in the queue at your office.
+		const rename = find(s, "Rename everything");
+		rename.state = "idle";
+		rename.waiting = { reason: "question", since: at(11800), source: "transcript" };
 	});
 	beat(17000, (s) => {
 		const flaky = find(s, "Flaky login test");
@@ -294,11 +348,17 @@ export function demoDay(): { after: number; snapshot: Snapshot }[] {
 		const orbit = find(s, "Pagination for /orbits");
 		const r = orbit.agents.find((a) => a.id === "demo-agent-hired-1")!;
 		r.status = "finished";
+		// A compaction: the pile goes to the shredder.
+		orbit.compactions = { count: 2, lastAt: at(16900), trigger: "auto" };
+		orbit.context = ctx(0.09, at(16900));
 		s.sessions = s.sessions.filter((x) => x.title !== "Webhook spike");
 	});
 	beat(23000, (s) => {
 		const hot = find(s, "Hotfix: cursor");
 		hot.running = { tool: "Bash", since: at(23000) - 25 * 60_000, kind: "build" };
+		const rename = find(s, "Rename everything");
+		rename.state = "busy";
+		rename.waiting = undefined;
 	});
 	return steps;
 }

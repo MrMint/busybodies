@@ -16,7 +16,11 @@ import { choosePose, hash } from "../rig/player";
 import { HABITS, POSE, duration } from "../rig/poses";
 import { type Role, roleFor } from "../rig/roles";
 import type { Activity, Agent, Commands, RunningTool, Session, Snapshot } from "../../watcher/model";
+import { beat, flourishAfter } from "./beats";
+import { atYourDoor, errandPlace, errandUnderWay, newErrands, ongoingErrands, pauseOf, queueUp } from "./errands";
+import { NO_METRICS, changesOf, metricsFor, towerBricks, trayFor } from "./metrics";
 import { PACE, RUNS, editRate, paceOf, runCooldown } from "./pace";
+import { traitOf } from "./traits";
 import { type Point, along, pathBetween, walkMs } from "./paths";
 import { STATION_FOR, STATION_POSE, type StationKind } from "./stations";
 import { TRIP, type Trip, type Want, planTrips, tripPlace } from "./trips";
@@ -90,6 +94,14 @@ interface Spec {
 }
 
 const crewSize = (depth: number) => Math.max(40, 58 - (depth - 1) * 8);
+/** A character's model personality (traits.ts): crew by their own model, leads by the session's. */
+const traitFor = (s: Spec) => traitOf(s.kind === "lead" ? s.session.family : s.agent?.family);
+/** How fast a character walks now: its heat pace (pace.ts) times its trait. */
+function gaitOf(s: Spec, now: number) {
+	const lastAt = Math.max(s.activity?.at ?? -Infinity, s.agent?.lastWriteAt ?? -Infinity);
+	const g = paceOf(s.agent ? s.agent.tools : s.session.tools, Number.isFinite(lastAt) ? lastAt : undefined, now);
+	return { ...g, speed: g.speed * traitFor(s).walk };
+}
 const agentMood = (a: Agent): Mood => (a.status === "running" ? "busy" : a.status === "stalled" ? "stalled" : "done");
 
 function specs(snap: Snapshot): Spec[] {
@@ -359,7 +371,17 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 		const want = s.busy ? workKind(s.running, s.activity) : undefined;
 		const work = s.busy ? nextWork(live?.work, want, now) : undefined;
 		const continuing = live && live.acted && now < live.poseSince + poseMs(live.pose, live.as) ? live : undefined;
-		pre.set(s.key, { want, work, news: acted(s, was?.seen, now), continuing, follow: followUp(s, live, continuing) });
+		pre.set(s.key, { want, work, news: acted(s, was?.seen, now), continuing, follow: followUp(s, live, continuing) ?? flourishAfter(live, continuing, traitFor(s)) });
+	}
+
+	// Errands metrics sent people on (the shredder, the planner: errands.ts): whoever is on one is
+	// out of trips and rounds until it is done.
+	const metricsWas = prev?.metrics ?? NO_METRICS;
+	const ongoing = ongoingErrands(before, now, wakes);
+	for (const [key, e] of ongoing) {
+		if (!places.has(key) || !errandUnderWay(e, now)) continue;
+		places.set(key, errandPlace(e));
+		away.add(key);
 	}
 
 	// Trips: crew whose held work has a station walk to it (or queue for it), leaving their crew spot
@@ -376,6 +398,20 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 
 	// The foreman's round: a lead whose crew is hard at it walks over to look.
 	const visits = foremanVisits(list, places, now, wakes, away);
+
+	// Your office: every lead waiting on you queues there with a ticket. And new errands: a
+	// compaction sends a lead to the shredder, a todo done sends a note to the planner.
+	const queue = queueUp(list, floor, metricsWas);
+	for (const [key, q] of queue.places) places.set(key, q);
+	const fresh = newErrands({ list, places, before, floor, metrics: metricsWas, ongoing, busyElsewhere: away, now, first, speed: (m) => gaitOf(m as Spec, now).speed });
+	const errands = new Map([...ongoing, ...fresh]);
+	for (const [key, e] of fresh) {
+		for (const t of [e.since, e.since + e.walkMs, e.until]) if (t > now) wakes.push(t);
+		if (!errandUnderWay(e, now)) continue;
+		places.set(key, errandPlace(e));
+		away.add(key);
+	}
+	for (const key of errands.keys()) if (errandUnderWay(errands.get(key), now)) visits.delete(key);
 	for (const [key, v] of visits) places.set(key, v);
 
 	// A PR with a teammate near: the lead celebrates with the first busy crew member at its desk.
@@ -392,6 +428,8 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 		let choice: Choice;
 		if (work && want && want !== work.kind) wakes.push(work.since + WORK.holdMs);
 		let st = standing(s, now, count, work);
+		// Buried in the in-tray: past 95% of the context window, a busy lead at its desk (metrics.ts).
+		if (s.kind === "lead" && s.busy && !st.trigger && place.spot === "desk" && st.pose !== "grumpy" && st.pose !== "thinking" && trayFor(s.session.context)?.buried) st = { pose: "buried", as: "lead", acted: false };
 		if (visits.has(s.key) && st.pose !== "grumpy") st = { pose: "inspect", as: "lead", acted: false };
 		if (trip) st = atStation(st, trip);
 		// One wait keeps one pose: the rare roll happens once, when the wait starts.
@@ -415,11 +453,30 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 		else if (continuing) choice = { pose: continuing.pose, as: continuing.as, acted: true };
 		else choice = st;
 
+		// Metrics' acting: at your door with a ticket (the first one in rings the bell), on an errand,
+		// or, for a deliberate model, a beat before an acted pose (errands.ts, beats.ts).
+		const live = was && !was.gone ? was : undefined;
+		const q = queue.places.get(s.key);
+		if (q) {
+			const t = queue.tickets[s.key]!;
+			const door = atYourDoor(t, q.k, live, q.spot, continuing, now);
+			// The rare waiting variant (a "please" paddle) holds that instead of a ticket.
+			const rare = !door.acted && st.trigger === "waiting" && (POSE[st.pose]?.rarity ?? 1) < 1;
+			choice = rare ? st : { pose: door.pose, as: "lead", acted: door.acted, ...(door.rang !== undefined ? { trigger: "bell" } : {}) };
+			if (door.rang !== undefined) queue.tickets[s.key] = { ...t, rang: door.rang };
+		}
+		const errand = errands.get(s.key);
+		const doing = errandUnderWay(errand, now) ? errand : undefined;
+		if (doing) choice = { pose: doing.pose, as: "lead", acted: true, ...(doing.since === now ? { trigger: doing.kind } : {}) };
+		let pending: Actor["pending"];
+		if (!q && !doing) ({ choice, pending } = beat(choice, live, continuing, pauseOf(s), now, wakes));
+
 		// A brick run: a builder with a new edit walks it to the build, sets it down, walks back.
-		// How fast it walks, from how hot its work is.
+		// How fast it walks, from how hot its work is (and its model's stride).
 		const lastAt = Math.max(s.activity?.at ?? -Infinity, s.agent?.lastWriteAt ?? -Infinity);
-		const gait = paceOf(s.agent ? s.agent.tools : s.session.tools, Number.isFinite(lastAt) ? lastAt : undefined, now);
-		const run = brickRun(s, was, place, choice, runs, prev?.builds[s.session.id], visits, byKey, floor, now, gait.speed);
+		const trait = traitFor(s);
+		const gait = gaitOf(s, now);
+		const run = doing ? undefined : brickRun(s, was, place, choice, runs, prev?.builds[s.session.id], visits, byKey, floor, now, gait.speed);
 		if (run) {
 			place = run.place;
 			choice = { pose: "place", as: "lead", acted: true, ...(run.run.since === now ? { trigger: "run" } : {}) };
@@ -429,10 +486,12 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 		// The same pose carries on; anything else starts now.
 		const same = run
 			? was !== undefined && !was.gone && was.pose === "place" && was.poseSince === run.run.since
-			: was && !was.gone && was.pose === choice.pose && was.as === choice.as && !(choice.acted && !continuing);
+			: doing
+				? live !== undefined && live.pose === doing.pose && live.poseSince === doing.since
+				: was && !was.gone && was.pose === choice.pose && was.as === choice.as && !(choice.acted && !continuing);
 		if (!same && choice.trigger) count[choice.trigger] = (count[choice.trigger] ?? 0) + 1;
 		const once = POSE[choice.pose]?.play !== "loop";
-		const poseSince = run ? run.run.since : same ? was!.poseSince : now;
+		const poseSince = run ? run.run.since : doing ? doing.since : same ? was!.poseSince : now;
 		// Found mid-habit (or already stalled, or done) on arrival: start settled, costing nothing.
 		const at: "start" | "end" = same ? was!.at : !was && once && !choice.acted && s.mood !== "busy" ? "end" : "start";
 
@@ -474,7 +533,7 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 		else if (trip && tripWas && tripWas.queue > 0 && trip.queue === 0) events.push({ type: "trip", key: s.key, at: now, station: trip.station, state: "use" });
 		if (tripWas && !trip) events.push({ type: "trip", key: s.key, at: now, station: tripWas.station, state: "end" });
 		// Busy loops run at the character's own pace: quick while writing, slow when coasting.
-		const pace = s.mood === "busy" && !choice.acted && POSE[choice.pose]?.play === "loop" ? tempo(s.key, Number.isFinite(lastAt) ? lastAt : undefined, now) : 1;
+		const pace = s.mood === "busy" && !choice.acted && POSE[choice.pose]?.play === "loop" ? Math.round(tempo(s.key, Number.isFinite(lastAt) ? lastAt : undefined, now) * trait.tempo * 100) / 100 : 1;
 
 		if (choice.pose === "handover" && choice.as === "partner") events.push({ type: "handover", key: hiredBy.get(s.key)!, at: now, to: s.key });
 
@@ -483,7 +542,7 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 		if (inMeeting !== wasMeeting && (inMeeting || was)) events.push({ type: "review", key: s.key, at: now, state: inMeeting ? "start" : "end" });
 
 		if (s.kind === "lead" && (s.seen.waiting !== undefined) !== (was?.seen.waiting !== undefined)) {
-			if (s.seen.waiting !== undefined || was) events.push({ type: "waiting", key: s.key, at: now, state: s.seen.waiting !== undefined ? "start" : "end", area: place.area });
+			if (s.seen.waiting !== undefined || was) events.push({ type: "waiting", key: s.key, at: now, state: s.seen.waiting !== undefined ? "start" : "end", area: floor.desks.get(s.session.id)?.areaId ?? place.area });
 		}
 
 		actors[s.key] = {
@@ -512,6 +571,12 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 			task: s.task,
 			...(run ? { home: run.run.from, walkPose: "carry" } : trip ? { home: homes.get(s.key)!, trip } : {}),
 			...(walk && walk === was?.walk ? (was.pace ? { pace: was.pace } : {}) : walk && gait.name !== "stroll" ? { pace: gait.name } : {}),
+			...(doing && s.kind === "crew" ? { home: doing.from } : {}),
+			...(doing?.walkPose ? { walkPose: doing.walkPose } : {}),
+			...(errand && now < errand.until ? { errand } : {}),
+			...(q || (doing && s.kind === "lead") ? { homeArea: floor.desks.get(s.session.id)?.areaId } : {}),
+			...(trait.walk !== 1 ? { stride: trait.walk } : {}),
+			...(pending ? { pending } : {}),
 		};
 		if (s.mood === "busy" && !choice.acted) {
 			const w = tempoWake(lastAt, now);
@@ -543,17 +608,19 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 		const to = door ?? { spot: "door", area: was.area, slot: was.slot };
 		const path = pathBetween(floor, was.area, from, to.area, to.slot);
 		const ms = walkMs(path);
-		actors[key] = { ...was, area: to.area, spot: "door", slot: to.slot, walk: { path, ms, since: now, exit: true }, gone: now + ms, pace: undefined };
+		actors[key] = { ...was, area: to.area, spot: "door", slot: to.slot, walk: { path, ms, since: now, exit: true }, gone: now + ms, pace: undefined, stride: undefined, errand: undefined, pending: undefined };
 		events.push({ type: "leave", key, at: now });
 		if (was.spot.startsWith("meeting:")) events.push({ type: "review", key, at: now, state: "end" });
-		if (was.kind === "lead" && was.seen.waiting !== undefined) events.push({ type: "waiting", key, at: now, state: "end", area: was.area });
+		if (was.kind === "lead" && was.seen.waiting !== undefined) events.push({ type: "waiting", key, at: now, state: "end", area: was.homeArea ?? was.area });
 		wakes.push(now + ms);
 	}
 
 	const builds = buildsFor(list, prev?.builds ?? {}, failed, runs, now, events, wakes);
+	const sessions = new Map(list.filter((s) => s.kind === "lead").map((s) => [s.session.id, s.session]));
+	const metrics = metricsFor(sessions, metricsWas, actors, floor, queue, now);
 
 	const due = wakes.filter((t) => t > now);
-	return { world: { at: now, actors, builds }, events, wake: due.length ? Math.min(...due) : undefined };
+	return { world: { at: now, actors, builds, metrics }, events, wake: due.length ? Math.min(...due) : undefined };
 }
 
 /** How far into `place` the brick leaves the builder's hands: the end of the last frame that
@@ -627,8 +694,10 @@ function tripsFor(
 		const p = pre.get(s.key)!;
 		const stay = was.trip !== undefined && (p.news !== undefined || p.continuing !== undefined || p.follow !== undefined);
 		let kind = stationKind(s, p);
-		if (kind && was.trip?.kind !== kind && now - p.work!.since < TRIP.holdMs) {
-			wakes.push(p.work!.since + TRIP.holdMs);
+		// A deliberate model takes a beat more before setting off (traits.ts).
+		const hold = TRIP.holdMs + pauseOf(s);
+		if (kind && was.trip?.kind !== kind && now - p.work!.since < hold) {
+			wakes.push(p.work!.since + hold);
 			kind = undefined;
 		}
 		wants.push({ key: s.key, stations, kind, stay, was: was.trip, since: p.work?.since ?? now });
@@ -758,7 +827,10 @@ function buildsFor(
 	for (const [id, members] of bySession) {
 		const was = before[id];
 		const crew = members.filter((m) => m.kind === "crew");
-		if (!was && !(crew.some((m) => m.rig === "builder") || crew.length >= RULES.buildCrew)) continue;
+		const session = members[0]!.session;
+		// Lines added, when the watcher counts them: then the tower is lines, not edits (metrics.ts).
+		const lines = changesOf(session)?.added;
+		if (!was && !(crew.some((m) => m.rig === "builder") || crew.length >= RULES.buildCrew || towerBricks(lines ?? 0) > 0)) continue;
 		const seen: Record<string, number> = {};
 		// Recent edit times, for the session's edit rate (the brick-run cooldown).
 		const edits = (was?.edits ?? []).filter((t) => t > now - RUNS.windowMs);
@@ -786,12 +858,19 @@ function buildsFor(
 		if (landed) run = { ...run!, carried: false };
 		if (run) wakes.push(run.carried ? run.lands : run.done);
 		pieces = Math.min(RULES.buildMax, pieces);
+		// Counting lines, the tower is a brick per ~20 lines added; edits still send brick runs, and
+		// a run's brick landing sets the top brick down. A red test knocks one off until it grows.
+		const target = lines !== undefined ? towerBricks(lines, RULES.buildMax) : undefined;
+		let knocked = target !== undefined && was?.lines !== undefined && target > was.lines ? 0 : (was?.knocked ?? 0);
+		if (target !== undefined) pieces = Math.max(0, target - knocked);
 		const fell = failed.has(id) && pieces > 0;
-		if (fell) pieces--;
-		const session = members[0]!.session;
+		if (fell) {
+			pieces--;
+			knocked++;
+		}
 		const topped = (session.prs?.length ?? 0) > 0;
 		// The fallen piece lies by the stack until the next one goes on.
-		const added = !!was && !fell && pieces > was.pieces;
+		const added = !!was && !fell && (pieces > was.pieces || (target !== undefined && landed && pieces > 0));
 		const fellAt = fell ? now : added ? undefined : was?.fellAt;
 		const addedAt = added ? now : was?.addedAt;
 		const ranAt = started ? now : was?.ranAt;
@@ -805,6 +884,8 @@ function buildsFor(
 			...(run ? { run } : {}),
 			...(ranAt !== undefined ? { ranAt } : {}),
 			...(edits.length ? { edits: edits.slice(-40) } : {}),
+			...(target !== undefined ? { lines: target } : {}),
+			...(target !== undefined && knocked ? { knocked } : {}),
 		};
 		out[id] = b;
 		if (started) events.push({ type: "build", session: id, at: now, pieces, change: "carry", key: started.key });
@@ -840,6 +921,6 @@ export function cueFor(a: Actor, now: number): Cue {
 		...(walk ? { walk: { path: walk.path, ms: walk.ms, exit: walk.exit, elapsed: now - walk.since } } : {}),
 		...(a.tempo !== 1 ? { tempo: a.tempo } : {}),
 		...(walk && a.walkPose ? { walkPose: a.walkPose } : {}),
-		...(walk && a.pace ? { walkTempo: PACE.speed[a.pace] } : {}),
+		...(walk && (a.pace || a.stride) ? { walkTempo: Math.round((a.pace ? PACE.speed[a.pace] : 1) * (a.stride ?? 1) * 100) / 100 } : {}),
 	};
 }

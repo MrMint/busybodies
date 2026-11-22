@@ -28,12 +28,12 @@ export interface Slot {
 	facing: 1 | -1;
 }
 
-export type AreaKind = "project" | "vacant" | "meeting" | "lobby" | "kitchen";
+export type AreaKind = "project" | "vacant" | "meeting" | "lobby" | "kitchen" | "yours";
 export type Band = "top" | "bottom";
 
 /** A piece of floor furniture. Its base sits at (x, y) and it is depth-sorted with characters. */
 export interface Fixture {
-	kind: "plant" | "chair" | "counter" | "cooler" | "fridge" | "sofa" | "table" | "cabinet" | "pod" | "lamp" | StationFurniture;
+	kind: "plant" | "chair" | "counter" | "cooler" | "fridge" | "sofa" | "table" | "cabinet" | "pod" | "lamp" | StationFurniture | PropFixture;
 	x: number;
 	y: number;
 	/** Draw order; usually y, the base. */
@@ -42,7 +42,8 @@ export interface Fixture {
 
 /** Something hung on a back wall: drawn into the room's cached layer. */
 export interface WallItem {
-	kind: "window" | "whiteboard" | "sign" | "door" | "frame";
+	/** `planner`: the room's todo planner; `you`: the door to your office (office/props.ts draws both). */
+	kind: "window" | "whiteboard" | "sign" | "door" | "frame" | "planner" | "you";
 	rect: Rect;
 	/** Named slots (whiteboards, signs, frames) take text later, from the sass engine (S5). */
 	slot?: string;
@@ -92,6 +93,8 @@ export interface Area {
 	spots: Record<string, Slot[]>;
 	/** A project room's shared stations, in the strip along its left wall (see `stationsFor`). */
 	stations: Station[];
+	/** A project room's shredder, in the back corner opposite the strip (see `shredderFor`). */
+	shredder?: Station;
 }
 
 /** The office's furniture for each station kind (the office theme). Kinds without one get no station yet. */
@@ -102,6 +105,10 @@ export const STATION_FURNITURE: Partial<Record<StationKind, StationFurniture>> =
 	build: "copier",
 	test: "stamps",
 };
+
+/** The metrics' furniture (office/props.ts): a room's shredder; your office's ticket machine and the
+ * counter with the bell by your door. */
+export type PropFixture = "shredder" | "tickets" | "bell";
 
 /**
  * A shared station in a project room: a filing cabinet, a copier... Its user stands at `use`, facing
@@ -142,7 +149,7 @@ export const FRONT = 10;
 export const HALL = 130;
 export const MIN_ROWS = 2;
 export const MAX_COLS = 4;
-export const COMMON_W = { meeting: 340, lobby: 260, kitchen: 460 } as const;
+export const COMMON_W = { meeting: 340, lobby: 260, yours: 300, kitchen: 460 } as const;
 
 /**
  * The station strip: a column of shared equipment along a project room's left wall, left of the desk
@@ -221,6 +228,29 @@ export function stationsFor(area: Pick<Area, "id" | "band" | "rect" | "floorY">,
 		});
 		return { id: `${area.id}:${kind}:${n}`, kind, areaId: area.id, base, at, use, queue };
 	});
+}
+
+/**
+ * A project room's shredder (a lead feeds its in-tray in on a compaction): off the station strip,
+ * against the right wall opposite it, in the narrow gap the desks and crew leave there, at the
+ * hallway end (just in from the back wall below the hallway, from the front edge above it), so
+ * like the strip it never moves as rows come and go. Its user stands to its left, facing it (the
+ * strip's stand to the right), its feet STATION_REACH (scaled) from the working point.
+ */
+export const SHREDDER = { inset: 34, back: 40, front: 50, reach: -10 } as const;
+
+export function shredderFor(area: Pick<Area, "id" | "band" | "rect" | "floorY">): Station {
+	const y = area.band === "bottom" ? area.floorY + SHREDDER.back : area.rect.y + area.rect.h - FRONT - SHREDDER.front;
+	const base = { x: area.rect.x + area.rect.w - SHREDDER.inset, y };
+	const at = { x: base.x + SHREDDER.reach, y: base.y + STATION_REACH.y };
+	const use = shredderUse({ at, base }, STATION_CREW_PX);
+	return { id: `${area.id}:shredder:0`, kind: "shredder", areaId: area.id, base, at, use, queue: [] };
+}
+
+/** Where a user `size` px tall stands at the shredder: left of it, facing right. */
+export function shredderUse(st: Pick<Station, "at" | "base">, size: number): Slot {
+	const k = size / STATION_CREW_PX;
+	return { x: Math.round(st.at.x - STATION_REACH.x * k), y: Math.round(st.at.y - STATION_REACH.y * k), depth: st.base.y + 1, facing: 1 };
 }
 
 export const roomWidth = (cols: number) => SIDE * 2 + STRIP.w + cols * CELL_W;

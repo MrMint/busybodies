@@ -31,6 +31,8 @@ import {
 	windowPane,
 } from "./paper";
 import { type Placed, Placement, crewOf } from "./placement";
+import type { DeskProps, Metrics } from "../director/metrics";
+import { PROP_FURNITURE, type PropFurniture, deskProps, drawPropFurniture, planner, plannerSig, propsSig, yourDoor } from "./props";
 import type { Character, CharacterFactory, Who } from "./slot";
 import { type Area, BUILD, type Desk, type Rect, type World } from "./world";
 
@@ -41,7 +43,10 @@ const DEFAULT_SIGNS: Record<string, SignText> = {
 	"lobby:frame": { title: "EMPLOYEE OF THE MONTH", body: "Nobody. Again." },
 };
 
-const COMMON_SUBS: Record<string, string> = { meeting: "reviews", lobby: "in and out", kitchen: "idle, finished and sent home", vacant: "for lease" };
+/** Your office's sign: the lowest ticket in the queue (the director's metrics). */
+const serving = (n: number | undefined): SignText => ({ title: "NOW SERVING", body: n === undefined ? "Nobody. Yet." : `No. ${n}` });
+
+const COMMON_SUBS: Record<string, string> = { meeting: "reviews", lobby: "in and out", yours: "waiting on you", kitchen: "idle, finished and sent home", vacant: "for lease" };
 
 /** Bake resolutions: the smallest one at or above what the camera needs is used. */
 const STEPS = [0.5, 0.75, 1, 1.5, 2, 3, 4, 6, 8];
@@ -77,6 +82,9 @@ export interface OfficeOptions {
 	top?: number;
 	/** Each session's crew build, drawn on its desk (the director's). */
 	builds?: () => Record<string, CrewBuild>;
+	/** Metrics as things (the director's): each desk's in-tray, drawers, skip, mugs and lamp, the
+	 * planners, and NOW SERVING at your office. */
+	metrics?: () => Pick<Metrics, "desks" | "planners" | "serving">;
 }
 
 /** A crew's build on the desk: a stack of blocks, one knocked off, a flag for the PR. */
@@ -114,6 +122,9 @@ export class Office extends Container {
 	#slab = new Graphics();
 	#slabSig = "";
 	#floor = new Container();
+	/** The rooms' planners, over their back walls: redrawn when their notes change. */
+	#walls = new Container();
+	#planners = new Map<string, Item>();
 	#depth = new Container({ sortableChildren: true });
 	#bubbles = new Container();
 	#labels = new Container();
@@ -154,7 +165,8 @@ export class Office extends Container {
 	constructor(opts: OfficeOptions) {
 		super();
 		this.#opts = opts;
-		this.world.addChild(this.#slab, this.#floor, this.#pulse, this.#depth, this.#tasks, this.#bubbles, this.#labels);
+		this.world.addChild(this.#slab, this.#floor, this.#walls, this.#pulse, this.#depth, this.#tasks, this.#bubbles, this.#labels);
+		this.#signs.set("yours:serving", serving(undefined));
 		this.world.interactiveChildren = false;
 		this.addChild(this.world);
 	}
@@ -344,6 +356,7 @@ export class Office extends Container {
 		if (!to) return this.goTo({ kind: "office" }, animate);
 		this.#stop = stop;
 		this.#drawTasks();
+		this.#showDetails();
 		if (!animate) {
 			this.#move = undefined;
 			this.#apply(to);
@@ -417,8 +430,49 @@ export class Office extends Container {
 		this.#drawFloor(world);
 		// People first: the director runs in their cast, and the desks show its crew builds.
 		this.#drawPeople(world, snapshot);
+		this.#drawMetrics(world);
 		this.#drawFurniture(world, snapshot);
 		this.#drawLabels(world, snapshot);
+	}
+
+	/** The director's metrics on the walls: each room's planner, and NOW SERVING at your office. */
+	#drawMetrics(world: World): void {
+		const m = this.#opts.metrics?.();
+		const sign = serving(m?.serving);
+		const was = this.#signs.get("yours:serving");
+		if (was?.body !== sign.body) {
+			this.#signs.set("yours:serving", sign);
+			this.#drawFloor(world);
+		}
+		const seen = new Set<string>();
+		for (const a of world.areas) {
+			const wall = a.wall.find((w) => w.kind === "planner");
+			if (!wall) continue;
+			const rows = m?.planners[a.id] ?? [];
+			const sig = `${JSON.stringify(wall.rect)}|${plannerSig(rows)}`;
+			seen.add(a.id);
+			const had = this.#planners.get(a.id);
+			if (had?.sig === sig) continue;
+			drop(had?.view);
+			const view = planner(wall.rect, rows);
+			this.#walls.addChild(view);
+			this.#planners.set(a.id, { view, sig });
+		}
+		for (const [id, item] of this.#planners) {
+			if (seen.has(id)) continue;
+			drop(item.view);
+			this.#planners.delete(id);
+		}
+	}
+
+	/** Small desk props (mugs, drawers, the skip) only show zoomed in: at office zoom they're clutter. */
+	#showDetails(): void {
+		const on = this.#stop.kind !== "office";
+		for (const [key, item] of this.#items) {
+			if (!key.startsWith("desk:")) continue;
+			const d = item.view.getChildByLabel("detail");
+			if (d) d.visible = on;
+		}
 	}
 
 	/** Rooms' floors, walls and wall items: one cached texture per room, rebuilt when it changes. */
@@ -471,7 +525,9 @@ export class Office extends Container {
 		for (const [i, w] of a.wall.entries()) {
 			if (w.kind === "window") windowPane(g, w.rect, seed + i);
 			else if (w.kind === "door") door(g, w.rect);
-			else c.addChild(signboard(w.kind, w.rect, w.slot ? this.#signs.get(w.slot) : undefined, seed + i));
+			else if (w.kind === "you") c.addChild(yourDoor(g, w.rect));
+			// The planner's board and notes change with the todos: their own layer (#drawMetrics).
+			else if (w.kind !== "planner") c.addChild(signboard(w.kind, w.rect, w.slot ? this.#signs.get(w.slot) : undefined, seed + i));
 		}
 		return c;
 	}
@@ -487,6 +543,7 @@ export class Office extends Container {
 	#drawFurniture(world: World, snapshot: Snapshot): void {
 		const sessions = new Map(flat(snapshot.sessions).map((s) => [s.id, s]));
 		const builds = this.#opts.builds?.() ?? {};
+		const metrics = this.#opts.metrics?.().desks ?? {};
 		const seen = new Set<string>();
 		const put = (key: string, sig: string, x: number, y: number, depth: number, make: () => Container) => {
 			seen.add(key);
@@ -516,7 +573,8 @@ export class Office extends Container {
 				const card = deskCard(s);
 				const b = builds[d.id];
 				const bsig = b ? `${b.pieces}|${b.topped}|${b.fellAt ?? ""}|${b.addedAt ?? ""}` : "";
-				put(`desk:${d.id}`, `${s.state === "busy"}|${card.join("|")}|${bsig}`, d.at.x, d.at.y, d.at.y, () => this.#desk(s, b));
+				const p = metrics[d.id];
+				put(`desk:${d.id}`, `${s.state === "busy"}|${card.join("|")}|${bsig}|${propsSig(p)}`, d.at.x, d.at.y, d.at.y, () => this.#desk(s, b, p));
 				put(`chair:${d.id}`, "chair", d.chair.x, d.chair.y, d.chair.depth, () => this.#baked("chair"));
 			}
 			for (const [i, f] of a.fixtures.entries()) put(`fx:${a.id}:${i}:${f.kind}`, f.kind, f.x, f.y, f.depth, () => this.#baked(f.kind));
@@ -530,7 +588,7 @@ export class Office extends Container {
 		}
 	}
 
-	#desk(s: Session | undefined, build?: CrewBuild): Container {
+	#desk(s: Session | undefined, build?: CrewBuild, props?: DeskProps): Container {
 		const c = new Container();
 		c.addChild(this.#baked("desk"));
 		if (s) {
@@ -552,6 +610,13 @@ export class Office extends Container {
 				}
 			}
 		}
+		// The metrics as things on and by the desk (props.ts): the small ones only zoomed in.
+		if (s && props) {
+			const { always, detail } = deskProps(props, s.id);
+			detail.label = "detail";
+			detail.visible = this.#stop.kind !== "office";
+			c.addChild(always, detail);
+		}
 		const screen = this.#baked(s?.state === "busy" ? "screen-lit" : "screen-off");
 		screen.position.set(46, -64);
 		c.addChild(screen);
@@ -562,15 +627,22 @@ export class Office extends Container {
 			clip(t, 128);
 			const d = label(sub, 9.5, "600");
 			clip(d, 128);
-			const w = Math.max(t.width, d.width) + 14;
+			// The model family, as a plain word on its own line.
+			const word = props?.word ? label(props.word, 8.5, "600") : undefined;
+			const w = Math.max(t.width, d.width, word?.width ?? 0) + 14;
+			const h = word ? 45 : 34;
 			const g = new Graphics()
-				.roundRect(0, 0, w, 34, 7)
+				.roundRect(0, 0, w, h, 7)
 				.fill(s.state === "busy" ? 0xffffff : 0xe6ebf5)
 				.stroke({ width: 2.5, color: INK });
 			t.position.set(7, 3);
 			d.position.set(7, 19);
 			card.addChild(g, t, d);
-			card.position.set(-w / 2, -40);
+			if (word) {
+				word.position.set(7, 31);
+				card.addChild(word);
+			}
+			card.position.set(-w / 2, word ? -44 : -40);
 			card.rotation = -0.02;
 			c.addChild(card);
 		}
@@ -589,9 +661,11 @@ export class Office extends Container {
 	#bake(res: number): void {
 		this.#res = res;
 		const old = [...this.#textures.values()];
-		const kinds: FurnitureKind[] = ["desk", "chair", "plant", "counter", "cooler", "fridge", "sofa", "table", "cabinet", "pod", "lamp", "screen-lit", "screen-off", "files", "catalogue", "copier", "stamps"];
+		const kinds: FurnitureKind[] = ["desk", "chair", "plant", "counter", "cooler", "fridge", "sofa", "table", "cabinet", "pod", "lamp", "screen-lit", "screen-off", "files", "catalogue", "copier", "stamps", ...PROP_FURNITURE];
 		for (const kind of kinds) {
-			const g = drawFurniture(kind);
+			const prop = (PROP_FURNITURE as string[]).includes(kind);
+			const g = prop ? new Graphics() : drawFurniture(kind);
+			if (prop) drawPropFurniture(g, kind as PropFurniture);
 			const b = g.getLocalBounds();
 			const frame = new Rectangle(Math.floor(b.x) - 3, Math.floor(b.y) - 3, Math.ceil(b.width) + 6, Math.ceil(b.height) + 6);
 			const tex = this.#opts.renderer.generateTexture({ target: g, frame, resolution: res, antialias: true });
