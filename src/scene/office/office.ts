@@ -2,6 +2,7 @@
 //   slab     the dark base the rooms sit on
 //   floor    each room's floor, walls and wall items: cached as one texture per room
 //   depth    desks, furniture and characters, sorted by their feet (zIndex = y)
+//   arms     the factory's robot arms, overhead (theme/arm.ts; none in the office theme)
 //   bubbles  speech bubbles
 //   labels   room name tabs and counts
 // Furniture is drawn once per kind and baked into a texture that every desk shares, so a busy frame
@@ -16,9 +17,12 @@ import { type Placed, Placement, crewOf } from "./placement";
 import type { DeskProps, Metrics } from "../director/metrics";
 import { deskProps, plannerSig, propsSig } from "./props";
 import type { Character, CharacterFactory } from "./slot";
-import type { Area, Desk, Rect, World } from "./world";
+import { type Area, BUILD, type Desk, type Rect, type World } from "./world";
+
+const BUILD_H = BUILD.brickH;
 import { OFFICE_THEME } from "../theme/office";
-import { FALLEN } from "../theme/build";
+import { FALLEN, buildTop } from "../theme/build";
+import { RobotArm } from "../theme/arm";
 import { type CrewBuild, FURNITURE_KINDS, type SceneTheme } from "../theme/types";
 
 export type { CrewBuild };
@@ -67,7 +71,9 @@ export interface OfficeOptions {
 interface BrickMove {
 	view: Graphics;
 	ms: number;
+	/** Below zero while it waits its turn (hidden): a robot arm is still bringing it over. */
 	t: number;
+	delay: number;
 	/** Where it is `u` (0 to 1) of the way through. */
 	at: (u: number) => { x: number; y: number; r: number };
 }
@@ -114,7 +120,10 @@ export class Office extends Container {
 	#signs: Map<string, SignText>;
 	/** Bricks moving on crew builds, by desk item; and what each desk's build last moved for. */
 	#bricks = new Map<string, BrickMove[]>();
-	#brickSeen = new Map<string, { added?: number; fell?: number }>();
+	#brickSeen = new Map<string, { added?: number; fell?: number; topped?: boolean }>();
+	/** The factory's robot arms, one per project bay (theme/arm.ts), over everything on the floor. */
+	#armLayer = new Container();
+	#arms = new Map<string, { arm: RobotArm; sig: string }>();
 
 	#textures = new Map<FurnitureKind, Texture>();
 	#anchors = new Map<FurnitureKind, { x: number; y: number }>();
@@ -131,7 +140,7 @@ export class Office extends Container {
 		this.#opts = opts;
 		this.#theme = opts.theme ?? OFFICE_THEME;
 		this.#signs = new Map(Object.entries(this.#theme.words.signs));
-		this.world.addChild(this.#slab, this.#floor, this.#walls, this.#pulse, this.#depth, this.#tasks, this.#bubbles, this.#labels);
+		this.world.addChild(this.#slab, this.#floor, this.#walls, this.#pulse, this.#depth, this.#armLayer, this.#tasks, this.#bubbles, this.#labels);
 		this.#signs.set("yours:serving", this.#theme.words.serving(undefined));
 		this.world.interactiveChildren = false;
 		this.addChild(this.world);
@@ -143,6 +152,7 @@ export class Office extends Container {
 		if (this.#move) return true;
 		if (this.#pulsing.length) return true;
 		if (this.#bricks.size) return true;
+		for (const a of this.#arms.values()) if (a.arm.moving) return true;
 		for (const p of this.#people.values()) if (p.animating) return true;
 		return false;
 	}
@@ -185,12 +195,18 @@ export class Office extends Container {
 	/** Every character back to the start of its pose (the inspector's freeze). */
 	rewind(): void {
 		for (const p of this.#people.values()) p.rewind?.();
-		for (const list of this.#bricks.values()) for (const m of list) moveBrick(m, (m.t = 0));
+		for (const list of this.#bricks.values()) for (const m of list) moveBrick(m, (m.t = -m.delay));
+		for (const a of this.#arms.values()) a.arm.rewind();
 	}
 
 	/** The crew-build bricks moving now, by desk (for the inspector and tests). */
 	get bricks(): { desk: string; t: number; ms: number }[] {
 		return [...this.#bricks].flatMap(([key, list]) => list.map((m) => ({ desk: key.slice(5), t: Math.round(m.t), ms: m.ms })));
+	}
+
+	/** The robot arms (the factory's), by project room: whether each moves, and its jobs. */
+	get arms(): { area: string; moving: boolean; jobs: { kind: string; t: number; ms: number }[]; base: number }[] {
+		return [...this.#arms].map(([area, { arm }]) => ({ area, moving: arm.moving, jobs: arm.plan.jobs, base: Math.round(arm.plan.pose.base) }));
 	}
 
 	/**
@@ -273,6 +289,7 @@ export class Office extends Container {
 			if (left.length) this.#bricks.set(key, left);
 			else this.#bricks.delete(key);
 		}
+		for (const a of this.#arms.values()) if (a.arm.moving) a.arm.step(dt * (1000 / 60));
 		for (const p of this.#people.values()) p.tick(dt);
 		// Bubbles follow walkers.
 		for (const [key, p] of this.#people) if (p.moving) this.#anchor(key);
@@ -348,6 +365,57 @@ export class Office extends Container {
 		this.#opts.wake();
 	}
 
+	// --- Theme ---------------------------------------------------------------------------------
+
+	get theme(): SceneTheme {
+		return this.#theme;
+	}
+
+	/**
+	 * Switch to another theme (and the characters painted for it): everything drawn goes, and the
+	 * next `show` draws it all again in the new look. The furniture is re-baked now. A sign still
+	 * showing the old theme's default text takes the new one's; what the voice wrote stays, and so
+	 * do the bubbles up now. Nothing moves mid-switch: bricks and arms start at rest.
+	 */
+	setTheme(theme: SceneTheme, characters?: CharacterFactory): void {
+		if (theme === this.#theme && !characters) return;
+		const old = this.#theme;
+		this.#theme = theme;
+		if (characters) this.#opts.characters = characters;
+		const same = (a?: SignText, b?: SignText) => a?.title === b?.title && a?.body === b?.body;
+		for (const id of new Set([...Object.keys(old.words.signs), ...Object.keys(theme.words.signs)])) {
+			const now = this.#signs.get(id);
+			if (now && !same(now, old.words.signs[id])) continue;
+			if (theme.words.signs[id]) this.#signs.set(id, theme.words.signs[id]!);
+			else this.#signs.delete(id);
+		}
+		this.#signs.set("yours:serving", theme.words.serving(this.#opts.metrics?.().serving));
+		const said = [...this.#said].map(([key, s]) => [key, s.text, s.kind] as const);
+		for (const p of this.#people.values()) p.destroy();
+		this.#people.clear();
+		for (const s of this.#said.values()) drop(s.view);
+		this.#said.clear();
+		for (const b of this.#bubbleFor.values()) drop(b.view);
+		this.#bubbleFor.clear();
+		for (const map of [this.#areas, this.#items, this.#planners, this.#tabs]) {
+			for (const item of map.values()) drop(item.view);
+			map.clear();
+		}
+		for (const c of this.#halls) drop(c);
+		this.#halls = [];
+		for (const a of this.#arms.values()) drop(a.arm);
+		this.#arms.clear();
+		this.#bricks.clear();
+		this.#brickSeen.clear();
+		this.#slabSig = "";
+		if (this.#res) this.#bake(this.#res);
+		if (this.#snapshot) {
+			this.show(this.#snapshot, this.#screen.w, this.#screen.h);
+			for (const [key, text, kind] of said) this.say(key, text, kind);
+		}
+		this.#opts.wake();
+	}
+
 	// --- Drawing -------------------------------------------------------------------------------
 
 	show(snapshot: Snapshot, width: number, height: number): void {
@@ -397,6 +465,7 @@ export class Office extends Container {
 		// People first: the director runs in their cast, and the desks show its crew builds.
 		this.#drawPeople(world, snapshot);
 		this.#drawMetrics(world);
+		this.#drawArms(world);
 		this.#drawFurniture(world, snapshot);
 		this.#drawLabels(world, snapshot);
 	}
@@ -531,7 +600,7 @@ export class Office extends Container {
 				const b = builds[d.id];
 				const bsig = b ? `${b.pieces}|${b.topped}|${b.fellAt ?? ""}|${b.addedAt ?? ""}` : "";
 				const p = metrics[d.id];
-				put(`desk:${d.id}`, `${s.state === "busy"}|${card.join("|")}|${bsig}|${propsSig(p)}`, d.at.x, d.at.y, d.at.y, () => this.#desk(s, b, p));
+				put(`desk:${d.id}`, `${s.state === "busy"}|${card.join("|")}|${bsig}|${propsSig(p)}`, d.at.x, d.at.y, d.at.y, () => this.#desk(s, b, p, d));
 				put(`chair:${d.id}`, "chair", d.chair.x, d.chair.y, d.chair.depth, () => this.#baked("chair"));
 			}
 			for (const [i, f] of a.fixtures.entries()) put(`fx:${a.id}:${i}:${f.kind}`, f.kind, f.x, f.y, f.depth, () => this.#baked(f.kind));
@@ -545,7 +614,30 @@ export class Office extends Container {
 		}
 	}
 
-	#desk(s: Session | undefined, build?: CrewBuild, props?: DeskProps): Container {
+	/** A robot arm per project room, when the theme has them; rebuilt (idle) when its room moves. */
+	#drawArms(world: World): void {
+		const seen = new Set<string>();
+		if (this.#theme.arms) {
+			for (const a of world.areas) {
+				if (a.kind !== "project") continue;
+				seen.add(a.id);
+				const sig = `${a.rect.x},${a.floorY}`;
+				const had = this.#arms.get(a.id);
+				if (had && (had.sig === sig || had.arm.moving)) continue;
+				drop(had?.arm);
+				const arm = new RobotArm(a.rect.x, a.floorY);
+				this.#armLayer.addChild(arm);
+				this.#arms.set(a.id, { arm, sig });
+			}
+		}
+		for (const [id, a] of this.#arms) {
+			if (seen.has(id)) continue;
+			drop(a.arm);
+			this.#arms.delete(id);
+		}
+	}
+
+	#desk(s: Session | undefined, build?: CrewBuild, props?: DeskProps, desk?: Desk): Container {
 		const c = new Container();
 		c.addChild(this.#baked("desk"));
 		if (s) {
@@ -553,14 +645,27 @@ export class Office extends Container {
 			const key = `desk:${s.id}`;
 			this.#bricks.delete(key);
 			const was = this.#brickSeen.get(key);
-			this.#brickSeen.set(key, { added: build?.addedAt, fell: build?.fellAt });
+			this.#brickSeen.set(key, { added: build?.addedAt, fell: build?.fellAt, topped: build?.topped });
+			const arm = desk && this.#arms.get(desk.areaId)?.arm;
 			if (build && (build.pieces > 0 || build.topped || build.fellAt !== undefined)) {
 				const t = this.#theme.crewBuild(build, s.id);
 				c.addChild(t.view);
 				const moves: BrickMove[] = [];
-				if (was && t.top && build.addedAt !== undefined && build.addedAt !== was.added) moves.push(setDown(t.top));
+				if (was && t.top && build.addedAt !== undefined && build.addedAt !== was.added) {
+					// In the factory the bay's arm brings the piece over: it lands when the arm lets go.
+					const top = buildTop(build.pieces);
+					const delay = arm?.place({ x: desk!.at.x + top.x, y: desk!.at.y + top.y + BUILD_H / 2 }) ?? 0;
+					moves.push(setDown(t.top, delay));
+				}
+				// A PR: the arm lifts the PR's crate off the build onto the bay's loading dock.
+				if (was && arm && build.topped && !was.topped) {
+					const dock = this.#data?.areas.find((a) => a.id === desk!.areaId)?.stations.find((st) => st.kind === "outbox");
+					const top = buildTop(build.pieces + 1);
+					if (dock) arm.ship({ x: desk!.at.x + top.x, y: desk!.at.y + top.y + BUILD_H / 2 }, { x: dock.base.x - 6, y: dock.base.y - 47 });
+				}
+				if (arm?.moving) this.#opts.wake();
 				if (was && t.fallen && build.fellAt !== undefined && build.fellAt !== was.fell) moves.push(tumble(t.fallen, t.fellFrom!));
-				for (const m of moves) moveBrick(m, 0);
+				for (const m of moves) moveBrick(m, m.t);
 				if (moves.length) {
 					this.#bricks.set(key, moves);
 					this.#opts.wake();
@@ -801,14 +906,15 @@ function clip(t: { text: string; width: number }, max: number): void {
 const clipText = (s: string, max: number) => (s.length > max ? `${s.slice(0, max - 1).trimEnd()}…` : s);
 
 /** A brick set down on the tower: a short drop onto its place, a tiny rebound, still. No squash. */
-function setDown(view: Graphics): BrickMove {
+function setDown(view: Graphics, delay = 0): BrickMove {
 	const x = view.x;
 	const y = view.y;
 	const r = view.rotation;
 	return {
 		view,
 		ms: 300,
-		t: 0,
+		t: -delay,
+		delay,
 		at: (u) => {
 			const fall = 0.72;
 			const dy = u < fall ? -10 * (1 - (u / fall) ** 2) : -1.5 * Math.sin((Math.PI * (u - fall)) / (1 - fall));
@@ -824,6 +930,7 @@ function tumble(view: Graphics, from: { x: number; y: number }): BrickMove {
 		view,
 		ms: 620,
 		t: 0,
+		delay: 0,
 		at: (u) => {
 			const ease = 1 - (1 - u) ** 2;
 			return {
@@ -836,7 +943,8 @@ function tumble(view: Graphics, from: { x: number; y: number }): BrickMove {
 }
 
 function moveBrick(m: BrickMove, t: number): void {
-	const p = m.at(Math.min(1, t / m.ms));
+	m.view.visible = t >= 0;
+	const p = m.at(Math.min(1, Math.max(0, t) / m.ms));
 	m.view.position.set(p.x, p.y);
 	m.view.rotation = p.r;
 }

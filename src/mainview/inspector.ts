@@ -8,6 +8,7 @@ import type { Stop } from "../scene/office/camera";
 import type { Office } from "../scene/office/office";
 import type { SignText } from "../scene/office/paper";
 import type { Snapshot } from "../watcher/model";
+import type { ThemeId } from "../scene/theme/id";
 
 export interface Inspector {
 	/** True once the first snapshot has been drawn. */
@@ -44,6 +45,13 @@ export interface Inspector {
 	/** Every named sign slot, with its text. */
 	signs(): ReturnType<Office["signs"]>;
 	setSign(id: string, text: SignText | undefined): void;
+	/** The scene theme, and switching it live (as the tray's Theme menu does). */
+	theme(): ThemeId;
+	setTheme(id: ThemeId): void;
+	/** The factory's robot arms: whether each moves, and its jobs. */
+	arms(): Office["arms"];
+	/** Crew-build pieces moving now (or waiting on an arm). */
+	bricks(): Office["bricks"];
 }
 
 /** The world without Maps, for JSON. */
@@ -81,6 +89,7 @@ export function installInspector(
 	scene: { show(s: Snapshot): void; frozen: boolean; redraw(): void; current?: Snapshot; stopDemo?: () => void },
 	director?: Director,
 	voice?: { voice: Voice; now(): number },
+	themes?: { current(): ThemeId; set(id: ThemeId): void },
 ): Inspector {
 	const log: WorldEvent[] = [];
 	director?.on((events) => {
@@ -149,6 +158,10 @@ export function installInspector(
 		},
 		signs: () => office.signs(),
 		setSign: (id, text) => office.setSign(id, text),
+		theme: () => themes?.current() ?? "office",
+		setTheme: (id) => themes?.set(id),
+		arms: () => office.arms,
+		bricks: () => office.bricks,
 	};
 	window.__busybodies = inspector;
 	return inspector;
