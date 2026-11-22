@@ -2,40 +2,18 @@
 // scene work through the browser pane or headless Chrome without reading pixels. Installed in dev
 // builds and whenever the URL has ?inspect.
 import type { Application } from "pixi.js";
+import type { Stop } from "../scene/office/camera";
+import type { Office } from "../scene/office/office";
+import type { SignText } from "../scene/office/paper";
 import type { Snapshot } from "../watcher/model";
-
-/** One character, as the inspector reports it. */
-export interface Entity {
-	key: string;
-	mood: string;
-	size: number;
-	x: number;
-	y: number;
-	lift: number;
-	/** From the rig: costume, the pose playing, and which of its frames shows. */
-	role?: string;
-	pose?: string;
-	frame?: number;
-	frames?: number;
-	/** The current frame's parts that differ from rest. */
-	params?: Record<string, string>;
-}
-
-/** What the inspector drives: the office, or a rig test scene. */
-export interface InspectedScene {
-	entities(): Entity[];
-	tick(dt: number): void;
-	/** Every character back to the start of its pose, settled. */
-	rewind?(): void;
-}
 
 export interface Inspector {
 	/** True once the first snapshot has been drawn. */
 	ready: boolean;
 	snapshot(): Snapshot | undefined;
-	/** Every character: key, mood, size, position, how high it is bouncing right now, and its role,
-	 * pose and frame. */
-	entities(): Entity[];
+	/** Every character: key, mood, size, position, how high it is bouncing right now, and from the
+	 * rig its role, pose, frame (of frames) and the frame's non-rest params. */
+	entities(): ReturnType<Office["entities"]>;
 	/** Frame accounting since load (or since resetCounters). */
 	counters(): { renders: number; animationFrames: number; tickerRunning: boolean; maxFPS: number };
 	resetCounters(): void;
@@ -47,6 +25,38 @@ export interface Inspector {
 	step(n?: number): void;
 	/** Show a snapshot as if the watcher had sent it. */
 	show(snapshot: Snapshot): void;
+	/** The office as data: every area (rect, desks, fixtures, wall slots) and every desk's slot. */
+	layout(): ReturnType<typeof summarise> | undefined;
+	/** Where the camera is, and how sharp static layers are baked. */
+	camera(): { stop: Stop; scale: number; x: number; y: number; moving: boolean; bake: number };
+	/** Move the camera to a stop. `animate: false` jumps there (for screenshots). */
+	goTo(stop: Stop, animate?: boolean): void;
+	/** Every named sign slot, with its text. */
+	signs(): ReturnType<Office["signs"]>;
+	setSign(id: string, text: SignText | undefined): void;
+}
+
+/** The world without Maps, for JSON. */
+function summarise(office: Office) {
+	const w = office.layoutData;
+	if (!w) return undefined;
+	return {
+		bounds: w.bounds,
+		hallway: w.hallway,
+		areas: w.areas.map((a) => ({
+			id: a.id,
+			kind: a.kind,
+			name: a.name,
+			band: a.band,
+			rect: a.rect,
+			cols: a.cols,
+			rows: a.rows,
+			desks: a.desks.map((d) => ({ id: d.id, col: d.col, row: d.row, cell: d.cell, lead: d.lead })),
+			fixtures: a.fixtures,
+			signs: a.wall.filter((x) => x.slot).map((x) => x.slot!),
+			spots: a.spots,
+		})),
+	};
 }
 
 declare global {
@@ -57,7 +67,7 @@ declare global {
 
 export function installInspector(
 	app: Application,
-	office: InspectedScene,
+	office: Office,
 	scene: { show(s: Snapshot): void; frozen: boolean; redraw(): void; current?: Snapshot },
 ): Inspector {
 	let renders = 0;
@@ -88,7 +98,7 @@ export function installInspector(
 			animationFrames = 0;
 		},
 		freeze: () => {
-			if (!scene.frozen) office.rewind?.();
+			if (!scene.frozen) office.rewind();
 			scene.frozen = true;
 			app.ticker.stop();
 		},
@@ -102,6 +112,14 @@ export function installInspector(
 			app.render();
 		},
 		show: (s) => scene.show(s),
+		layout: () => summarise(office),
+		camera: () => ({ stop: office.stop, ...office.view, moving: office.moving, bake: office.bakeResolution }),
+		goTo: (stop, animate = true) => {
+			office.goTo(stop, animate);
+			scene.redraw();
+		},
+		signs: () => office.signs(),
+		setSign: (id, text) => office.setSign(id, text),
 	};
 	window.__busybodies = inspector;
 	return inspector;

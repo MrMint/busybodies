@@ -1,12 +1,16 @@
 // The scene: listens for snapshots from the Bun process and draws them as an office. Rendering is
-// on demand: the ticker runs only while someone is busy; otherwise the last frame just stays up.
+// on demand: the ticker runs only while someone is busy or the camera moves; otherwise the last
+// frame just stays up.
 import { Electroview } from "electrobun/view";
 import { Application, Ticker } from "pixi.js";
 import type { BusybodiesRPC } from "../shared/rpc";
 import type { Snapshot } from "../watcher/model";
-import { Atlas, Crowd, buildPoseSheet, paperTheme } from "../scene/rig";
+import { Office } from "../scene/office/office";
+import { LAWN } from "../scene/office/paper";
+import { installHud } from "./hud";
 import { installInspector } from "./inspector";
-import { Office } from "./office";
+import { placeholders } from "./placeholder";
+import { Atlas, buildPoseSheet, paperTheme, rigCharacters } from "../scene/rig";
 
 const params = new URLSearchParams(location.search);
 
@@ -23,7 +27,7 @@ function blank(): void {
 	const app = new Application();
 	await app.init({
 		resizeTo: window,
-		background: 0xf6efe4,
+		background: LAWN,
 		antialias: true,
 		autoDensity: true,
 		resolution: window.devicePixelRatio,
@@ -55,26 +59,30 @@ function blank(): void {
 		return;
 	}
 
-	// ?crowd=N: N puppets on a grid, the rig's load test (e2e/rig.test.ts). Add &idle for a crowd
-	// with nothing to do.
-	const crowdSize = Number(params.get("crowd") ?? 0);
-	const office = crowdSize > 0 ? new Crowd(atlas, crowdSize, params.has("idle")) : new Office(atlas);
+	// Mochi characters from the rig; ?placeholders draws the old stand-ins (for A/B profiling).
+	const characters = params.has("placeholders") ? placeholders(app.renderer) : rigCharacters(atlas);
+	const office = new Office({ renderer: app.renderer, characters, wake: () => scene.redraw() });
 	app.stage.addChild(office);
 
-	// Ambient motion doesn't need the display's full rate (120 Hz on ProMotion screens). Raise this
-	// for a moment that must be smooth, such as a camera move.
-	app.ticker.maxFPS = 30;
+	// Ambient motion doesn't need the display's full rate (120 Hz on ProMotion screens). A camera
+	// move must be smooth, so it gets 60 for as long as it lasts.
+	const AMBIENT_FPS = 30;
+	const MOVING_FPS = 60;
+	app.ticker.maxFPS = AMBIENT_FPS;
 	app.ticker.add((t) => {
 		office.tick(t.deltaTime);
+		app.ticker.maxFPS = office.moving ? MOVING_FPS : AMBIENT_FPS;
 		if (!office.animating) app.ticker.stop();
 	});
 
 	const scene = {
 		current: undefined as Snapshot | undefined,
-		/** Set by the inspector: the clock is stopped and only step() moves the scene. */
-		frozen: false,
+		/** The clock is stopped and only the inspector's step() moves the scene. Set by the inspector,
+		 * or from load with ?frozen (for deterministic screenshots: tools/shoot.ts). */
+		frozen: params.has("frozen"),
 		redraw() {
 			if (office.animating && !scene.frozen) {
+				if (office.moving) app.ticker.maxFPS = MOVING_FPS;
 				if (!app.ticker.started) app.ticker.start();
 			} else {
 				app.render();
@@ -82,8 +90,9 @@ function blank(): void {
 		},
 		show(snapshot: Snapshot) {
 			scene.current = snapshot;
-			if (office instanceof Office) office.show(snapshot, app.screen.width, app.screen.height);
+			office.show(snapshot, app.screen.width, app.screen.height);
 			scene.redraw();
+			hud.update(snapshot);
 			if (inspector) inspector.ready = true;
 			if (import.meta.env.DEV) {
 				const count = (l: Snapshot["sessions"]): number => l.reduce((n, s) => n + 1 + count(s.children), 0);
@@ -94,22 +103,24 @@ function blank(): void {
 	const show = scene.show;
 	const redraw = scene.redraw;
 	const inspector = import.meta.env.DEV || params.has("inspect") ? installInspector(app, office, scene) : undefined;
+	const hud = installHud(office);
+
+	// Click a room to zoom to it, then a desk; click outside the rooms for the whole office.
+	app.stage.eventMode = "static";
+	app.stage.hitArea = app.screen;
+	app.stage.cursor = "zoom-in";
+	app.stage.on("pointertap", (e) => office.click(e.global.x, e.global.y));
 
 	app.renderer.on("resize", (w, h) => {
 		office.layout(w, h);
 		redraw();
 	});
 
-	if (office instanceof Crowd) {
-		office.layout(app.screen.width, app.screen.height);
-		redraw();
-		if (inspector) inspector.ready = true;
-		return;
-	}
-
 	if (params.has("demo")) {
-		const { demoSnapshot, asleep } = await import("./demo");
-		show(params.get("demo") === "idle" ? asleep(demoSnapshot) : demoSnapshot);
+		const { demo } = await import("./demo");
+		const day = demo(params.get("demo"));
+		for (const [id, sign] of Object.entries(day.signs)) office.setSign(id, sign);
+		show(day.snapshot);
 		return;
 	}
 

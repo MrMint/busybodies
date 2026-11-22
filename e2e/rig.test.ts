@@ -1,4 +1,4 @@
-// The mochi rig under load: 200 puppets on screen hold the same frame budgets as the office (zero
+// The mochi rig under load, in the real office (?demo=crowd): 200 characters on screen hold the same frame budgets as the office (zero
 // frames when idle, at most 30 fps when busy), and the inspector reports each one's role, pose and
 // frame. Served from dist/ like frames.test.ts; run with `bun test e2e/`.
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
@@ -50,7 +50,7 @@ async function measure(page: Page, ms = 2000) {
 
 describe("200 puppets", () => {
 	test("an idle crowd requests no animation frames and renders nothing", async () => {
-		const page = await open("crowd=200&idle");
+		const page = await open("demo=crowd-idle");
 		expect(await page.evaluate(() => window.__busybodies!.entities().length)).toBe(200);
 		const c = await measure(page);
 		expect(c.tickerRunning).toBe(false);
@@ -60,7 +60,7 @@ describe("200 puppets", () => {
 	}, T);
 
 	test("a busy crowd renders at no more than 30 fps", async () => {
-		const page = await open("crowd=200");
+		const page = await open("demo=crowd");
 		const c = await measure(page, 2000);
 		expect(c.tickerRunning).toBe(true);
 		expect(c.maxFPS).toBe(30);
@@ -70,24 +70,25 @@ describe("200 puppets", () => {
 	}, T);
 
 	test("every character reports its role, pose and frame", async () => {
-		const page = await open("crowd=200");
+		const page = await open("demo=crowd");
 		const list = await page.evaluate(() => window.__busybodies!.entities());
 		const roles = new Set(list.map((e) => e.role));
 		expect(roles.size).toBe(7);
 		const poses = new Set(list.map((e) => e.pose));
 		expect(poses.size).toBeGreaterThan(8);
+		expect(list).toHaveLength(200);
 		for (const e of list) {
 			expect(typeof e.pose).toBe("string");
-			expect(e.frame).toBeGreaterThanOrEqual(0);
-			expect(e.frame!).toBeLessThan(e.frames!);
-			expect(e.params).toBeDefined();
+			expect(Number(e.frame)).toBeGreaterThanOrEqual(0);
+			expect(Number(e.frame)).toBeLessThan(Number(e.frames));
+			expect(typeof e.params).toBe("string");
 		}
 		await page.close();
 	}, T);
 
 	test("a frozen crowd steps to the same frame every time, however long it ran first", async () => {
 		const frame = async (ranMs: number) => {
-			const page = await open("crowd=200");
+			const page = await open("demo=crowd");
 			await page.waitForTimeout(ranMs);
 			const snap = await page.evaluate(() => {
 				const b = window.__busybodies!;

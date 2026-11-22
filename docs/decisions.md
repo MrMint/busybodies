@@ -261,6 +261,122 @@ run only when their secrets exist:
 - Cost: the Apple Developer Program, US$99 a year. Then the `.dmg` opens without the extra step,
   and the README's Open Anyway note can go.
 
+## 2026-11-21: sass (S5)
+
+**The line bank is typed data in `src/scene/sass/lines.ts`.** The board's 81 lines are kept word
+for word, with their kind, speaker role and timing note. A unit test parses
+`design/boards/Lines.dc.html` and checks the count and every line against it, so the two can't
+drift. A board line with a name, number or time in it ("PR #219. Frame it.") becomes a template
+(`PR #{n}. Frame it.`) and keeps the board's wording in `boardText`. 108 new lines make 189, with
+at least 5 for each of the 22 triggers. A line whose placeholder has no value isn't used.
+
+**Detectors are pure: `detect(prev, snap, now)`.** Events (a PR opened, a test going red, a hire)
+fire once, on the change. On the first snapshot only events from the last minute count, so
+opening the app doesn't replay the day. States (a wait, a long build, a nap, a stall) fire on
+every call while they hold, with a magnitude in minutes or a count, and a key that stays the same
+for the whole state. A session that vanishes while busy counts as a crash. "Finished, still open"
+is a session idle with a PR up. A busy-to-idle change alone is just a turn ending. Cost is in
+coffee cups: $8 a cup from the tool's cost record, or 100k output tokens a cup when there's none.
+
+**Escalation is by tier.** A line's `min` and `max` bound the trigger's magnitude. The scheduler
+picks only from the highest tier still on offer, so a wait moves on from "Whenever you are
+ready." to "No rush. Some rush." at 2 minutes. A state is said again when it crosses a tier, or
+after 8 quiet minutes.
+
+**The scheduler takes turns.** It allows at most 2, 3 or 4 bubbles on screen as the camera zooms
+in. New bubbles start 1.5 s apart, and each character keeps 45 s between its own. The same
+character never says the same line within the hour, and nobody repeats a line within 10 minutes.
+Repeats count by line, not by filled text. Lines over 30 characters show only from zoom 1.2 up,
+or in the room the camera is on. Each choice hashes the seed, the trigger key and the time, so a
+replay is the same every time. Nothing runs a timer: `Sass.nextWake(now)` says when to call
+`tick` (a bubble ends, a queued line's turn comes, a wait reaches its next tier). It's undefined
+when nothing is due, so an idle office with no bubbles up can sleep.
+
+**Signs: triggers put sign lines up, and counters take the slot back.** A trigger's sign holds its
+slot for 2 minutes. After that, the counters own the room whiteboard ("Days since a test broke",
+or the fail streak from 3), the room sign (the PR tally), and the kitchen sign (green builds
+today). Room idle time drives the plant (`fresh`, `droopy` from 15 min, `wilting` from 30) and
+the mug pile (one mug per 10 min, up to 6). These go out as `sign(slot, state)` too. The fridge
+note is about the most pressing thing: the longest wait, then a long build, a fail streak, deep
+scouts, a stall, late-night work, a finished session left open, then a long nap. Its minutes are
+rounded to 5, so it doesn't change every minute. Slot names follow the office:
+`room:<project>:sign|board|desk|plant|mugs`, `meeting:*`, `kitchen:sign`, `fridge`, `ticker`. The
+wiring maps the props the office doesn't draw yet, or drops them.
+
+**`tools/sass-dump.ts` replays a fixture and prints who said what, in UTC,** so the voice can be
+reviewed by reading. `--zoom 0.4` shows what the whole-office view would show.
+## 2026-11-21: the open-floor office (S2)
+
+**The floor plan is stable by memory, not by formula.** `FloorPlan` (`src/scene/office/layout.ts`)
+remembers which room each project has and which desk each session has, and folds each snapshot
+into that. Adding or removing a session never moves anyone else; unit tests replay random days of
+arrivals and departures to hold this. The rules:
+- A hallway runs left to right at y = 0. Rooms sit in two bands, above and below it, anchored at
+  the hallway: a room above grows upward, one below grows downward. A room gaining a row of desks
+  moves no one, in it or next to it.
+- The common areas come first in each band: the meeting room above; the lobby (with the nap pod)
+  and the kitchen below. They had to come first: anything placed after a project room would move
+  when the room before it was built.
+- A new project takes a vacant room it fits in, or a new room at the end of the shorter band. Its
+  width (2 to 4 desk columns, about √n for n sessions) is fixed when it arrives, so rooms never
+  slide along the hallway. A busy project grows rows instead: two or three for a normal day, eight
+  for 30 sessions in one project.
+- A session takes the first free desk, row by row from the hallway side. A side session takes the
+  free desk nearest the one that started it. Freed desks are not compacted; empty back rows are
+  trimmed (never below two). A room whose last session ends becomes vacant ("for lease") until a
+  new project needs one its size.
+- Sizes, in world pixels, follow the FloorBusy board: a desk cell is 220 × 170, the back wall 110,
+  the hallway 130. A two-row room is 460 tall.
+
+The cost: the office grows wider with projects (about 3.3:1 for 30 sessions over 10 projects), and
+a project that vanishes and returns may get a different room. A long day with many short-lived
+projects leaves vacant rooms, which new projects reuse.
+
+**Office to character: a slot, and nothing else** (`src/scene/office/slot.ts`). The office
+decides where everyone stands and hands each character a `Slot`: feet position `x, y` in world
+pixels, a `depth` (draw order; the feet's y unless a spot says otherwise, like the nap pod's
+window), and a `facing` (1 right, -1 left). It also hands over a `Who`: key, lead or crew, role,
+mood, size and a colour key. A `Character` is a view (a Container the office adds to its
+depth-sorted layer), `update(who)`, `place(slot)`, `tick(dt)`, `animating`, `inspect()` and
+`destroy()`. The office never draws a body and the character never reads the snapshot. The
+placeholder Busybody implements it (`src/mainview/placeholder.ts`); the rig (S1) replaces it by
+passing its own `CharacterFactory` to the `Office`.
+
+**Who stands where is provisional** (`src/scene/office/placement.ts`), until the director (S4)
+owns it: leads at their desks; running and stalled agents around the desk (keeping their spot
+while they stay); a running reviewer in the meeting room; finished agents in the coffee queue,
+then the nap pod, the water cooler and the sofas.
+
+**Static layers are cached, at the camera's scale.** Each room's floor, walls and wall items are
+one cached texture (`cacheAsTexture`), and the hallway is cached in 640-pixel chunks. Furniture is
+drawn once per kind and baked into a texture that every desk, chair and plant shares, so they
+batch. Desks, furniture and characters share one container sorted by depth (zIndex = feet y), so
+people in front cover people and desks behind them. When the camera settles at a new stop,
+everything baked is re-baked at the new scale (in steps: 0.5, 0.75, 1, 1.5, 2, 3, 4, 6, 8 times
+the device resolution, and never over 4096 pixels a side), so a zoomed-in desk stays sharp. A sign
+change re-bakes only its own room. Labels over the live scene (room tabs, desk cards, bubbles) are
+bitmap text from one shared glyph atlas, so they batch with the furniture and a bubble that
+changes on every tool call uploads nothing.
+
+**Draw calls are the budget to watch, and characters dominate it.** Counting WebGL draws per busy
+frame in the FloorBusy demo: the placeholder office on main took 28; the new office with
+vector-drawn placeholder characters took 69, 50 of them the characters (a stroked Graphics
+doesn't batch). With each placeholder look (colour, size, mood) baked into a shared texture, a busy
+frame is 22 draws, of which the whole office is about 19. The rig (S1) should keep characters
+batchable the same way: parts from one atlas.
+
+**The camera has three stops**, the whole office, a room and a desk, with smooth moves between
+them (650 ms, eased, zooming in log space). Click a room to zoom to it, then a desk in it to zoom
+to the desk; click outside the rooms (or press Escape, 0 or Home) for the whole office; n / → and
+p / ← step through the rooms in reading order. A move raises the frame cap to 60 fps for its
+length only, and an idle office goes back to zero frames when it ends. Clicks are resolved against
+the layout data from one stage listener, so nothing in the scene is hit-tested.
+
+**Sign slots are named** (`<area id>:sign`, `:board`, `:frame`, for example
+`room:lanternfish:board` or `kitchen:sign`), and take `{ title, body }` through
+`Office.setSign` (also on the inspector). The common areas have default lines from the line bank;
+the sass engine (S5) writes the rest.
+
 ## 2026-11-21: the mochi rig (S1)
 
 **A character is one `Puppet` of about 18 sprites from one shared atlas** (`src/scene/rig/`). Back
@@ -328,7 +444,8 @@ occurrence `n`. Loops start at a phase hashed from the id so a crowd doesn't typ
 
 **Review by reading first.** `bun tools/pose-dump.ts [pose]` prints every frame's non-rest
 parameters; `bun tools/pose-sheet.ts` renders every pose's frames into `docs/rig/pose-sheet.png`
-from `?sheet`. `?crowd=200` (and `&idle`) is the load test the e2e budgets run against.
+from `?sheet`. `?demo=crowd` (200 characters: 40 sessions of a lead and four crew) and
+`?demo=crowd-idle` are the load test the e2e budgets run against.
 
 **Measured cost of the rig.** Alternating `tools/profile.sh` runs on one machine, heavy load
 (`--sessions 12 --agents 8 --busy 0.75 --rate 20`), % of one core, Bun / WebContent, with the
@@ -343,3 +460,10 @@ lower the frame rate for characters far from the camera, and drop hidden parts f
 **`freeze()` rewinds poses.** Freezing the inspector replays every character's current pose from
 its first frame, settled, so `step(n)` gives the same frames however long the page ran first.
 Slow CI renders a few real frames before a test can freeze.
+
+**In the office, the rig is the character factory.** `rigCharacters(atlas)` implements S2's
+`Character` slot (`src/scene/rig/character.ts`): a lead wears the lead costume, crew wear
+`roleFor(role)`, the tint key picks the lead's accent, `size` is the height of a standing mochi
+(85 rig units, ground to the top of the body), and `facing` mirrors the puppet. The office draws
+the desks, so the rig's own stays off. `?placeholders` swaps S2's baked stand-ins back in, for A/B
+profiling. The slot gains an optional `rewind()`, which the inspector's `freeze()` calls.

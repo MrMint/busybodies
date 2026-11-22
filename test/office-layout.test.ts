@@ -1,0 +1,197 @@
+// The office floor plan: stable under change, and sane from 1 to 30 sessions. Every project and
+// title here is invented.
+import { describe, expect, test } from "bun:test";
+import { FloorPlan } from "../src/scene/office/layout";
+import { type Rect, type World, crewSlot } from "../src/scene/office/world";
+import type { Session, Snapshot } from "../src/watcher/model";
+
+const PROJECTS = ["lanternfish", "orbit-kit", "breadbox", "mossy-docs", "kettle-api", "pebble", "quokka", "tinsel", "marmot", "fennel"];
+
+let n = 0;
+const session = (project: string, extra: Partial<Session> = {}): Session => ({
+	id: `s-${++n}`,
+	pid: n,
+	title: `Task ${n}`,
+	cwd: `/work/${project}`,
+	project,
+	origin: "cli",
+	state: "busy",
+	stateSince: 0,
+	startedAt: n,
+	agents: [],
+	children: [],
+	...extra,
+});
+const snap = (sessions: Session[]): Snapshot => ({ at: 0, sessions });
+
+/** A seeded generator, so a failing sequence can be replayed. */
+const rng = (seed: number) => () => ((seed = (seed * 1103515245 + 12345) >>> 0) / 2 ** 32);
+
+const overlaps = (a: Rect, b: Rect) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+const inside = (a: Rect, b: Rect) => a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h;
+const flat = (list: Session[]): Session[] => list.flatMap((s) => [s, ...flat(s.children)]);
+
+function checkSane(world: World, sessions: Session[]): void {
+	const ids = flat(sessions).map((s) => s.id);
+	expect([...world.desks.keys()].sort()).toEqual([...ids].sort());
+	for (const [i, a] of world.areas.entries()) {
+		expect(inside(a.rect, world.bounds)).toBe(true);
+		expect(overlaps(a.rect, world.hallway)).toBe(false);
+		for (const b of world.areas.slice(i + 1)) expect(overlaps(a.rect, b.rect)).toBe(false);
+		for (const d of a.desks) {
+			expect(inside(d.cell, a.rect)).toBe(true);
+			expect(d.cell.y).toBeGreaterThanOrEqual(a.floorY);
+		}
+		for (const f of a.fixtures) expect(f.x > a.rect.x && f.x < a.rect.x + a.rect.w && f.y > a.floorY && f.y < a.rect.y + a.rect.h).toBe(true);
+	}
+	const cells = [...world.desks.values()].map((d) => `${d.cell.x},${d.cell.y}`);
+	expect(new Set(cells).size).toBe(cells.length);
+	// Every project has exactly one room, and its sessions sit in it.
+	for (const s of flat(sessions)) expect(world.areas.find((a) => a.desks.some((d) => d.id === s.id))!.name).toBe(s.project);
+}
+
+const deskCells = (w: World) => new Map([...w.desks].map(([id, d]) => [id, JSON.stringify(d.cell)]));
+
+describe("layout stability", () => {
+	test("adding a session moves no other desk", () => {
+		const plan = new FloorPlan();
+		const list = [session("lanternfish"), session("lanternfish"), session("orbit-kit"), session("breadbox")];
+		const before = deskCells(plan.update(snap(list)));
+		for (const extra of [session("lanternfish"), session("lanternfish"), session("lanternfish"), session("pebble")]) {
+			list.push(extra);
+			const after = deskCells(plan.update(snap(list)));
+			for (const [id, cell] of before) expect(after.get(id)).toBe(cell);
+			for (const [id, cell] of after) before.set(id, cell);
+		}
+	});
+
+	test("removing a session moves no other desk", () => {
+		const plan = new FloorPlan();
+		const list = PROJECTS.slice(0, 4).flatMap((p) => [session(p), session(p), session(p)]);
+		const before = deskCells(plan.update(snap(list)));
+		while (list.length > 1) {
+			list.splice(Math.floor(list.length / 2), 1);
+			const after = deskCells(plan.update(snap(list)));
+			for (const [id, cell] of after) expect(cell).toBe(before.get(id)!);
+		}
+	});
+
+	test("a random day of arrivals and departures never moves a seated session", () => {
+		for (const seed of [1, 2, 3, 4, 5]) {
+			const r = rng(seed);
+			const plan = new FloorPlan();
+			let list: Session[] = [];
+			const seen = new Map<string, string>();
+			for (let step = 0; step < 150; step++) {
+				const roll = r();
+				if (roll < 0.5 || list.length === 0) {
+					const s = session(PROJECTS[Math.floor(r() * 6)]!);
+					const parent = r() < 0.2 ? list.find((p) => p.project === s.project) : undefined;
+					if (parent) parent.children = [...parent.children, s];
+					else list.push(s);
+				} else if (list.length > 0) {
+					const victim = list[Math.floor(r() * list.length)]!;
+					list = list.filter((s) => s !== victim);
+				}
+				const world = plan.update(snap(list));
+				checkSane(world, list);
+				for (const [id, cell] of deskCells(world)) {
+					if (seen.has(id)) expect(cell).toBe(seen.get(id)!);
+					seen.set(id, cell);
+				}
+				// Rooms never slide along the hallway.
+				// Rooms never slide along the hallway while they're in use.
+				for (const key of [...seen.keys()]) if (key.startsWith("area:") && !world.areas.some((a) => `area:${a.id}` === key)) seen.delete(key);
+				for (const a of world.areas) {
+					const key = `area:${a.id}`;
+					if (seen.has(key)) expect(`${a.band}:${a.rect.x}`).toBe(seen.get(key)!);
+					seen.set(key, `${a.band}:${a.rect.x}`);
+				}
+			}
+		}
+	});
+
+	test("rooms keep their place along the hallway as projects come and go", () => {
+		const plan = new FloorPlan();
+		const a = session("lanternfish");
+		const b = session("orbit-kit");
+		const c = session("breadbox");
+		const w1 = plan.update(snap([a, b, c]));
+		const xOf = (w: World, name: string) => w.areas.find((r) => r.name === name)!.rect.x;
+		const w2 = plan.update(snap([a, c]));
+		expect(xOf(w2, "lanternfish")).toBe(xOf(w1, "lanternfish"));
+		expect(xOf(w2, "breadbox")).toBe(xOf(w1, "breadbox"));
+		expect(w2.areas.some((r) => r.kind === "vacant")).toBe(true);
+		// A new project moves into the vacant room rather than building a new one.
+		const w3 = plan.update(snap([a, c, session("pebble")]));
+		expect(xOf(w3, "pebble")).toBe(xOf(w1, "orbit-kit"));
+		expect(w3.bounds.w).toBe(w1.bounds.w);
+	});
+
+	test("a side session sits next to the session that started it", () => {
+		const plan = new FloorPlan();
+		const list = Array.from({ length: 9 }, () => session("lanternfish"));
+		const cols = plan.update(snap(list)).areas.find((a) => a.name === "lanternfish")!.cols;
+		expect(cols).toBe(3);
+		const parent = list[cols + 1]!; // row 1, column 1
+		// Free the first desk (far from the parent) and the one beside the parent.
+		const rest = list.filter((_, i) => i !== 0 && i !== cols + 2);
+		const side = session("lanternfish");
+		parent.children = [side];
+		const w = plan.update(snap(rest));
+		const p = w.desks.get(parent.id)!;
+		const s = w.desks.get(side.id)!;
+		expect(Math.abs(p.col - s.col) + Math.abs(p.row - s.row)).toBe(1);
+		// A plain new session still takes the first free desk.
+		const plain = session("lanternfish");
+		expect(plan.update(snap([...rest, plain])).desks.get(plain.id)!.cell).toEqual(w.areas.find((a) => a.name === "lanternfish")!.cells[0]!);
+	});
+
+	test("the same snapshot gives the same world, whatever order the sessions come in", () => {
+		const list = PROJECTS.slice(0, 5).flatMap((p) => [session(p), session(p)]);
+		const a = new FloorPlan().update(snap(list));
+		const b = new FloorPlan().update(snap([...list].reverse()));
+		expect(deskCells(b)).toEqual(deskCells(a));
+	});
+});
+
+describe("layout scaling", () => {
+	for (const count of [1, 2, 3, 5, 8, 12, 20, 30]) {
+		test(`${count} sessions spread over projects`, () => {
+			const list = Array.from({ length: count }, (_, i) => session(PROJECTS[i % Math.min(PROJECTS.length, Math.ceil(count / 3))]!));
+			const world = new FloorPlan().update(snap(list));
+			checkSane(world, list);
+			// Two bands keep the office roughly screen-shaped: never a thin strip.
+			const aspect = world.bounds.w / world.bounds.h;
+			expect(aspect).toBeGreaterThan(0.7);
+			expect(aspect).toBeLessThan(4.2);
+		});
+	}
+
+	test("30 sessions in one project make one deep room", () => {
+		const list = Array.from({ length: 30 }, () => session("lanternfish"));
+		const world = new FloorPlan().update(snap(list));
+		checkSane(world, list);
+		const room = world.areas.find((a) => a.name === "lanternfish")!;
+		expect(room.cols).toBe(4);
+		expect(room.rows).toBe(8);
+	});
+
+	test("an empty snapshot still has the common areas", () => {
+		const world = new FloorPlan().update(snap([]));
+		expect(world.areas.map((a) => a.kind)).toEqual(["meeting", "lobby", "kitchen"]);
+		expect(world.areas.find((a) => a.kind === "kitchen")!.spots.queue).toHaveLength(5);
+	});
+
+	test("crew slots stay inside the desk's cell and don't stack", () => {
+		const world = new FloorPlan().update(snap([session("lanternfish")]));
+		const d = [...world.desks.values()][0]!;
+		const pts = Array.from({ length: 24 }, (_, i) => crewSlot(d, i));
+		for (const p of pts) {
+			expect(p.x).toBeGreaterThan(d.cell.x - 6);
+			expect(p.x).toBeLessThan(d.cell.x + d.cell.w + 6);
+			expect(p.y).toBeLessThanOrEqual(d.cell.y + d.cell.h);
+		}
+		expect(new Set(pts.map((p) => `${p.x},${p.y}`)).size).toBe(pts.length);
+	});
+});
