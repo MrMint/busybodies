@@ -10,7 +10,7 @@ import { FEEL, Spring, SpringSet } from "./motion";
 import { frameAt, unit } from "./player";
 import { POSE, type Pose, duration } from "./poses";
 import { COSTUMES, type Role } from "./roles";
-import { ANCHORS as A, ACCENTS } from "./theme";
+import { ANCHORS as A, ACCENTS, PAPER_PALETTE } from "./theme";
 import { CHEEKS } from "./vocab";
 
 const RAD = Math.PI / 180;
@@ -75,6 +75,8 @@ export class Puppet extends Container {
 
 	#atlas: Atlas;
 	#desk: boolean;
+	/** The hand colour, for a prop that is the hand itself (a finger-gun). */
+	#skin: number;
 	#springs: SpringSet<ChannelName>;
 	#pop = { face: new Spring(1, FEEL.pop), heldL: new Spring(1, FEEL.pop), heldR: new Spring(1, FEEL.pop), front: new Spring(1, FEEL.pop), fx: new Spring(1, FEEL.pop) };
 	/** How the eyes and mouth arrive on a change: a slight swell, not a squash. */
@@ -128,6 +130,7 @@ export class Puppet extends Container {
 		this.role = opts.role;
 		this.accent = opts.accent ?? ACCENTS[Math.floor(unit(opts.id, "accent") * ACCENTS.length)]!;
 		this.#desk = opts.desk ?? true;
+		this.#skin = PAPER_PALETTE.role[opts.role];
 		this.#springs = new SpringSet(channels(REST), feelOf);
 		const costume = COSTUMES[opts.role];
 
@@ -356,6 +359,9 @@ export class Puppet extends Container {
 
 		this.#swap(this.#armL.held, f.props.left && `held/${f.props.left}`, prev.props.left !== f.props.left, this.#pop.heldL);
 		this.#swap(this.#armR.held, f.props.right && `held/${f.props.right}`, prev.props.right !== f.props.right, this.#pop.heldR);
+		// A finger-gun is the hand itself: drawn white, it takes the hand's colour.
+		this.#armL.held.tint = f.props.left === "finger" ? this.#skin : 0xffffff;
+		this.#armR.held.tint = f.props.right === "finger" ? this.#skin : 0xffffff;
 		const front = f.props.front === "desk" ? undefined : f.props.front;
 		this.#swap(this.#front, front && `prop/${front}`, (prev.props.front === "desk" ? undefined : prev.props.front) !== front, this.#pop.front);
 		this.#deskSprite.visible = this.#desk && f.props.front === "desk";

@@ -6,8 +6,8 @@ import { FEEL, Spring, SpringSet, SUBSTEP_S, Tween, ease, lerp } from "../src/sc
 import { choosePose, frameAt, hash, unit } from "../src/scene/rig/player";
 import { BEAT_MS, HABITS, POSE, POSES, duration } from "../src/scene/rig/poses";
 import { ROLES, roleFor } from "../src/scene/rig/roles";
-import { ARMS, FACES, type Arm } from "../src/scene/rig/vocab";
-import { PUPPET_HEIGHT, REACH, STATION, STATION_CREW_PX, handAt, solveArm } from "../src/scene/rig/reach";
+import { ARMS, FACES, SPOTS, type Arm } from "../src/scene/rig/vocab";
+import { HANDOFF, PUPPET_HEIGHT, REACH, STATION, STATION_CREW_PX, TRAY, handAt, solveArm } from "../src/scene/rig/reach";
 import { STATION_POSE, STATION_REACH } from "../src/scene/director/stations";
 
 describe("frames", () => {
@@ -147,6 +147,118 @@ describe("stations", () => {
 		const down = stamp.findIndex((f) => f.armR === "stamp");
 		expect(stamp[down]!.props.right).toBe("stampG");
 		expect(stamp[down + 1]!.props).toMatchObject({ right: "stamp", work: "formsOk" });
+	});
+});
+
+describe("wave 2", () => {
+	const props = (name: string, as: "lead" | "partner" = "lead") => (as === "lead" ? POSE[name]!.frames : POSE[name]!.partner!.frames).map((f) => f.props);
+
+	test("the contract holds: names, triggers and play modes the director plays", () => {
+		const want: Record<string, "loop" | "once"> = {
+			buried: "loop", ticketWait: "loop", bellRing: "once", stickyCarry: "loop", stickyPost: "once", rushRun: "loop",
+			envelopeCarry: "loop", copierFeud: "loop", flourish: "once", handOff: "once",
+		};
+		for (const [name, play] of Object.entries(want)) expect(POSE[name]).toMatchObject({ play, trigger: "working" });
+		expect(POSE.handOff!.partner?.role).toBe("builder");
+	});
+
+	test("walk poses step on whole beats, still readable at a run's walkTempo", () => {
+		for (const name of ["stickyCarry", "rushRun", "envelopeCarry"]) {
+			const fs = POSE[name]!.frames;
+			// Legs move every frame or two, and at ×1.65 no frame is shorter than ~75 ms.
+			expect(fs.every((f) => f.ms / 1.65 >= 75)).toBe(true);
+			expect(new Set(fs.map((f) => f.feet)).size).toBeGreaterThanOrEqual(2);
+		}
+		// The run leans from the hips and pumps its arms against its legs, without scaling.
+		const run = POSE.rushRun!.frames;
+		expect(run.every((f) => f.body === "dash" || f.body === "dashUp")).toBe(true);
+		expect(run.every((f) => f.armL !== f.armR)).toBe(true);
+		expect(run.every((f) => f.fx?.startsWith("rush"))).toBe(true);
+		expect(props("stickyCarry").every((p) => p.right?.startsWith("sticky"))).toBe(true);
+		expect(props("envelopeCarry").every((p) => p.front === "bigEnvelope")).toBe(true);
+	});
+
+	test("the in-tray teeters, and its top sheet goes over the side", () => {
+		const ws = props("buried").map((p) => p.work);
+		expect(ws.every((w) => w?.startsWith("tray"))).toBe(true);
+		for (const w of ["tray4", "tray4L", "tray4R", "traySlide", "trayDrop"] as const) expect(ws).toContain(w);
+		expect(ws.indexOf("traySlide")).toBeLessThan(ws.indexOf("trayDrop"));
+		// It peers over the pile: the eyes (55 up) clear the pile's top only on the toes.
+		expect(-55 - 7).toBeLessThan(TRAY.buried);
+		expect(-55).toBeGreaterThan(TRAY.buried);
+	});
+
+	test("the bell rings when the palm lands on it, and the ringer keeps its ticket", () => {
+		const fs = POSE.bellRing!.frames;
+		for (const f of fs) expect(f.props.left).toBe("ticket");
+		const strike = fs.findIndex((f) => f.armR === "ring");
+		expect(fs[strike]!.props.work).toBe("bellDing");
+		expect(fs[strike]!.fx).toBe("ding");
+		expect(fs[strike - 1]!.props.work).toBe("bell");
+		expect(fs.at(-1)!.props.work).toBe("bell");
+		expect(props("ticketWait").every((p) => p.right === "ticket")).toBe(true);
+	});
+
+	test("the sticky note goes from the fingertip to the planner, and the hands end empty", () => {
+		const fs = POSE.stickyPost!.frames;
+		const press = fs.findIndex((f) => f.armR === "stick");
+		expect(fs[press - 1]!.props.right).toBe("sticky");
+		expect(fs[press]!.props).toEqual({ work: "stickyOn" });
+		expect(fs.slice(press).every((f) => f.props.work === "stickyOn")).toBe(true);
+		expect(fs.at(-1)!.props.left ?? fs.at(-1)!.props.right).toBeUndefined();
+	});
+
+	test("the copier stays jammed through the feud, and the crumpled sheet is gone by the loop", () => {
+		const fs = POSE.copierFeud!.frames;
+		expect(fs.every((f) => ["jammed", "jabbed", "kicked", "kickSpit", "jam"].includes(f.props.work ?? ""))).toBe(true);
+		expect(fs.some((f) => f.feet === "boot")).toBe(true);
+		expect(fs.filter((f) => f.armR === "press").every((f) => f.props.work === "jabbed")).toBe(true);
+		// The kick spits the sheet out; it's plucked, glared at, tossed.
+		const kick = fs.findIndex((f) => f.feet === "boot");
+		expect(fs[kick + 1]!.props.work).toBe("kickSpit");
+		expect(fs.some((f) => f.props.right === "crumple" && f.armR === "card")).toBe(true);
+		expect(fs[0]!.props.right).toBeUndefined();
+		expect(fs.at(-1)!.props.right).toBeUndefined();
+	});
+
+	test("a hand-off passes one folder: never in two hands, never moving as it changes hands", () => {
+		const { gap, hand, folder } = HANDOFF;
+		expect(gap as number).toBe(2 * hand.x + folder.from + folder.to);
+		const giver = POSE.handOff!.frames;
+		const taker = POSE.handOff!.partner!.frames;
+		// The taker steps in (at-s2) from its slot to the hand-off distance before it reaches.
+		expect(taker[0]!.spot).toBe("here");
+		expect(taker.slice(1).every((f) => f.spot === "s2")).toBe(true);
+		expect(HANDOFF.slot - SPOTS.s2[0]).toBe(gap);
+		let t = 0;
+		const at = (fs: typeof giver, ms: number) => {
+			let acc = 0;
+			return fs.find((f) => (acc += f.ms) > ms)!;
+		};
+		let passed = false;
+		for (; t < duration(giver); t += BEAT_MS) {
+			const g = at(giver, t);
+			const k = at(taker, t);
+			const holders = [g.props.right === "folderOut", k.props.right === "folderOut" || k.props.right === "folderTuck"].filter(Boolean).length;
+			expect(holders).toBeLessThanOrEqual(1);
+			// While the giver holds it out, the taker's hand is on its far edge (or reaching).
+			if (g.props.right === "folderOut" && g.armR === "offer" && k.armR === "offer") passed = true;
+		}
+		expect(passed).toBe(true);
+		// Both hold it at arm's length with the same arm, so the folder sits in the same place:
+		// the giver's near edge, mirrored across the gap, is the taker's far edge.
+		const near = handAt("offer").x + folder.from;
+		const far = handAt("offer").x + folder.to;
+		expect(gap - far).toBeCloseTo(near, 0);
+		expect(taker.at(-1)!.props.right).toBe("folderTuck");
+		expect(giver.at(-1)!.props.right).toBeUndefined();
+	});
+
+	test("queueWait keeps the clipboard on the forward side, and rises rather than leans", () => {
+		const fs = POSE.queueWait!.frames;
+		expect(fs.every((f) => f.props.right === "clipF" && !f.props.left)).toBe(true);
+		expect(fs.some((f) => f.body === "peer")).toBe(true);
+		expect(fs.some((f) => f.body === "leanR" || f.body === "leanL")).toBe(false);
 	});
 });
 

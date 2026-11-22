@@ -691,6 +691,9 @@ export const POSES: Pose[] = [
 		name: "mailDrop", title: "Dropping the envelope in the outbox", trigger: "working", rarity: 1, play: "once",
 		lines: [],
 		frames: [
+			// Arriving from envelopeCarry: the big envelope still held up in both hands, then gripped
+			// in one (the same envelope, its airmail edge and red seal) and held out over the tray.
+			["e-happy l-right b-up m-grin fr-bigEnvelope al-present ar-present w-outbox", 1],
 			["l-right b-one m-small al-low hr-envelope ar-card w-outbox", 2],
 			["l-right b-one m-small al-low hr-envelope ar-post w-outbox", 2],
 			["e-wide l-downR b-up m-small al-low ar-let w-mail1", 1],
@@ -718,50 +721,226 @@ export const POSES: Pose[] = [
 		],
 	}),
 	pose({
-		// Waiting in line at a busy station: reading the clipboard and tapping a foot, then leaning
-		// to look past the one ahead (who stands toward the station, the way this one faces).
+		// Waiting in line at a busy station. The queue stands close (two to a station, the one behind
+		// drawn in front), so everything reads on the forward side and up top: the clipboard in the
+		// forward hand under the chin, a foot tapping, and a rise onto the toes to see over the one
+		// ahead (a rise clears its head; a lean would only push into it).
 		name: "queueWait", title: "Waiting in line", trigger: "working", rarity: 1, play: "loop",
 		lines: [],
 		frames: [
-			["e-half l-down b-flat m-flat hl-clip al-read ar-low", 3],
-			["e-half l-down b-flat m-flat hl-clip al-read ar-low f-tapR", 1],
-			["e-half l-down b-flat m-flat hl-clip al-read ar-low", 1],
-			["e-half l-down b-flat m-flat hl-clip al-read ar-low f-tapR", 1],
-			["e-closed l-down b-flat m-flat hl-clip al-read ar-low", 1],
-			["l-right b-one m-pout hl-clip al-low ar-hip bd-leanR", 3],
-			["e-side l-right b-one m-pout hl-clip al-low ar-hip bd-leanR f-tapR", 1],
-			["e-side l-right b-one m-pout hl-clip al-low ar-hip bd-leanR", 1],
-			["e-side l-right b-one m-pout hl-clip al-low ar-hip bd-leanR f-tapR", 1],
-			["e-half b-flat m-flat hl-clip al-low ar-hip", 2],
+			["e-half l-downR b-flat m-flat hr-clipF ar-check al-low", 3],
+			["e-half l-downR b-flat m-flat hr-clipF ar-check al-low f-tapR", 1],
+			["e-half l-downR b-flat m-flat hr-clipF ar-check al-low", 1],
+			["e-half l-downR b-flat m-flat hr-clipF ar-check al-low f-tapR", 1],
+			["e-closed l-downR b-flat m-flat hr-clipF ar-check al-low", 1],
+			["l-upR b-one m-pout hr-clipF ar-low al-hip bd-peer f-tip", 3],
+			["e-side l-upR b-one m-pout hr-clipF ar-low al-hip bd-peer f-tip", 2],
+			["e-half b-flat m-flat hr-clipF ar-low al-hip f-tapR", 1],
+			["e-half b-flat m-flat hr-clipF ar-low al-hip x-sigh", 2],
 		],
 	}),
-	// Wave 2 placeholders (plan-next streams B and C2): the director plays these; the rig pass
-	// replaces their frames. Names, triggers and play modes are the contract.
-	...(
-		[
-			["buried", "Buried under the in-tray", "loop", ["e-wide b-worry m-wobble al-type1 ar-type3 x-sweat1", 2], ["e-wide b-worry m-flat al-type3 ar-type1 x-sweat2", 2]],
-			["ticketWait", "Waiting at your door with a ticket", "loop", ["m-small hr-paper ar-up al-hip f-tapR", 3], ["e-half b-one m-pout hr-paper ar-up al-hip", 3]],
-			["bellRing", "Ringing the bell on your desk", "once", ["l-down m-small al-low ar-point", 2], ["e-happy m-grin al-hip ar-hip", 3]],
-			["stickyCarry", "Carrying a sticky note", "loop", ["l-right m-small hr-paper ar-up al-low f-swingL", 2], ["l-right m-small hr-paper ar-up al-low f-swingR", 2]],
-			["stickyPost", "Posting a sticky note on the planner", "once", ["l-up m-small hr-paper ar-up al-hip", 3], ["e-happy l-up m-grin al-hip ar-point", 3]],
-			["rushRun", "Running, papers flying", "loop", ["e-wide b-worry m-open al-out ar-out f-runL x-papers1", 1], ["e-wide b-worry m-open al-out ar-out f-runR x-papers2", 1]],
-			["envelopeCarry", "Carrying the PR envelope", "loop", ["e-happy l-right m-grin hr-paper ar-up al-low f-swingL", 2], ["e-happy l-right m-grin hr-paper ar-up al-low f-swingR", 2]],
-			["copierFeud", "A running feud with the copier", "loop", ["e-squint b-angry m-frown al-hip ar-hip f-kick", 3], ["e-half b-flat m-pout al-cross ar-cross2 f-tapR", 5]],
-			["flourish", "A little flourish", "once", ["e-shine m-grin al-up ar-hip x-spark", 3], ["e-happy m-smirk al-hip ar-hip", 3]],
-		] as [string, string, "loop" | "once", Row, Row][]
-	).map(([name, title, play, ...rows]) => pose({ name, title, trigger: "working", rarity: 1, play, lines: [], frames: rows })),
+	// Wave 2 (plan-next streams B and C2; the director plays these by name). Names, triggers and
+	// play modes are the contract; the working points are reach.ts TRAY, BELL, PLANNER and HANDOFF.
 	pose({
+		// Context nearly full: the lead types in bursts behind a teetering in-tray (w-tray4, reach.ts
+		// TRAY). The typing rocks the pile; it stops, rises on its toes to peer over and steadies the
+		// top with a palm; types again; the top sheet skids off, a grab misses, and it goes over the
+		// side. Sweat throughout. The pile is back to full on the loop: the in-tray keeps filling.
+		name: "buried", title: "Buried under the in-tray", trigger: "working", rarity: 1, play: "loop",
+		lines: [],
+		frames: [
+			["e-wide l-down b-worry m-flat al-type1 ar-type3 fr-desk w-tray4 x-sweat1", 1],
+			["e-wide l-down b-worry m-flat al-type3 ar-type1 fr-desk w-tray4R", 1],
+			["e-wide l-down b-worry m-flat al-type1 ar-type3 fr-desk w-tray4", 1],
+			["e-closed l-down b-worry m-flat al-type3 ar-type1 fr-desk w-tray4L x-sweat2", 1],
+			["e-wide l-down b-worry m-flat al-type1 ar-type3 fr-desk w-tray4", 1],
+			["e-wide l-upR b-worry m-small al-type2 ar-type2 fr-desk w-tray4R", 2],
+			["e-wide l-upR b-up m-small al-type2 ar-steady bd-peer f-tip fr-desk w-tray4", 3],
+			["e-half l-upR b-worry m-flat al-type2 ar-steady bd-peer f-tip fr-desk w-tray4 x-sweat1", 2],
+			["e-squint l-down b-angry m-flat al-type1 ar-type3 fr-desk w-tray4", 1],
+			["e-squint l-down b-angry m-flat al-type3 ar-type1 fr-desk w-tray4R", 1],
+			["e-wide l-right b-up m-open al-type1 ar-type3 fr-desk w-traySlide", 1],
+			["e-wide l-right b-up m-open al-type2 ar-catch bd-peer fr-desk w-trayDrop", 2],
+			["e-closed l-right b-worry m-wobble al-type2 ar-catch bd-peer fr-desk w-trayDrop x-sweat2", 1],
+			["e-half l-down b-worry m-flat al-type1 ar-type3 fr-desk w-tray4", 1],
+		],
+	}),
+	pose({
+		// In line at your door, a numbered ticket in hand: a foot tapping, a look up at the NOW
+		// SERVING sign (up and to the right), not yet; the ticket checked under the chin, a sigh, and
+		// the foot again. No furniture of its own, so it plays at any door.
+		name: "ticketWait", title: "Waiting at your door with a ticket", trigger: "working", rarity: 1, play: "loop",
+		lines: [],
+		frames: [
+			["l-right m-flat hr-ticket ar-low al-hip", 3],
+			["l-right m-flat hr-ticket ar-low al-hip f-tapR", 1],
+			["l-right m-flat hr-ticket ar-low al-hip", 1],
+			["l-right m-flat hr-ticket ar-low al-hip f-tapR", 1],
+			["e-wide l-upR b-up m-small hr-ticket ar-low al-hip", 3],
+			["e-half l-upR b-flat m-flat hr-ticket ar-low al-hip", 2],
+			["l-down b-one m-small hr-ticket ar-check al-hip", 3],
+			["e-closed l-down b-one m-small hr-ticket ar-check al-hip", 1],
+			["e-half l-down b-flat m-pout hr-ticket ar-check al-hip", 2],
+			["e-half l-right b-flat m-flat hr-ticket ar-low al-hip x-sigh", 3],
+			["e-half l-right b-flat m-flat hr-ticket ar-low al-hip f-tapR", 1],
+			["e-half l-right b-flat m-flat hr-ticket ar-low al-hip", 1],
+			["e-half l-right b-flat m-flat hr-ticket ar-low al-hip f-tapR", 1],
+		],
+	}),
+	pose({
+		// First in line rings the bell on your desk (w-bell at reach.ts BELL): the flat palm raised
+		// over it, brought down on the plunger (it goes down, the bell rings, "ding!"), lifted while
+		// it hums, and the ringer settles, ticket still in the other hand.
+		name: "bellRing", title: "Ringing the bell on your desk", trigger: "working", rarity: 1, play: "once",
+		lines: [],
+		frames: [
+			["l-right b-one m-small hl-ticket al-low ar-low w-bell", 2],
+			["e-squint l-right b-one m-blep hl-ticket al-low ar-poise w-bell", 2],
+			["e-squint l-right b-angry m-flat hl-ticket al-low ar-ring w-bellDing x-ding", 1],
+			["e-wide l-right b-up m-small hl-ticket al-low ar-ring w-bellDing x-ding", 2],
+			["e-happy l-right m-grin hl-ticket al-low ar-poise w-bellHum x-ding", 2],
+			["e-happy l-right m-grin hl-ticket al-low ar-hip w-bellHum", 2],
+			["e-half l-right m-smirk hl-ticket al-low ar-hip w-bell", 5],
+		],
+	}),
+	pose({
+		// A walk pose (the cue's walkPose): a sticky note carried up on a fingertip like something
+		// precious, eyes on it, its free end lifting in the breeze on each step.
+		name: "stickyCarry", title: "Carrying a sticky note", trigger: "working", rarity: 1, play: "loop",
+		lines: [],
+		frames: [
+			["l-upR b-up m-small hr-sticky ar-tipUp al-low f-swingL", 2],
+			["l-upR b-up m-small hr-stickyFlap ar-tipUp al-down f-swingR bd-bob", 2],
+			["l-upR b-up m-small hr-sticky ar-tipUp al-low f-swingL", 2],
+			["l-upR b-up m-small hr-stickyFlap ar-tipUp al-down f-swingR bd-bob", 1],
+			["e-closed l-upR b-up m-small hr-stickyFlap ar-tipUp al-down f-swingR bd-bob", 1],
+		],
+	}),
+	pose({
+		// At the wall planner (reach.ts PLANNER, up and in front): up on the toes, the palm presses the
+		// note on (it leaves the finger for the wall), the thumb smooths its top edge there and back,
+		// a step back to look, a nod. Ends with empty hands; the note stays on the planner (w-stickyOn
+		// until the pose changes, then the office's planner shows it).
+		name: "stickyPost", title: "Posting a sticky note on the planner", trigger: "working", rarity: 1, play: "once",
+		lines: [],
+		frames: [
+			["l-upR b-up m-small hr-sticky ar-tipUp al-low", 2],
+			["e-squint l-upR b-one m-blep ar-stick al-low bd-reach f-tip w-stickyOn", 2],
+			["e-squint l-upR b-flat m-blep ar-smooth1 al-low bd-reach f-tip w-stickyOn", 1],
+			["e-squint l-upR b-flat m-blep ar-smooth2 al-low bd-reach f-tip w-stickyOn", 1],
+			["e-squint l-upR b-flat m-blep ar-smooth1 al-low bd-reach f-tip w-stickyOn", 1],
+			["e-squint l-upR b-flat m-blep ar-smooth2 al-low bd-reach f-tip w-stickyOn", 1],
+			["e-wide l-upR b-up m-small al-low ar-low bd-stepBack f-swingR w-stickyOn", 2],
+			["e-half l-upR b-one m-small al-hip ar-hip bd-stepBack w-stickyOn", 2],
+			["e-happy l-upR m-grin al-hip ar-hip bd-nod w-stickyOn", 1],
+			["e-happy l-upR m-grin al-hip ar-hip w-stickyOn", 1],
+			["e-happy m-grin al-hip ar-hip bd-nod w-stickyOn", 1],
+			["e-half m-smirk al-hip ar-hip w-stickyOn", 4],
+		],
+	}),
+	pose({
+		// A walk pose for the rush: a real run. Long strides with the free leg tucked through, the
+		// arms pumping against the legs, leaning in from the hips (a turn, never a scale) and rising
+		// in the float between strides; sweat flung back and papers peeling off behind. A beat a frame,
+		// so at the run's walkTempo (1.65) it steps every 80 ms; twelve frames so the three-step trail
+		// lines up with the four-frame stride.
+		name: "rushRun", title: "Running, papers flying", trigger: "working", rarity: 1, play: "loop",
+		lines: [],
+		frames: Array.from({ length: 12 }, (_, i): Row => {
+			const step = i % 4;
+			const legs = ["strideL", "passL", "strideR", "passR"][step];
+			const arms = step < 2 ? "al-pumpDown ar-pumpUp" : "al-pumpUp ar-pumpDown";
+			const body = step % 2 ? "bd-dashUp" : "bd-dash";
+			const eyes = i === 7 ? "e-squint" : "e-wide";
+			return [`${eyes} l-right b-worry m-open ${arms} f-${legs} ${body} x-rush${(i % 3) + 1}`, 1];
+		}),
+	}),
+	pose({
+		// A walk pose: the PR's big envelope held up in front by both sides, chin up, a springy step
+		// (the free knee lifted, the body rising off the standing leg).
+		name: "envelopeCarry", title: "Carrying the PR envelope", trigger: "working", rarity: 1, play: "loop",
+		lines: [],
+		frames: [
+			["e-happy l-right b-up m-grin fr-bigEnvelope al-present ar-present f-swingL", 2],
+			["e-happy l-upR b-up m-grin fr-bigEnvelope al-present ar-present f-kneeR bd-bob", 2],
+			["e-happy l-right b-up m-grin fr-bigEnvelope al-present ar-present f-swingR", 2],
+			["e-happy l-upR b-up m-grin fr-bigEnvelope al-present ar-present f-kneeL bd-bob", 1],
+			["e-closed l-upR b-up m-grin fr-bigEnvelope al-present ar-present f-kneeL bd-bob", 1],
+		],
+	}),
+	pose({
+		// A long build at the copier, as a running feud (the copier drawn jammed throughout, w-jammed),
+		// starting on the kick: the kick spits a crumpled corner out of the jam door; pluck it out,
+		// glare at it, toss it over the shoulder; arms crossed, glaring, a foot tapping, a huff; jab
+		// the button, jab, jab (it sinks and the red light flashes, nothing else); steam; and the
+		// glare that leads into the next kick.
+		name: "copierFeud", title: "A running feud with the copier", trigger: "working", rarity: 1, play: "loop",
+		lines: [],
+		frames: [
+			["e-squint l-right b-angry m-shout al-out ar-hip f-boot bd-leanL w-kicked", 2],
+			["e-wide l-right b-up m-open al-low ar-hip w-kickSpit", 2],
+			["e-squint l-downR b-angry m-flat al-low ar-pluck w-jam", 1],
+			["e-squint l-downR b-angry m-flat al-low hr-crumple ar-pluck w-jammed", 1],
+			["e-squint l-right b-angry m-pout al-low hr-crumple ar-card w-jammed", 3],
+			["e-half b-flat m-smirk al-low ar-toss w-jammed x-toss", 2],
+			["e-half l-right b-angry m-frown al-cross ar-cross2 w-jammed", 2],
+			["e-half l-right b-angry m-frown al-cross ar-cross2 w-jammed", 3],
+			["e-half l-right b-angry m-frown al-cross ar-cross2 f-tapR w-jammed", 1],
+			["e-half l-right b-angry m-frown al-cross ar-cross2 w-jammed", 1],
+			["e-half l-right b-angry m-frown al-cross ar-cross2 f-tapR w-jammed", 1],
+			["e-closed l-right b-angry m-frown al-cross ar-cross2 w-jammed x-sigh", 2],
+			["e-squint l-right b-angry m-flat al-low ar-press w-jabbed", 1],
+			["e-squint l-right b-angry m-flat al-low ar-jab0 w-jammed", 1],
+			["e-squint l-right b-angry m-blep al-low ar-press w-jabbed", 1],
+			["e-squint l-right b-angry m-blep al-low ar-jab0 w-jammed", 1],
+			["e-squint l-right b-angry m-shout al-low ar-press w-jabbed x-steam1", 1],
+			["e-half l-right b-angry m-frown al-low ar-hip w-jammed x-steam2", 2],
+		],
+	}),
+	pose({
+		// A signature move after finishing something (a flamboyant model's trait): a finger-gun drawn,
+		// fired (the hand kicks up, a spark at the tip), blown on, holstered. One gesture, then settled.
+		name: "flourish", title: "A little flourish", trigger: "working", rarity: 1, play: "once",
+		lines: [],
+		frames: [
+			["l-right b-one m-smirk al-hip ar-hip", 1],
+			["e-side l-right b-one m-smirk al-hip hr-finger ar-point", 2],
+			["e-squint l-right b-one m-grin al-hip hr-finger ar-recoil x-pew", 1],
+			["e-happy l-right m-grin al-hip hr-finger ar-recoil", 1],
+			["e-closed m-small al-hip hr-finger ar-blow x-sigh", 2],
+			["e-happy c-blush m-smirk al-hip ar-hip", 4],
+		],
+	}),
+	pose({
+		// A two-hander: the giver holds a folder out at arm's length; the taker (its own character,
+		// standing reach.ts HANDOFF.slot in front of the giver and facing it) steps in (at-s2, to
+		// HANDOFF.gap), reaches and takes the far edge, both hold it a beat, the giver lets go, and
+		// the taker tucks it under its arm and nods. Each
+		// part is written in its own space (both look right, toward the other); the folder is drawn
+		// by whoever holds it and sits in the same place for both.
 		name: "handOff", title: "Handing a folder to a teammate", trigger: "working", rarity: 1, play: "once",
 		lines: [],
 		frames: [
-			["l-right m-small hr-paper ar-point al-low", 3],
-			["e-happy l-right m-grin al-low ar-hip", 3],
+			["l-right b-one m-small hr-folderOut ar-offerIn al-low", 2],
+			["l-right b-up m-small hr-folderOut ar-offer al-low", 2],
+			["e-happy l-right m-grin hr-folderOut ar-offer al-low", 3],
+			["l-right b-up m-small ar-offer al-low", 1],
+			["e-happy l-right m-grin ar-hip al-hip", 2],
+			["e-happy l-right m-grin ar-hip al-hip bd-nod", 1],
+			["e-half l-right m-smirk ar-hip al-hip", 3],
 		],
 		partner: {
 			role: "builder",
 			frames: [
-				["at-s2 l-left m-small al-low ar-low", 3],
-				["at-s2 e-happy l-left m-grin hl-paper al-raise ar-low", 3],
+				["l-right b-up m-small al-low ar-low", 2],
+				["at-s2 l-right b-up m-open al-low ar-reachOut f-swingL", 2],
+				["at-s2 e-happy l-right m-grin al-low ar-offer", 3],
+				["at-s2 l-right b-one m-small al-low hr-folderOut ar-offer", 1],
+				["at-s2 l-down b-one m-small al-low hr-folderTuck ar-tuck", 2],
+				["at-s2 e-happy m-grin al-low hr-folderTuck ar-tuck bd-nod", 1],
+				["at-s2 e-happy m-grin al-low hr-folderTuck ar-tuck", 1],
+				["at-s2 e-happy m-grin al-low hr-folderTuck ar-tuck bd-nod", 1],
+				["at-s2 e-half m-smirk al-low hr-folderTuck ar-tuck", 1],
 			],
 		},
 	}),

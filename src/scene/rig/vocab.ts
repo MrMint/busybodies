@@ -151,6 +151,45 @@ export const ARMS = {
 	feed3: [211, -106, 0],
 	/** A clipboard held up to read (the left hand), waiting in line. */
 	read: [-25, -76, 0],
+	// Wave 2 (reach.ts REACH says what each is solved for).
+	/** Buried: a palm on the in-tray pile's top to steady it, and a grab at the sheet sliding off. */
+	steady: [192, 68, 0],
+	catch: [183, -133, 0],
+	/** A ticket (or a sheet) held up under the chin to check it. */
+	check: [-26, -112, 0],
+	/** The bell on your desk: the flat palm raised over the plunger, and down on it. */
+	poise: [194, -69, 0],
+	ring: [189, -104, 0],
+	/** A sticky note carried up on a fingertip; pressed on the planner, smoothed with the thumb
+	 * along its top edge, one way and back. */
+	tipUp: [122, 78, 0],
+	stick: [201, -95, 0],
+	smooth1: [214, -60, 0],
+	smooth2: [187, -50, 0],
+	/** A big envelope held in front by its two sides (either hand). */
+	present: [-38, -44, 0],
+	/** A folder held close, held out at arm's length (giving or taking, reach.ts HANDOFF), the
+	 * taker's hand on its way, and the folder tucked under the arm. */
+	offerIn: [15, -137, 0],
+	offer: [53, 68, 0],
+	reachOut: [29, 131, 0],
+	tuck: [34, -96, 0],
+	/** Copier feud: the finger pulled back off the button between jabs; a crumpled corner plucked
+	 * out of the jam door's seam. */
+	jab0: [222, -122, 0],
+	pluck: [63, 95, 0],
+	/** A finger-gun blown on, by the mouth (the finger turned up). */
+	blow: [-47, -65, 90],
+	// Gestures, not reaches (no working point).
+	/** A run's arms, pumping at the sides: up (the forearm raised, the hand out by the shoulder)
+	 * and down (the hand back by the hip). Mirrored for the left arm, so the far arm never swings
+	 * across the face of a body drawn three-quarters on. */
+	pumpUp: [60, 90, 0],
+	pumpDown: [-35, 85, 0],
+	/** Something tossed away over the shoulder. */
+	toss: [200, -30, 0],
+	/** A finger-gun's kick: the arm out, the finger tipped up. */
+	recoil: [112, -14, 25],
 } as const satisfies Record<string, readonly [number, number, number]>;
 export type Arm = keyof typeof ARMS;
 
@@ -169,6 +208,15 @@ export const FEET = {
 	/** A real kick out front: the right leg swung up toward the work, drawn in front of the body
 	 * (like `up`) so it shows against it. */
 	boot: [4, 0, -104, -9],
+	/** A run's strides (the leading leg reaching forward, the back one pushing off) and the passing
+	 * steps between them, the free leg tucked up under the body. Forward is a negative turn. */
+	strideL: [-32, -1, 30, -7],
+	passL: [6, 0, -8, -9],
+	strideR: [30, -7, -32, -1],
+	passR: [-8, -9, 6, 0],
+	/** A springy walk's passing step: the free knee lifted, the body rising off the standing leg. */
+	kneeL: [-8, -6, 4, 0],
+	kneeR: [4, 0, -8, -6],
 } as const satisfies Record<string, readonly [number, number, number, number]>;
 export type Feet = keyof typeof FEET;
 
@@ -193,6 +241,15 @@ export const BODIES = {
 	up: [4, -3, 0, 1, 1, 0],
 	/** A small nod, listening on the phone. */
 	nod: [1, 1, 4, 1, 1, 0],
+	/** Up on its toes to peer over the in-tray pile (a rise, no scaling). */
+	peer: [2, -7, 0, 1, 1, 0],
+	/** Up and in, reaching for the wall planner (reach.ts PLANNER). */
+	reach: [4, -5, 0, 1, 1, 0],
+	/** A step back from the work, to look at it. */
+	stepBack: [-7, 0, -3, 1, 1, 0],
+	/** A run: leaning in from the hips, and the float between strides (a rise, never a scale). */
+	dash: [3, 1, 12, 1, 1, 0],
+	dashUp: [3, -3, 12, 1, 1, 0],
 } as const satisfies Record<string, readonly [number, number, number, number, number, number]>;
 export type Body = keyof typeof BODIES;
 
@@ -205,11 +262,22 @@ export const HELD = [
 	/** A sheet slid flat off the shredder's pile, then held by its top edge going into the slot:
 	 * the slot eats it, so less of it shows each step. */
 	"slip", "feed1", "feed2", "feed3",
+	// Wave 2.
+	/** A numbered ticket from the ticket machine at your door. */
+	"ticket",
+	/** The clipboard held in the forward hand: the same board, on the hand's other side. */
+	"clipF",
+	/** A sticky note stuck on a fingertip, and the same with its free end lifting in the breeze. */
+	"sticky", "stickyFlap",
+	/** A finger-gun: the index finger out, the thumb up. */
+	"finger",
+	/** A folder held out flat by its near edge (reach.ts HANDOFF.folder), and tucked under the arm. */
+	"folderOut", "folderTuck",
 ] as const;
 export type Held = (typeof HELD)[number];
 
 /** Things in front of the body: a parcel held in both hands, a sign held overhead, a desk. */
-export const FRONTS = ["box", "pls", "desk", "roll", "plan", "plan2", "folder", "folderT", "folder2"] as const;
+export const FRONTS = ["box", "pls", "desk", "roll", "plan", "plan2", "folder", "folderT", "folder2", "bigEnvelope"] as const;
 export type Front = (typeof FRONTS)[number];
 
 /** What the work is done on, standing on the floor out front (to the right, the way the character
@@ -241,6 +309,18 @@ export const WORKS = [
 	"outbox", "mail1", "mail2",
 	/** Shredder: the slot with the pile beside it, one sheet fewer, and buzzing as it eats one. */
 	"shred", "shred4", "shredBuzz",
+	// Wave 2.
+	/** The lead's in-tray on its desk (reach.ts TRAY), from a few sheets to teetering past the
+	 * eyes: `tray4` rocks left and right, its top sheet slides off (`traySlide`) and drops off the
+	 * desk's edge (`trayDrop`). The office can bake `tray1`-`tray4` onto a desk. */
+	"tray1", "tray2", "tray3", "tray4", "tray4L", "tray4R", "traySlide", "trayDrop",
+	/** The bell on your desk (reach.ts BELL): at rest, the plunger struck (it rings), and humming. */
+	"bell", "bellDing", "bellHum",
+	/** A sticky note pressed on the wall planner (reach.ts PLANNER). */
+	"stickyOn",
+	/** Copier feud: the start button jabbed while jammed (the red light flashing), and kicked
+	 * with the crumpled corner poking out of the jam door's seam. */
+	"jabbed", "kickSpit",
 ] as const;
 export type Work = (typeof WORKS)[number];
 
@@ -266,6 +346,14 @@ export const FX = [
 	"hit",
 	/** A sigh's puff from the mouth; dust shaken off the hands. */
 	"sigh", "dusty",
+	/** The bell's "ding": rings in the air over the bell (reach.ts BELL). */
+	"ding",
+	/** A run: sweat flying off, and papers peeling off behind, three steps of the trail. */
+	"rush1", "rush2", "rush3",
+	/** A crumpled ball tossed over the shoulder. */
+	"toss",
+	/** A finger-gun's "shot": a spark at the fingertip (ARMS.recoil). */
+	"pew",
 ] as const;
 export type Fx = (typeof FX)[number];
 
