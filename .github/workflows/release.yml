@@ -1,10 +1,20 @@
 name: release
-# A pushed v* tag builds and publishes a GitHub Release (a pre-release when the version has a
-# "-", like 0.2.0-beta.1). A manual run builds the same files into a DRAFT release, for testing.
+# Publishes a GitHub Release. The changesets workflow calls this with publish: true once it has
+# pushed the v* tag for a merged release PR (a pre-release when the version has a "-", like
+# 0.2.0-beta.1). A manual run builds the same files into a DRAFT release, for testing.
 # Release layout, checksums and signing are explained in docs/decisions.md ("releases").
 on:
-  push:
-    tags: ["v*"]
+  workflow_call:
+    inputs:
+      version:
+        description: "Version to publish, without the v; its tag must already exist"
+        required: true
+        type: string
+      publish:
+        description: "Publish the release (false makes a draft)"
+        required: false
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       version:
@@ -26,46 +36,28 @@ jobs:
       HAS_NOTARIZATION: ${{ secrets.APPLE_API_KEY != '' && secrets.APPLE_API_KEY_ID != '' && secrets.APPLE_API_ISSUER != '' }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # A published release builds exactly the tagged commit.
+          ref: ${{ inputs.publish && format('refs/tags/v{0}', inputs.version) || '' }}
 
       - name: Work out the version
         env:
           INPUT_VERSION: ${{ inputs.version }}
+          PUBLISH: ${{ inputs.publish }}
         run: |
-          # Only a pushed tag publishes; every other run makes a draft.
-          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
-            version="${GITHUB_REF_NAME#v}"
+          # Only the changesets workflow publishes; a manual run makes a draft.
+          version="${INPUT_VERSION#v}"
+          echo "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$' || { echo "not a version: $version"; exit 1; }
+          if [ "$PUBLISH" = "true" ]; then
+            pkg="$(sed -nE 's/^[[:space:]]*"version": "([^"]+)".*/\1/p' package.json | head -1)"
+            [ "$pkg" = "$version" ] || { echo "package.json says $pkg, not $version"; exit 1; }
             echo "DRAFT=false" >> "$GITHUB_ENV"
           else
-            version="${INPUT_VERSION#v}"
             echo "DRAFT=true" >> "$GITHUB_ENV"
           fi
-          echo "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$' || { echo "not a version: $version"; exit 1; }
           echo "VERSION=$version" >> "$GITHUB_ENV"
 
-      # The installer's host has had outages; keep Hutch and its toolchains between runs.
-      - name: Cache Hutch
-        id: hutch-cache
-        uses: actions/cache/restore@v4
-        with:
-          path: ~/.hutch
-          key: hutch-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('hutch.lock') }}
-          restore-keys: hutch-${{ runner.os }}-${{ runner.arch }}-
-      - name: Install Hutch, the devkit and locked dependencies
-        run: |
-          # The host flaps between 200 and 500: retry the whole install for up to ~10 minutes.
-          for i in $(seq 1 30); do
-            [ -x ~/.hutch/bin/hutch ] && break
-            curl -fsSL https://artifacts.electrobun.dev/hutch/install.sh -o "$RUNNER_TEMP/hutch-install.sh" && sh "$RUNNER_TEMP/hutch-install.sh" && [ -x ~/.hutch/bin/hutch ] && break
-            rm -rf ~/.hutch; echo "installer attempt $i failed; retrying"; sleep 20
-          done
-          ~/.hutch/bin/hutch install --frozen-lockfile
-      # Save straight away, so a cold cache is filled even if a later step fails.
-      - name: Save Hutch
-        if: steps.hutch-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: ~/.hutch
-          key: hutch-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('hutch.lock') }}
+      - uses: ./.github/actions/setup-hutch
 
       # Signing runs only once the Apple Developer secrets exist (see docs/decisions.md).
       - name: Import the Developer ID certificate
@@ -125,6 +117,9 @@ jobs:
 
           Unsigned for now: the README explains the extra step for the .dmg.
           EOF
+          # Then this version's entry from CHANGELOG.md, which Changesets writes.
+          awk -v v="## $VERSION" '$0 == v { on = 1; next } on && /^## / { exit } on' CHANGELOG.md > changes.md || true
+          if [ -s changes.md ]; then printf '\n## Changes\n' >> notes.md; cat changes.md >> notes.md; fi
           if [ "$DRAFT" = "false" ]; then
             flags="--verify-tag"
             case "$VERSION" in *-*) flags="$flags --prerelease" ;; esac

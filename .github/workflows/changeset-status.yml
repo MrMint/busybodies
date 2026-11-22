@@ -1,0 +1,24 @@
+name: changeset-status
+# Comments on each PR with the changesets it carries and the release they make, or a nudge to
+# add one. It never fails the PR: docs-only and tooling-only changes don't need a changeset.
+on:
+  pull_request:
+permissions: {}
+jobs:
+  status:
+    # The release PR consumes the changesets; it has nothing to report.
+    if: github.head_ref != 'changeset-release/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write # the status comment
+    steps:
+      - uses: actions/checkout@v4
+      - id: status
+        uses: changesets/action/pr-status@v2
+      # A fork's PR gets a read-only token, so it gets no comment.
+      - if: github.event.pull_request.head.repo.full_name == github.repository
+        uses: changesets/action/pr-comment@v2
+        with:
+          body: ${{ steps.status.outputs.comment-body }}
+          update-id: changeset-status
