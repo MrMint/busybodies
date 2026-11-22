@@ -42,6 +42,7 @@ import {
 } from "./world";
 import { LEAD_SIZE } from "./placement";
 import { bellFrom } from "./rigpoints";
+import { OFFICE_WORDS } from "../theme/words";
 
 interface Room {
 	/** Stable for the room's life: "meeting", "lobby", "kitchen", or "room-<n>". */
@@ -205,7 +206,9 @@ function nearestFree(room: Room, from: number): number {
 
 // --- Geometry ---------------------------------------------------------------------------------
 
-const NAMES = { meeting: "meeting room", lobby: "lobby", yours: "your office", kitchen: "kitchen" } as const;
+/** Common areas are named with the office's words, in any theme: the name is the area's identity
+ * (tools and tests aim at it); the office's tabs show the theme's own (theme/words.ts). */
+const NAMES = OFFICE_WORDS.areas;
 
 function build(room: Room, x: number): Area {
 	const rows = room.cols ? room.cells.length / room.cols : MIN_ROWS;

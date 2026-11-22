@@ -6,19 +6,21 @@ import { Application, Ticker } from "pixi.js";
 import type { BusybodiesRPC } from "../shared/rpc";
 import type { Snapshot } from "../watcher/model";
 import { Office } from "../scene/office/office";
-import { LAWN } from "../scene/office/paper";
+import { type ThemeId, sceneTheme, themeId } from "../scene/theme";
 import { installHud } from "./hud";
 import { installInspector } from "./inspector";
 import { type Bridge, installShell } from "./shell";
 import { placeholders } from "./placeholder";
 import { Atlas, buildPoseSheet, rigCharacters, rigTheme } from "../scene/rig";
-import { themeId } from "../scene/theme/id";
 import { Director, placeholderVoice } from "../scene/director";
 import { Voice } from "../scene/sass";
 
 const params = new URLSearchParams(location.search);
 /** ?compact: the small floating window (transparent, always on top; src/bun/compact.ts). */
 const compact = params.has("compact");
+/** ?theme=factory: which world the cast works in (src/scene/theme/). The app passes the saved
+ * choice the same way, and switches it live over RPC (the tray's Theme menu). */
+let theme: ThemeId = themeId(params.get("theme"));
 
 /** Profiling modes: ?blank draws nothing but still takes snapshots; ?blank&norpc does neither. */
 function blank(): void {
@@ -33,7 +35,7 @@ function blank(): void {
 	const app = new Application();
 	await app.init({
 		resizeTo: window,
-		background: LAWN,
+		background: sceneTheme(theme).lawn,
 		// The compact window is transparent: the office floats on the desktop.
 		backgroundAlpha: compact ? 0 : 1,
 		antialias: true,
@@ -54,7 +56,7 @@ function blank(): void {
 	}
 
 	// The rig's parts, painted once and baked into one texture (src/scene/rig/atlas.ts).
-	const atlas = Atlas.build(app.renderer, rigTheme(themeId(params.get("theme"))));
+	let atlas = Atlas.build(app.renderer, rigTheme(theme));
 
 	// ?sheet: every pose's frames, drawn once and left on screen (tools/pose-sheet.ts shoots it).
 	if (params.has("sheet")) {
@@ -69,9 +71,10 @@ function blank(): void {
 
 	// Mochi characters from the rig; ?placeholders draws the old stand-ins (for A/B profiling).
 	const characters = params.has("placeholders") ? placeholders(app.renderer) : rigCharacters(atlas);
+	const charactersFor = (a: Atlas) => (params.has("placeholders") ? undefined : rigCharacters(a));
 	// The director decides who stands where and in which pose; the office draws it.
 	const director = new Director();
-	const office = new Office({ renderer: app.renderer, characters, wake: () => scene.redraw(), cast: director.cast, builds: director.builds, metrics: director.metrics, top: compact ? 40 : 64 });
+	const office = new Office({ renderer: app.renderer, characters, wake: () => scene.redraw(), cast: director.cast, builds: director.builds, metrics: director.metrics, top: compact ? 40 : 64, theme: sceneTheme(theme) });
 	app.stage.addChild(office);
 	// The office's voice (src/scene/sass): bubbles and signs from what the sessions are doing.
 	// ?toolvoice keeps the director's placeholder (each busy lead says its tool). A live scene lets
@@ -158,9 +161,22 @@ function blank(): void {
 		}
 	};
 	Object.assign(scene, { direct });
+	/** Switch theme without a reload: a new atlas for the rig's parts, the office redrawn in the new
+	 * look, then the old atlas freed (its characters are gone by then). */
+	const setTheme = (id: ThemeId) => {
+		if (id === theme) return;
+		theme = id;
+		const old = atlas;
+		atlas = Atlas.build(app.renderer, rigTheme(id));
+		office.setTheme(sceneTheme(id), charactersFor(atlas));
+		old.destroy();
+		if (!compact) app.renderer.background.color = sceneTheme(id).lawn;
+		direct();
+		scene.redraw();
+	};
 	const show = scene.show;
 	const redraw = scene.redraw;
-	const inspector = import.meta.env.DEV || params.has("inspect") ? installInspector(app, office, scene, director, voice && { voice, now: () => director.now }) : undefined;
+	const inspector = import.meta.env.DEV || params.has("inspect") ? installInspector(app, office, scene, director, voice && { voice, now: () => director.now }, { current: () => theme, set: setTheme }) : undefined;
 	let bridge: Bridge | undefined;
 	const shell = installShell({
 		bridge: { status: () => bridge!.status(), setCompact: (on) => bridge?.setCompact(on), showOffice: () => bridge?.showOffice(), openProjectPage: () => bridge?.openProjectPage() },
@@ -223,7 +239,7 @@ function blank(): void {
 	}
 
 	const rpc = Electroview.defineRPC<BusybodiesRPC>({
-		handlers: { messages: { snapshot: show, about: () => shell.about() } },
+		handlers: { messages: { snapshot: show, about: () => shell.about(), theme: ({ id }) => setTheme(themeId(id)) } },
 	});
 	new Electroview({ rpc });
 	bridge = {

@@ -1,5 +1,5 @@
 // Deterministic screenshots of named scene states, plus one contact sheet of them all.
-//   bun tools/shoot.ts [--out artifacts/shots] [--only floor-busy,room-kitchen] [--dpr 1] [--check]
+//   bun tools/shoot.ts [--out artifacts/shots] [--only floor-busy,room-kitchen] [--dpr 1] [--check] [--theme factory]
 // Each state is a demo fixture, a camera stop and a window size. The scene starts with its clock
 // stopped (?frozen) and is stepped a fixed number of frames, so two runs give the same pixels on
 // the same machine; --check renders every state twice and fails if any pair differs. Renders the
@@ -56,6 +56,12 @@ const STATES: State[] = [
 	{ name: "about", demo: "", aim: { kind: "office" }, size: BOARD, query: "about" },
 	{ name: "compact-busy", demo: "", aim: { kind: "office" }, size: [440, 300], query: "compact" },
 	{ name: "compact-empty", demo: "empty", aim: { kind: "office" }, size: [440, 300], query: "compact" },
+	// The living office (waves 1 and 2): stations, desk props, the crew build, your office.
+	{ name: "release-floor", demo: "release", aim: { kind: "office" }, size: BOARD },
+	{ name: "release-room", demo: "release", aim: { kind: "room", name: "lanternfish" }, size: BOARD },
+	{ name: "release-desk", demo: "release", aim: { kind: "desk", title: "Ship release 3.0" }, size: BOARD },
+	{ name: "room-your-office", demo: "day-2", aim: { kind: "room", name: "your office" }, size: BOARD, frames: 40 },
+	{ name: "room-lobby", demo: "idle", aim: { kind: "room", name: "lobby" }, size: BOARD },
 ];
 
 const ROOT = join(import.meta.dir, "..");
@@ -69,6 +75,8 @@ const { values: o } = parseArgs({
 		check: { type: "boolean", default: false },
 		build: { type: "boolean", default: false },
 		title: { type: "string", default: "Busybodies · tools/shoot.ts" },
+		/** The scene theme (src/scene/theme/id.ts): every state in that theme. */
+		theme: { type: "string" },
 	},
 });
 
@@ -88,7 +96,7 @@ const server = Bun.serve({
 
 async function shoot(browser: Browser, s: State, dpr: number): Promise<Buffer> {
 	const page = await browser.newPage({ viewport: { width: s.size[0], height: s.size[1] }, deviceScaleFactor: dpr });
-	await page.goto(`http://localhost:${server.port}/?inspect&frozen&demo=${s.demo}${s.query ? `&${s.query}` : ""}`);
+	await page.goto(`http://localhost:${server.port}/?inspect&frozen&demo=${s.demo}${s.query ? `&${s.query}` : ""}${o.theme ? `&theme=${o.theme}` : ""}`);
 	await page.waitForFunction(() => window.__busybodies?.ready === true, undefined, { timeout: 20_000 });
 	await page.evaluate(
 		({ aim, frames }) => {
