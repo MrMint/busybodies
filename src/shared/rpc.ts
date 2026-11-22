@@ -11,6 +11,8 @@ export interface AppStatus {
 	/** False when that folder doesn't exist: no coding agent found. */
 	homeFound: boolean;
 	compact: boolean;
+	/** The saved scene theme. */
+	theme?: string;
 }
 
 export type BusybodiesRPC = {
@@ -26,6 +28,8 @@ export type BusybodiesRPC = {
 			showOffice: { params: undefined; response: boolean };
 			/** Open the project's page in the browser. Only the project's own URL is allowed. */
 			openProjectPage: { params: undefined; response: boolean };
+			/** Pick the scene theme (from the settings cog): saved, and both windows switch. */
+			setTheme: { params: { id: string }; response: boolean };
 		};
 		messages: {};
 	}>;
@@ -37,7 +41,7 @@ export type BusybodiesRPC = {
 			snapshot: Snapshot;
 			/** Show the About screen (from the tray menu). */
 			about: undefined;
-			/** Switch the scene theme (from the tray's Theme menu): `office` or `factory`. */
+			/** Switch the scene theme (from the tray's Theme menu or the settings cog): `office` or `factory`. */
 			theme: { id: string };
 		};
 	}>;
