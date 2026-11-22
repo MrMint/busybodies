@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# tools/soak.sh [minutes] [fake-home args...]: run the dev app against a busy, noisy fake home for a
+# while and watch its memory. Samples the resident size of the app's Bun process and its webview
+# every 30 s into a CSV, then prints the start, the peak, the end, and the growth after a 5-minute
+# warm-up. Memory growth is meaningful on a loaded machine; CPU % is not (use tools/profile.sh on
+# a quiet one). Build first (vite build). It stops only the processes it started.
+#   tools/soak.sh 30 --sessions 8 --agents 4 --busy 0.5 --rate 5 --noise 20
+set -u
+minutes=${1:-30}; shift || true
+[ $# -gt 0 ] || set -- --sessions 8 --agents 4 --busy 0.5 --rate 5 --noise 20
+S="${TMPDIR:-/tmp}/busybodies-soak"; rm -rf "$S"; mkdir -p "$S"
+cd "$(dirname "$0")/.."
+ROOT=$(pwd)
+
+bun tools/fake-home.ts --dir "$S/fh" "$@" > "$S/fake-home.log" 2>&1 &
+FH=$!
+sleep 1
+before=$(pgrep -f "com.apple.WebKit.WebContent" | sort -n | tr '\n' ' ')
+BUSYBODIES_AGENT_HOME="$S/fh" BUSYBODIES_DESKTOP_INDEX= BUSYBODIES_NO_UPDATE=1 ~/.hutch/bin/hutch electrobun dev > "$S/app.log" 2>&1 &
+DEV=$!
+# The app is the bun running Resources/main.js under this checkout's dev build.
+for i in $(seq 1 240); do APP=$(pgrep -f "$ROOT/build/dev-macos-arm64/Busybodies-dev.app/Contents/MacOS/../Resources/main.js" | head -1); [ -n "$APP" ] && break; sleep 0.5; done
+[ -n "${APP:-}" ] || { echo "soak: the app didn't start; see $S/app.log"; kill $FH $DEV 2>/dev/null; exit 1; }
+sleep 5
+WC=""
+for p in $(pgrep -f "com.apple.WebKit.WebContent" | sort -n); do case " $before " in *" $p "*) ;; *) WC=$p;; esac; done
+
+stop() {
+	for p in $(pgrep -f "$ROOT/build/dev-macos-arm64/Busybodies-dev.app/Contents/MacOS"); do kill "$p" 2>/dev/null; done
+	kill $DEV $FH 2>/dev/null
+}
+trap stop EXIT
+
+rss() { ps -o rss= -p "$1" 2>/dev/null | tr -d ' '; }
+echo "seconds,bun_rss_kb,webcontent_rss_kb" > "$S/memory.csv"
+end=$(( $(date +%s) + minutes * 60 ))
+t0=$(date +%s)
+while [ "$(date +%s)" -lt "$end" ]; do
+	b=$(rss "$APP"); w=$( [ -n "$WC" ] && rss "$WC" || echo "")
+	[ -n "$b" ] || { echo "soak: the app exited after $(( $(date +%s) - t0 )) s; see $S/app.log"; exit 1; }
+	echo "$(( $(date +%s) - t0 )),$b,$w" >> "$S/memory.csv"
+	sleep 30
+done
+
+awk -F, 'NR==1 { next }
+	{ t=$1; b=$2; w=$3; if (NR==2) { b0=b; w0=w } if (t >= 300 && !wb) { wb=b; ww=w } if (b>bm) bm=b; if (w>wm) wm=w; bl=b; wl=w; n++ }
+	END {
+		printf "samples %d over %d min\n", n, t/60
+		printf "bun        start %6.1f MB  peak %6.1f MB  end %6.1f MB  growth after warm-up %+6.1f MB\n", b0/1024, bm/1024, bl/1024, (bl-wb)/1024
+		if (w0) printf "webcontent start %6.1f MB  peak %6.1f MB  end %6.1f MB  growth after warm-up %+6.1f MB\n", w0/1024, wm/1024, wl/1024, (wl-ww)/1024
+	}' "$S/memory.csv"
+echo "csv: $S/memory.csv"
+grep -m1 "watching" "$S/app.log" | sed 's|watching .*/fh|watching <fake home>|'

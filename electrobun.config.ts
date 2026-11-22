@@ -2,7 +2,7 @@ import type { ElectrobunConfig } from "electrobun";
 
 // The release workflow sets these from the tag. Local builds keep package.json's version and
 // look for updates on the latest published GitHub Release (see docs/decisions.md, "releases").
-const version = process.env.BUSYBODIES_VERSION || "0.0.1";
+const version = process.env.BUSYBODIES_VERSION || "0.1.0";
 const updateBaseUrl =
 	process.env.BUSYBODIES_UPDATE_BASE_URL || "https://github.com/MrMint/busybodies/releases/latest/download";
 // Signing and notarization switch on only when the release workflow has Apple credentials.
