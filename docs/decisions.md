@@ -905,3 +905,29 @@ The tray's Theme menu saves the choice to `settings.json` in the app's data fold
 `src/bun/settings.ts`) and switches both windows over RPC without a reload: a new rig atlas, the
 office redrawn, signs the voice wrote kept. New windows open with `?theme=<saved>`, so the query
 parameter stays the one entry point.
+
+## 2026-11-22: lived in, wave 1 (off-screen freeze, life, calm mode)
+
+Decided with the owner (recorded in `docs/plan-alive.md`): the frame budget's job is to cost
+nothing when nobody is looking, not to keep a watched office still. **A hidden office makes zero
+frames; a visible quiet office may live at up to 20 fps.** "Hidden" is WebKit's page visibility,
+which covers a minimized window, one closed to the menu bar, another Space, a window fully covered
+by others, and a locked screen (`src/mainview/visibility.ts`). Headless Chrome is always visible,
+so the inspector's `setVisible()` fakes it for tests.
+
+**Life** is an overlay on whatever pose plays: blinks (one in each ~4.6 s window, one in five a
+double, 130 ms shut, only for open eyes) and glances (in about half of the 7.3 s windows, held 0.9
+to 2.6 s, a few rig units). Both are pure functions of the character's id and its own life clock
+(`src/scene/rig/life.ts`), and the clock moves only with ticks, so `freeze()`/`step(n)` give the
+same frames on every load and `rewind()` restarts it. Life touches only the eye textures and the
+look springs, never the body. `Puppet.gaze([x, y])` is the seam for directed looks: it replaces a
+glance while set.
+
+**Frame rates:** a camera move 60, acting (poses, walks, pulses, bricks, arms) 30, life alone 20
+(`Office.acting` vs `Office.animating`). **Calm mode** (`?calm`, or the system's reduce-motion
+setting) turns life off, and then a quiet office makes no frames, as before. The e2e tests that
+hold "an idle office is silent" run in calm mode; new ones hold life at ≤ 20 fps and a hidden busy
+office at zero renders.
+
+Measure before the next release: `tools/profile.sh` idle with and without `?calm`, on a quiet
+machine.

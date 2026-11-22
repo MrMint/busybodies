@@ -41,6 +41,10 @@ export interface Character {
 	/** Optional: true while walking. The office lets each walker keep its own depth (walks run at
 	 * the ambient 30 fps). */
 	readonly moving?: boolean;
+	/** Optional: life on or off (blinks and glances while the app is on screen; src/scene/rig/life.ts). */
+	life?: boolean;
+	/** Optional: true while life keeps it moving with nothing else to play. */
+	readonly alive?: boolean;
 	/** Optional: back to the start of its pose, settled (the inspector's freeze, so step(n) is the
 	 * same however long the page ran first). */
 	rewind?(): void;

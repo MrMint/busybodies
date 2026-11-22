@@ -1,6 +1,7 @@
 // The scene: listens for snapshots from the Bun process and draws them as an office. Rendering is
-// on demand: the ticker runs only while someone is busy or the camera moves; otherwise the last
-// frame just stays up.
+// on demand: the ticker runs while someone acts, walks or the camera moves, and at a lower rate
+// while the cast only blinks and glances (life). Off screen it draws nothing at all; in calm mode
+// (?calm, or the system's reduced motion) there is no life, so a quiet office draws nothing either.
 import { Electroview } from "electrobun/view";
 import { Application, Ticker } from "pixi.js";
 import type { BusybodiesRPC } from "../shared/rpc";
@@ -9,6 +10,7 @@ import { Office } from "../scene/office/office";
 import { type ThemeId, sceneTheme, themeId } from "../scene/theme";
 import { installHud } from "./hud";
 import { installInspector } from "./inspector";
+import { watchVisibility } from "./visibility";
 import { type Bridge, installShell } from "./shell";
 import { placeholders } from "./placeholder";
 import { Atlas, buildPoseSheet, rigCharacters, rigTheme } from "../scene/rig";
@@ -90,13 +92,29 @@ function blank(): void {
 	// move must be smooth (the whole view slides), so it gets 60 for as long as it lasts. Walks stay
 	// at 30: a busy room has someone walking nearly all the time (trips, brick runs, rounds), and a
 	// walker moves a few pixels a frame, which reads fine at 30.
+	// Life alone (blinks, glances) gets less again: a blink is a couple of frames at 20.
 	const AMBIENT_FPS = 30;
 	const MOVING_FPS = 60;
+	const LIFE_FPS = 20;
+	const fps = () => (office.moving ? MOVING_FPS : office.acting ? AMBIENT_FPS : LIFE_FPS);
 	app.ticker.maxFPS = AMBIENT_FPS;
 	app.ticker.add((t) => {
 		office.tick(t.deltaTime);
-		app.ticker.maxFPS = office.moving ? MOVING_FPS : AMBIENT_FPS;
-		if (!office.animating) app.ticker.stop();
+		app.ticker.maxFPS = fps();
+		if (!office.animating || !visibility.visible) app.ticker.stop();
+	});
+
+	// Calm mode: no life. From ?calm, or the system's "reduce motion" setting.
+	const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+	const calm = () => params.has("calm") || !!reduced?.matches;
+	const visibility = watchVisibility((visible) => {
+		office.life = visible && !calm();
+		if (visible) scene.redraw();
+		else app.ticker.stop();
+	});
+	reduced?.addEventListener?.("change", () => {
+		office.life = visibility.visible && !calm();
+		scene.redraw();
 	});
 
 	const scene = {
@@ -108,8 +126,10 @@ function blank(): void {
 		/** Stops a scripted demo day: set while one plays. */
 		stopDemo: undefined as (() => void) | undefined,
 		redraw() {
+			// Off screen nothing is drawn; coming back on screen redraws.
+			if (!visibility.visible) return;
 			if (office.animating && !scene.frozen) {
-				if (office.moving) app.ticker.maxFPS = MOVING_FPS;
+				app.ticker.maxFPS = fps();
 				if (!app.ticker.started) app.ticker.start();
 			} else {
 				app.render();
@@ -128,6 +148,8 @@ function blank(): void {
 			}
 		},
 	};
+	// Life starts with the scene: on when the window is on screen and the office isn't calm.
+	office.life = visibility.visible && !calm();
 	/** What the camera shows, for the voice: its scale, and the project whose room it is on. */
 	const viewOf = () => {
 		const stop = office.stop;
@@ -176,7 +198,7 @@ function blank(): void {
 	};
 	const show = scene.show;
 	const redraw = scene.redraw;
-	const inspector = import.meta.env.DEV || params.has("inspect") ? installInspector(app, office, scene, director, voice && { voice, now: () => director.now }, { current: () => theme, set: setTheme }) : undefined;
+	const inspector = import.meta.env.DEV || params.has("inspect") ? installInspector(app, office, scene, director, voice && { voice, now: () => director.now }, { current: () => theme, set: setTheme }, visibility) : undefined;
 	let bridge: Bridge | undefined;
 	const shell = installShell({
 		bridge: { status: () => bridge!.status(), setCompact: (on) => bridge?.setCompact(on), showOffice: () => bridge?.showOffice(), openProjectPage: () => bridge?.openProjectPage() },

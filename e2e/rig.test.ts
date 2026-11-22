@@ -50,7 +50,7 @@ async function measure(page: Page, ms = 2000) {
 
 describe("200 puppets", () => {
 	test("an idle crowd requests no animation frames and renders nothing", async () => {
-		const page = await open("demo=crowd-idle");
+		const page = await open("demo=crowd-idle&calm");
 		expect(await page.evaluate(() => window.__busybodies!.entities().length)).toBe(200);
 		const c = await measure(page);
 		expect(c.tickerRunning).toBe(false);

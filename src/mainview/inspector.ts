@@ -9,6 +9,7 @@ import type { Office } from "../scene/office/office";
 import type { SignText } from "../scene/office/paper";
 import type { Snapshot } from "../watcher/model";
 import type { ThemeId } from "../scene/theme/id";
+import type { Visibility } from "./visibility";
 
 export interface Inspector {
 	/** True once the first snapshot has been drawn. */
@@ -20,7 +21,9 @@ export interface Inspector {
 	 * rig its role, pose, frame (of frames) and the frame's non-rest params. */
 	entities(): ReturnType<Office["entities"]>;
 	/** Frame accounting since load (or since resetCounters). */
-	counters(): { renders: number; animationFrames: number; tickerRunning: boolean; maxFPS: number };
+	counters(): { renders: number; animationFrames: number; tickerRunning: boolean; maxFPS: number; visible: boolean; life: boolean };
+	/** Pretend the window went off screen (false) or came back (true); undefined: what WebKit says. */
+	setVisible(visible: boolean | undefined): void;
 	resetCounters(): void;
 	/** Stop the clock: the ticker halts and nothing animates until unfreeze(). Every character
 	 * rewinds to the start of its pose, so step(n) from here is the same on every load. */
@@ -90,6 +93,7 @@ export function installInspector(
 	director?: Director,
 	voice?: { voice: Voice; now(): number },
 	themes?: { current(): ThemeId; set(id: ThemeId): void },
+	visibility?: Visibility,
 ): Inspector {
 	const log: WorldEvent[] = [];
 	director?.on((events) => {
@@ -124,7 +128,8 @@ export function installInspector(
 		},
 		snapshot: () => scene.current,
 		entities: () => office.entities(),
-		counters: () => ({ renders, animationFrames, tickerRunning: app.ticker.started, maxFPS: app.ticker.maxFPS }),
+		counters: () => ({ renders, animationFrames, tickerRunning: app.ticker.started, maxFPS: app.ticker.maxFPS, visible: visibility?.visible ?? true, life: office.life }),
+		setVisible: (v) => visibility?.force(v),
 		resetCounters: () => {
 			renders = 0;
 			animationFrames = 0;

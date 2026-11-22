@@ -71,7 +71,7 @@ describe("themes", () => {
 	}, T);
 
 	test("switching live redraws in the new look without a reload, and an idle office stays at zero frames", async () => {
-		const page = await open("demo=idle");
+		const page = await open("demo=idle&calm");
 		await page.evaluate(() => ((window as unknown as { __loaded: boolean }).__loaded = true));
 		const signs = () => page.evaluate(() => Object.fromEntries(window.__busybodies!.signs().map((s) => [s.id, s.text?.title ?? ""])));
 		const before = await page.evaluate(() => window.__busybodies!.entities().map((e) => e.key).sort());

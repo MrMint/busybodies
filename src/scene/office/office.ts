@@ -88,6 +88,7 @@ interface Said {
 
 export class Office extends Container {
 	readonly world = new Container({ isRenderGroup: true });
+	#life = false;
 	#slab = new Graphics();
 	#slabSig = "";
 	#floor = new Container();
@@ -148,7 +149,29 @@ export class Office extends Container {
 
 	// --- State for the app and the inspector ---------------------------------------------------
 
+	/** Life on: every character blinks and glances, so the office keeps a low frame rate going.
+	 * The app turns it off while the window is off screen, and in calm mode. */
+	get life(): boolean {
+		return this.#life;
+	}
+
+	set life(on: boolean) {
+		if (on === this.#life) return;
+		this.#life = on;
+		for (const p of this.#people.values()) p.life = on;
+		this.#opts.wake();
+	}
+
+	/** True while anything has frames to draw, life included. */
 	get animating(): boolean {
+		if (this.acting) return true;
+		if (this.#life) for (const p of this.#people.values()) if (p.alive) return true;
+		return false;
+	}
+
+	/** True while something besides life moves: a pose, a walk, the camera, a pulse, a brick, an
+	 * arm. The app gives these the ambient rate and life alone a lower one. */
+	get acting(): boolean {
 		if (this.#move) return true;
 		if (this.#pulsing.length) return true;
 		if (this.#bricks.size) return true;
@@ -768,6 +791,7 @@ export class Office extends Container {
 			let p = this.#people.get(who.key);
 			if (!p) {
 				p = this.#opts.characters(who);
+				p.life = this.#life;
 				this.#people.set(who.key, p);
 				this.#depth.addChild(p.view);
 			} else p.update(who);

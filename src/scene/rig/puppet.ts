@@ -11,7 +11,8 @@ import { frameAt, unit } from "./player";
 import { POSE, type Pose, duration } from "./poses";
 import { COSTUMES, type Role } from "./roles";
 import { ANCHORS as A, ACCENTS, PAPER_PALETTE } from "./theme";
-import { CHEEKS } from "./vocab";
+import { CHEEKS, LOOKS } from "./vocab";
+import { type LifeBeat, STILL, lifeAt } from "./life";
 
 const RAD = Math.PI / 180;
 const MS_PER_TICK = 1000 / 60;
@@ -94,6 +95,14 @@ export class Puppet extends Container {
 	#frame: Frame = REST;
 	#legsUp = false;
 	#played?: { pose: Pose; opts: PlayOptions };
+	/** Life (src/scene/rig/life.ts): blinks and glances on top of the pose, while the app is on
+	 * screen. Its own clock, so a pose change doesn't restart it. */
+	#life = false;
+	#lifeMs = 0;
+	#beat: LifeBeat = STILL;
+	/** Where something else asked the face to look (a teammate walking past), in rig units on top
+	 * of the pose's own look; it wins over a glance. */
+	#gaze?: readonly [number, number];
 
 	// Parts, back to front.
 	#shadow: Sprite;
@@ -262,6 +271,7 @@ export class Puppet extends Container {
 	/** Replay the current pose from its start, settled in place: the inspector's freeze() uses this
 	 * so step(n) after it gives the same frames however long the page ran before. */
 	rewind(): void {
+		this.#lifeMs = 0;
 		if (this.#played) this.play(this.#played.pose, { ...this.#played.opts, snap: true });
 		else this.snap();
 	}
@@ -299,10 +309,33 @@ export class Puppet extends Container {
 		return !this.#holding || !this.settled;
 	}
 
+	/** Life on: the puppet keeps blinking and glancing even when its pose holds still. */
+	get alive(): boolean {
+		return this.#life;
+	}
+
+	set life(on: boolean) {
+		if (on === this.#life) return;
+		this.#life = on;
+		if (!on) this.#setBeat(STILL);
+	}
+
+	/** Look somewhere (rig units added to the pose's look, in the puppet's own facing), or stop. */
+	gaze(at: readonly [number, number] | undefined): void {
+		const same = at === this.#gaze || (at && this.#gaze && at[0] === this.#gaze[0] && at[1] === this.#gaze[1]);
+		if (same) return;
+		this.#gaze = at;
+		this.#setBeat(this.#lifeBeat());
+	}
+
 	/** Advance by `dt` ticks (1 = 1/60 s, as Pixi's ticker counts). */
 	tick(dt: number): void {
-		if (!this.animating) return;
 		const ms = dt * MS_PER_TICK;
+		if (this.#life) {
+			this.#lifeMs += ms;
+			this.#setBeat(this.#lifeBeat());
+		}
+		if (!this.animating) return;
 		this.#advance(ms * this.#tempo);
 		this.#springs.step(ms / 1000);
 		for (const p of Object.values(this.#pop)) p.step(ms / 1000);
@@ -357,6 +390,7 @@ export class Puppet extends Container {
 			this.#mouth.texture = a.get(`mouth/${f.mouth}`);
 			this.#kick(this.#pop.face, Puppet.FACE_KICK);
 		}
+		this.#beatFrame();
 		const tint = CHEEKS[f.cheeks][1];
 		this.#cheekL.tint = tint;
 		this.#cheekR.tint = tint;
@@ -390,6 +424,34 @@ export class Puppet extends Container {
 		// Binoculars cover the eyes, and the reviewer's glasses would sit on top of them.
 		if (this.#costumeWear) this.#costumeWear.visible = !this.#wear.visible;
 		this.#swap(this.#fx, f.fx && `fx/${f.fx}`, prev.fx !== f.fx, this.#pop.fx, 0.7);
+	}
+
+	#lifeBeat(): LifeBeat {
+		const beat = this.#life ? lifeAt(this.id, this.#lifeMs, this.#frame.eyes) : STILL;
+		return this.#gaze ? { ...beat, lookX: this.#gaze[0], lookY: this.#gaze[1] } : beat;
+	}
+
+	/** Put life's beat on: re-aim the face's look springs, and shut or open the eyes. */
+	#setBeat(beat: LifeBeat): void {
+		const was = this.#beat;
+		if (beat.blink === was.blink && beat.lookX === was.lookX && beat.lookY === was.lookY) return;
+		this.#beat = beat;
+		this.#beatFrame();
+	}
+
+	/** The current frame's eyes and look, with life's beat on top. No pop: a blink just happens. */
+	#beatFrame(): void {
+		const f = this.#frame;
+		const eyes = this.#beat.blink ? "closed" : f.eyes;
+		const tex = this.#atlas.get(`eye/${eyes}`);
+		if (this.#eyeL.texture !== tex) {
+			this.#eyeL.texture = tex;
+			this.#eyeR.texture = tex;
+			this.#eyeR.scale.x = eyes === "side" ? 1 : -1;
+		}
+		const [x, y] = LOOKS[f.look];
+		this.#springs.springs.lookX.target = x + this.#beat.lookX;
+		this.#springs.springs.lookY.target = y + this.#beat.lookY;
 	}
 
 	/** Swap a sprite's texture (or hide it). Something arriving from nothing pops in; one thing

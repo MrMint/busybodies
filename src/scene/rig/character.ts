@@ -65,6 +65,14 @@ class RigCharacter implements Character {
 		return this.moving || (!this.#gone && this.puppet.animating);
 	}
 
+	set life(on: boolean) {
+		this.puppet.life = on;
+	}
+
+	get alive(): boolean {
+		return !this.#gone && this.puppet.alive;
+	}
+
 	update(who: Who): void {
 		const prev = this.#who;
 		this.#who = who;

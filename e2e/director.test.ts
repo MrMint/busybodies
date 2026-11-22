@@ -52,7 +52,7 @@ describe("walks", () => {
 	test("a walk runs at the ambient 30 fps while it lasts, then the idle office goes quiet", async () => {
 		// The voice is held back (?settle) so the quiet window after the walk measures the walk alone;
 		// the voice has its own budget test below.
-		const page = await open("demo=idle&settle=600000");
+		const page = await open("demo=idle&settle=600000&calm");
 		expect((await measure(page, 1000)).animationFrames).toBe(0);
 		// A new session arrives: its lead walks in from the lobby door.
 		await page.evaluate(() => {
@@ -157,7 +157,7 @@ describe("the inspector", () => {
 
 describe("the voice", () => {
 	test("an idle office talks in single renders: no frame loop, and bubbles come down", async () => {
-		const page = await open("demo=idle&settle=0");
+		const page = await open("demo=idle&settle=0&calm");
 		const c = await measure(page, 2500);
 		const sass = await page.evaluate(() => window.__busybodies!.sass()!);
 		// Someone is napping out loud, and the sign slots have their counters.
