@@ -30,13 +30,16 @@ export function fit(r: Rect, vp: Viewport, maxScale: number, pad = 16): View {
 /** The world rectangle a stop frames, or undefined if its room or desk is gone. */
 export function frame(world: World, stop: Stop): Rect | undefined {
 	if (stop.kind === "office") {
+		// The building and the edge of its lawn (the name tabs that stood over the top rooms are gone).
 		const b = world.bounds;
-		return { x: b.x - 20, y: b.y - 50, w: b.w + 40, h: b.h + 70 };
+		return { x: b.x - 24, y: b.y - 24, w: b.w + 48, h: b.h + 48 };
 	}
 	if (stop.kind === "room") {
 		const a = world.areas.find((r) => r.id === stop.id);
-		// Leave room above for the name tab.
-		return a && { x: a.rect.x - 10, y: a.rect.y - 50, w: a.rect.w + 20, h: a.rect.h + 60 };
+		// Take in the room's threshold, where its name is painted in the hallway (and its counts
+		// show): below a room above the hallway, above one below it.
+		if (!a) return undefined;
+		return a.band === "top" ? { x: a.rect.x - 10, y: a.rect.y - 10, w: a.rect.w + 20, h: a.rect.h + 64 } : { x: a.rect.x - 10, y: a.rect.y - 54, w: a.rect.w + 20, h: a.rect.h + 64 };
 	}
 	const d = world.desks.get(stop.id);
 	return d && { x: d.cell.x - 50, y: d.cell.y - 60, w: d.cell.w + 100, h: d.cell.h + 90 };

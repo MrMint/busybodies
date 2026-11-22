@@ -2,7 +2,7 @@
 // rounded type (after design/boards/FloorBusy). The office's and the factory's own looks are in
 // src/scene/theme/; what's here is shared: the ink, the labels and pills over the live scene, and
 // the signboard that fits its text. Nothing here is per-frame.
-import { BitmapFont, BitmapText, Container, Graphics, Text, type TextStyleOptions } from "pixi.js";
+import { BitmapFont, BitmapText, Container, Graphics, Text, type TextStyleOptions, Texture } from "pixi.js";
 import type { SignText } from "../theme/words";
 import type { Rect, WallItem } from "./world";
 
@@ -121,6 +121,87 @@ export function signboard(kind: WallItem["kind"], r: Rect, content: SignText | u
 		});
 	}
 	return c;
+}
+
+// --- The paper pass -----------------------------------------------------------------------------
+
+/** A pixel's noise, 0 to 1, from its coordinates: the same on every load (no Math.random). */
+export function noise(x: number, y: number, seed = 0): number {
+	let h = (Math.imul(x, 73856093) ^ Math.imul(y, 19349663) ^ Math.imul(seed, 83492791)) >>> 0;
+	h = Math.imul(h ^ (h >>> 13), 0x5bd1e995) >>> 0;
+	h = (h ^ (h >>> 15)) >>> 0;
+	return h / 4294967296;
+}
+
+let grain: Texture | undefined;
+
+/**
+ * Paper grain: a 128 px tile of faint specks and fibres, generated from `noise`, to lay over a
+ * baked room at low alpha. Dark specks and a few light ones, so it reads on pale and dark paper.
+ */
+export function grainTexture(): Texture {
+	if (grain) return grain;
+	const size = 128;
+	const canvas = document.createElement("canvas");
+	canvas.width = canvas.height = size;
+	const c = canvas.getContext("2d")!;
+	const img = c.createImageData(size, size);
+	for (let y = 0; y < size; y++) {
+		for (let x = 0; x < size; x++) {
+			const n = noise(x, y, 11);
+			const i = (y * size + x) * 4;
+			if (n < 0.07) {
+				img.data[i] = 27;
+				img.data[i + 1] = 33;
+				img.data[i + 2] = 64;
+				img.data[i + 3] = 40 + Math.round(n * 900);
+			} else if (n > 0.965) {
+				img.data[i] = img.data[i + 1] = img.data[i + 2] = 255;
+				img.data[i + 3] = 70;
+			}
+		}
+	}
+	c.putImageData(img, 0, 0);
+	// A few fibres: short faint strokes.
+	c.strokeStyle = "rgba(27,33,64,0.10)";
+	c.lineWidth = 0.8;
+	for (let k = 0; k < 14; k++) {
+		const x = noise(k, 1, 5) * size;
+		const y = noise(k, 2, 5) * size;
+		const a = noise(k, 3, 5) * Math.PI;
+		const l = 5 + noise(k, 4, 5) * 9;
+		c.beginPath();
+		c.moveTo(x, y);
+		c.quadraticCurveTo(x + Math.cos(a) * l * 0.5 + 1.5, y + Math.sin(a) * l * 0.5, x + Math.cos(a) * l, y + Math.sin(a) * l);
+		c.stroke();
+	}
+	grain = Texture.from(canvas);
+	return grain;
+}
+
+/**
+ * The points of a rectangle's outline, cut by hand: every `step` px along each edge the line
+ * strays up to `amp` px in or out, fixed by `seed`. Corners stay put, so shells still meet.
+ */
+export function wobblyRect(r: Rect, seed: number, amp = 1.6, step = 46): number[] {
+	const pts: number[] = [];
+	const edge = (x0: number, y0: number, x1: number, y1: number, k: number) => {
+		const len = Math.hypot(x1 - x0, y1 - y0);
+		const n = Math.max(1, Math.round(len / step));
+		const nx = -(y1 - y0) / len;
+		const ny = (x1 - x0) / len;
+		for (let i = 0; i < n; i++) {
+			const t = i / n;
+			const d = i === 0 ? 0 : wob(seed, k * 97 + i) * amp;
+			pts.push(x0 + (x1 - x0) * t + nx * d, y0 + (y1 - y0) * t + ny * d);
+		}
+	};
+	const { x, y, w, h } = r;
+	edge(x, y, x + w, y, 1);
+	edge(x + w, y, x + w, y + h, 2);
+	edge(x + w, y + h, x, y + h, 3);
+	edge(x, y + h, x, y, 4);
+	return pts;
 }
 
 // --- Labels -----------------------------------------------------------------------------------

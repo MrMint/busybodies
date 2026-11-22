@@ -5,7 +5,8 @@
 import type { Container, Graphics } from "pixi.js";
 import type { DeskProps, Lamp, PlannerRow, Tray } from "../director/metrics";
 import type { Who } from "../office/slot";
-import type { Area, Fixture, Rect } from "../office/world";
+import type { Phase } from "../office/daylight";
+import type { Area, AreaKind, Fixture, Rect } from "../office/world";
 import type { ThemeId } from "./id";
 import type { SignText, ThemeWords } from "./words";
 
@@ -98,6 +99,49 @@ export interface SceneTheme {
 	nightWatch: Who;
 	/** The factory's robot arms: one per project room, helping with the build (theme/arm.ts). */
 	arms: boolean;
+	/** Light, the view out of the windows, floor materials and the room names (office/light.ts). */
+	light: SceneLight;
+}
+
+/** A colour per time-of-day phase (office/daylight.ts). */
+export type PerPhase<T> = Record<Phase, T>;
+
+/**
+ * How a theme is lit and what its windows look out on: values only, drawn by the office
+ * (office/light.ts, office/outlook.ts). Colours that multiply are "how much of the painted colour
+ * shows": white leaves it as painted.
+ */
+export interface SceneLight {
+	/** The building's light, multiplied over rooms, furniture and cast. */
+	ambient: PerPhase<number>;
+	/** The hallway's: it keeps its night lights on, so the room names stay readable. */
+	hall: PerPhase<number>;
+	/** The lawn and everything outside, multiplied. */
+	outside: PerPhase<number>;
+	/** What a lit desk lamp or a room's overhead light brings the floor up to. */
+	lamp: number;
+	/** The warm halo added round a busy desk's lamp after dark. */
+	glow: number;
+	/** Overhead lights: soft round pools (the office), or fluorescent strips over each row (the factory). */
+	overhead: "pools" | "strips";
+	/** A vacant room's light, as a share of the rest (it has nothing switched on). */
+	vacant: number;
+	/** Sunlight through the windows, as patches on the floor (morning, late afternoon). */
+	sun: number;
+	/** The view out: sky (top, horizon), the skyline, its lit windows at night. */
+	sky: PerPhase<[top: number, horizon: number]>;
+	skyline: PerPhase<[far: number, near: number]>;
+	/** The theme's window, so the view sits inside its frame: glass inset from the wall item's rect,
+	 * its height (the factory's are high strips), panes across, a transom, and the bars' width. */
+	window: { inset: number; height?: number; panes: number; transom: boolean; bar: number };
+	/** Floor materials by area kind, drawn over the theme's floor (none: leave it). */
+	floors: Partial<Record<AreaKind, "carpet" | "planks" | "none">>;
+	/** Under each cluster of desks: a rug (office) or a painted work zone (factory). */
+	cluster: "rug" | "zone";
+	/** Room names painted in the hallway at each room's threshold: a vinyl decal or a stencil. */
+	decal: { size: number; colour: number; stencil: boolean };
+	/** Outside on the lawn: trees (office) or bollards and pallets (factory). */
+	yard: "trees" | "yard";
 }
 
 export type { DeskProps };

@@ -22,6 +22,8 @@ interface State {
 	frames?: number;
 	/** More of the URL's query, such as "compact" or "about". */
 	query?: string;
+	/** The hour the light is for (?hour=): pinned, so shots never depend on the clock (default 14). */
+	hour?: number;
 }
 
 const BOARD: [number, number] = [1440, 900];
@@ -62,6 +64,16 @@ const STATES: State[] = [
 	{ name: "release-desk", demo: "release", aim: { kind: "desk", title: "Ship release 3.0" }, size: BOARD },
 	{ name: "room-your-office", demo: "day-2", aim: { kind: "room", name: "your office" }, size: BOARD, frames: 40 },
 	{ name: "room-lobby", demo: "idle", aim: { kind: "room", name: "lobby" }, size: BOARD },
+	// Lived in (stream C): time of day, lamps, focus light, the view out, the paper pass.
+	{ name: "floor-busy-morning", demo: "", aim: { kind: "office" }, size: BOARD, hour: 8 },
+	{ name: "floor-busy-afternoon", demo: "", aim: { kind: "office" }, size: BOARD, hour: 16 },
+	{ name: "floor-busy-dusk", demo: "", aim: { kind: "office" }, size: BOARD, hour: 19 },
+	{ name: "floor-busy-night", demo: "", aim: { kind: "office" }, size: BOARD, hour: 23 },
+	{ name: "floor-idle-night", demo: "idle", aim: { kind: "office" }, size: BOARD, hour: 2 },
+	{ name: "room-lanternfish-night", demo: "", aim: { kind: "room", name: "lanternfish" }, size: BOARD, hour: 23 },
+	{ name: "room-lanternfish-morning", demo: "", aim: { kind: "room", name: "lanternfish" }, size: BOARD, hour: 8 },
+	{ name: "desk-ship-release-dusk", demo: "", aim: { kind: "desk", title: "Ship release 2.4" }, size: BOARD, hour: 19 },
+	{ name: "compact-busy-night", demo: "", aim: { kind: "office" }, size: [440, 300], query: "compact", hour: 23 },
 ];
 
 const ROOT = join(import.meta.dir, "..");
@@ -96,7 +108,7 @@ const server = Bun.serve({
 
 async function shoot(browser: Browser, s: State, dpr: number): Promise<Buffer> {
 	const page = await browser.newPage({ viewport: { width: s.size[0], height: s.size[1] }, deviceScaleFactor: dpr });
-	await page.goto(`http://localhost:${server.port}/?inspect&frozen&demo=${s.demo}${s.query ? `&${s.query}` : ""}${o.theme ? `&theme=${o.theme}` : ""}`);
+	await page.goto(`http://localhost:${server.port}/?inspect&frozen&demo=${s.demo}&hour=${s.hour ?? 14}${s.query ? `&${s.query}` : ""}${o.theme ? `&theme=${o.theme}` : ""}`);
 	await page.waitForFunction(() => window.__busybodies?.ready === true, undefined, { timeout: 20_000 });
 	await page.evaluate(
 		({ aim, frames }) => {

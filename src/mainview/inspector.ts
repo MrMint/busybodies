@@ -55,6 +55,11 @@ export interface Inspector {
 	arms(): Office["arms"];
 	/** Crew-build pieces moving now (or waiting on an arm). */
 	bricks(): Office["bricks"];
+	/** The light: the time-of-day phase and its hour (forced by ?hour= or the clock's), the room in
+	 * focus, lamps and overhead lights on, glow, how often it re-baked, rooms in rush, clouds. */
+	light(): Office["light"];
+	/** Force the hour (0 to 23) as ?hour= does, or undefined to follow the clock. */
+	setHour(hour: number | undefined): void;
 }
 
 /** The world without Maps, for JSON. */
@@ -167,6 +172,11 @@ export function installInspector(
 		setTheme: (id) => themes?.set(id),
 		arms: () => office.arms,
 		bricks: () => office.bricks,
+		light: () => office.light,
+		setHour: (hour) => {
+			office.setHour(hour);
+			scene.redraw();
+		},
 	};
 	window.__busybodies = inspector;
 	return inspector;

@@ -1,18 +1,30 @@
 // The office, drawn: the open floor from design/boards/FloorBusy. Layers, back to front:
-//   slab     the dark base the rooms sit on
-//   floor    each room's floor, walls and wall items: cached as one texture per room
+//   outside  the lawn round the building and its yard, lit for the time of day (outside.ts)
+//   slab     the dark base the rooms sit on, its edge cut by hand
+//   floor    each room's floor, walls and wall items, its paper pass (material.ts: floor material,
+//            the view out of its windows, grain) and its name painted at its threshold: cached as
+//            one texture per room
+//   clouds   clouds drifting across the windows, on the life clock
+//   shade    the furniture's shadows, stacked offsets from the phase's light
 //   depth    desks, furniture and characters, sorted by their feet (zIndex = y)
 //   arms     the factory's robot arms, overhead (theme/arm.ts; none in the office theme)
+//   light    time of day, lamps, focus and rush: a baked light map, multiplied; glow added (light.ts)
+//   pulse    the outline of a room waiting on you, unlit so it shows at night
 //   bubbles  speech bubbles
-//   labels   room name tabs and counts
+//   labels   the counts for the room the camera is on
 // Furniture is drawn once per kind and baked into a texture that every desk shares, so a busy frame
 // redraws characters and bubbles over a handful of cached textures. Baked things are re-baked at
 // the camera's scale when the camera settles at a new stop, so they stay sharp when zoomed in.
-import { Container, Graphics, Rectangle, type Renderer, Sprite, Text, type Texture } from "pixi.js";
+import { Container, FillPattern, Graphics, Rectangle, type Renderer, Sprite, Text, type Texture } from "pixi.js";
 import type { Session, Snapshot } from "../../watcher/model";
 import { CameraMove, type Stop, type View, type Viewport, viewFor } from "./camera";
+import { type Phase, SHADOW, msToNextPhase, phaseOf } from "./daylight";
+import { Light, type LightInfo } from "./light";
+import { DECAL, dressRoom } from "./material";
+import { CLOUD, cloudTexture, glassOf, panesOf, type SunSpot, sunSpot } from "./outlook";
+import { Outside } from "./outside";
 import { FloorPlan } from "./layout";
-import { type FurnitureKind, INK, type SignText, hash, label, nameTab, pill } from "./paper";
+import { type FurnitureKind, INK, type SignText, grainTexture, label, noise, pill, wobblyRect } from "./paper";
 import { type Placed, Placement, crewOf } from "./placement";
 import type { DeskProps, Metrics } from "../director/metrics";
 import { deskProps, plannerSig, propsSig } from "./props";
@@ -65,6 +77,25 @@ export interface OfficeOptions {
 	metrics?: () => Pick<Metrics, "desks" | "planners" | "serving">;
 	/** How it all looks and what the places are called (src/scene/theme/; default the office). */
 	theme?: SceneTheme;
+	/** The hour (0 to 23) the light is for: `?hour=`, for screenshots and tests. Without it, the
+	 * local clock's, re-lit as each phase starts. */
+	hour?: number;
+	/** Sessions in rush (the director's): their room's overhead light flickers. */
+	rush?: () => string[];
+	/** Draw the lawn and the yard round the building (default true; the compact window floats on
+	 * the desktop, so it has none). */
+	outside?: boolean;
+}
+
+/** A cloud crossing one pane of a window: where it starts, how fast it goes, how high it rides. */
+interface Cloud {
+	view: Sprite;
+	pane: { x: number; y: number; w: number; h: number };
+	y: number;
+	w: number;
+	/** World px per second. */
+	speed: number;
+	offset: number;
 }
 
 /** A brick moving on a crew build: set down, or tumbling off. Only its transform changes. */
@@ -130,6 +161,24 @@ export class Office extends Container {
 	#anchors = new Map<FurnitureKind, { x: number; y: number }>();
 	#res = 0;
 
+	/** Time of day: the phase now, and the hour it was worked out from. */
+	#phase: Phase;
+	#hour: number;
+	#phaseTimer?: ReturnType<typeof setTimeout>;
+	#outside?: Outside;
+	#light: Light;
+	/** The furniture's shadows, by the furniture item's key. */
+	#shade = new Container({ label: "shade" });
+	#shadows = new Map<string, Container>();
+	#clouds = new Container({ label: "clouds" });
+	#cloudList: Cloud[] = [];
+	#cloudTex?: Texture;
+	#cloudSig = "";
+	/** The life clock, in ms: it runs only while life is on, and drives the clouds and flickers. */
+	#lifeMs = 0;
+	#rushSig = "";
+	#labelSig = "";
+
 	#stop: Stop = { kind: "office" };
 	#view: View = { scale: 1, x: 0, y: 0 };
 	#move?: CameraMove;
@@ -141,8 +190,14 @@ export class Office extends Container {
 		this.#opts = opts;
 		this.#theme = opts.theme ?? OFFICE_THEME;
 		this.#signs = new Map(Object.entries(this.#theme.words.signs));
-		this.world.addChild(this.#slab, this.#floor, this.#walls, this.#pulse, this.#depth, this.#armLayer, this.#tasks, this.#bubbles, this.#labels);
+		this.#light = new Light(opts.renderer);
+		this.#hour = opts.hour ?? new Date().getHours();
+		this.#phase = phaseOf(this.#hour);
+		if (opts.outside !== false) this.#outside = new Outside(opts.renderer);
+		if (this.#outside) this.world.addChild(this.#outside);
+		this.world.addChild(this.#slab, this.#floor, this.#clouds, this.#walls, this.#shade, this.#depth, this.#armLayer, this.#light, this.#pulse, this.#tasks, this.#bubbles, this.#labels);
 		this.#signs.set("yours:serving", this.#theme.words.serving(undefined));
+		if (opts.hour === undefined) this.#schedulePhase();
 		this.world.interactiveChildren = false;
 		this.addChild(this.world);
 	}
@@ -159,6 +214,8 @@ export class Office extends Container {
 		if (on === this.#life) return;
 		this.#life = on;
 		for (const p of this.#people.values()) p.life = on;
+		// Calm or off screen: the rush lights hold steady.
+		if (!on) this.#light.tick(0, true);
 		this.#opts.wake();
 	}
 
@@ -175,6 +232,8 @@ export class Office extends Container {
 		if (this.#move) return true;
 		if (this.#pulsing.length) return true;
 		if (this.#bricks.size) return true;
+		// A room in rush flickers its light at the acting rate, while life is on (never when calm).
+		if (this.#life && this.#light.flickering) return true;
 		for (const a of this.#arms.values()) if (a.arm.moving) return true;
 		for (const p of this.#people.values()) if (p.animating) return true;
 		return false;
@@ -207,6 +266,50 @@ export class Office extends Container {
 		return this.#res;
 	}
 
+	/** The light: the time-of-day phase and the hour it is for (forced by `?hour=` or the clock's),
+	 * and what the light layer shows (lamps, overhead lights, glow, re-bakes, rooms in rush). */
+	get light(): { phase: Phase; hour: number; forced: boolean; focus?: string; clouds: number; lifeMs: number } & LightInfo {
+		return { phase: this.#phase, hour: this.#hour, forced: this.#opts.hour !== undefined, focus: this.#focus(), clouds: this.#cloudList.length, lifeMs: Math.round(this.#lifeMs), ...this.#light.info };
+	}
+
+	/** Force the hour (0 to 23), or undefined to follow the clock again: the inspector's, for tests. */
+	setHour(hour: number | undefined): void {
+		this.#opts.hour = hour;
+		clearTimeout(this.#phaseTimer);
+		this.#phaseTimer = undefined;
+		this.#relight();
+		if (hour === undefined) this.#schedulePhase();
+	}
+
+	/** Re-light for the hour now: on a new phase, re-bake the rooms (their windows and shadows),
+	 * the outside and the light layer. Nothing else moves. */
+	#relight(): void {
+		this.#hour = this.#opts.hour ?? new Date().getHours();
+		const phase = phaseOf(this.#hour);
+		if (phase === this.#phase) return;
+		this.#phase = phase;
+		this.#reshade();
+		if (this.#data && this.#snapshot) this.#draw(this.#data, this.#snapshot);
+		this.#opts.wake();
+	}
+
+	/** Wake when the next phase starts (a timer, not frames). */
+	#schedulePhase(): void {
+		clearTimeout(this.#phaseTimer);
+		this.#phaseTimer = setTimeout(() => {
+			this.#relight();
+			this.#schedulePhase();
+		}, msToNextPhase(new Date()));
+	}
+
+	/** The area the camera is on, if it is on one. */
+	#focus(): string | undefined {
+		const stop = this.#stop;
+		if (stop.kind === "room") return stop.id;
+		if (stop.kind === "desk") return this.#data?.desks.get(stop.id)?.areaId;
+		return undefined;
+	}
+
 	/** Every character: its key, global position, and whatever the character reports. */
 	entities(): ({ key: string; x: number; y: number } & Record<string, string | number>)[] {
 		return [...this.#people].map(([key, p]) => {
@@ -220,6 +323,9 @@ export class Office extends Container {
 		for (const p of this.#people.values()) p.rewind?.();
 		for (const list of this.#bricks.values()) for (const m of list) moveBrick(m, (m.t = -m.delay));
 		for (const a of this.#arms.values()) a.arm.rewind();
+		this.#lifeMs = 0;
+		this.#light.rewind(!this.#life);
+		this.#moveClouds();
 	}
 
 	/** The crew-build bricks moving now, by desk (for the inspector and tests). */
@@ -313,6 +419,12 @@ export class Office extends Container {
 			else this.#bricks.delete(key);
 		}
 		for (const a of this.#arms.values()) if (a.arm.moving) a.arm.step(dt * (1000 / 60));
+		// The life clock: clouds drift and rush lights flicker only while life is on.
+		if (this.#life) {
+			this.#lifeMs += dt * (1000 / 60);
+			this.#moveClouds();
+			this.#light.tick(dt * (1000 / 60));
+		}
 		for (const p of this.#people.values()) p.tick(dt);
 		// Bubbles follow walkers.
 		for (const [key, p] of this.#people) if (p.moving) this.#anchor(key);
@@ -363,6 +475,9 @@ export class Office extends Container {
 		this.#stop = stop;
 		this.#drawTasks();
 		this.#showDetails();
+		// The stage lights: the room the camera heads for stays lit, the rest dim. Its counts show.
+		this.#drawLight(this.#data);
+		if (this.#snapshot) this.#drawLabels(this.#data, this.#snapshot);
 		if (!animate) {
 			this.#move = undefined;
 			this.#apply(to);
@@ -426,6 +541,9 @@ export class Office extends Container {
 		}
 		for (const c of this.#halls) drop(c);
 		this.#halls = [];
+		for (const s of this.#shadows.values()) drop(s);
+		this.#shadows.clear();
+		this.#labelSig = "";
 		for (const a of this.#arms.values()) drop(a.arm);
 		this.#arms.clear();
 		this.#bricks.clear();
@@ -475,22 +593,106 @@ export class Office extends Container {
 		this.#view = v;
 		this.world.scale.set(v.scale);
 		this.world.position.set(v.x, v.y);
+		const c = this.#centre();
+		this.#outside?.parallax((c.x - v.x) / v.scale, (c.y - v.y) / v.scale);
 	}
 
 	#draw(world: World, snapshot: Snapshot): void {
 		const b = world.bounds;
+		const slabRect = { x: b.x - 14, y: b.y - 14, w: b.w + 28, h: b.h + 28 };
 		const slab = JSON.stringify(b);
 		if (slab !== this.#slabSig) {
 			this.#slabSig = slab;
-			this.#slab.clear().roundRect(b.x - 14, b.y - 14, b.w + 28, b.h + 28, 18).fill(this.#theme.slab);
+			// The building's base, its edge cut by hand.
+			this.#slab.clear().poly(wobblyRect(slabRect, 17, 2.2, 60), true).fill(this.#theme.slab);
 		}
+		this.#outside?.update(slabRect, this.#theme.lawn, this.#theme.light, this.#phase);
 		this.#drawFloor(world);
+		this.#drawClouds(world);
 		// People first: the director runs in their cast, and the desks show its crew builds.
 		this.#drawPeople(world, snapshot);
 		this.#drawMetrics(world);
 		this.#drawArms(world);
 		this.#drawFurniture(world, snapshot);
 		this.#drawLabels(world, snapshot);
+		this.#drawLight(world, snapshot);
+	}
+
+	/** The light layer: re-baked only if what it shows changed; the rush rooms' flickers. */
+	#drawLight(world: World, snapshot = this.#snapshot): void {
+		if (!snapshot) return;
+		const occupied = new Set(this.#placed.map((p) => p.area).filter((a): a is string => !!a));
+		const desks = flat(snapshot.sessions).map((s) => ({ id: s.id, state: s.state }));
+		this.#light.update({ light: this.#theme.light, phase: this.#phase, world, focus: this.#focus(), desks, occupied });
+		const rushing = new Set(this.#opts.rush?.() ?? []);
+		const rooms = world.areas.filter((a) => a.desks.some((d) => rushing.has(d.id)));
+		const sig = rooms.map((a) => `${a.id}:${a.rect.x},${a.rect.y},${a.rect.w},${a.rect.h}`).join("|");
+		if (sig !== this.#rushSig) {
+			this.#rushSig = sig;
+			this.#light.rush(rooms);
+			this.#light.tick(0, !this.#life);
+			if (rooms.length) this.#opts.wake();
+		}
+	}
+
+	/** A cloud in each pane of each window, tinted for the phase: rebuilt when the windows or the
+	 * phase change, moved by `#moveClouds` on the life clock. */
+	#drawClouds(world: World): void {
+		const light = this.#theme.light;
+		const panes = world.areas.flatMap((a) => a.wall.filter((w) => w.kind === "window").flatMap((w) => panesOf(glassOf(w.rect, light), light)));
+		const sig = `${this.#phase}|${this.#theme.id}|${panes.map((p) => `${p.x},${p.y}`).join(";")}`;
+		if (sig === this.#cloudSig) return;
+		this.#cloudSig = sig;
+		for (const c of this.#cloudList) c.view.destroy();
+		this.#cloudList = [];
+		this.#cloudTex ??= cloudTexture(this.#opts.renderer);
+		const look = CLOUD[this.#phase];
+		for (const [i, p] of panes.entries()) {
+			const seed = Math.round(p.x * 7 + p.y);
+			const w = Math.min(18, p.w * 0.42);
+			const view = new Sprite(this.#cloudTex);
+			view.setSize(w, w * (22 / 36));
+			view.tint = look.tint;
+			this.#clouds.addChild(view);
+			this.#cloudList.push({
+				view,
+				pane: p,
+				y: p.y + 3 + noise(seed, i, 51) * Math.max(0, p.h * 0.45 - 6),
+				w,
+				speed: 1.2 + noise(seed, i, 52) * 1.6,
+				offset: noise(seed, i, 53) * (p.w + w),
+			});
+		}
+		this.#moveClouds();
+	}
+
+	/** Each cloud across its pane: in from the left, out at the right, faded near the frame so it
+	 * never crosses a bar. Only the clock moves them, so a frozen scene steps the same every time. */
+	#moveClouds(): void {
+		const alpha = CLOUD[this.#phase].alpha;
+		for (const c of this.#cloudList) {
+			const span = c.pane.w + c.w;
+			const x = c.pane.x - c.w + ((c.offset + (this.#lifeMs / 1000) * c.speed) % span);
+			const gap = Math.min(x - c.pane.x, c.pane.x + c.pane.w - (x + c.w));
+			const a = Math.max(0, Math.min(1, (gap - 1) / 6));
+			c.view.position.set(x, c.y);
+			c.view.alpha = a * alpha;
+			c.view.visible = a > 0;
+		}
+	}
+
+	/** New light, new shadows: every piece of furniture's shadow again, offset for the phase. */
+	#reshade(): void {
+		for (const [key, item] of this.#items) {
+			drop(this.#shadows.get(key));
+			const shadow = this.#shadowOf(item.view);
+			if (shadow) {
+				const off = SHADOW[this.#phase];
+				shadow.position.set(item.view.x + off.x, item.view.y + off.y);
+				this.#shade.addChild(shadow);
+				this.#shadows.set(key, shadow);
+			} else this.#shadows.delete(key);
+		}
 	}
 
 	/** The director's metrics on the walls: each room's planner, and NOW SERVING at your office. */
@@ -528,25 +730,32 @@ export class Office extends Container {
 		const on = this.#stop.kind !== "office";
 		for (const [key, item] of this.#items) {
 			if (!key.startsWith("desk:")) continue;
-			const d = item.view.getChildByLabel("detail");
-			if (d) d.visible = on;
+			for (const name of ["detail", "card"]) {
+				const d = item.view.getChildByLabel(name);
+				if (d) d.visible = on;
+			}
 		}
 	}
 
 	/** Rooms' floors, walls and wall items: one cached texture per room, rebuilt when it changes. */
 	#drawFloor(world: World): void {
 		const seen = new Set<string>();
+		const sun = sunSpot(
+			world.areas.flatMap((a) => a.wall.filter((w) => w.kind === "window").map((w) => w.rect)),
+			this.#phase,
+		);
 		for (const a of world.areas) {
 			const texts = a.wall.filter((w) => w.slot).map((w) => this.#signs.get(w.slot!) ?? null);
-			const sig = JSON.stringify([a.rect, a.floorY, a.kind, a.hue, a.wall, texts]);
+			const here = sun && a.wall.some((w) => w.kind === "window" && Math.abs(w.rect.x - sun.x) < 1);
+			const sig = JSON.stringify([a.rect, a.floorY, a.kind, a.hue, a.name, a.cells.length, a.wall, texts, this.#phase, here ? sun : 0]);
 			seen.add(a.id);
 			const had = this.#areas.get(a.id);
 			if (had?.sig === sig) continue;
 			drop(had?.view);
-			const view = this.#area(a);
+			const view = this.#area(a, sun);
 			this.#floor.addChild(view);
 			this.#areas.set(a.id, { view, sig });
-			this.#cache(view, a.rect);
+			this.#cache(view, roomBounds(a.rect));
 		}
 		for (const [id, item] of this.#areas) {
 			if (seen.has(id)) continue;
@@ -563,8 +772,10 @@ export class Office extends Container {
 				const r = { x: h.x + i * HALL_CHUNK, y: h.y, w: Math.min(HALL_CHUNK, h.w - i * HALL_CHUNK), h: h.h };
 				const g = new Graphics();
 				this.#theme.hallway(g, r);
+				const grain = new Graphics().rect(r.x, r.y, r.w, r.h).fill(new FillPattern(grainTexture(), "repeat"));
+				grain.alpha = 0.4;
 				const c = new Container();
-				c.addChild(g);
+				c.addChild(g, grain);
 				this.#floor.addChildAt(c, 0);
 				this.#halls.push(c);
 				this.#cache(c, r);
@@ -572,12 +783,16 @@ export class Office extends Container {
 		}
 	}
 
-	#area(a: Area): Container {
+	#area(a: Area, sun: SunSpot | undefined): Container {
 		const c = new Container({ label: a.id });
 		const g = new Graphics();
 		c.addChild(g);
 		// The planner's board and notes change with the todos: their own layer (#drawMetrics).
 		this.#theme.room(g, c, a, (slot) => this.#signs.get(slot));
+		// The paper pass: materials, the view out, grain and the room's name (material.ts).
+		const words = this.#theme.words;
+		const name = a.kind === "project" ? a.name : words.areas[a.kind];
+		dressRoom(c, a, { light: this.#theme.light, phase: this.#phase, name, sun });
 		return c;
 	}
 
@@ -594,6 +809,7 @@ export class Office extends Container {
 		const builds = this.#opts.builds?.() ?? {};
 		const metrics = this.#opts.metrics?.().desks ?? {};
 		const seen = new Set<string>();
+		const off = SHADOW[this.#phase];
 		const put = (key: string, sig: string, x: number, y: number, depth: number, make: () => Container) => {
 			seen.add(key);
 			let item = this.#items.get(key);
@@ -602,9 +818,16 @@ export class Office extends Container {
 				item = { view: make(), sig };
 				this.#items.set(key, item);
 				this.#depth.addChild(item.view);
+				drop(this.#shadows.get(key));
+				const shadow = this.#shadowOf(item.view);
+				if (shadow) {
+					this.#shade.addChild(shadow);
+					this.#shadows.set(key, shadow);
+				} else this.#shadows.delete(key);
 			}
 			item.view.position.set(x, y);
 			item.view.zIndex = depth;
+			this.#shadows.get(key)?.position.set(x + off.x, y + off.y);
 		};
 		for (const a of world.areas) {
 			// Free desks stay furnished in rows where someone still works; empty rows are bare floor.
@@ -631,6 +854,8 @@ export class Office extends Container {
 		for (const [key, item] of this.#items) {
 			if (seen.has(key)) continue;
 			drop(item.view);
+			drop(this.#shadows.get(key));
+			this.#shadows.delete(key);
 			this.#items.delete(key);
 			this.#bricks.delete(key);
 			if (key.startsWith("desk:")) this.#brickSeen.delete(key);
@@ -729,7 +954,30 @@ export class Office extends Container {
 			}
 			card.position.set(-w / 2, word ? -44 : -40);
 			card.rotation = -0.02;
+			// Name cards show at the room and desk stops; at office zoom they're clutter.
+			card.label = "card";
+			card.visible = this.#stop.kind !== "office";
 			c.addChild(card);
+		}
+		return c;
+	}
+
+	/** The shadow a piece of furniture casts: its baked shapes as dark silhouettes, twice, the second
+	 * offset as far again (stacked paper). Screens sit on the desk and cast none. Placed at the item's
+	 * position plus the phase's offset. */
+	#shadowOf(view: Container): Container | undefined {
+		const parts = view.children.filter((c): c is Baked => c instanceof Baked && !c.kind.startsWith("screen"));
+		if (parts.length === 0) return undefined;
+		const c = new Container();
+		const off = SHADOW[this.#phase];
+		for (const k of [0, 1]) {
+			for (const p of parts) {
+				const s = this.#baked(p.kind);
+				s.position.set(p.x + off.x * k, p.y + off.y * k);
+				s.tint = 0x000000;
+				s.alpha = 0.09;
+				c.addChild(s);
+			}
 		}
 		return c;
 	}
@@ -758,6 +1006,7 @@ export class Office extends Container {
 		for (const item of this.#items.values()) {
 			for (const s of baked(item.view)) s.texture = this.#textures.get(s.kind)!;
 		}
+		for (const s of baked(this.#shade)) s.texture = this.#textures.get(s.kind)!;
 		for (const t of old) t.destroy(true);
 	}
 
@@ -771,7 +1020,7 @@ export class Office extends Container {
 		const res = this.#targetRes(this.#view.scale);
 		if (res === this.#res || !this.#data) return;
 		this.#bake(res);
-		for (const [id, item] of this.#areas) this.#cache(item.view, this.#data.areas.find((a) => a.id === id)!.rect);
+		for (const [id, item] of this.#areas) this.#cache(item.view, roomBounds(this.#data.areas.find((a) => a.id === id)!.rect));
 		for (const c of this.#halls) this.#cache(c, { x: 0, y: 0, w: HALL_CHUNK, h: this.#data.hallway.h });
 	}
 
@@ -850,41 +1099,34 @@ export class Office extends Container {
 		this.#opts.wake();
 	}
 
-	/** Room name tabs and their counts, above everything. */
+	/** The counts for the room the camera is on (a room or desk stop): a pill in the hallway at the
+	 * room's threshold, at the far end from its painted name. At office zoom there are none: the
+	 * names are painted on the rooms (material.ts) and the counts would be clutter. */
 	#drawLabels(world: World, snapshot: Snapshot): void {
-		const byProject = new Map<string, Session[]>();
-		for (const s of flat(snapshot.sessions)) byProject.set(s.project, [...(byProject.get(s.project) ?? []), s]);
-		const seen = new Set<string>();
-		for (const a of world.areas) {
-			const words = this.#theme.words;
-			let sub = a.kind === "project" ? "" : words.subs[a.kind];
-			const name = a.kind === "project" ? a.name : words.areas[a.kind];
+		const focus = this.#focus();
+		const a = focus ? world.areas.find((x) => x.id === focus) : undefined;
+		let sub = "";
+		if (a) {
+			sub = a.kind === "project" ? "" : this.#theme.words.subs[a.kind];
 			if (a.kind === "project") {
-				const list = byProject.get(a.name) ?? [];
+				const list = flat(snapshot.sessions).filter((s) => s.project === a.name);
 				const out = list.reduce((n, s) => n + crewOf(s.agents).filter((x) => x.status === "running").length, 0);
 				sub = `${list.length} session${list.length === 1 ? "" : "s"}${out ? ` · ${out} agent${out === 1 ? "" : "s"} out` : ""}`;
 			}
-			const sig = `${name}|${sub}`;
-			seen.add(a.id);
-			let item = this.#tabs.get(a.id);
-			if (item?.sig !== sig) {
-				drop(item?.view);
-				const c = new Container();
-				const tab = nameTab(name);
-				const p = pill(sub, 15);
-				p.position.set(tab.width + 6, 8);
-				c.addChild(tab, p);
-				item = { view: c, sig };
-				this.#tabs.set(a.id, item);
-				this.#labels.addChild(c);
-			}
-			item.view.position.set(a.rect.x + 14, a.rect.y - 22);
 		}
-		for (const [id, item] of this.#tabs) {
-			if (seen.has(id)) continue;
-			drop(item.view);
-			this.#tabs.delete(id);
-		}
+		const sig = a ? `${a.id}|${sub}|${a.rect.x},${a.rect.y},${a.rect.w},${a.rect.h}` : "";
+		if (sig === this.#labelSig) return;
+		this.#labelSig = sig;
+		for (const item of this.#tabs.values()) drop(item.view);
+		this.#tabs.clear();
+		if (!a || !sub) return;
+		const p = pill(sub, 15);
+		const lh = this.#theme.light.decal.size * 1.18;
+		const y = a.band === "top" ? a.rect.y + a.rect.h + DECAL.gap + (lh - p.height) / 2 : a.rect.y - DECAL.gap - lh + (lh - p.height) / 2;
+		p.position.set(a.rect.x + a.rect.w - DECAL.pad - p.width, y);
+		this.#labels.addChild(p);
+		this.#tabs.set(a.id, { view: p, sig });
+		this.#opts.wake();
 	}
 }
 
@@ -899,6 +1141,9 @@ export class Office extends Container {
 function drop(view: Container | undefined): void {
 	view?.destroy({ children: true, context: true });
 }
+
+/** A room's cached layer's extent: the room, and its name painted in the hallway beyond it. */
+const roomBounds = (r: Rect): Rect => ({ x: r.x, y: r.y - 70, w: r.w, h: r.h + 140 });
 
 const differs = (a: View, b: View) => Math.abs(a.scale - b.scale) > 1e-4 || Math.abs(a.x - b.x) > 0.5 || Math.abs(a.y - b.y) > 0.5;
 

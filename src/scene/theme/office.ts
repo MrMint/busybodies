@@ -18,7 +18,7 @@ import { PROPS } from "../office/propspots";
 import type { Who } from "../office/slot";
 import type { Area, Rect } from "../office/world";
 import { crewBuild } from "./build";
-import type { FurnitureKind, SceneTheme } from "./types";
+import type { FurnitureKind, SceneLight, SceneTheme } from "./types";
 import { OFFICE_WORDS, type SignText } from "./words";
 
 export const LAWN = 0xbfe8c6;
@@ -498,6 +498,38 @@ const BRICKS = {
 	},
 };
 
+/** The office's light (office/light.ts): warm desk lamps and round ceiling pools, a city skyline,
+ * the lawn with trees; night after design/boards/PaperNight. */
+export const OFFICE_LIGHT: SceneLight = {
+	ambient: { morning: 0xe9e6f5, noon: 0xffffff, afternoon: 0xfbeedb, dusk: 0xb4a9c9, night: 0x464f80 },
+	hall: { morning: 0xeeecf7, noon: 0xffffff, afternoon: 0xfdf2e2, dusk: 0xc6bdd6, night: 0x8b92bd },
+	outside: { morning: 0xf2f0ff, noon: 0xffffff, afternoon: 0xffeed6, dusk: 0xa9a0c8, night: 0x35406e },
+	lamp: 0xfff1d2,
+	glow: 0xffc867,
+	overhead: "pools",
+	vacant: 0.72,
+	sun: 0xfff0c4,
+	sky: {
+		morning: [0xbfe1ff, 0xffe3c8],
+		noon: [0x8fd0ff, 0xd3f0ff],
+		afternoon: [0xa8cdf2, 0xffcf8f],
+		dusk: [0x564a8e, 0xff9a78],
+		night: [0x141a36, 0x29356a],
+	},
+	skyline: {
+		morning: [0xc4d0e6, 0x9cb0d0],
+		noon: [0xc6d6ea, 0x9fb7d8],
+		afternoon: [0xd9bfae, 0xb4978f],
+		dusk: [0x6d5a8f, 0x463a6a],
+		night: [0x2a3360, 0x1d2548],
+	},
+	window: { inset: 5, panes: 2, transom: false, bar: 5 },
+	floors: { project: "carpet", vacant: "carpet", meeting: "carpet", lobby: "planks", yours: "planks" },
+	cluster: "rug",
+	decal: { size: 34, colour: INK, stencil: false },
+	yard: "trees",
+};
+
 export const OFFICE_THEME: SceneTheme = {
 	id: "office",
 	words: OFFICE_WORDS,
@@ -511,4 +543,5 @@ export const OFFICE_THEME: SceneTheme = {
 	crewBuild: (b, seed) => crewBuild(b, seed, BRICKS),
 	nightWatch: NIGHT_WATCH,
 	arms: false,
+	light: OFFICE_LIGHT,
 };
