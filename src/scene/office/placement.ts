@@ -20,6 +20,8 @@ export interface Placed {
 	area?: string;
 	/** What the director (S4) asks of the character, if a director is placing people. */
 	cue?: Cue;
+	/** What it is working on: shown under crew when the camera is on their desk. */
+	task?: string;
 }
 
 export const LEAD_SIZE = 72;

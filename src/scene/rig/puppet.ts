@@ -1,5 +1,5 @@
 // A mochi puppet: about 18 sprites from the shared atlas in a small tree of containers. A pose
-// sets targets; every continuous part (shoulders, elbows, legs, body squash, brows, where the face
+// sets targets; every continuous part (shoulders, elbows, legs, the body's lean, brows, where the face
 // looks) springs towards them, and every swapped part (eyes, mouth, props, effects) pops in on a
 // spring, so nothing ever snaps. The puppet has no clock of its own: its owner calls tick() from
 // the app ticker, and it reports `animating` so the owner can stop the ticker once it settles.
@@ -16,9 +16,16 @@ import { CHEEKS } from "./vocab";
 const RAD = Math.PI / 180;
 const MS_PER_TICK = 1000 / 60;
 
-/** Spring feel per channel: limbs bounce, the body wobbles, the face is quick. */
+/** Spring feel per channel: limbs are quick and land, the hand's angle (so a held tool) trails the
+ * arm a touch and follows through, the body moves without wobbling, the face is quick. */
 const feelOf = (c: ChannelName) =>
-	c.startsWith("body") || c === "hop" ? FEEL.body : c.startsWith("look") || c.startsWith("brow") || c === "cheek" ? FEEL.face : FEEL.limb;
+	c.startsWith("body") || c === "hop"
+		? FEEL.body
+		: c.startsWith("look") || c.startsWith("brow") || c === "cheek"
+			? FEEL.face
+			: c === "handL" || c === "handR"
+				? FEEL.tool
+				: FEEL.limb;
 
 export interface PuppetOptions {
 	/** Stable id: picks the loop phase and any variation, so the same id always acts the same. */
@@ -40,6 +47,8 @@ export interface PlayOptions {
 	/** `end` starts a finite pose already played through, holding its last frame: a character
 	 * found idle is already mid-habit, and costs nothing to draw. */
 	at?: "start" | "end";
+	/** How fast the frames run: 1 is as written. Springs keep real time, so only the beat changes. */
+	tempo?: number;
 }
 
 export interface PuppetState {
@@ -68,6 +77,8 @@ export class Puppet extends Container {
 	#desk: boolean;
 	#springs: SpringSet<ChannelName>;
 	#pop = { face: new Spring(1, FEEL.pop), heldL: new Spring(1, FEEL.pop), heldR: new Spring(1, FEEL.pop), front: new Spring(1, FEEL.pop), fx: new Spring(1, FEEL.pop) };
+	/** How the eyes and mouth arrive on a change: a slight swell, not a squash. */
+	static readonly FACE_KICK = 1.04;
 
 	#pose: Pose = POSE.rest!;
 	#frames: TimedFrame[] = POSE.rest!.frames;
@@ -75,6 +86,7 @@ export class Puppet extends Container {
 	#loops = 1;
 	#ms = 0;
 	#offset = 0;
+	#tempo = 1;
 	#index = -1;
 	#holding = true;
 	#frame: Frame = REST;
@@ -104,6 +116,7 @@ export class Puppet extends Container {
 	#deskSprite: Sprite;
 	#upper = new Container();
 	#front: Sprite;
+	#work: Sprite;
 	#armL: ArmParts;
 	#armR: ArmParts;
 	#fx: Sprite;
@@ -160,6 +173,9 @@ export class Puppet extends Container {
 
 		this.#deskSprite = s("prop/desk");
 		this.#deskSprite.visible = false;
+		// The work out front stands on the floor: it doesn't ride the body.
+		this.#work = s("work/nail1");
+		this.#work.visible = false;
 
 		// Arms and anything held in front ride a layer of their own with the torso's transform, so a
 		// desk can sit between the body and the hands on its keyboard.
@@ -173,7 +189,7 @@ export class Puppet extends Container {
 		this.#fx.visible = false;
 
 		this.#back.visible = false;
-		this.rig.addChild(this.#shadow, this.#back, this.#legL, this.#legR, this.#torso, this.#deskSprite, this.#upper, this.#fx);
+		this.rig.addChild(this.#shadow, this.#back, this.#legL, this.#legR, this.#torso, this.#deskSprite, this.#work, this.#upper, this.#fx);
 		this.addChild(this.rig);
 
 		this.#apply();
@@ -219,10 +235,21 @@ export class Puppet extends Container {
 		// Loops start at a phase picked from the id, so a busy crowd doesn't type in step. A
 		// two-hander's parts must stay in step with each other, so they start together.
 		this.#offset = p.play === "loop" && !p.partner && opts.at !== "end" ? Math.floor(unit(this.id, p.name) * duration(frames)) : 0;
+		this.#tempo = opts.tempo ?? 1;
 		this.#index = -1;
 		this.#advance(0);
 		if (opts.snap || opts.at === "end") this.snap();
 		this.#apply();
+	}
+
+	/** Change how fast the current pose runs, without starting it over. */
+	setTempo(tempo: number): void {
+		this.#tempo = tempo;
+		if (this.#played) this.#played.opts = { ...this.#played.opts, tempo };
+	}
+
+	get tempo(): number {
+		return this.#tempo;
 	}
 
 	/** Replay the current pose from its start, settled in place: the inspector's freeze() uses this
@@ -269,7 +296,7 @@ export class Puppet extends Container {
 	tick(dt: number): void {
 		if (!this.animating) return;
 		const ms = dt * MS_PER_TICK;
-		this.#advance(ms);
+		this.#advance(ms * this.#tempo);
 		this.#springs.step(ms / 1000);
 		for (const p of Object.values(this.#pop)) p.step(ms / 1000);
 		this.#apply();
@@ -321,7 +348,7 @@ export class Puppet extends Container {
 			// Side-eye looks the same way with both eyes; everything else mirrors.
 			this.#eyeR.scale.x = f.eyes === "side" ? 1 : -1;
 			this.#mouth.texture = a.get(`mouth/${f.mouth}`);
-			this.#kick(this.#pop.face, 1.1);
+			this.#kick(this.#pop.face, Puppet.FACE_KICK);
 		}
 		const tint = CHEEKS[f.cheeks][1];
 		this.#cheekL.tint = tint;
@@ -332,6 +359,12 @@ export class Puppet extends Container {
 		const front = f.props.front === "desk" ? undefined : f.props.front;
 		this.#swap(this.#front, front && `prop/${front}`, (prev.props.front === "desk" ? undefined : prev.props.front) !== front, this.#pop.front);
 		this.#deskSprite.visible = this.#desk && f.props.front === "desk";
+		// The work changes state in place (the nail goes down): no pop, so the change is the effect.
+		this.#work.visible = !!f.props.work;
+		if (f.props.work && f.props.work !== prev.props.work) {
+			this.#work.texture = a.get(`work/${f.props.work}`);
+			this.#work.anchor.copyFrom(this.#work.texture.defaultAnchor ?? { x: 0, y: 0 });
+		}
 		this.#back.visible = f.props.back === "chair";
 		// Feet up go on the desk, in front of it; otherwise legs stand behind the body.
 		const up = f.feet === "up";
@@ -345,19 +378,22 @@ export class Puppet extends Container {
 		this.#wear.visible = f.props.wear === "binoc";
 		// Binoculars cover the eyes, and the reviewer's glasses would sit on top of them.
 		if (this.#costumeWear) this.#costumeWear.visible = !this.#wear.visible;
-		this.#swap(this.#fx, f.fx && `fx/${f.fx}`, prev.fx !== f.fx, this.#pop.fx, 0.6);
+		this.#swap(this.#fx, f.fx && `fx/${f.fx}`, prev.fx !== f.fx, this.#pop.fx, 0.7);
 	}
 
-	/** Swap a sprite's texture (or hide it) and pop it in. */
-	#swap(sprite: Sprite, name: string | undefined, changed: boolean, pop: Spring, from = 0.3): void {
+	/** Swap a sprite's texture (or hide it). Something arriving from nothing pops in; one thing
+	 * turning into another (a sheet unrolling, a brick changing hands) just changes. */
+	#swap(sprite: Sprite, name: string | undefined, changed: boolean, pop: Spring, from = 0.55): void {
 		if (!name) {
 			sprite.visible = false;
 			return;
 		}
+		const arriving = !sprite.visible;
 		sprite.visible = true;
 		if (!changed) return;
 		sprite.texture = this.#atlas.get(name);
 		sprite.anchor.copyFrom(sprite.texture.defaultAnchor ?? { x: 0, y: 0 });
+		if (!arriving) return;
 		pop.value = from;
 		pop.velocity = 0;
 		pop.target = 1;

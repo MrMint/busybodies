@@ -96,6 +96,7 @@ export const PRIORITY: Record<TriggerKind, number> = {
 	woken: 4,
 	finished: 4,
 	reaction: 4,
+	chatter: 1,
 	stalled: 4,
 	bill: 3,
 	busy: 2,

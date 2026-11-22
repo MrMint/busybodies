@@ -14,7 +14,7 @@ export const MOUTHS = ["rest", "flat", "small", "pout", "grin", "open", "wobble"
 export type Mouth = (typeof MOUTHS)[number];
 
 /** Where the face looks: the whole face slides a little inside the body. */
-export const LOOKS = { center: [0, 0], left: [-5.5, 0], right: [5.5, 0], up: [0, -4.5], down: [0, 5], upR: [4.5, -4] } as const;
+export const LOOKS = { center: [0, 0], left: [-5.5, 0], right: [5.5, 0], up: [0, -4.5], down: [0, 5], upR: [4.5, -4], downR: [5, 4.5] } as const;
 export type Look = keyof typeof LOOKS;
 
 /** Brows spring: [yL, rotL, yR, rotR, alpha]. Rotation is about each brow's centre. */
@@ -64,6 +64,39 @@ export const ARMS = {
 	wave1: [140, 45, 0],
 	wave2: [140, -35, 0],
 	down: [8, 4, 0],
+	// Work, posed against the props they act on (theme.ts WORK geometry). These are worked out for
+	// the right hand (the tool hand) with the body at rest: change a prop's place and re-solve them.
+	/** Hammer wound up over the head, then the strike onto each of the nail's three heights: elbow
+	 * high, the forearm whips down, and the head lands square on the nail. */
+	wind: [191, -40, 30],
+	hit1: [177, -127, -95],
+	hit2: [163, -127, -100],
+	hit3: [149, -123, -105],
+	/** A wrench on the machine's nut, turned through a third of a turn. */
+	wr1: [11, 62, -55],
+	wr2: [8, 127, -90],
+	wr3: [70, 101, -125],
+	/** Into the parts crate, out of it, and a part held up to the eye. */
+	dig: [29, 36, 0],
+	lift: [8, 89, 0],
+	eye: [98, 121, 0],
+	/** A finger pushed against the stack, and drawn back. */
+	poke: [43, 72, 0],
+	draw: [43, 142, 0],
+	/** Both hands on a sheet's top corners; the finger tracing down its right side. */
+	sheet: [-20, -62, 0],
+	trace1: [-34, -41, 0],
+	trace2: [-12, -47, 0],
+	/** A brick on the palm at the shoulder, set down out front, and patted. */
+	shoulder: [111, 103, 0],
+	/** A hammer rested over the shoulder between nails. */
+	sling: [159, 76, 60],
+	set: [37, 122, 0],
+	pat1: [170, -44, 0],
+	pat2: [175, -32, 0],
+	/** A stung hand flapped. */
+	flap1: [119, 73, 0],
+	flap2: [95, 72, 0],
 } as const satisfies Record<string, readonly [number, number, number]>;
 export type Arm = keyof typeof ARMS;
 
@@ -83,16 +116,15 @@ export const FEET = {
 export type Feet = keyof typeof FEET;
 
 /** Body: [x, y, rotation, scaleX, scaleY, hop]. `hop` lifts the legs with the body. Scaling and
- * rotation are about the middle of the body's base, so a squash spreads it on the floor. */
+ * rotation are about the middle of the body's base. */
 export const BODIES = {
 	rest: [0, 0, 0, 1, 1, 0],
-	hop: [0, -15, 0, 0.9, 1.13, -14],
-	stretch: [0, -2, 0, 0.9, 1.13, 0],
-	low: [0, 7, 0, 1.15, 0.83, 0],
-	squash: [0, 3, 0, 1.18, 0.8, 0],
-	puff: [0, 0, 0, 1.2, 1.13, 0],
-	nap: [0, 12, 15, 1.07, 0.9, 0],
-	slump: [0, 13, 9, 1.06, 0.9, 0],
+	// No squash, stretch or hop: the body moves only where the action needs it (leaning in to look,
+	// recoiling from a blow, a step's small rise), and the limbs and props carry the acting.
+	/** The rise on a walking step. */
+	bob: [0, -2.5, 0, 1, 1, 0],
+	nap: [0, 12, 15, 1.02, 0.97, 0],
+	slump: [0, 13, 9, 1.02, 0.97, 0],
 	tilt: [0, 0, -7, 1, 1, 0],
 	fwd: [0, 5, 11, 1, 1, 0],
 	back: [0, 3, -20, 1, 1, 0],
@@ -104,12 +136,27 @@ export const BODIES = {
 export type Body = keyof typeof BODIES;
 
 /** Things held in a hand. They stay upright whatever the arm does. */
-export const HELD = ["sign", "ok", "trophy", "mag", "clip", "pom", "mug", "hammer", "map", "torch", "brush", "plane", "phone", "paper"] as const;
+export const HELD = [
+	"sign", "ok", "trophy", "mag", "clip", "pom", "mug", "hammer", "map", "torch", "brush", "plane", "phone", "paper",
+	"wrench", "bolt", "gear", "brick",
+] as const;
 export type Held = (typeof HELD)[number];
 
 /** Things in front of the body: a parcel held in both hands, a sign held overhead, a desk. */
-export const FRONTS = ["box", "pls", "desk"] as const;
+export const FRONTS = ["box", "pls", "desk", "roll", "plan", "plan2"] as const;
 export type Front = (typeof FRONTS)[number];
+
+/** What the work is done on, standing on the floor out front (to the right, the way the character
+ * faces). Numbered variants are its states as the work goes: the nail driven in a stroke at a time,
+ * the nut turned, the stack rocking. Swapped without a pop, so a state change reads as the effect. */
+export const WORKS = [
+	"nail1", "nail2", "nail3", "bent",
+	"nut1", "nut2", "nut3",
+	"crate",
+	"stack", "stackL", "stackR",
+	"brick",
+] as const;
+export type Work = (typeof WORKS)[number];
 
 /** Things behind the body. */
 export const BACKS = ["chair"] as const;
@@ -130,6 +177,7 @@ export const FX = [
 	"steam1", "steam2",
 	"papers1", "papers2",
 	"cobweb",
+	"hit",
 ] as const;
 export type Fx = (typeof FX)[number];
 

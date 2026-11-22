@@ -2,9 +2,9 @@
 // ("e-wide b-worry al-type1 bd-fwd") and parsed here into complete Frame objects, so a pose reads
 // like the board it came from and every part not named stays at rest.
 import {
-	ARMS, BACKS, BODIES, BROWS, CHEEKS, EYES, FEET, FRONTS, FX, HELD, LOOKS, MOUTHS, SPOTS, WEARS,
+	ARMS, BACKS, BODIES, BROWS, CHEEKS, EYES, FEET, FRONTS, FX, HELD, LOOKS, MOUTHS, SPOTS, WEARS, WORKS,
 	type Arm, type Back, type Body, type Brows, type Cheeks, type Eyes, type Feet, type Front, type Fx,
-	type Held, type Look, type Mouth, type Spot, type Wear,
+	type Held, type Look, type Mouth, type Spot, type Wear, type Work,
 } from "./vocab";
 
 export interface Props {
@@ -14,6 +14,8 @@ export interface Props {
 	front?: Front;
 	back?: Back;
 	wear?: Wear;
+	/** What the work is done on, on the floor out front (puppet space, not riding the body). */
+	work?: Work;
 }
 
 export interface Frame {
@@ -61,6 +63,7 @@ const TOKENS: Record<string, { key: string; values: readonly string[] }> = {
 	fr: { key: "props.front", values: FRONTS },
 	bk: { key: "props.back", values: BACKS },
 	a: { key: "props.wear", values: WEARS },
+	w: { key: "props.work", values: WORKS },
 };
 
 /** Parse "e-wide al-up hr-trophy" into a complete frame. Throws on any token it doesn't know, so a

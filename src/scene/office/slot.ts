@@ -82,4 +82,8 @@ export interface Cue {
 	/** Where it stands, by name: `desk`, `crew:3`, `meeting:seat:0`, `kitchen:queue:1`, `door`. */
 	spot: string;
 	walk?: Walk;
+	/** How fast the pose's frames run (1 is as written). Changing it alone doesn't restart the pose. */
+	tempo?: number;
+	/** The pose played while walking (default `walk`): `carry` takes a brick to the crew's build. */
+	walkPose?: string;
 }

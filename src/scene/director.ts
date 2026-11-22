@@ -11,11 +11,11 @@
 import type { Placed } from "./office/placement";
 import type { World as Floor } from "./office/world";
 import { type Direction, cueFor, direct, here } from "./director/direct";
-import type { Actor, World, WorldEvent } from "./director/types";
+import type { Actor, Build, World, WorldEvent } from "./director/types";
 import type { Snapshot } from "../watcher/model";
 
 export { direct, RULES, here, cueFor } from "./director/direct";
-export type { Actor, Cue, World, WorldEvent } from "./director/types";
+export type { Actor, Build, Cue, Run, World, WorldEvent } from "./director/types";
 export { pathBetween, walkMs, WALK_SPEED } from "./director/paths";
 
 export type SayKind = "said" | "thought";
@@ -55,12 +55,16 @@ export class Director {
 			desk: a.session,
 			area: a.area,
 			cue: cueFor(a, now),
+			...(a.kind === "crew" && a.task ? { task: a.task } : {}),
 		}));
 	};
 
 	get world(): World | undefined {
 		return this.#world;
 	}
+
+	/** Each session's crew build, for the office to draw on the desk. */
+	builds = (): Record<string, Build> => this.#world?.builds ?? {};
 
 	/** When the world next changes on its own, with no new snapshot. */
 	get wake(): number | undefined {

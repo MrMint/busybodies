@@ -17,6 +17,7 @@ code showed it. A test that counts animation frames would have caught it on day 
 | `bun tools/fake-home.ts` | A synthetic agent home with a set number of sessions, agents, busy share and tool-call rate |
 | `tools/profile.sh` | Launches the app against a fake home and reports CPU for the Bun and WebContent processes |
 | `?demo`, `?demo=idle` | An invented office (busy, or after hours) that runs in any browser through Vite |
+| `?demo=release` | A lead and six builders on a release: tools change, a test goes red, one finishes, the PR goes up (frozen with `&frozen`) |
 | `?blank`, `?blank&norpc` | The app without the scene, to separate Electrobun's own cost from ours |
 | `BUSYBODIES_SCENE_QUERY` | Passes any of these modes to the app's window |
 | `window.__busybodies` | The inspector (dev builds, or `?inspect`): snapshot, characters, frame counters, `freeze()` and `step(n)`, the office `layout()`, `camera()` and `goTo(stop)`, and the sign slots |

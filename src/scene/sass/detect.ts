@@ -3,7 +3,7 @@
 // opened, a test going red) fire once, on the change; states (a wait, a long build, a nap) fire
 // on every call while they hold, with a magnitude the scheduler uses to escalate.
 import type { Agent, Commands, Session, Snapshot } from "../../watcher/model";
-import { type Role, type Trigger, type TriggerKind, roleFor } from "./types";
+import { type Role, type Trigger, type TriggerKind, hash, roleFor } from "./types";
 
 export const MIN = 60_000;
 
@@ -25,6 +25,10 @@ export const LIMITS = {
 	freshMs: MIN,
 	/** This many agents spawned in one go is a big crew. */
 	bigCrew: 4,
+	/** This many busy crew in one session talk shop while they work... */
+	chatterCrew: 3,
+	/** ...one line about this often. */
+	chatterMs: 75_000,
 	/** This many finished agents at once is a coffee queue. */
 	coffeeQueue: 3,
 	/** Late night runs from this hour (local) until `lateUntil`. */
@@ -146,6 +150,16 @@ export function detect(prev: Snapshot | undefined, snap: Snapshot, now: number, 
 			if (last.exitCode === 0 && (last.kind === "test" || last.kind === "build") && (before?.failStreak ?? 0) > 0) {
 				push("reaction", teammate(m) ?? m, before!.failStreak, `react-green:${m.id}:${last.at}`, false, { tag: "green" });
 			}
+		}
+
+		// A big crew talking shop: now and then, one of the busy hands says something.
+		const busyCrew = crew.filter((m) => m.agent?.status === "running").sort((a, b) => (a.id < b.id ? -1 : 1));
+		// Not on the beat the crew is hired: that one belongs to the big-crew line.
+		const wasBusy = was ? members(was).filter((m) => m.agent?.status === "running").length : 0;
+		if (s.state === "busy" && busyCrew.length >= LIMITS.chatterCrew && wasBusy >= LIMITS.chatterCrew) {
+			const bucket = Math.floor((now + (hash(s.id) % LIMITS.chatterMs)) / LIMITS.chatterMs);
+			const who = busyCrew[hash(`${s.id}:${bucket}`) % busyCrew.length]!;
+			push("chatter", who, busyCrew.length, `chatter:${s.id}:${bucket}`, false);
 		}
 
 		// The API being retried, and giving up.

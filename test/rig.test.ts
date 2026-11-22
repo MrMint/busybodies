@@ -10,14 +10,14 @@ import { FACES } from "../src/scene/rig/vocab";
 
 describe("frames", () => {
 	test("tokens parse into a complete frame, everything else at rest", () => {
-		const f = parseFrame("e-wide al-up hr-trophy bd-hop x-conf1");
+		const f = parseFrame("e-wide al-up hr-trophy bd-fwd x-conf1 w-nail2");
 		expect(f.eyes).toBe("wide");
 		expect(f.armL).toBe("up");
 		expect(f.armR).toBe("rest");
-		expect(f.props).toEqual({ right: "trophy" });
-		expect(f.body).toBe("hop");
+		expect(f.props).toEqual({ right: "trophy", work: "nail2" });
+		expect(f.body).toBe("fwd");
 		expect(f.fx).toBe("conf1");
-		expect(diff(f)).toEqual({ eyes: "wide", armL: "up", body: "hop", fx: "conf1", holdR: "trophy" });
+		expect(diff(f)).toEqual({ eyes: "wide", armL: "up", body: "fwd", fx: "conf1", holdR: "trophy", work: "nail2" });
 		expect(describeFrame(parseFrame(""))).toBe("{ rest }");
 	});
 
@@ -45,6 +45,34 @@ describe("poses", () => {
 
 	test("two-handers keep both parts the same length", () => {
 		for (const p of POSES.filter((x) => x.partner)) expect(duration(p.partner!.frames)).toBe(duration(p.frames));
+	});
+
+	test("the body acts, it doesn't squash: no pose scales the body", () => {
+		for (const p of POSES) {
+			for (const f of [...p.frames, ...(p.partner?.frames ?? [])]) {
+				const c = channels(f);
+				expect(Math.abs(c.bodySX - 1)).toBeLessThan(0.05);
+				expect(Math.abs(c.bodySY - 1)).toBeLessThan(0.05);
+				expect(c.hop).toBe(0);
+			}
+		}
+	});
+
+	test("the builder's work changes the work: each work pose shows its prop changing state", () => {
+		const states = (name: string) => new Set(POSE[name]!.frames.map((f) => f.props.work ?? ""));
+		expect(states("hammer")).toEqual(new Set(["nail1", "nail2", "nail3"]));
+		expect(states("tinker")).toEqual(new Set(["nut1", "nut2", "nut3"]));
+		expect(states("poke")).toEqual(new Set(["stack", "stackL", "stackR"]));
+		expect(POSE.thumb!.frames.at(-1)!.props.work).toBe("bent");
+		// The brick goes from the palm to the build: held, then set down where the palm let go.
+		expect(POSE.carry!.frames.every((f) => f.props.right === "brick")).toBe(true);
+		expect(POSE.place!.frames[0]!.props.right).toBe("brick");
+		expect(POSE.place!.frames.some((f) => f.props.work === "brick")).toBe(true);
+		// The office draws the brick on its tower as `place` ends: the last frame's hands are empty.
+		expect(POSE.place!.frames.at(-1)!.props).toEqual({});
+		expect(POSE.place!.play).toBe("once");
+		expect(duration(POSE.place!.frames)).toBeGreaterThanOrEqual(1000);
+		expect(duration(POSE.place!.frames)).toBeLessThanOrEqual(1500);
 	});
 
 	test("every frame lasts whole beats and lines are listed", () => {
@@ -100,16 +128,28 @@ describe("springs", () => {
 		expect(t).toBeLessThan(1.5);
 	});
 
-	test("bouncy feels overshoot, critical damping doesn't", () => {
-		const peak = (damping: number) => {
-			const s = new Spring(0, { stiffness: 300, damping, epsilon: 0.01 });
+	test("limbs land and the body doesn't wobble: overshoot stays small, only a held tool follows through", () => {
+		const peak = (feel: { stiffness: number; damping: number }) => {
+			const s = new Spring(0, { ...feel, epsilon: 0.01 });
 			s.target = 1;
 			let max = 0;
 			for (let i = 0; i < 300; i++) max = Math.max(max, s.step(1 / 120));
 			return max;
 		};
-		expect(peak(FEEL.body.damping)).toBeGreaterThan(1.2);
-		expect(peak(1)).toBeLessThanOrEqual(1.0001);
+		expect(peak(FEEL.body)).toBeLessThan(1.01);
+		expect(peak(FEEL.face)).toBeLessThan(1.01);
+		expect(peak(FEEL.limb)).toBeLessThan(1.05);
+		expect(peak(FEEL.tool)).toBeGreaterThan(peak(FEEL.limb));
+		expect(peak(FEEL.tool)).toBeLessThan(1.12);
+		expect(peak({ stiffness: 300, damping: 1 })).toBeLessThanOrEqual(1.0001);
+	});
+
+	test("a strike arrives inside a beat", () => {
+		// A hammer's swing is one beat (130 ms); the arm must be most of the way there by then.
+		const s = new Spring(0, FEEL.limb);
+		s.target = 1;
+		for (let t = 0; t < 0.13; t += 1 / 240) s.step(1 / 240);
+		expect(s.value).toBeGreaterThan(0.85);
 	});
 
 	test("the same time gives the same motion, however it is sliced", () => {

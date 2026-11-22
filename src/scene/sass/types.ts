@@ -23,6 +23,7 @@ export const TRIGGERS = [
 	"paused", // an agent was stopped or sent home
 	"coffeeQueue", // three or more finished agents at once
 	"reaction", // a bystander reacts to a teammate
+	"chatter", // a big crew talking shop while it works
 	"bill", // cost milestones, in coffee cups
 	"lateNight", // still busy late at night, by the local clock
 	"fridge", // the one note in the dock: whatever most needs a human

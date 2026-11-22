@@ -12,6 +12,8 @@ import { FACES } from "./vocab";
 const INK = 0x2b2340;
 const CELL = 120;
 const DUET = 200;
+/** A pose with work out front (a bench, a crate) needs room on the right for it. */
+const WORKCELL = 190;
 const ROW = 172;
 const LABEL = 230;
 const SCALE = 0.8;
@@ -33,7 +35,15 @@ const BG: Record<string, number> = {
 
 const roleOf = (p: Pose): Role => p.roles?.[0] ?? (p.trigger === "subagent-green" ? "builder" : "lead");
 
+/** `?sheet&only=hammer,place&zoom=3`: just those poses, drawn bigger, for a close look. */
+function closeUp(): { only?: string[]; zoom: number } {
+	const q = typeof location === "undefined" ? undefined : new URLSearchParams(location.search);
+	const only = q?.get("only")?.split(",").filter(Boolean);
+	return { ...(only?.length ? { only } : {}), zoom: Math.max(1, Math.min(4, Number(q?.get("zoom")) || 1)) };
+}
+
 export function buildPoseSheet(atlas: Atlas): { sheet: Container; width: number; height: number; puppets: Puppet[] } {
+	const { only, zoom } = closeUp();
 	const sheet = new Container();
 	const puppets: Puppet[] = [];
 	const partners: Puppet[] = [];
@@ -76,8 +86,8 @@ export function buildPoseSheet(atlas: Atlas): { sheet: Container; width: number;
 		});
 		y += ROW;
 	};
-	strip("The cast", ROLES.map((r) => ({ name: r, make: () => make(`cast-${r}`, r) })));
-	strip(
+	if (!only) strip("The cast", ROLES.map((r) => ({ name: r, make: () => make(`cast-${r}`, r) })));
+	if (!only) strip(
 		"Twelve faces",
 		Object.entries(FACES).map(([name, f], i) => ({
 			name,
@@ -91,9 +101,10 @@ export function buildPoseSheet(atlas: Atlas): { sheet: Container; width: number;
 
 	let widest = LABEL + 12 * CELL;
 	for (const pose of POSES) {
-		if (pose.name === "rest") continue;
+		if (pose.name === "rest" || (only && !only.includes(pose.name))) continue;
 		const duet = !!pose.partner;
-		const cw = duet ? DUET : CELL;
+		const working = pose.frames.some((f) => f.props.work);
+		const cw = duet ? DUET : working ? WORKCELL : CELL;
 		const h = label(pose.title, 15, "800", 1, LABEL - 30);
 		h.position.set(24, y + 6);
 		const meta = label(
@@ -113,7 +124,7 @@ export function buildPoseSheet(atlas: Atlas): { sheet: Container; width: number;
 			sheet.addChild(new Graphics().roundRect(x + 4, y, cw - 8, ROW - 34, 12).fill(BG[pose.trigger] ?? 0xeef1fa));
 			const lead = make(`${pose.name}-${i}`, roleOf(pose));
 			lead.showFrame(f);
-			lead.position.set(x + (duet ? 58 : cw / 2), y + ROW - 46);
+			lead.position.set(x + (duet ? 58 : working ? 70 : cw / 2), y + ROW - 46);
 			const cellPuppets: Puppet[] = [lead];
 			if (pose.partner) {
 				const pf = pose.partner.frames[Math.min(i, pose.partner.frames.length - 1)]!;
@@ -138,5 +149,6 @@ export function buildPoseSheet(atlas: Atlas): { sheet: Container; width: number;
 	const width = widest + 24;
 	const height = y + 16;
 	sheet.addChildAt(new Graphics().rect(0, 0, width, height).fill(0xf8f6f1), 0);
-	return { sheet, width, height, puppets };
+	sheet.scale.set(zoom);
+	return { sheet, width: width * zoom, height: height * zoom, puppets };
 }
