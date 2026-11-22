@@ -263,3 +263,17 @@ occurrence `n`. Loops start at a phase hashed from the id so a crowd doesn't typ
 **Review by reading first.** `bun tools/pose-dump.ts [pose]` prints every frame's non-rest
 parameters; `bun tools/pose-sheet.ts` renders every pose's frames into `docs/rig/pose-sheet.png`
 from `?sheet`. `?crowd=200` (and `&idle`) is the load test the e2e budgets run against.
+
+**Measured cost of the rig.** Alternating `tools/profile.sh` runs on one machine, heavy load
+(`--sessions 12 --agents 8 --busy 0.75 --rate 20`), % of one core, Bun / WebContent, with the
+profiler reading the app's Bun process (not the launcher): `main` 7.1 / 16.7 and 6.9 / 12.4; the
+rig 6.5 / 20.6 and 7.1 / 20.8. Idle with the rig: 0.4 / 0.0. The rig adds about 6 points of
+WebContent when ~100 characters animate at once; Bun is unchanged, and an idle office still draws
+nothing. In Chrome at 2x DPR, 200 mixed puppets take a median 1.9 ms per frame (0.5 ms of it
+ticking), so most of the extra is drawing ~25 sprites per character instead of one placeholder
+shape. Accepted for now; cuts for later: skip springs and transforms on settled puppets mid-loop,
+lower the frame rate for characters far from the camera, and drop hidden parts from the tree.
+
+**`freeze()` rewinds poses.** Freezing the inspector replays every character's current pose from
+its first frame, settled, so `step(n)` gives the same frames however long the page ran first.
+Slow CI renders a few real frames before a test can freeze.
