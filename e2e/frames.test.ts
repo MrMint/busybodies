@@ -36,7 +36,7 @@ beforeAll(async () => {
 afterAll(async () => {
 	await browser?.close();
 	server?.stop(true);
-});
+}, 30_000);
 
 async function open(query: string): Promise<Page> {
 	const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });

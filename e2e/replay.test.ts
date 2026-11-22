@@ -32,7 +32,7 @@ beforeAll(async () => {
 afterAll(async () => {
 	await browser?.close();
 	server?.stop(true);
-});
+}, 30_000);
 
 test(
 	"plays the recorded frames in order, with times moved to now",
