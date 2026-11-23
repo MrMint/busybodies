@@ -103,7 +103,7 @@ function blank(): void {
 	// the room settle a few seconds before the naps and waits start talking; a frozen one (tests,
 	// screenshots) speaks at once; ?settle=<ms> sets it (the walk e2e keeps the voice out of its way).
 	const settleMs = params.has("settle") ? Number(params.get("settle")) : params.has("frozen") ? 0 : 6_000;
-	const voice = params.has("toolvoice") ? undefined : new Voice(office, { settleMs });
+	const voice = params.has("toolvoice") ? undefined : new Voice(office, { settleMs, theme });
 	director.on((events) => {
 		for (const e of events) if (e.type === "leave") voice?.gone(e.key);
 	});
@@ -263,6 +263,7 @@ function blank(): void {
 		const old = atlas;
 		atlas = Atlas.build(app.renderer, rigTheme(id));
 		office.setTheme(sceneTheme(id), charactersFor(atlas));
+		voice?.setTheme(id, sceneTheme(id).words.signs);
 		old.destroy();
 		if (!compact) app.renderer.background.color = sceneTheme(id).lawn;
 		sound?.themeChanged();

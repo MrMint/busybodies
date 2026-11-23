@@ -166,7 +166,7 @@ interface Ongoing {
 
 export class Scheduler {
 	readonly opts: Required<SchedulerOptions>;
-	readonly #lines: Line[];
+	#lines: Line[];
 	#active: Say[] = [];
 	#pending: { t: Trigger; since: number }[] = [];
 	#ongoing: Trigger[] = [];
@@ -184,6 +184,11 @@ export class Scheduler {
 
 	constructor(opts: SchedulerOptions = {}, lines: Line[] = LINES) {
 		this.opts = { ...DEFAULTS, ...opts };
+		this.#lines = lines;
+	}
+
+	/** The bank it picks from: another theme's lines from the next step on (cooldowns carry over). */
+	setLines(lines: Line[]): void {
 		this.#lines = lines;
 	}
 

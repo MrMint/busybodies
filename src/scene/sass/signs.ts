@@ -1,10 +1,11 @@
 // Signs and gags: counters that drive the room signs and whiteboards ("days since a test broke",
 // the PR tally, the coffee count), idle time that drives the background gags (the plant wilts,
 // the mugs pile up), and the one note on the fridge about whatever most needs a human. Pure apart
-// from the counters it keeps between snapshots.
+// from the counters it keeps between snapshots. The words come from the theme's bank (bank.ts).
 import type { Snapshot } from "../../watcher/model";
+import type { ThemeId } from "../theme/id";
+import { type SassBank, sassFor } from "./bank";
 import { LIMITS, MIN, allSessions, crewCount, localClock, members, type DetectOptions } from "./detect";
-import { LINES } from "./lines";
 import { fill } from "./scheduler";
 import { type LineVars, type Role, type SignPlace, hash } from "./types";
 
@@ -25,6 +26,8 @@ export function slotName(place: SignPlace, project: string): string {
 export interface CounterOptions extends DetectOptions {
 	/** A local calendar day for an epoch-ms time, for "today". Default: the machine's clock. */
 	day?: (ms: number) => string;
+	/** Whose words the signs are in (bank.ts). Default: the office's. */
+	theme?: ThemeId;
 }
 
 export const localDay = (ms: number) => new Date(ms).toDateString();
@@ -35,15 +38,12 @@ export const plantFor = (idleMin: number) => (idleMin >= 30 ? "wilting" : idleMi
 /** The mug pile, by how long its room has been idle: one mug per 10 minutes, up to 6. */
 export const mugsFor = (idleMin: number) => Math.min(6, Math.floor(idleMin / 10));
 
-const bank = (text: string) => {
-	const l = LINES.find((x) => x.kind === "sign" && x.text === text);
-	if (!l) throw new Error(`not in the line bank: ${text}`);
+/** A counter's sign text, checked against the bank it belongs to. */
+export function counterSign(bank: SassBank, text: string): string {
+	const l = bank.lines.find((x) => x.kind === "sign" && x.text === text);
+	if (!l) throw new Error(`not in the ${bank.theme}'s line bank: ${text}`);
 	return l.text;
-};
-const DAYS_SINCE = bank("Days since a test broke: {n}");
-const FAIL_STREAK = bank("Fail streak: {n}. New personal best.");
-const PR_TALLY = bank("PRs today: {count}. Humility: 0.");
-const fridgeLines = (tag: string) => LINES.filter((l) => l.trigger === "fridge" && l.tag === tag);
+}
 
 interface RoomCount {
 	lastTestFailAt?: number;
@@ -51,12 +51,19 @@ interface RoomCount {
 
 export class Counters {
 	readonly #opts: CounterOptions;
+	#bank: SassBank;
 	#rooms = new Map<string, RoomCount>();
 	#greens = { day: "", n: 0 };
 	#seenCmd = new Map<string, number>();
 
 	constructor(opts: CounterOptions = {}) {
 		this.#opts = opts;
+		this.#bank = sassFor(opts.theme);
+	}
+
+	/** Write in another theme's words from the next update on. */
+	setTheme(id: ThemeId): void {
+		this.#bank = sassFor(id);
 	}
 
 	/** Reads a snapshot into the counters, then returns the text every counter slot should show. */
@@ -67,6 +74,7 @@ export class Counters {
 		const today = day(now);
 		if (this.#greens.day !== today) this.#greens = { day: today, n: 0 };
 		const out = new Map<string, string>();
+		const words = this.#bank.counters;
 		const sessions = allSessions(snap);
 		const projects = [...new Set(sessions.map((s) => s.project))].sort();
 
@@ -88,11 +96,11 @@ export class Counters {
 			const crew = ss.flatMap(members);
 			const streak = Math.max(0, ...crew.map((m) => m.commands?.failStreak ?? 0));
 			const failAt = this.#rooms.get(p)?.lastTestFailAt;
-			if (streak >= 3) out.set(slotName("board", p), fill(FAIL_STREAK, { n: streak })!);
-			else if (failAt !== undefined) out.set(slotName("board", p), fill(DAYS_SINCE, { n: Math.max(0, Math.floor((now - failAt) / (24 * 60 * MIN))) })!);
+			if (streak >= 3) out.set(slotName("board", p), fill(counterSign(this.#bank, words.failStreak), { n: streak })!);
+			else if (failAt !== undefined) out.set(slotName("board", p), fill(counterSign(this.#bank, words.daysSince), { n: Math.max(0, Math.floor((now - failAt) / (24 * 60 * MIN))) })!);
 
 			const prs = ss.flatMap((s) => s.prs ?? []).filter((pr) => pr.at === undefined || day(pr.at) === today);
-			if (prs.length) out.set(slotName("sign", p), fill(PR_TALLY, { count: prs.length })!);
+			if (prs.length) out.set(slotName("sign", p), fill(counterSign(this.#bank, words.prTally), { count: prs.length })!);
 
 			// The room's gags run on how long the whole room has been idle.
 			const allIdle = ss.every((s) => s.state === "idle" && !s.waiting);
@@ -100,7 +108,7 @@ export class Counters {
 			out.set(slotName("plant", p), plantFor(idleMin));
 			out.set(slotName("mugs", p), String(mugsFor(idleMin)));
 		}
-		if (this.#greens.n > 0) out.set("kitchen:sign", `One cup per green build. Today: ${this.#greens.n}.`);
+		if (this.#greens.n > 0) out.set("kitchen:sign", fill(words.greens, { n: this.#greens.n })!);
 
 		const note = this.#fridge(snap, now, clock, hour);
 		if (note) out.set("fridge", note);
@@ -140,7 +148,7 @@ export class Counters {
 		if (idle) concerns.push({ tag: "idle", key: idle.id, vars: { name: idle.title, min: five(now - idle.stateSince) } });
 
 		for (const c of concerns) {
-			const lines = fridgeLines(c.tag).filter((l) => !l.needs || (c.crew?.[l.needs.role] ?? 0) >= l.needs.n);
+			const lines = this.#bank.lines.filter((l) => l.trigger === "fridge" && l.tag === c.tag).filter((l) => !l.needs || (c.crew?.[l.needs.role] ?? 0) >= l.needs.n);
 			if (!lines.length) continue;
 			const l = lines[hash(`${c.tag}|${c.key}`) % lines.length]!;
 			const text = fill(l.text, c.vars);

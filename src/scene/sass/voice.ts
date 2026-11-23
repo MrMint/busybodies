@@ -3,6 +3,7 @@
 // time is up, and drops what the office has no slot for (yet). Pixi-free: the office is passed in
 // as the three methods it needs, so tests drive it with a fake.
 import type { Snapshot } from "../../watcher/model";
+import type { ThemeId } from "../theme/id";
 import { type Output, Sass, type SassOptions } from "./sass";
 import type { Say, View } from "./scheduler";
 
@@ -69,6 +70,19 @@ export class Voice {
 			}
 		}
 		return out;
+	}
+
+	/**
+	 * The theme changed: speak in its words from the next run on (bank.ts). Every sign the voice
+	 * wrote goes back to the new theme's default for that slot (`defaults`, its words' signs) or
+	 * comes down, so no office joke is left on a bakery wall; the next run writes the counters again.
+	 */
+	setTheme(id: ThemeId, defaults: Record<string, { title: string; body?: string }> = {}): void {
+		if (id === this.sass.theme) return;
+		this.sass.setTheme(id);
+		for (const slot of this.written.keys()) this.#stage.setSign(slot, defaults[slot]);
+		this.written.clear();
+		this.dropped.clear();
 	}
 
 	/** A character left: take its bubble down now. */
