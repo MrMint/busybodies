@@ -1277,6 +1277,8 @@ wall, so a chute reads better than sliding across the room.
 
 ## 2026-11-22: looks as render passes (wave 3, stream J)
 
+*Removed on 2026-11-23 (below): kept here as the record of how it worked.*
+
 **A look is a render pass, not a second scene.** `?look=` (the settings cog's Look, the tray's Look
 menu, saved as `look` in settings.json; ids in `shared/look.ts`) picks plain, pixel or night.
 `mainview/look.ts` wraps `renderer.render`: when the stage renders to the screen in the pixel look,
@@ -1557,3 +1559,163 @@ nail where the picture hangs, a faint rubber mat with hazard edges where the rug
 two-door locker where the armchair stands (vents, a smiley magnet, a scuff, the right door ajar on
 a hi-vis sleeve, a yellow hard hat on a hook at its side), and a crate for a side table with a
 thermos and a lunch tin where the bookcase is. Baked into the room's Graphics like the boss's.
+
+## 2026-11-23: the performance pass
+
+The visuals-first waves deferred performance to one pass (`docs/plan-alive.md`). This is it, with
+one rule: no visible change. Life still runs at 30 fps; the cuts are in what a frame costs.
+
+**Where a frame went.** `tools/bench.ts` (new) opens each `?demo` scene in headless Chrome on the
+GPU at DPR 2 and reports main-thread CPU (Chrome's TaskDuration) as % of a core, renders, and with
+`--profile` the top functions by self time. Counting Pixi's structure changes showed the main cost:
+**the office's world render group rebuilt its draw instructions on nearly every busy frame**
+(`collectRenderables`, the batcher's `break`, sorting): 80 of 88 frames busy, 18 of 89 idle, every
+frame in the 200-character crowd. Pixi v8 rebuilds a render group whenever a child's `visible`
+or `zIndex` changes, even when the order stays as it was. The culprits were walkers' `zIndex`
+following their feet, props and brows shown and hidden by `visible`, ambient blinkers (pilot lamps,
+the tube flicker, steam, sparks), clouds reaching a pane's edge, the rush flicker, and the
+bakery's turning cake re-sorting its rosettes every frame. Script-side, every frame asked each
+puppet three times whether its ~40 springs had settled (`for...in`), and life hashed template
+strings for every character every frame.
+
+**What changed** (one commit each):
+
+- Springs keep a list, and `settled` loops it; the puppet's pops too (`rig/motion.ts`).
+- Life caches each character's current blink and glance windows, same hashes, same numbers, and
+  returns shared beats (`rig/life.ts`).
+- `setDepth` (`office/depth.ts`) writes Pixi's `_zIndex` and calls the setter only when the value
+  passes a neighbour's: the children stay sorted and a stable sort would change nothing. Walkers,
+  the PR crate and the cake use it.
+- Parts that come and go switch by **alpha, not `visible`**: ambient blinkers, steam, sparks,
+  clouds, the rush flicker, and the puppet's props, desk, work, binoculars and brows. Alpha 0 draws
+  nothing (premultiplied normal and multiply blending leave the pixel as it was). A puppet records
+  which parts are on in a set. Rule from here on: **anything that blinks or swaps often switches
+  by alpha**; `visible` is for things that change on a snapshot, not on a frame.
+- The depth layer is its own render group, so a walker passing a desk re-sorts only that layer, not
+  the yard's ~350 sprites, the shadows and the rooms. It sits at the world's origin, so it draws
+  with the world's own transform.
+
+World rebuilds after: 0 per 3 s idle in the office and the factory (18 before), 6 in the bakery
+(the cake's rosettes really passing each other), 14 of 88 frames busy (80), 25 of 88 in the crowd
+(every frame), and those 25 now rebuild only the depth layer.
+
+**Measured.** `tools/bench.ts`, % of one core on the main thread (ms per frame), the same machine,
+alternating runs, load average 60 to 100 from other sessions:
+
+| Scene | before | after |
+|---|---|---|
+| office idle (life) | 2.7% (0.9 ms) | 2.1% (0.7 ms) |
+| office busy | 4.8% (1.6 ms) | 3.5% (1.2 ms) |
+| office crowd (200) | 15.1% (5.1 ms) | 10.2% (3.5 ms) |
+| factory idle | 3.0% (1.0 ms) | 2.0% (0.7 ms) |
+| factory busy | 5.2–6.3% (1.8–2.1 ms) | 3.9% (1.3 ms) |
+| bakery idle | 5.4% (1.9 ms) | 2.5% (0.8 ms) |
+| bakery busy | 6.3% (2.1 ms) | 4.2–4.9% (1.4–1.7 ms) |
+| bakery crowd | 15.6% (5.3 ms) | 10.5% (3.6 ms) |
+
+Every scene still renders at 29.5 fps; idle calm renders nothing (0.1%). `tools/profile.sh` on the
+app (fake home; idle `--busy 0 --rate 0`, busy `--sessions 8 --agents 4 --busy 0.5 --rate 5`), %
+of one core, Bun / WebContent, load average 60 to 100, so rough:
+
+| | before | after |
+|---|---|---|
+| idle (life) | 3.5% / 9.7% | 3.5% / 6.2% |
+| idle, calm | 1.4% / 0.4% | 0.4% / 0.0% |
+| busy | 5.7% / 16.5% | 5.2% / 14.0% |
+
+The Bun process holds at 3.5% with life on: that is the window compositing 30 frames a second, not
+the scene's work. Calm's 1.4% before was noise (no frames either way).
+
+**Same pixels.** `tools/shoot.ts` before and after, in all three themes, on 15 key states
+(floor busy, idle and thirty; the lanternfish room, kitchen, meeting room and lobby; the release
+desk and room; the demo day's arrivals, leaving, review and long build; compact; night), compared
+with `tools/shot-diff.ts`. The only difference is the top bar's "waiting on you" pill, an HTML
+element on a CSS scale animation (`hud.ts`, `bb-wait`) that runs on the wall clock, outside the
+frozen scene: any two runs catch it at a different phase.
+
+**Checks under load.** At a load average of 50 to 80, `bun test e2e/` in SwiftShader timed out
+and lost its browser partway on this branch and on the commit before it alike (and a calm idle
+office counted a few renders on both). Run with Chrome on the GPU (`--use-angle=metal` in place of
+the SwiftShader flags, not committed), all 78 pass, the calm zero-frame budgets and the 30-draw
+cap included.
+
+**Tried and not taken.** A render group per puppet cut the crowd further (4.8 to 3.4 ms a frame)
+but adds a draw call per character and computes a puppet's vertices against its own transform on
+the GPU, which can move an antialiased edge by a level; with the alpha switches, a busy office
+gains little from it. **Left for later:** Pixi's ticker requests an animation frame at the
+display's rate (60, or 120 on ProMotion) and skips three in four to hold 30 fps; pacing the
+requests with a timer would save those wake-ups but changes how the inspector and the e2e budgets
+count frames. Characters off camera at a room stop still tick and draw.
+
+## 2026-11-23: the pixel and night looks are gone
+
+**One look: the scene as drawn.** The pixel and night looks (2026-11-22, above) weren't wanted: the
+settings sheet's Look, the tray's Look menu, `?look=`, `mainview/look.ts`, `shared/look.ts` and
+`e2e/look.test.ts` are removed. A `look` saved by an older version is dropped when settings.json is
+read (`bun/settings.ts`), so a saved "pixel" or "night" opens the default scene and leaves the file
+at the next save. The light layer keeps the real time of day, and `?hour=` still pins it. The
+round-1 `design/boards/Pixel*` boards stay: they record a dropped style, not this feature.
+
+**A patio's seed is a hash of where it is, never its coordinates.** The upper band's gaps lie above
+the hallway at negative y, so the bakery's `Math.round(r.x + r.y * 3)` went negative for a big one,
+`CANDY[seed % n]` was undefined, the chalkboard's stroke threw, and the office's draw ended before
+the cast: an empty bakery, or a real floor with a wide upper gap, showed nobody. Every palette pick
+from a seed must stay non-negative; `hash()` (office/paper.ts) is. `e2e/theme.test.ts` shows every
+theme's crew from an empty office, in the full and compact windows, with that gap on the floor.
+
+## 2026-11-23: a clean way out, and long runs
+
+**One rule for closing: Busybodies lives in the menu bar.** Closing the office window keeps it
+running there, as S6 chose, but it used to leave a Dock icon that did nothing when clicked (no
+`reopen` handler) and no app menu, so ⌘Q and ⌘W did nothing either: from the Dock it looked stuck
+open. Now the Dock icon is there exactly while the office window is (`syncDock` in
+`src/bun/index.ts`; compact mode is a menu-bar widget too), clicking the Dock icon or opening the
+app again brings the office back, and an app menu gives About, Hide, Quit (⌘Q), Copy, Minimize and
+Close (⌘W). Electrobun installs no menu of its own, and a menu accelerator is a single key with ⌘
+implied (`"q"`, not `"CommandOrControl+Q"`). We kept "close hides" over "close quits" because the
+app is meant to run for days and the tray is its home; Quit is always one click or ⌘Q away.
+
+**Every quit takes one way out** (`src/bun/shutdown.ts`). The tray's Quit, ⌘Q, the Dock's Quit,
+logging out, SIGTERM and SIGINT all end in Electrobun's `quit()`, which emits `before-quit` and then
+has the native side exit the process. The steps run from that event, once, each on its own, so one
+that throws can't stop the rest: unregister the global shortcut, stop the watcher (every file
+watch, the debounce timer and the poll, and no listener hears a rebuild that finishes after), save
+the diary, stop the update timers (a download that finishes later never applies). The process's
+`exit` event runs them too, as a backstop. A unit test runs that lifecycle in a child process and
+fails if anything keeps it alive (it hangs for 5 s without `watcher.stop()`).
+
+**Measured on a built app** (a canary build launched with `open`, quit through AppKit the way the
+Dock and ⌘Q do, or with SIGTERM; times are from the quit until the Bun process, the launcher and the
+app's three WebKit processes are all gone): before the change, 0.48 s (AppKit) and 0.17 s (SIGTERM),
+and 0.44 s with sound playing; after, 0.49 s and 0.49 s, the shutdown steps taking 2–8 ms, and 0.29
+s at the end of the 34-minute soak below. So quitting never hung; what felt unclean was the window
+and the Dock. Not checked by machine: ⌘Q and ⌘W themselves (posting keys needs Accessibility
+access, which the test shell doesn't have) and the tray's Quit click; both call the same `quit()`.
+The AudioContext isn't closed separately: the webview's process is gone 0.4 s after the quit, sound
+or not. One Electrobun quirk: the first launch of a fresh build (the self-extractor) leaves the
+extractor's process waiting in its installer window after the app starts; it is upstream, not ours,
+and gone on later launches.
+
+**The watcher holds up to odd input.** A registry file whose `cwd` wasn't a string made every
+snapshot build throw, so one bad file froze the whole office until it changed. Registry, subagent
+meta and desktop index files now pass through typed pickers (`registryEntry`, `agentMeta`,
+`desktopEntry` in `sources.ts`) that keep only fields of the expected type, and one session that
+still fails to build is skipped for that round, not the snapshot. A test feeds wrong types, torn
+JSON, arrays, `null`, empty files, a stray `.txt`, unknown transcript records and a torn last line
+(the session still shows, with defaults), and 120 sessions at once (one build, well under 2 s). The
+watcher also used to lose its file watches for good when the agent home was removed and made again
+(only the 5 s poll noticed changes after that); now each poll re-watches a folder that appeared or
+whose inode changed, and a test removes the home and brings it back.
+
+**A 34-minute soak is flat.** `SOAK_APP=<canary .app> tools/soak.sh 35` (new: a built app, so a
+dev-build `pkill` elsewhere can't stop it, CPU time per sample, and a timed quit at the end) against
+`tools/fake-home.ts --sessions 8 --agents 4 --busy 0.5 --rate 5 --noise 20 --churn 20` (new:
+`--churn` ends the oldest session and starts a new one every 20 s, so about 100 sessions and 200
+agents came and went). Bun: 128.6 MB at the start, 105–110 MB through the first 20 minutes, 69.0 MB
+at the end; WebContent: 205 MB at the start, 123–183 MB while drawing, 61 MB once the window was
+covered (it stops drawing then). CPU averaged 6.2% of a core for Bun and 17.5% for WebContent, on a
+machine at load average ~58 from other work, so only the memory is a measurement. The scene soak
+(`tools/soak-scene.ts --minutes 35`, headless Chrome, run at the same time): heap 13.1 MB at the
+start, 20.3 MB at 5 minutes, 24.5 MB at the end (+4.1 MB after warm-up, flattening: 22.9 MB at 19.5
+minutes), textures flat at 76 after warm-up, characters 5, 9,739 renders. That drift is the same
+slow one S6 saw (+3.1 MB); still worth watching on a longer run.

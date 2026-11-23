@@ -142,7 +142,10 @@ export class Office extends Container {
 	/** The rooms' planners, over their back walls: redrawn when their notes change. */
 	#walls = new Container();
 	#planners = new Map<string, Item>();
-	#depth = new Container({ sortableChildren: true });
+	/** Its own render group: a walker passing a desk re-sorts this layer, and only this layer's
+	 * draw instructions are rebuilt, not the yard's, the shadows' and the rooms' (depth.ts). It sits
+	 * at the world's origin, so it draws with the world's own transform: the same pixels. */
+	#depth = new Container({ sortableChildren: true, isRenderGroup: true });
 	#bubbles = new Container();
 	#labels = new Container();
 	#tasks = new Container();
@@ -758,8 +761,8 @@ export class Office extends Container {
 			const gap = Math.min(x - c.pane.x, c.pane.x + c.pane.w - (x + c.w));
 			const a = Math.max(0, Math.min(1, (gap - 1) / 6));
 			c.view.position.set(x, c.y);
+			// Faded out by alpha alone: a visibility change rebuilds the world (depth.ts).
 			c.view.alpha = a * alpha;
-			c.view.visible = a > 0;
 		}
 	}
 
