@@ -56,3 +56,24 @@ export const CAST: Record<ThemeId, CastVoice[]> = {
 
 /** The style prompt a voice records a line with. */
 export const promptFor = (theme: ThemeId, v: CastVoice): string => `${SETTING[theme]} ${v.style}`;
+
+// --- Auditions ------------------------------------------------------------------------------------
+// Before casting, listen: `bun tools/voice.ts audition` records a few sample lines in every
+// prebuilt voice, in each delivery below, for one theme, and `listen` opens them side by side with
+// a pitch slider and the app's babble. What you keep there is what the pools above should become.
+
+/** Gemini TTS's prebuilt voices (docs.cloud.google.com/text-to-speech/docs/gemini-tts, 2026-11-23). */
+export const PREBUILT = [
+	"Achernar", "Achird", "Algenib", "Algieba", "Alnilam", "Aoede", "Autonoe", "Callirrhoe", "Charon", "Despina",
+	"Enceladus", "Erinome", "Fenrir", "Gacrux", "Iapetus", "Kore", "Laomedeia", "Leda", "Orus", "Pulcherrima",
+	"Puck", "Rasalgethi", "Sadachbia", "Sadaltager", "Schedar", "Sulafat", "Umbriel", "Vindemiatrix", "Zephyr", "Zubenelgenubi",
+] as const;
+
+/** Deliveries to audition, said after the theme's setting. "small" is the guess at a mochi. */
+export const DELIVERIES: Record<string, string> = {
+	plain: "",
+	small: "Your voice is very small, soft and bright, rounded at the edges, and a little quick, like a tiny squishy creature. Cute, but not a baby voice and not squeaky.",
+};
+
+/** Short voiced reactions to hear beside the full lines: what a mochi might say while the bubble carries the joke. */
+export const REACTIONS = ["Hm?", "Ta-da!", "Huh? Oh. Hi."] as const;

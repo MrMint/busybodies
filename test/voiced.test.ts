@@ -140,3 +140,46 @@ describe("the recording plan (tools/voice.ts)", async () => {
 		expect(body.contents[0]!.parts[0]!.text.endsWith("Chef? A tiny taste?")).toBe(true);
 	});
 });
+
+describe("auditions and Gemini 3.8 (tools/voice.ts)", async () => {
+	const { auditionLines, auditionPlan, requestBody, estimate, isV38 } = await import("../tools/voice");
+	const { CAST, PREBUILT, DELIVERIES } = await import("../tools/voice-cast");
+	const empty = { takes: {}, picks: {}, pitch: {}, notes: {} };
+
+	test("a theme's sample lines: one per key beat in its words, then the reactions", () => {
+		const lines = auditionLines("bakery");
+		expect(lines.length).toBe(VOICED.length + 3);
+		expect(corpus("bakery").some((l) => l.text === lines[0])).toBe(true);
+		expect(lines.every((l) => !templated(l))).toBe(true);
+	});
+
+	test("every model, voice, delivery and line once; recorded ones are skipped", () => {
+		const o = { models: ["gemini-3.1-flash-tts-preview", "gemini-3.8-flash-tts"], voices: [...PREBUILT], deliveries: Object.keys(DELIVERIES) };
+		const jobs = auditionPlan(empty, "office", o);
+		expect(jobs.length).toBe(2 * PREBUILT.length * Object.keys(DELIVERIES).length * auditionLines("office").length);
+		expect(new Set(jobs.map((j) => j.file)).size).toBe(jobs.length);
+		const j = jobs[0]!;
+		const done = { ...empty, takes: { [j.file]: { theme: "office" as const, model: j.model, voice: j.voice.voice, delivery: j.delivery, n: j.n, text: j.line.text, ms: 1 } } };
+		expect(auditionPlan(done, "office", o).length).toBe(jobs.length - 1);
+		// A fake take stands in for a fake run, never for a real one.
+		done.takes[j.file].model = "fake";
+		expect(auditionPlan(done, "office", { ...o, fake: true }).length).toBe(jobs.length - 1);
+		expect(auditionPlan(done, "office", o).length).toBe(jobs.length);
+	});
+
+	test("Gemini 3.8 reads the text word for word, with the style in speech_metadata", () => {
+		expect(isV38("gemini-3.8-flash-tts")).toBe(true);
+		const v = CAST.office[0]!;
+		const old = requestBody("office", { text: "Hm?" }, v, "gemini-3.1-flash-tts-preview").contents[0]!.parts[0]!;
+		const neu = requestBody("office", { text: "Hm?" }, v, "gemini-3.8-flash-tts").contents[0]!.parts[0]! as { text: string; speech_metadata?: { style: string } };
+		expect(old.text.endsWith("Hm?")).toBe(true);
+		expect(old.text.length).toBeGreaterThan(20);
+		expect(neu.text).toBe("Hm?");
+		expect(neu.speech_metadata?.style).toContain(v.style);
+	});
+
+	test("3.8 is cheaper at list price for the same speech", () => {
+		const items = [{ prompt: "x".repeat(200), text: "No rush. Some rush." }];
+		expect(estimate(items.map((i) => ({ ...i, model: "gemini-3.8-flash-tts" }))).usd).toBeLessThan(estimate(items.map((i) => ({ ...i, model: "gemini-3.1-flash-tts-preview" }))).usd);
+	});
+});

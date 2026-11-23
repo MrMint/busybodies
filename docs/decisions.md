@@ -1590,7 +1590,26 @@ the app doesn't use the service at all (only the dev tool does), and a desktop c
 coding agents isn't directed at children. The Generative AI Prohibited Use Policy forbids passing
 generated content off as human-made, so the README says the voices are AI-recorded. Only
 prebuilt voices are used: no cloning, no impressions of real people. Pre-GA models can change or
-go away without notice; the clips we ship don't.
+go away without notice; the clips we ship don't. Gemini 3.8 Flash TTS and Flash-Lite TTS are GA on
+Vertex (the Gemini-TTS docs say so, for the Agent Platform API, not the Cloud Text-to-Speech API),
+so only section 20 applies to them, and they are in `TERMS_OK` too.
+
+**Cast by ear, before the real run.** The first cast was picked by voice name, unheard. `audition`
+records a few sample lines (the shortest fixed line of each key beat in the theme's words, and three
+short reactions: "Hm?", "Ta-da!", "Huh? Oh. Hi.") in all 30 prebuilt voices, plain and in a "small"
+delivery (a tiny, soft, bright, rounded voice, not a baby voice and not squeaky), in Gemini 3.1
+Flash TTS and 3.8 Flash TTS side by side. `listen` serves them at `/audition` next to the app's own
+babble (bundled from `speech.ts`), with a pitch slider that shifts like the app's detune, and saves
+keep/maybe/no picks, a pitch and notes per theme to `voice-takes/audition/auditions.json`; `picks`
+prints them. The questions it is for: real words or short reactions with the bubble carrying the
+joke; how small a voice reads as a mochi without turning chipmunk; one voice per character or
+variety; and how the themes differ. A theme's audition is about $0.44 at list price (3.1 at $20 and
+3.8 at $9 per million audio tokens, 3.8's price rising to $18 on 2027-01-01). Gemini 3.8 reads its
+text word for word: the style goes in each part's `speech_metadata` (v1beta1 on Vertex), and it
+answers with WAV, which the encoder reads as it is. That request shape is from the Gemini API docs
+and is unverified on Vertex until the first paid call, which stops after three failures with nothing
+recorded. 3.8 can also design a custom voice from a description, a better fit for a mochi than a
+stock voice, if the auditions say the stock ones aren't it.
 
 **No copyright is claimed in the clips.** Unedited model output has no US copyright protection
 (the same reason as the 2026-11-21 entry on AI images), so the MIT licence covers the code and
@@ -1617,8 +1636,8 @@ under each line (`Sound.duck`). Pan and loudness follow the character's room lik
 **Opus in WebM.** It is the smallest good speech codec, and WebKit has decoded WebM Opus since
 Safari 15 (macOS 12); Ogg Opus only arrived later, and our floor is macOS 14. A clip that won't
 decode falls back to babble. At 24 kbit/s mono a line is about 3 KB a second: every key beat in
-all three themes at two takes is 166 takes, about 520 s, about 1.6 MB (`record --dry-run` prints
-the estimate). The e2e test uses four 0.4 s synthesised tones (7 KB in all, `e2e/fixtures/voice`).
+all three themes at two takes is 166 takes, about 520 s, about 1.6 MB and about $0.27 at 3.1's list
+price (`record --dry-run` prints the estimate). The e2e test uses four 0.4 s synthesised tones (7 KB in all, `e2e/fixtures/voice`).
 
 **Room loops are optional and recorded with their source.** `tools/ambience.ts add` takes a CC0
 recording (Kenney, or Freesound filtered to CC0) or our own, cuts a 24 s piece, crossfades the

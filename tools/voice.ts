@@ -31,10 +31,10 @@
 // None of it is written anywhere.
 import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync, copyFileSync, readdirSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
-import { corpus, type VoiceLine, type VoiceManifest, voicesFor } from "../src/scene/sass/voiced";
+import { VOICED, corpus, type VoiceLine, type VoiceManifest, voicesFor } from "../src/scene/sass/voiced";
 import { hash } from "../src/scene/sass/types";
 import { THEME_IDS, type ThemeId } from "../src/scene/theme/id";
-import { CAST, type CastVoice, promptFor } from "./voice-cast";
+import { CAST, type CastVoice, DELIVERIES, PREBUILT, REACTIONS, promptFor } from "./voice-cast";
 
 const ROOT = join(import.meta.dir, "..");
 export const WORK = join(ROOT, "voice-takes");
@@ -42,12 +42,56 @@ export const SHIP = join(ROOT, "src/mainview/public/voice");
 const TAKES = join(WORK, "takes.json");
 
 /**
- * Models whose output we may ship, per the terms read on 2026-11-23 (docs/decisions.md): Gemini 3.1
- * Flash TTS and Gemini 2.5 Flash-Lite TTS are Preview, and the Preview terms' ban on production use
- * and on disclosing output doesn't apply to them on Vertex AI. Read the terms again before adding one.
+ * Models whose output we may ship, per the terms read on 2026-11-23 (docs/decisions.md): Gemini 3.8
+ * Flash TTS and Flash-Lite TTS are GA on Vertex AI, so only the general Generative AI terms apply;
+ * Gemini 3.1 Flash TTS and Gemini 2.5 Flash-Lite TTS are Preview, and the Preview terms' ban on
+ * production use and on disclosing output doesn't apply to them on Vertex AI. Read the terms again
+ * before adding one.
  */
-export const TERMS_OK = ["gemini-3.1-flash-tts-preview", "gemini-2.5-flash-lite-preview-tts"] as const;
+export const TERMS_OK = ["gemini-3.1-flash-tts-preview", "gemini-3.8-flash-tts", "gemini-3.8-flash-lite-tts", "gemini-2.5-flash-lite-preview-tts"] as const;
 const DEFAULT_MODEL = TERMS_OK[0];
+
+/**
+ * Gemini 3.8 TTS reads its text word for word: the style goes in each part's `speech_metadata`,
+ * not in the text, and it answers with WAV by default. Older models take the style in the text.
+ */
+export const isV38 = (model: string) => model.startsWith("gemini-3.8-");
+
+/**
+ * US dollars per million tokens for Gemini 3.1 Flash TTS on Vertex, as listed on 2026-11-23
+ * (cloud.google.com/text-to-speech/pricing): audio out at 25 tokens a second, text in. For the
+ * estimate only; the bill is Google's.
+ */
+export const PRICES: Record<string, { audioOutPerM: number; textInPerM: number }> = {
+	"gemini-3.1-flash-tts-preview": { audioOutPerM: 20, textInPerM: 1 },
+	// Through 2026-12-31; $18 and $1 from 2027-01-01 (ai.google.dev/gemini-api/docs/models/gemini-3.8-flash-tts).
+	"gemini-3.8-flash-tts": { audioOutPerM: 9, textInPerM: 0.5 },
+};
+const AUDIO_TOKENS_PER_SEC = 25;
+/** A model's list price, or the dearest we know when it isn't listed here. */
+export const priceOf = (model: string) => PRICES[model] ?? { audioOutPerM: 20, textInPerM: 1 };
+
+/** What a run would cost and weigh, from its prompts' lengths and an estimate of the speech. */
+export function estimate(items: { prompt: string; text: string; model: string }[]): { secs: number; audioTokens: number; textTokens: number; usd: number; kb: number } {
+	let secs = 0;
+	let audioTokens = 0;
+	let textTokens = 0;
+	let usd = 0;
+	for (const i of items) {
+		const s = estimateMs(i.text) / 1000;
+		const a = s * AUDIO_TOKENS_PER_SEC;
+		const t = i.prompt.length / 4;
+		const p = priceOf(i.model);
+		secs += s;
+		audioTokens += a;
+		textTokens += t;
+		usd += (a * p.audioOutPerM + t * p.textInPerM) / 1e6;
+	}
+	return { secs, audioTokens: Math.round(audioTokens), textTokens: Math.round(textTokens), usd, kb: Math.round(secs * 3.1) };
+}
+
+const say$ = (e: ReturnType<typeof estimate>) =>
+	`about ${e.secs.toFixed(0)} s of speech: ~${e.audioTokens} audio tokens out, ~${e.textTokens} text tokens in, ~$${e.usd.toFixed(2)} at list price; ~${e.kb} KB as Opus`;
 
 export type Status = "new" | "approved" | "redo";
 export interface WorkTake {
@@ -136,21 +180,33 @@ export function plan(work: Work, ts: ThemeId[], o: { takes: number; all: boolean
 	return jobs;
 }
 
+/** A line in a voice: what `speak` and the fake encoder need (a `Job`, or an audition's take). */
+export interface Utterance {
+	theme: ThemeId;
+	line: { text: string };
+	voice: CastVoice;
+}
+
 /** About 14 characters a second of speech, plus a breath. */
 export const estimateMs = (text: string) => Math.round(400 + (text.length / 14) * 1000);
 
 // --- Vertex --------------------------------------------------------------------------------------
 
 /** The generateContent body for one line in one voice (single speaker, audio out). */
-export function requestBody(theme: ThemeId, line: { text: string }, v: CastVoice) {
+export function requestBody(theme: ThemeId, line: { text: string }, v: CastVoice, model: string = DEFAULT_MODEL) {
+	const style = promptFor(theme, v).trim();
+	const part = isV38(model) ? { text: line.text, speech_metadata: { style } } : { text: `${style} Say this line, and nothing else: ${line.text}` };
 	return {
-		contents: [{ role: "user", parts: [{ text: `${promptFor(theme, v)} Say this line, and nothing else: ${line.text}` }] }],
+		contents: [{ role: "user", parts: [part] }],
 		generationConfig: {
 			responseModalities: ["AUDIO"],
 			speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: v.voice } } },
 		},
 	};
 }
+
+/** What a request costs in text: the style and the line, however the model takes them. */
+const promptOf = (u: Utterance) => `${promptFor(u.theme, u.voice)} ${u.line.text}`;
 
 async function sh(cmd: string[]): Promise<string> {
 	const p = Bun.spawn(cmd, { stdout: "pipe", stderr: "pipe" });
@@ -171,7 +227,8 @@ async function vertex(): Promise<Vertex> {
 	const host = loc === "global" ? "aiplatform.googleapis.com" : `${loc}-aiplatform.googleapis.com`;
 	let cached: { token: string; at: number } | undefined;
 	return {
-		url: (model) => `https://${host}/v1/projects/${project}/locations/${loc}/publishers/google/models/${model}:generateContent`,
+		// Gemini 3.8 TTS's speech_metadata is a beta feature (v1beta on the Gemini API, v1beta1 on Vertex).
+		url: (model) => `https://${host}/${isV38(model) ? "v1beta1" : "v1"}/projects/${project}/locations/${loc}/publishers/google/models/${model}:generateContent`,
 		async token() {
 			if (cached && Date.now() - cached.at < 30 * 60_000) return cached.token;
 			const token = await sh(["gcloud", "auth", "application-default", "print-access-token"]).catch((e) => die(`no Application Default Credentials (${e.message}); run \`gcloud auth application-default login\``));
@@ -181,13 +238,13 @@ async function vertex(): Promise<Vertex> {
 	};
 }
 
-/** One line, spoken: raw 16-bit PCM and its rate. Retries a busy or flaky API with backoff. */
-async function speak(vx: Vertex, model: string, job: Job): Promise<{ pcm: Uint8Array; rate: number }> {
+/** One line, spoken: its audio bytes and their type (raw 16-bit PCM with a rate, or WAV). Retries a busy or flaky API with backoff. */
+async function speak(vx: Vertex, model: string, job: Utterance): Promise<{ audio: Uint8Array; mime: string }> {
 	for (let attempt = 0; ; attempt++) {
 		const res = await fetch(vx.url(model), {
 			method: "POST",
 			headers: { authorization: `Bearer ${await vx.token()}`, "content-type": "application/json" },
-			body: JSON.stringify(requestBody(job.theme, job.line, job.voice)),
+			body: JSON.stringify(requestBody(job.theme, job.line, job.voice, model)),
 		});
 		if ((res.status === 429 || res.status >= 500) && attempt < 5) {
 			await Bun.sleep(1_000 * 2 ** attempt);
@@ -197,8 +254,7 @@ async function speak(vx: Vertex, model: string, job: Job): Promise<{ pcm: Uint8A
 		const body = (await res.json()) as { candidates?: { content?: { parts?: { inlineData?: { mimeType?: string; data?: string } }[] } }[] };
 		const part = body.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data);
 		if (!part?.inlineData?.data) throw new Error("Vertex answered without audio");
-		const rate = Number(/rate=(\d+)/.exec(part.inlineData.mimeType ?? "")?.[1] ?? 24_000);
-		return { pcm: Buffer.from(part.inlineData.data, "base64"), rate };
+		return { audio: Buffer.from(part.inlineData.data, "base64"), mime: part.inlineData.mimeType ?? "audio/l16;rate=24000" };
 	}
 }
 
@@ -223,10 +279,16 @@ export async function durationMs(file: string): Promise<number> {
 	return Math.round(Number(out) * 1000);
 }
 
-const encodeSpeech = (pcm: Uint8Array, rate: number, out: string) => ffmpeg(["-f", "s16le", "-ar", String(rate), "-ac", "1", "-i", "pipe:0", "-af", SPEECH_FILTER, ...OPUS, out], pcm);
+/** Raw PCM (`audio/l16;rate=24000`) is described to ffmpeg; anything with a header (WAV) it reads itself. */
+function encodeSpeech(audio: Uint8Array, mime: string, out: string): Promise<void> {
+	const raw = /l16|pcm/i.test(mime) && !/wav/i.test(mime);
+	const rate = Number(/rate=(\d+)/.exec(mime)?.[1] ?? 24_000);
+	const input = raw ? ["-f", "s16le", "-ar", String(rate), "-ac", "1", "-i", "pipe:0"] : ["-i", "pipe:0"];
+	return ffmpeg([...input, "-af", SPEECH_FILTER, ...OPUS, out], audio);
+}
 
 /** A placeholder take, made here from code (no network): a hummed tune as long as the line would be. */
-function encodeFake(job: Job, out: string): Promise<void> {
+function encodeFake(job: Utterance, out: string): Promise<void> {
 	const secs = (estimateMs(job.line.text) / 1000).toFixed(2);
 	const f = 160 + (hash(job.voice.id) % 120);
 	const expr = `0.3*sin(2*PI*(${f}+20*sin(2*PI*0.7*t))*t)*(0.5+0.5*sin(2*PI*4.5*t))*min(1,t*20)*min(1,(${secs}-t)*20)`;
@@ -255,20 +317,18 @@ async function cmdRecord(): Promise<void> {
 	let jobs = plan(work, themes(), { takes, all, model: fake ? "fake" : model });
 	const limit = Number(opt("limit", "0"));
 	if (limit > 0) jobs = jobs.slice(0, limit);
-	const ms = jobs.reduce((s, j) => s + estimateMs(j.line.text), 0);
-	const chars = jobs.reduce((s, j) => s + requestBody(j.theme, j.line, j.voice).contents[0]!.parts[0]!.text.length, 0);
+	const est = estimate(jobs.map((j) => ({ prompt: promptOf(j), text: j.line.text, model })));
 	console.log(`voice: ${jobs.length} takes to record (${jobs.filter((j) => j.why === "new").length} new, ${jobs.filter((j) => j.why === "changed").length} changed, ${jobs.filter((j) => j.why === "redo").length} redo), ${fake ? "fake" : model}`);
 	for (const t of THEME_IDS) {
 		const n = jobs.filter((j) => j.theme === t).length;
 		if (n) console.log(`  ${t}: ${n}`);
 	}
-	// About 25 audio tokens a second out, and 4 characters a token in.
-	console.log(`  about ${(ms / 1000).toFixed(0)} s of speech: ~${Math.round((ms / 1000) * 25)} audio tokens out, ~${Math.round(chars / 4)} text tokens in; ~${Math.round((ms / 1000) * 3.1)} KB as Opus`);
+	console.log(`  ${say$(est)}`);
 	if (!jobs.length) return;
 	if (dry) {
 		const j = jobs[0]!;
 		console.log(`\nfirst request (POST .../publishers/google/models/${model}:generateContent):`);
-		console.log(JSON.stringify(requestBody(j.theme, j.line, j.voice), null, 2));
+		console.log(JSON.stringify(requestBody(j.theme, j.line, j.voice, model), null, 2));
 		console.log("\ndry run: nothing recorded, nothing sent");
 		return;
 	}
@@ -287,8 +347,8 @@ async function cmdRecord(): Promise<void> {
 			mkdirSync(dirname(out), { recursive: true });
 			try {
 				if (vx) {
-					const { pcm, rate } = await speak(vx, model, job);
-					await encodeSpeech(pcm, rate, out);
+					const { audio, mime } = await speak(vx, model, job);
+					await encodeSpeech(audio, mime, out);
 				} else await encodeFake(job, out);
 				const take: WorkTake = { voice: job.voice.id, sig: job.sig, model: vx ? model : "fake", file: rel, ms: await durationMs(out), bytes: statSync(out).size, status: "new", at: new Date().toISOString() };
 				const lines = (work.themes[job.theme] ??= {});
@@ -350,15 +410,174 @@ function cmdStatus(): void {
 	}
 }
 
+
+// --- auditions -----------------------------------------------------------------------------------
+// A few sample lines in every prebuilt voice and delivery (voice-cast.ts), for one theme at a time,
+// to pick the cast by ear before the real run. They live in voice-takes/audition/ and never ship.
+
+const AUD_JSON = join(WORK, "audition", "auditions.json");
+
+export type Pick = "keep" | "maybe" | "no";
+export interface Auditions {
+	/** By file, relative to voice-takes/. `model` is "fake" for a placeholder. */
+	takes: Record<string, { theme: ThemeId; model: string; voice: string; delivery: string; n: number; text: string; ms: number }>;
+	/** By theme, by "model|Voice|delivery". */
+	picks: Partial<Record<ThemeId, Record<string, Pick>>>;
+	/** The pitch shift you liked, in semitones, by theme. */
+	pitch: Partial<Record<ThemeId, number>>;
+	notes: Partial<Record<ThemeId, string>>;
+}
+
+export function loadAuditions(): Auditions {
+	const a = existsSync(AUD_JSON) ? (JSON.parse(readFileSync(AUD_JSON, "utf8")) as Partial<Auditions>) : {};
+	return { takes: a.takes ?? {}, picks: a.picks ?? {}, pitch: a.pitch ?? {}, notes: a.notes ?? {} };
+}
+export function saveAuditions(a: Auditions): void {
+	mkdirSync(dirname(AUD_JSON), { recursive: true });
+	writeFileSync(AUD_JSON, `${JSON.stringify(a, null, "\t")}\n`);
+}
+
+/** The sample lines: the shortest fixed line of each key beat in the theme's words, then the reactions. */
+export function auditionLines(theme: ThemeId): string[] {
+	const lines = corpus(theme).filter((l) => l.beat && !l.templated);
+	const beats = VOICED.map((t) => lines.filter((l) => l.trigger === t).sort((a, b) => a.text.length - b.text.length)[0]?.text).filter((t): t is string => !!t);
+	return [...beats, ...REACTIONS];
+}
+
+export interface AuditionJob extends Utterance {
+	model: string;
+	delivery: string;
+	n: number;
+	file: string;
+}
+
+/** Models auditioned side by side by default: the Preview model we checked first, and the GA 3.8. */
+export const AUDITION_MODELS = ["gemini-3.1-flash-tts-preview", "gemini-3.8-flash-tts"];
+
+/** Every model × voice × delivery × sample line not yet recorded (`fake` stands in for every model). */
+export function auditionPlan(a: Auditions, theme: ThemeId, o: { models: readonly string[]; voices: readonly string[]; deliveries: readonly string[]; fake?: boolean }): AuditionJob[] {
+	const jobs: AuditionJob[] = [];
+	const lines = auditionLines(theme);
+	for (const model of o.models)
+		for (const voice of o.voices)
+			for (const delivery of o.deliveries)
+				lines.forEach((text, n) => {
+					const file = `audition/${theme}/${model}/${voice}-${delivery}-${n}.webm`;
+					const t = a.takes[file];
+					if (t && t.text === text && (t.model === model || (o.fake && t.model === "fake"))) return;
+					jobs.push({ theme, model, voice: { id: `${voice}-${delivery}`, voice, style: DELIVERIES[delivery] ?? "" }, line: { text }, delivery, n, file });
+				});
+	return jobs;
+}
+
+async function cmdAudition(): Promise<void> {
+	// One theme at a time: the office unless --theme says otherwise.
+	const theme: ThemeId = opt("theme", "") ? themes()[0]! : "office";
+	const voices = opt("voices", "all") === "all" ? [...PREBUILT] : opt("voices", "").split(",");
+	for (const v of voices) if (!(PREBUILT as readonly string[]).includes(v)) die(`no prebuilt voice "${v}"`);
+	const deliveries = opt("deliveries", Object.keys(DELIVERIES).join(",")).split(",");
+	for (const d of deliveries) if (!(d in DELIVERIES)) die(`no delivery "${d}" (${Object.keys(DELIVERIES).join(", ")})`);
+	const models = opt("models", AUDITION_MODELS.join(",")).split(",");
+	const fake = has("fake");
+	for (const m of models) if (!has("dry-run") && !fake && !(TERMS_OK as readonly string[]).includes(m) && !has("terms-checked")) die(`${m} isn't in TERMS_OK`);
+	const a = loadAuditions();
+	let jobs = auditionPlan(a, theme, { models, voices, deliveries, fake });
+	const limit = Number(opt("limit", "0"));
+	if (limit > 0) jobs = jobs.slice(0, limit);
+	const lines = auditionLines(theme);
+	console.log(`voice: audition for ${theme}: ${models.length} models × ${voices.length} voices × ${deliveries.length} deliveries × ${lines.length} lines; ${jobs.length} to record`);
+	for (const [i, t] of lines.entries()) console.log(`  ${i}  ${t}`);
+	for (const m of models) {
+		const mine = jobs.filter((j) => j.model === m);
+		if (mine.length) console.log(`  ${m}: ${mine.length} takes, ${say$(estimate(mine.map((j) => ({ prompt: promptOf(j), text: j.line.text, model: m }))))}`);
+	}
+	if (!jobs.length) return;
+	if (has("dry-run")) {
+		for (const m of models) {
+			const j = jobs.find((x) => x.model === m);
+			if (j) console.log(`\nfirst ${m} request:\n${JSON.stringify(requestBody(j.theme, j.line, j.voice, m), null, 2)}`);
+		}
+		return console.log("\ndry run: nothing recorded, nothing sent");
+	}
+	if (!fake && !has("yes")) return console.log("\nthis is a paid run: add --yes to record (or --dry-run / --fake)");
+	const vx = fake ? undefined : await vertex();
+	let done = 0;
+	let failed = 0;
+	const queue = [...jobs];
+	const worker = async () => {
+		for (let job = queue.shift(); job; job = queue.shift()) {
+			const out = join(WORK, job.file);
+			mkdirSync(dirname(out), { recursive: true });
+			try {
+				if (vx) {
+					const { audio, mime } = await speak(vx, job.model, job);
+					await encodeSpeech(audio, mime, out);
+				} else await encodeFake(job, out);
+				a.takes[job.file] = { theme: job.theme, model: vx ? job.model : "fake", voice: job.voice.voice, delivery: job.delivery, n: job.n, text: job.line.text, ms: await durationMs(out) };
+				saveAuditions(a);
+				done++;
+				process.stdout.write(`\r  ${done}/${jobs.length} recorded${failed ? `, ${failed} failed` : ""}`);
+			} catch (e) {
+				failed++;
+				console.error(`\n  ${job.model} ${job.voice.id} "${job.line.text}": ${(e as Error).message}`);
+				// A model that refuses its first request will refuse the rest: stop rather than spend.
+				if (done === 0 && failed >= 3) queue.length = 0;
+			}
+		}
+	};
+	await Promise.all(Array.from({ length: vx ? 3 : 4 }, worker));
+	console.log(`\nvoice: ${done} recorded, ${failed} failed. Next: bun tools/voice.ts listen, then open /audition`);
+}
+
+/** What you kept, by theme: the start of a new cast. */
+function cmdPicks(): void {
+	const a = loadAuditions();
+	for (const theme of THEME_IDS) {
+		const p = Object.entries(a.picks[theme] ?? {});
+		if (!p.length && a.pitch[theme] === undefined) continue;
+		console.log(`\n${theme}: pitch ${a.pitch[theme] ?? 0} semitones${a.notes[theme] ? `\n  notes: ${a.notes[theme]}` : ""}`);
+		for (const want of ["keep", "maybe"] as const) {
+			const names = p.filter(([, v]) => v === want).map(([k]) => k.replaceAll("|", " "));
+			if (names.length) console.log(`  ${want}: ${names.join(", ")}`);
+		}
+	}
+}
+
 function cmdListen(): void {
 	const port = Number(opt("port", "4477"));
 	const page = readFileSync(join(import.meta.dir, "voice-listen.html"), "utf8");
+	const auditionPage = readFileSync(join(import.meta.dir, "voice-audition.html"), "utf8");
+	// The app's own babble, bundled for the audition page, so what you hear there is what the app makes.
+	const babbleJs = Bun.build({ entrypoints: [join(import.meta.dir, "voice-babble.ts")], target: "browser" }).then(async (b) => {
+		if (!b.success) throw new Error(b.logs.join("\n"));
+		return b.outputs[0]!.text();
+	});
 	const server = Bun.serve({
 		port,
 		hostname: "127.0.0.1",
 		async fetch(req) {
 			const url = new URL(req.url);
 			if (url.pathname === "/") return new Response(page, { headers: { "content-type": "text/html; charset=utf-8" } });
+			if (url.pathname === "/audition") return new Response(auditionPage, { headers: { "content-type": "text/html; charset=utf-8" } });
+			if (url.pathname === "/babble.js") return new Response(await babbleJs, { headers: { "content-type": "text/javascript" } });
+			if (url.pathname === "/auditions.json") {
+				const lines = Object.fromEntries(THEME_IDS.map((t) => [t, auditionLines(t)]));
+				return Response.json({ auditions: loadAuditions(), lines, voices: PREBUILT, deliveries: DELIVERIES, models: AUDITION_MODELS });
+			}
+			if (url.pathname === "/audition/pick" && req.method === "POST") {
+				const { theme, key, value, pitch, notes } = (await req.json()) as { theme: ThemeId; key?: string; value?: Pick | null; pitch?: number; notes?: string };
+				if (!(THEME_IDS as readonly string[]).includes(theme)) return new Response("bad theme", { status: 400 });
+				const a = loadAuditions();
+				if (key !== undefined) {
+					const picks = (a.picks[theme] ??= {});
+					if (value && ["keep", "maybe", "no"].includes(value)) picks[key] = value;
+					else delete picks[key];
+				}
+				if (typeof pitch === "number" && Number.isFinite(pitch)) a.pitch[theme] = Math.max(-6, Math.min(12, pitch));
+				if (typeof notes === "string") a.notes[theme] = notes.slice(0, 2000);
+				saveAuditions(a);
+				return Response.json({ ok: true });
+			}
 			if (url.pathname === "/takes.json") {
 				const work = loadWork();
 				const live = Object.fromEntries(THEME_IDS.map((t) => [t, corpus(t).map((l) => l.key)]));
@@ -384,13 +603,15 @@ function cmdListen(): void {
 			return new Response("not found", { status: 404 });
 		},
 	});
-	console.log(`voice: listening page at http://127.0.0.1:${server.port}/ (ctrl-c to stop). Then: bun tools/voice.ts ship`);
+	console.log(`voice: takes at http://127.0.0.1:${server.port}/ and auditions at http://127.0.0.1:${server.port}/audition (ctrl-c to stop)`);
 }
 
 if (import.meta.main) {
 	if (cmd === "lines") cmdLines();
 	else if (cmd === "record") await cmdRecord();
 	else if (cmd === "listen") cmdListen();
+	else if (cmd === "audition") await cmdAudition();
+	else if (cmd === "picks") cmdPicks();
 	else if (cmd === "status") cmdStatus();
 	else if (cmd === "ship") {
 		const r = ship(loadWork());
