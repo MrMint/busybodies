@@ -8,6 +8,7 @@ import type { AppStatus, BusybodiesRPC } from "../shared/rpc";
 import type { Snapshot } from "../watcher/model";
 import { Watcher } from "../watcher/watch";
 import { compactFrame } from "./compact";
+import { Diarist, diaryFile } from "./diary";
 import { type Settings, readSettings, settingsFile, settingsQuery, writeSettings } from "./settings";
 import { installTray } from "./tray";
 import { startUpdates } from "./updates";
@@ -42,6 +43,9 @@ const saved = readSettings(SETTINGS);
 let theme: ThemeId = saved.theme;
 let sound = saved.sound;
 let calm = saved.calm;
+/** The office's diary: counts and kinds only, next to settings.json (diary.ts). */
+const diarist = new Diarist(diaryFile(Utils.paths.userData));
+process.on("exit", () => diarist.flush());
 // A window opens with the saved choices (as ?theme=, &sound, &calm); one already open switches over RPC.
 const urlFor = (compact: boolean) => {
 	const q = [compact ? "compact" : "", ...settingsQuery({ theme, sound, calm }), extra].filter(Boolean).join("&");
@@ -73,6 +77,7 @@ function makeRpc() {
 				openProjectPage: () => Utils.openExternal(PROJECT_URL),
 				setTheme: ({ id }) => (setTheme(themeId(id)), true),
 				setToggles: (change) => (setToggles({ sound: change.sound, calm: change.calm }), true),
+				diary: () => diarist.diary,
 			},
 		},
 	});
@@ -189,6 +194,11 @@ if (!GlobalShortcut.register(COMPACT_SHORTCUT, () => setCompact(!compactOn))) {
 office = openOffice();
 
 watcher.onChange((snapshot: Snapshot) => {
+	// The diary first, so a window hears the day's counts along with the snapshot that changed them.
+	if (diarist.note(snapshot)) {
+		office?.rpc.send.diary(diarist.diary);
+		compact?.rpc.send.diary(diarist.diary);
+	}
 	office?.rpc.send.snapshot(snapshot);
 	compact?.rpc.send.snapshot(snapshot);
 	tray.refresh();
