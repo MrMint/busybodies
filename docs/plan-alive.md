@@ -210,6 +210,9 @@ the light both lean on walls. What's left is under "After wave 3" below.
   was the coffee machine's top and its steam: the wall hangs a little higher and the steam rises
   off the cup in front of the machine, thinning out below the shelf; `KITCHEN_WALL` holds the
   geometry and a test keeps them apart).
+- ~~One performance pass once the look settles~~ (done: no visible change, a frame costs a
+  quarter to a half less; `docs/decisions.md`, "the performance pass"). What it left: rAF wake-ups
+  at the display's rate, and characters off camera still drawn.
 - **Life runs at 30 fps for now** (the owner, after comparing 10 and 20 by eye: both read choppy).
   Push on the visuals first; one **performance pass** over all of it comes once the look settles.
   Its starting points: life costs frames, not characters (stream J's profile); the 100 ms beat grid

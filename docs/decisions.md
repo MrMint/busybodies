@@ -1560,6 +1560,93 @@ two-door locker where the armchair stands (vents, a smiley magnet, a scuff, the 
 a hi-vis sleeve, a yellow hard hat on a hook at its side), and a crate for a side table with a
 thermos and a lunch tin where the bookcase is. Baked into the room's Graphics like the boss's.
 
+## 2026-11-23: the performance pass
+
+The visuals-first waves deferred performance to one pass (`docs/plan-alive.md`). This is it, with
+one rule: no visible change. Life still runs at 30 fps; the cuts are in what a frame costs.
+
+**Where a frame went.** `tools/bench.ts` (new) opens each `?demo` scene in headless Chrome on the
+GPU at DPR 2 and reports main-thread CPU (Chrome's TaskDuration) as % of a core, renders, and with
+`--profile` the top functions by self time. Counting Pixi's structure changes showed the main cost:
+**the office's world render group rebuilt its draw instructions on nearly every busy frame**
+(`collectRenderables`, the batcher's `break`, sorting): 80 of 88 frames busy, 18 of 89 idle, every
+frame in the 200-character crowd. Pixi v8 rebuilds a render group whenever a child's `visible`
+or `zIndex` changes, even when the order stays as it was. The culprits were walkers' `zIndex`
+following their feet, props and brows shown and hidden by `visible`, ambient blinkers (pilot lamps,
+the tube flicker, steam, sparks), clouds reaching a pane's edge, the rush flicker, and the
+bakery's turning cake re-sorting its rosettes every frame. Script-side, every frame asked each
+puppet three times whether its ~40 springs had settled (`for...in`), and life hashed template
+strings for every character every frame.
+
+**What changed** (one commit each):
+
+- Springs keep a list, and `settled` loops it; the puppet's pops too (`rig/motion.ts`).
+- Life caches each character's current blink and glance windows, same hashes, same numbers, and
+  returns shared beats (`rig/life.ts`).
+- `setDepth` (`office/depth.ts`) writes Pixi's `_zIndex` and calls the setter only when the value
+  passes a neighbour's: the children stay sorted and a stable sort would change nothing. Walkers,
+  the PR crate and the cake use it.
+- Parts that come and go switch by **alpha, not `visible`**: ambient blinkers, steam, sparks,
+  clouds, the rush flicker, and the puppet's props, desk, work, binoculars and brows. Alpha 0 draws
+  nothing (premultiplied normal and multiply blending leave the pixel as it was). A puppet records
+  which parts are on in a set. Rule from here on: **anything that blinks or swaps often switches
+  by alpha**; `visible` is for things that change on a snapshot, not on a frame.
+- The depth layer is its own render group, so a walker passing a desk re-sorts only that layer, not
+  the yard's ~350 sprites, the shadows and the rooms. It sits at the world's origin, so it draws
+  with the world's own transform.
+
+World rebuilds after: 0 per 3 s idle in the office and the factory (18 before), 6 in the bakery
+(the cake's rosettes really passing each other), 14 of 88 frames busy (80), 25 of 88 in the crowd
+(every frame), and those 25 now rebuild only the depth layer.
+
+**Measured.** `tools/bench.ts`, % of one core on the main thread (ms per frame), the same machine,
+alternating runs, load average 60 to 100 from other sessions:
+
+| Scene | before | after |
+|---|---|---|
+| office idle (life) | 2.7% (0.9 ms) | 2.1% (0.7 ms) |
+| office busy | 4.8% (1.6 ms) | 3.5% (1.2 ms) |
+| office crowd (200) | 15.1% (5.1 ms) | 10.2% (3.5 ms) |
+| factory idle | 3.0% (1.0 ms) | 2.0% (0.7 ms) |
+| factory busy | 5.2–6.3% (1.8–2.1 ms) | 3.9% (1.3 ms) |
+| bakery idle | 5.4% (1.9 ms) | 2.5% (0.8 ms) |
+| bakery busy | 6.3% (2.1 ms) | 4.2–4.9% (1.4–1.7 ms) |
+| bakery crowd | 15.6% (5.3 ms) | 10.5% (3.6 ms) |
+
+Every scene still renders at 29.5 fps; idle calm renders nothing (0.1%). `tools/profile.sh` on the
+app (fake home; idle `--busy 0 --rate 0`, busy `--sessions 8 --agents 4 --busy 0.5 --rate 5`), %
+of one core, Bun / WebContent, load average 60 to 100, so rough:
+
+| | before | after |
+|---|---|---|
+| idle (life) | 3.5% / 9.7% | 3.5% / 6.2% |
+| idle, calm | 1.4% / 0.4% | 0.4% / 0.0% |
+| busy | 5.7% / 16.5% | 5.2% / 14.0% |
+
+The Bun process holds at 3.5% with life on: that is the window compositing 30 frames a second, not
+the scene's work. Calm's 1.4% before was noise (no frames either way).
+
+**Same pixels.** `tools/shoot.ts` before and after, in all three themes, on 15 key states
+(floor busy, idle and thirty; the lanternfish room, kitchen, meeting room and lobby; the release
+desk and room; the demo day's arrivals, leaving, review and long build; compact; night), compared
+with `tools/shot-diff.ts`. The only difference is the top bar's "waiting on you" pill, an HTML
+element on a CSS scale animation (`hud.ts`, `bb-wait`) that runs on the wall clock, outside the
+frozen scene: any two runs catch it at a different phase.
+
+**Checks under load.** At a load average of 50 to 80, `bun test e2e/` in SwiftShader timed out
+and lost its browser partway on this branch and on the commit before it alike (and a calm idle
+office counted a few renders on both). Run with Chrome on the GPU (`--use-angle=metal` in place of
+the SwiftShader flags, not committed), all 78 pass, the calm zero-frame budgets and the 30-draw
+cap included.
+
+**Tried and not taken.** A render group per puppet cut the crowd further (4.8 to 3.4 ms a frame)
+but adds a draw call per character and computes a puppet's vertices against its own transform on
+the GPU, which can move an antialiased edge by a level; with the alpha switches, a busy office
+gains little from it. **Left for later:** Pixi's ticker requests an animation frame at the
+display's rate (60, or 120 on ProMotion) and skips three in four to hold 30 fps; pacing the
+requests with a timer would save those wake-ups but changes how the inspector and the e2e budgets
+count frames. Characters off camera at a room stop still tick and draw.
+
 ## 2026-11-23: the pixel and night looks are gone
 
 **One look: the scene as drawn.** The pixel and night looks (2026-11-22, above) weren't wanted: the

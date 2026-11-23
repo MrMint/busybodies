@@ -9,6 +9,7 @@
 // arrival the walker plants for a beat, looking ahead, before its eyes go to the job.
 import { along, heading, lookMs } from "../director/paths";
 import type { Character, CharacterFactory, Cue, Mood, Slot, Who } from "../office/slot";
+import { setDepth } from "../office/depth";
 import type { Atlas } from "./atlas";
 import { choosePose, hash } from "./player";
 import { BEAT_MS } from "./poses";
@@ -285,7 +286,7 @@ class RigCharacter implements Character {
 		const w = this.#cue!.walk!;
 		const p = along(w.path, ms, w.ms);
 		this.puppet.position.set(p.x, p.y);
-		this.puppet.zIndex = p.y;
+		setDepth(this.puppet, p.y);
 		if (this.#stepping && Math.abs(p.dx) >= WALKING.sideways) {
 			const f = p.dx < 0 ? -1 : 1;
 			if (snapFacing) this.#face(f);

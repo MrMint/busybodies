@@ -16,6 +16,7 @@ code showed it. A test that counts animation frames would have caught it on day 
 | `bun tools/watch-tree.ts` | The watcher's live tree, with rebuild count, build time, CPU and memory |
 | `bun tools/fake-home.ts` | A synthetic agent home with a set number of sessions, agents, busy share and tool-call rate |
 | `tools/profile.sh` | Launches the app against a fake home and reports CPU for the Bun and WebContent processes |
+| `bun tools/bench.ts` | A frame's cost per `?demo` scene and theme in headless Chrome on the GPU: main-thread CPU, renders, and with `--profile` the top functions by self time |
 | `?demo`, `?demo=idle` | An invented office (busy, or after hours) that runs in any browser through Vite |
 | `?demo=release` | A lead and six builders on a release: tools change, a test goes red, one finishes, the PR goes up (frozen with `&frozen`) |
 | `?blank`, `?blank&norpc` | The app without the scene, to separate Electrobun's own cost from ours |
