@@ -130,6 +130,7 @@ export function fitting(t: Trigger, kind: "bubble" | "sign", lines: Line[] = LIN
 			l.trigger === t.kind &&
 			(kind === "sign") === (l.kind === "sign") &&
 			(l.tag === undefined || l.tag === t.tag) &&
+			(l.needs === undefined || (t.crew?.[l.needs.role] ?? 0) >= l.needs.n) &&
 			(l.min === undefined || t.magnitude >= l.min) &&
 			(l.max === undefined || t.magnitude < l.max),
 	);

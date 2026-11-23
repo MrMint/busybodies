@@ -11,7 +11,7 @@
 // the factory) carries that theme's own wording in `themed`, same voice, same trigger and tiers.
 // `linesIn(theme)` is the bank as that theme speaks it; `text` is what every other theme says.
 import type { ThemeId } from "../theme/id";
-import type { LineKind, SignPlace, Speaker, TriggerKind } from "./types";
+import type { LineKind, Role, SignPlace, Speaker, TriggerKind } from "./types";
 
 export interface Line {
 	trigger: TriggerKind;
@@ -28,6 +28,8 @@ export interface Line {
 	max?: number;
 	/** Only for a trigger with this tag ("pr", "green", "slacker", "crash", "waiting", ...). */
 	tag?: string;
+	/** Only when the crew has at least `n` of this costume: a line that names scouts needs scouts. */
+	needs?: { role: Role; n: number };
 	/** Seldom picked. */
 	rare?: boolean;
 	/** For a sign: where it goes. */
@@ -39,7 +41,7 @@ export interface Line {
 	themed?: Partial<Record<ThemeId, string>>;
 }
 
-type Opts = Partial<Pick<Line, "min" | "max" | "tag" | "rare" | "place" | "boardText" | "themed">>;
+type Opts = Partial<Pick<Line, "min" | "max" | "tag" | "needs" | "rare" | "place" | "boardText" | "themed">>;
 const K = { s: "said", t: "thought", n: "sign" } as const;
 const line = (board: boolean) => (trigger: TriggerKind, k: keyof typeof K, text: string, role: Speaker, note = "", o: Opts = {}): Line => ({
 	trigger,
@@ -80,7 +82,7 @@ export const BOARD_LINES: Line[] = [
 	B("prOpened", "s", "PR #{n}. Frame it.", "lead", "lead", { boardText: "PR #219. Frame it." }),
 	B("prOpened", "s", "Ship it before it changes its mind.", "lead", "lead"),
 	B("prOpened", "s", "Opened. I am told people read these.", "lead", "lead"),
-	B("prOpened", "s", "I would like to thank my scout. And my other scout.", "lead", "lead", { tag: "crew" }),
+	B("prOpened", "s", "I would like to thank my scout. And my other scout.", "lead", "lead", { tag: "crew", needs: { role: "scout", n: 2 } }),
 	B("prOpened", "n", "PRs today: {count}. Humility: 0.", "room", "wall sign", { place: "sign", boardText: "PRs today: 4. Humility: 0." }),
 	// Review comes back
 	B("review", "s", "Same diff. Same no.", "reviewer", "reviewer · 2nd rejection", { min: 2 }),
@@ -92,11 +94,11 @@ export const BOARD_LINES: Line[] = [
 	// Hiring a subagent
 	B("hiring", "s", "One job. Find saveDraft.", "lead", "lead · hiring", { max: 2 }),
 	B("hiring", "s", "Bring it back in one piece.", "lead", "lead · hiring", { max: 2 }),
-	B("hiring", "s", "A scout for my scout’s scout.", "anyone", "scout · three deep", { min: 3 }),
+	B("hiring", "s", "A scout for my scout’s scout.", "anyone", "scout · three deep", { min: 3, needs: { role: "scout", n: 2 } }),
 	B("hiring", "s", "I delegated.", "anyone", "scout", { min: 2 }),
 	B("hiring", "s", "So did I.", "anyone", "its scout", { min: 3 }),
 	B("hiring", "t", "Actually looking. Somebody had to.", "anyone", "the last scout", { min: 3 }),
-	B("hiring", "n", "Caution: scouts running", "room", "wall sign", { place: "sign" }),
+	B("hiring", "n", "Caution: scouts running", "room", "wall sign", { place: "sign", needs: { role: "scout", n: 1 } }),
 	// Stalled
 	B("stalled", "t", "…", "anyone", "anyone · 5 min", { min: 5, max: 7 }),
 	B("stalled", "s", "I am thinking. It is a process. Do not rush the process.", "anyone", "7 min", { min: 7 }),
@@ -158,7 +160,7 @@ export const BOARD_LINES: Line[] = [
 		tag: "build",
 		boardText: "Whoever left a build running since 13:52: it is still running.",
 	}),
-	B("fridge", "n", "Scouts: please stop hiring scouts.", "room", "", { place: "fridge", tag: "crew" }),
+	B("fridge", "n", "Scouts: please stop hiring scouts.", "room", "", { place: "fridge", tag: "crew", needs: { role: "scout", n: 2 } }),
 	B("fridge", "n", "{name} is not asleep. It is “resting its context”. For {min} minutes.", "room", "", {
 		place: "fridge",
 		tag: "idle",

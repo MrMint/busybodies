@@ -9,6 +9,7 @@ import type { Metrics } from "./metrics";
 import type { PaceName } from "./pace";
 import type { Rush } from "./rush";
 import type { StationKind } from "./stations";
+import type { Story } from "./story";
 import type { Trip } from "./trips";
 import type { Work } from "./work";
 import type { LookAt } from "../rig/gaze";
@@ -151,6 +152,11 @@ export interface World {
 	mail?: Record<string, Mail>;
 	/** Metrics as things: each desk's in-tray, drawers, skip, mugs and lamp; the planners; your office's tickets (metrics.ts). */
 	metrics?: Metrics;
+	/** Story and continuity: merged PRs' replies, send-offs, the log and its headlines (story.ts). */
+	story?: Story;
+	/** How the floor was staged (office/staging.ts: bay and hallway), so a change of stage (a theme
+	 * switched live) puts everyone straight on their new spots rather than walking them over. */
+	stage?: string;
 }
 
 export type WorldEvent =

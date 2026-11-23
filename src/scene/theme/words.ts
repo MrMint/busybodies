@@ -91,7 +91,23 @@ export const FACTORY_WORDS: ThemeWords = {
 	},
 };
 
-export const wordsFor = (id: ThemeId): ThemeWords => (id === "factory" ? FACTORY_WORDS : OFFICE_WORDS);
+export const KITCHEN_WORDS: ThemeWords = {
+	areas: { meeting: "the pass", lobby: "host stand", yours: "chef's table", kitchen: "staff meal", vacant: "dark station" },
+	subs: { meeting: "tasting before it goes out", lobby: "seated and leaving", yours: "Service! waiting on you", kitchen: "idle, finished and off the clock", vacant: "closed for refit" },
+	signs: {
+		"meeting:sign": { title: "NOTHING LEAVES", body: "without a taste." },
+		"kitchen:sign": { title: "1 STAFF MEAL PER GREEN BUILD", body: "Finished? Clock yourself out." },
+		"lobby:frame": { title: "TONIGHT'S SPECIAL", body: "Whatever compiles." },
+	},
+	serving: (n) => ({ title: "SERVICE!", body: n === undefined ? "All quiet. Yet." : `No. ${n}` }),
+	columns: ["ORDERED", "FIRING", "SERVED"],
+	door: "CHEF",
+	poses: {},
+};
+
+const WORDS: Record<ThemeId, ThemeWords> = { office: OFFICE_WORDS, factory: FACTORY_WORDS, kitchen: KITCHEN_WORDS };
+
+export const wordsFor = (id: ThemeId): ThemeWords => WORDS[id] ?? OFFICE_WORDS;
 
 /** A pose's title and lines in a theme's words. */
 export function poseWords(id: ThemeId, pose: { name: string; title: string; lines: readonly string[] }): { title: string; lines: readonly string[] } {

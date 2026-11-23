@@ -10,12 +10,17 @@
 //                 a folder is handed over, a test goes red at the stamp desk, one finishes, a PR is
 //                 walked to the outbox; builders carry bricks to their crew build (and a two-builder
 //                 hotfix next door shares the stations)
+//   ?demo=story   story and continuity: a red streak goes green, a merged PR's reply is fetched from
+//                 the outbox, a long session is waved off; the rooms wear a week of decor from an
+//                 invented diary (`__busybodies.away(ms)` then shows "while you were out")
+//   ?demo=stock   someone else's setup: stock subagent types, terminal sessions, no desktop app
 //   ?demo=empty   nobody's in; ?demo=nohome: no coding agent found (add &compact for the small window)
 // The clock is fixed, so the same demo always draws the same frames.
 import type { SignText } from "../scene/office/paper";
 import { LINES, linesIn } from "../scene/sass/lines";
 import { signText } from "../scene/sass/voice";
 import { DEFAULT_THEME, type ThemeId } from "../scene/theme/id";
+import { type Diary, DIARY_KINDS, type DiaryDay, localDay, projectKey } from "../shared/diary";
 import type { Agent, Session, Snapshot } from "../watcher/model";
 
 /** 14:32 on an invented Thursday, local time. */
@@ -304,6 +309,41 @@ export function releaseDay(): { after: number; snapshot: Snapshot }[] {
 	return steps;
 }
 
+/**
+ * Someone else's setup: the agent tool's own subagent types only (general-purpose, Explore, Plan),
+ * terminal sessions with no desktop app, so no titles from it, and branches from git. The crew's
+ * costumes come from what each one was asked to do.
+ */
+export function stock(): Snapshot {
+	n = 0;
+	const cli = (title: string, project: string, state: string, started: number, extra: Partial<Session> = {}) =>
+		session(title, project, state, started, { origin: "cli", ...extra });
+	return {
+		at: NOW,
+		sessions: [
+			cli("breadbox", "breadbox", "busy", 50, {
+				branch: "main",
+				agents: [
+					agent("general-purpose", "Find where the crust timer is set"),
+					agent("general-purpose", "Fix the timer rounding"),
+					agent("general-purpose", "Review the diff for regressions"),
+					agent("Explore", "Explore the oven module"),
+				],
+			}),
+			cli("breadbox", "breadbox", "busy", 20, {
+				worktree: "loaf-sizes",
+				branch: "loaf-sizes",
+				agents: [agent("Plan", "Plan the loaf size migration"), agent("general-purpose", "Run the tests and confirm they pass")],
+			}),
+			cli("orbit-kit", "orbit-kit", "busy", 35, {
+				branch: "fix/drift",
+				agents: [agent("general-purpose", "Implement drift correction"), agent("claude-code-guide", "Look up how hooks are configured", "finished")],
+			}),
+			cli("mossy-docs", "mossy-docs", "idle", 90, { branch: "main" }),
+		],
+	};
+}
+
 /** 200 characters: 40 sessions, each a lead and four crew in every role and state. The rig's load
  * test (e2e/rig.test.ts); `crowd-idle` is the same crowd after hours. */
 function crowd(): Snapshot {
@@ -391,6 +431,84 @@ export function demoDay(): { after: number; snapshot: Snapshot }[] {
 	return steps;
 }
 
+/** The story demo's office: a release with a PR up and a verifier on a red streak; a long refactor
+ * winding down next door, with a teammate to wave it off. */
+function story(): Snapshot {
+	const red = (k: number, at: number): Agent["commands"] => ({ failStreak: k, repeats: 1, failed: k, testsFailed: k, last: { kind: "test", exitCode: 1, at } });
+	const kettle = session("Ship the whistle", "kettle-works", "busy", 50, {
+		branch: "release/whistle",
+		prs: [{ number: 31, url: "https://example.invalid/pull/31", state: "OPEN", at: min(4) }],
+		agents: [agent("general-purpose", "Tune the spout"), { ...agent("verifier", "Run the kettle tests"), commands: red(1, min(1)) }],
+	});
+	const long = session("Long refactor of the saucers", "teacup", "idle", 200, { branch: "refactor/saucers" });
+	const mate = session("Tidy the cupboard", "teacup", "idle", 40, { branch: "tidy" });
+	// Fixed ids, so the story day's beats are the same sessions however often this is built.
+	kettle.id = "demo-story-kettle";
+	kettle.agents.forEach((a, i) => (a.id = `demo-story-crew-${i}`));
+	long.id = "demo-story-long";
+	mate.id = "demo-story-mate";
+	return { at: NOW, sessions: [kettle, long, mate] };
+}
+
+/**
+ * The story demo's beats, a few seconds apart:
+ *   +3 s   the verifier's test goes red again: a streak
+ *   +6 s   and green: the redemption (a flourish; the crew look up)
+ *   +9 s   PR 31 is merged: the lead fetches the reply from the outbox
+ *   +18 s  the long refactor ends: the room waves it off
+ */
+export function storyDay(): { after: number; snapshot: Snapshot }[] {
+	const steps: { after: number; snapshot: Snapshot }[] = [];
+	let snap = story();
+	const beat = (after: number, change: (s: Snapshot) => void) => {
+		snap = structuredClone(snap);
+		snap.at = NOW + after;
+		change(snap);
+		steps.push({ after, snapshot: snap });
+	};
+	const kettle = (s: Snapshot) => s.sessions.find((x) => x.project === "kettle-works")!;
+	beat(3000, (s) => {
+		kettle(s).agents[1]!.commands = { failStreak: 2, repeats: 1, failed: 2, testsFailed: 2, last: { kind: "test", exitCode: 1, at: NOW + 2900 } };
+	});
+	beat(6000, (s) => {
+		kettle(s).agents[1]!.commands = { failStreak: 0, repeats: 1, failed: 2, testsFailed: 2, last: { kind: "test", exitCode: 0, at: NOW + 5900 } };
+	});
+	beat(9000, (s) => {
+		kettle(s).prs = [{ number: 31, url: "https://example.invalid/pull/31", state: "MERGED", at: min(4) }];
+	});
+	beat(18000, (s) => {
+		s.sessions = s.sessions.filter((x) => x.title !== "Long refactor of the saucers");
+	});
+	return steps;
+}
+
+/**
+ * An invented week in the diary for the demo's projects (the six days before the demo's day): a
+ * few PRs merged, a red streak fixed, days in. Today fills in from the demo's own snapshots.
+ */
+export function demoDiary(snapshot: Snapshot): Diary {
+	const projects = [...new Set(snapshot.sessions.map((s) => s.project))].sort();
+	const days: Record<string, DiaryDay> = {};
+	for (let back = 6; back >= 1; back--) {
+		const key = localDay(NOW - back * 24 * 3_600_000);
+		const d: DiaryDay = { counts: {}, projects: {}, regulars: [], marks: [] };
+		for (const [i, p] of projects.entries()) {
+			// Not every project comes in every day: a pattern from its place in the list.
+			if ((back + i) % 3 === 0) continue;
+			const k = projectKey(p);
+			const c = { sessions: 1 + ((back + i) % 3), prsOpened: (back + i) % 2, prsMerged: (back * (i + 1)) % 3 === 1 ? 1 : 0, testsRed: (back + 2 * i) % 4, redeemed: back === 2 + (i % 3) ? 1 : 0 };
+			d.projects[k] = Object.fromEntries(Object.entries(c).filter(([, v]) => v > 0));
+			for (const kind of DIARY_KINDS) if (d.projects[k]![kind]) d.counts[kind] = (d.counts[kind] ?? 0) + d.projects[k]![kind]!;
+			d.regulars.push(`${k}:lead`);
+			// Some days the crew came in too: regulars you'd know by name.
+			if ((back + i) % 2 === 0) d.regulars.push(`${k}:builder`, `${k}:verifier`);
+		}
+		d.regulars.sort();
+		days[key] = d;
+	}
+	return { v: 1, days };
+}
+
 export interface DemoDay {
 	snapshot: Snapshot;
 	signs: Record<string, SignText>;
@@ -408,6 +526,10 @@ export function demo(name: string | null, theme: ThemeId = DEFAULT_THEME): DemoD
 			return { snapshot: crowd(), signs: {} };
 		case "release":
 			return { snapshot: release(), signs: {} };
+		case "story":
+			return { snapshot: story(), signs: {} };
+		case "stock":
+			return { snapshot: stock(), signs: {} };
 		case "crowd-idle":
 			return { snapshot: asleep(crowd()), signs: {} };
 		// Nobody's in; and nobody's in because no coding agent was found (the shell says which).

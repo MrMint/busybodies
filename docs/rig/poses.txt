@@ -24,7 +24,7 @@ typing: Typing, frantic
    9   130ms  { eyes: 'wide', look: 'down', brows: 'worry', mouth: 'flat', armL: 'type1', armR: 'type3', body: 'fwd', front: 'desk' }
   10   130ms  { eyes: 'wide', look: 'down', brows: 'worry', mouth: 'flat', armL: 'type3', armR: 'type1', body: 'fwd', front: 'desk' }
 
-hammer: Hammering until it compiles
+hammer: Whacking it until it compiles
   on busy, loop, roles builder; 12 frames, 2340 ms (18 beats)
   may say: "It compiles in my heart."
   in the office: Stapling until it compiles
@@ -156,7 +156,7 @@ poke: Poking it to see if it holds
    8   390ms  { eyes: 'half', look: 'left', brows: 'flat', mouth: 'small', armL: 'raise', armR: 'draw', holdL: 'clip', work: 'stack' }
    9   260ms  { eyes: 'happy', mouth: 'grin', armL: 'raise', armR: 'draw', holdL: 'clip', work: 'stack' }
 
-thumb: Hammered the thumb
+thumb: Whacked the thumb
   on test-failed, once, roles builder; 9 frames, 2210 ms (17 beats)
   may say: "Ow. The test hit me."
   in the office: Stapled the thumb
@@ -287,6 +287,31 @@ slowWalk: The slow walk
    2   390ms  { eyes: 'half', look: 'right', mouth: 'smirk', armL: 'raise', armR: 'down', feet: 'swingR', body: 'bob', holdL: 'paper' }
    3   390ms  { eyes: 'half', look: 'right', mouth: 'smirk', armL: 'raise', armR: 'low', feet: 'swingL', holdL: 'paper' }
    4   390ms  { eyes: 'half', look: 'right', mouth: 'smirk', armL: 'raise', armR: 'down', feet: 'swingR', body: 'bob', holdL: 'paper' }
+
+drumSit: Sitting on an oil drum
+  on idle, rare 1 in Infinity, once; 4 frames, 1820 ms (14 beats)
+  may say: "Supervising. The drum."
+   1   520ms  { eyes: 'half', mouth: 'smirk', armL: 'low', armR: 'head', feet: 'wide', body: 'back', back: 'drum' }
+   2   390ms  { eyes: 'half', look: 'left', mouth: 'small', armL: 'low', armR: 'head', feet: 'kick', body: 'back', back: 'drum' }
+   3   520ms  { eyes: 'closed', mouth: 'yawn', armL: 'head', armR: 'head', feet: 'wide', body: 'back', back: 'drum' }
+   4   390ms  { eyes: 'half', mouth: 'smirk', armL: 'low', armR: 'head', feet: 'kick', body: 'back', back: 'drum' }
+
+palletCards: Cards on a pallet
+  on idle, rare 1 in Infinity, once; 4 frames, 1560 ms (12 beats)
+  may say: "Gin. Again."
+   1   520ms  { eyes: 'half', look: 'downR', brows: 'flat', mouth: 'flat', armL: 'raise', armR: 'low', holdL: 'hand', work: 'pallet' }
+   2   390ms  { eyes: 'squint', look: 'downR', brows: 'one', mouth: 'smirk', armL: 'raise', armR: 'low', holdL: 'hand', work: 'pallet' }
+   3   260ms  { eyes: 'wide', look: 'downR', brows: 'up', mouth: 'grin', armL: 'raise', armR: 'throw2', holdL: 'hand', work: 'palletSlap' }
+   4   390ms  { eyes: 'happy', look: 'right', mouth: 'grin', armL: 'raise', armR: 'hip', holdL: 'hand', work: 'palletSlap' }
+
+vendingKick: Kicking the vending machine
+  on idle, rare 1 in Infinity, once; 5 frames, 1820 ms (14 beats)
+  may say: "It owes me a snack."
+   1   520ms  { eyes: 'squint', look: 'right', brows: 'angry', mouth: 'flat', armL: 'hip', armR: 'hip', work: 'vending' }
+   2   260ms  { eyes: 'squint', look: 'right', brows: 'angry', mouth: 'shout', armL: 'hip', armR: 'out', feet: 'boot', fx: 'hit', work: 'vendingRock' }
+   3   390ms  { eyes: 'half', look: 'right', brows: 'angry', mouth: 'pout', armL: 'hip', armR: 'hip', work: 'vending' }
+   4   260ms  { eyes: 'wide', look: 'downR', brows: 'up', mouth: 'open', armL: 'hip', armR: 'low', work: 'vendingDrop' }
+   5   390ms  { eyes: 'happy', look: 'downR', mouth: 'grin', armL: 'hip', armR: 'cheer', work: 'vendingDrop' }
 
 waiting: Waiting on you
   on waiting, loop; 10 frames, 2990 ms (23 beats)
@@ -427,7 +452,7 @@ walk: Walking somewhere
    1   260ms  { look: 'right', armL: 'low', armR: 'down', feet: 'swingL' }
    2   260ms  { look: 'right', armL: 'down', armR: 'low', feet: 'swingR', body: 'bob' }
 
-carry: Carrying a brick
+carry: Carrying a piece over
   on walking, loop, roles builder; 5 frames, 1040 ms (8 beats)
   in the office: Carrying a ream
    1   260ms  { look: 'right', brows: 'one', mouth: 'small', armL: 'low', armR: 'shoulder', feet: 'swingL', holdR: 'brick' }
@@ -436,7 +461,7 @@ carry: Carrying a brick
    4   130ms  { look: 'right', brows: 'one', mouth: 'small', armL: 'down', armR: 'shoulder', feet: 'swingR', body: 'bob', holdR: 'brick' }
    5   130ms  { eyes: 'closed', look: 'right', brows: 'one', mouth: 'small', armL: 'down', armR: 'shoulder', feet: 'swingR', body: 'bob', holdR: 'brick' }
 
-place: Setting a brick on the build
+place: Adding a piece to the build
   on working, once, roles builder; 8 frames, 1430 ms (11 beats)
   in the office: Setting a ream on the pile
    1   130ms  { look: 'right', brows: 'one', mouth: 'small', armL: 'low', armR: 'shoulder', holdR: 'brick' }

@@ -37,6 +37,9 @@ export interface PuppetOptions {
 	accent?: number;
 	/** Draw the rig's own desk when a pose asks for one. The office turns this off at a real desk. */
 	desk?: boolean;
+	/** Something worn on the face besides the costume's (a regular's accessory, rig/roles.ts): an
+	 * atlas part like `wear/glasses`. */
+	wear?: string;
 }
 
 export interface PlayOptions {
@@ -185,7 +188,8 @@ export class Puppet extends Container {
 		this.#face.origin.set(0, A.eyeY + 6);
 		this.#wear = s("wear/binoc");
 		this.#wear.visible = false;
-		if (costume.wear) this.#costumeWear = s(costume.wear);
+		const worn = costume.wear ?? (opts.wear && atlas.has(opts.wear) ? opts.wear : undefined);
+		if (worn) this.#costumeWear = s(worn);
 		this.#hat = s(costume.hat);
 		if (opts.role === "lead") {
 			this.#cup = s("hat/lead-cup");
@@ -446,7 +450,8 @@ export class Puppet extends Container {
 			this.#work.texture = a.get(`work/${f.props.work}`);
 			this.#work.anchor.copyFrom(this.#work.texture.defaultAnchor ?? { x: 0, y: 0 });
 		}
-		this.#back.visible = f.props.back === "chair";
+		this.#back.visible = !!f.props.back;
+		if (f.props.back && f.props.back !== prev.props.back) this.#back.texture = a.get(`prop/${f.props.back}`);
 		// Feet up go on the desk, in front of it, and a kick swings out in front of the body;
 		// otherwise legs stand behind the body.
 		const up = f.feet === "up" || f.feet === "boot";

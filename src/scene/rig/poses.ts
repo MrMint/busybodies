@@ -119,7 +119,7 @@ export const POSES: Pose[] = [
 		// Edit/Write: a nail driven home in three strokes, checked, and the next one started. Each
 		// strike lands on the head (ARMS.hit1-3), and on the beat after it the nail and the hammer go
 		// down together.
-		name: "hammer", title: "Hammering until it compiles", trigger: "busy", rarity: 1, play: "loop", roles: ["builder"],
+		name: "hammer", title: "Whacking it until it compiles", trigger: "busy", rarity: 1, play: "loop", roles: ["builder"],
 		lines: ["It compiles in my heart."],
 		frames: [
 			["l-downR b-flat m-flat hr-hammer ar-wind al-hip w-nail1", 2],
@@ -287,7 +287,7 @@ export const POSES: Pose[] = [
 	pose({
 		// A red test: the strike goes crooked, the nail folds, the hammer flies off, and the stung
 		// hand gets flapped and blown on.
-		name: "thumb", title: "Hammered the thumb", trigger: "test-failed", rarity: 1, play: "once", roles: ["builder"],
+		name: "thumb", title: "Whacked the thumb", trigger: "test-failed", rarity: 1, play: "once", roles: ["builder"],
 		lines: ["Ow. The test hit me."],
 		frames: [
 			["l-downR b-flat m-flat hr-hammer ar-wind al-hip w-nail1", 2],
@@ -468,6 +468,40 @@ export const POSES: Pose[] = [
 			["e-half l-right m-smirk hl-paper al-raise ar-down f-swingR bd-bob", 3],
 			["e-half l-right m-smirk hl-paper al-raise ar-low f-swingL", 3],
 			["e-half l-right m-smirk hl-paper al-raise ar-down f-swingR bd-bob", 3],
+		],
+	}),
+
+	// The factory's own habits (theme/factory.ts FACTORY_STAGING): played by name from the theme's
+	// habit rotation (director/habits.ts), never by the idle trigger, so the office keeps its seven.
+	pose({
+		name: "drumSit", title: "Sitting on an oil drum", trigger: "idle", rarity: 0, play: "once",
+		lines: ["Supervising. The drum."],
+		frames: [
+			["e-half m-smirk bd-back bk-drum f-wide al-low ar-head", 4],
+			["e-half l-left m-small bd-back bk-drum f-kick al-low ar-head", 3],
+			["e-closed m-yawn bd-back bk-drum f-wide al-head ar-head", 4],
+			["e-half m-smirk bd-back bk-drum f-kick al-low ar-head", 3],
+		],
+	}),
+	pose({
+		name: "palletCards", title: "Cards on a pallet", trigger: "idle", rarity: 0, play: "once",
+		lines: ["Gin. Again."],
+		frames: [
+			["e-half l-downR b-flat m-flat hl-hand al-raise ar-low w-pallet", 4],
+			["e-squint l-downR b-one m-smirk hl-hand al-raise ar-low w-pallet", 3],
+			["e-wide l-downR b-up m-grin hl-hand al-raise ar-throw2 w-palletSlap", 2],
+			["e-happy l-right m-grin hl-hand al-raise ar-hip w-palletSlap", 3],
+		],
+	}),
+	pose({
+		name: "vendingKick", title: "Kicking the vending machine", trigger: "idle", rarity: 0, play: "once",
+		lines: ["It owes me a snack."],
+		frames: [
+			["e-squint l-right b-angry m-flat al-hip ar-hip w-vending", 4],
+			["e-squint l-right b-angry m-shout al-hip ar-out f-boot w-vendingRock x-hit", 2],
+			["e-half l-right b-angry m-pout al-hip ar-hip w-vending", 3],
+			["e-wide l-downR b-up m-open al-hip ar-low w-vendingDrop", 2],
+			["e-happy l-downR m-grin al-hip ar-cheer w-vendingDrop", 3],
 		],
 	}),
 
@@ -653,7 +687,7 @@ export const POSES: Pose[] = [
 	// and up (theme WORK.brick), lets go and pats it. The last frame has empty hands and holds: the
 	// office puts the brick on the tower the moment `place` ends.
 	pose({
-		name: "carry", title: "Carrying a brick", trigger: "walking", rarity: 1, play: "loop", roles: ["builder"],
+		name: "carry", title: "Carrying a piece over", trigger: "walking", rarity: 1, play: "loop", roles: ["builder"],
 		lines: [],
 		frames: [
 			["l-right b-one m-small hr-brick ar-shoulder al-low f-swingL", 2],
@@ -664,7 +698,7 @@ export const POSES: Pose[] = [
 		],
 	}),
 	pose({
-		name: "place", title: "Setting a brick on the build", trigger: "working", rarity: 1, play: "once", roles: ["builder"],
+		name: "place", title: "Adding a piece to the build", trigger: "working", rarity: 1, play: "once", roles: ["builder"],
 		lines: [],
 		frames: [
 			["l-right b-one m-small hr-brick ar-shoulder al-low", 1],

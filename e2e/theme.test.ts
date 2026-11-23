@@ -70,6 +70,45 @@ describe("themes", () => {
 		await factory.close();
 	}, T);
 
+	test("?theme=kitchen: the Line, the same floor and cast in kitchen words, no arms", async () => {
+		const office = await open("demo&frozen");
+		const line = await open("demo&frozen&theme=kitchen");
+		const facts = (p: Page) =>
+			p.evaluate(() => {
+				const b = window.__busybodies!;
+				return {
+					theme: b.theme(),
+					areas: b.layout()!.areas.map((a) => a.id),
+					cast: b.entities().map((e) => e.key).sort(),
+					meeting: b.signs().find((s) => s.id === "meeting:sign")?.text?.title,
+					serving: b.signs().find((s) => s.id === "yours:serving")?.text?.title,
+					arms: b.arms().length,
+				};
+			});
+		const o = await facts(office);
+		const k = await facts(line);
+		expect(k.theme).toBe("kitchen");
+		expect(k.areas).toEqual(o.areas);
+		expect(k.cast).toEqual(o.cast);
+		expect(k.meeting).toBe("NOTHING LEAVES");
+		expect(k.serving).toBe("SERVICE!");
+		expect(k.arms).toBe(0);
+		// Switched live from the factory and back to the office, without a reload.
+		await line.evaluate(() => ((window as unknown as { __loaded: boolean }).__loaded = true));
+		await line.evaluate(() => window.__busybodies!.setTheme("factory"));
+		expect(await line.evaluate(() => [window.__busybodies!.theme(), window.__busybodies!.arms().length > 0])).toEqual(["factory", true]);
+		await line.evaluate(() => window.__busybodies!.setTheme("kitchen"));
+		const back = await line.evaluate(() => ({
+			theme: window.__busybodies!.theme(),
+			arms: window.__busybodies!.arms().length,
+			serving: window.__busybodies!.signs().find((s) => s.id === "yours:serving")?.text?.title,
+			sameDocument: (window as unknown as { __loaded?: boolean }).__loaded === true,
+		}));
+		expect(back).toEqual({ theme: "kitchen", arms: 0, serving: "SERVICE!", sameDocument: true });
+		await office.close();
+		await line.close();
+	}, T);
+
 	test("switching live redraws in the new look without a reload, and an idle office stays at zero frames", async () => {
 		const page = await open("demo=idle&calm");
 		await page.evaluate(() => ((window as unknown as { __loaded: boolean }).__loaded = true));

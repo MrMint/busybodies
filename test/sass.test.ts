@@ -128,6 +128,10 @@ describe("the line bank in each scene theme", () => {
 		for (const l of LINES) for (const t of Object.values(l.themed ?? {})) expect(vars(t)).toEqual(vars(l.text));
 	});
 
+	test("the Line speaks the base wording for now: no kitchen words of its own yet", () => {
+		expect(linesIn("kitchen").map((l) => l.text)).toEqual(LINES.map((l) => l.text));
+	});
+
 	test("a crew in the office talks paperwork, and the factory's talks shop", () => {
 		const chatter = { kind: "chatter", key: "k", who: "a", session: "a", project: "teapot", role: "builder", magnitude: 0, ongoing: true, at: NOW, vars: {} } as unknown as Trigger;
 		const said = (theme: "office" | "factory") => fitting(chatter, "bubble", linesIn(theme)).map((l) => l.text);
@@ -340,6 +344,18 @@ describe("the scheduler", () => {
 		s2.step(NOW, ZOOMED, [trig({ kind: "prOpened", who: "a", key: "p1", vars: { n: 1 } })]);
 		s2.step(NOW + 10_000, ZOOMED, [trig({ kind: "testFailed", who: "a", key: "t1", magnitude: 1 })]);
 		expect(s2.step(NOW + 21_000, ZOOMED).says.map((b) => b.trigger)).toEqual(["testFailed"]);
+	});
+
+	test("a line that names scouts waits for a crew that has them", () => {
+		const texts = (crew: Trigger["crew"], kind: "bubble" | "sign" = "bubble", t: Partial<Trigger> = {}) =>
+			fitting(trig({ kind: "hiring", who: "a", role: "builder", magnitude: 3, crew, ...t }), kind).map((l) => l.text);
+		expect(texts({ builder: 3 })).not.toContain("A scout for my scout’s scout.");
+		expect(texts({ scout: 2, builder: 1 })).toContain("A scout for my scout’s scout.");
+		expect(texts({ builder: 3 }, "sign")).not.toContain("Caution: scouts running");
+		expect(texts({ scout: 1 }, "sign")).toContain("Caution: scouts running");
+		const pr = (crew: Trigger["crew"]) => fitting(trig({ kind: "prOpened", who: "a", tag: "crew", crew, vars: { n: 3, count: 1 } }), "bubble").map((l) => l.text);
+		expect(pr({ builder: 4 })).not.toContain("I would like to thank my scout. And my other scout.");
+		expect(pr({ scout: 2, builder: 2 })).toContain("I would like to thank my scout. And my other scout.");
 	});
 
 	test("never repeats a line for the same character within the hour", () => {

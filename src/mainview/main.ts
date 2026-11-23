@@ -18,6 +18,9 @@ import { placeholders } from "./placeholder";
 import { Atlas, buildPoseSheet, rigCharacters, rigTheme } from "../scene/rig";
 import { Director, NOTICE, placeholderVoice } from "../scene/director";
 import { Voice } from "../scene/sass";
+import { type Diary, diaryOf, newMemory, noteSnapshot } from "../shared/diary";
+import { lookId } from "../shared/look";
+import { installLooks } from "./look";
 
 const params = new URLSearchParams(location.search);
 /** ?compact: the small floating window (transparent, always on top; src/bun/compact.ts). */
@@ -31,8 +34,9 @@ let theme: ThemeId = themeId(params.get("theme"));
 /** The office's light (src/scene/office/light.ts): ?hour=<0-23> pins the time of day (screenshots,
  * tests), the director's rush flickers a room's lights, and the compact window floats on the
  * desktop with no lawn round it. */
+const pinnedHour = params.get("hour") && Number.isFinite(Number(params.get("hour"))) ? Number(params.get("hour")) : undefined;
 const lightOptions = (director: Director) => ({
-	hour: params.get("hour") && Number.isFinite(Number(params.get("hour"))) ? Number(params.get("hour")) : undefined,
+	hour: pinnedHour,
 	rush: () => Object.keys(director.world?.rush ?? {}),
 	outside: !compact,
 });
@@ -92,7 +96,7 @@ function blank(): void {
 	const charactersFor = (a: Atlas) => (params.has("placeholders") ? undefined : rigCharacters(a));
 	// The director decides who stands where and in which pose; the office draws it.
 	const director = new Director();
-	const office = new Office({ renderer: app.renderer, characters, wake: () => scene.redraw(), cast: director.cast, builds: director.builds, metrics: director.metrics, top: compact ? 40 : 64, theme: sceneTheme(theme), ...lightOptions(director) });
+	const office = new Office({ renderer: app.renderer, characters, wake: () => scene.redraw(), cast: director.cast, builds: director.builds, metrics: director.metrics, story: director.story, top: compact ? 40 : 64, theme: sceneTheme(theme), ...lightOptions(director) });
 	app.stage.addChild(office);
 	// The office's voice (src/scene/sass): bubbles and signs from what the sessions are doing.
 	// ?toolvoice keeps the director's placeholder (each busy lead says its tool). A live scene lets
@@ -108,10 +112,12 @@ function blank(): void {
 	// move must be smooth (the whole view slides), so it gets 60 for as long as it lasts. Walks stay
 	// at 30: a busy room has someone walking nearly all the time (trips, brick runs, rounds), and a
 	// walker moves a few pixels a frame, which reads fine at 30.
-	// Life alone (blinks, glances) gets less again: a blink is a couple of frames at 20.
+	// Life alone (blinks, glances, idle habits, ambient props) gets the same 30: at 10 and at 20 it
+	// read choppy next to acting. Visuals first for now; a performance pass comes later (plan-alive).
 	const AMBIENT_FPS = 30;
 	const MOVING_FPS = 60;
-	const LIFE_FPS = 20;
+	// `?lifefps=10` overrides life's rate, to compare by eye.
+	const LIFE_FPS = Number(params.get("lifefps")) || AMBIENT_FPS;
 	const fps = () => (office.moving ? MOVING_FPS : office.acting ? AMBIENT_FPS : LIFE_FPS);
 	app.ticker.maxFPS = AMBIENT_FPS;
 	app.ticker.add((t) => {
@@ -141,7 +147,8 @@ function blank(): void {
 		camerawork?.back();
 		const away = hiddenAt === undefined ? 0 : performance.now() - hiddenAt;
 		hiddenAt = undefined;
-		if (away >= awayMs && !calm() && scene.current) director.view = { back: director.now };
+		// `since` is when it went, for the lobby board's "while you were out" (director/story.ts).
+		if (away >= awayMs && !calm() && scene.current) director.view = { back: director.now, since: director.now - away };
 		if (scene.current) scene.direct();
 		else scene.redraw();
 	});
@@ -167,8 +174,9 @@ function blank(): void {
 				width: () => app.screen.width,
 			});
 	director.on((events, world) => sound?.hear(events, world));
-	/** The tray's Sound and Calm office toggles, live. */
-	const setToggles = (change: { sound?: boolean; calm?: boolean }) => {
+	/** The tray's Sound and Calm office toggles, and its Look, live. */
+	const setToggles = (change: { sound?: boolean; calm?: boolean; look?: string }) => {
+		if (change.look !== undefined) looks.set(lookId(change.look));
 		if (change.calm !== undefined) calmOn = change.calm;
 		office.life = visibility.visible && !calm();
 		if (change.sound !== undefined) sound?.setEnabled(change.sound);
@@ -264,15 +272,34 @@ function blank(): void {
 	};
 	const show = scene.show;
 	const redraw = scene.redraw;
+	// The look (mainview/look.ts): from ?look= (the saved Look), switched live over RPC.
+	const looks = installLooks(app, office, { look: lookId(params.get("look")), hour: pinnedHour, compact, redraw });
 	const inspector = import.meta.env.DEV || params.has("inspect") ? installInspector(app, office, scene, director, voice && { voice, now: () => director.now }, { current: () => theme, set: setTheme }, visibility) : undefined;
-	if (inspector) Object.assign(inspector, { sound: () => sound?.state(), setToggles });
+	if (inspector) Object.assign(inspector, { sound: () => sound?.state(), setToggles, look: () => looks.info() });
+	// The diary (src/shared/diary.ts): counts and kinds only, from the Bun process (or, in a demo,
+	// kept here from the demo's snapshots). The walls and the lobby board read it (office/decor.ts).
+	const setDiary = (d: unknown) => {
+		director.diary = diaryOf(d);
+		if (scene.current) scene.direct();
+	};
+	if (inspector) {
+		Object.assign(inspector, {
+			story: () => ({ world: director.world?.story, diary: director.diary, ...office.story }),
+			// As if the window had been off screen for `ms` and just came back.
+			away: (ms: number) => {
+				director.view = { back: director.now, since: director.now - ms };
+				scene.direct();
+			},
+			setDiary,
+		});
+	}
 	let bridge: Bridge | undefined;
 	const shell = installShell({
 		bridge: { status: () => bridge!.status(), setCompact: (on) => bridge?.setCompact(on), showOffice: () => bridge?.showOffice(), openProjectPage: () => bridge?.openProjectPage(), setTheme: (id) => bridge?.setTheme(id), setToggles: (change) => bridge?.setToggles(change) },
 		live: !params.has("demo") && !params.has("replay"),
 		compact,
 		theme: { current: () => theme, set: (id) => setTheme(id) },
-		toggles: { current: () => ({ sound: sound?.enabled ?? params.has("sound"), calm: calmOn }), set: (change) => setToggles(change) },
+		toggles: { current: () => ({ sound: sound?.enabled ?? params.has("sound"), calm: calmOn, look: looks.current }), set: (change) => setToggles(change) },
 		// ?demo=nohome: the "no coding agent found" state, without a real home folder.
 		status: params.get("demo") === "nohome" ? { homeFound: false, home: "~/.claude" } : undefined,
 	});
@@ -314,21 +341,29 @@ function blank(): void {
 	});
 
 	if (params.has("demo")) {
-		const { demo, demoDay, releaseDay } = await import("./demo");
+		const { demo, demoDay, demoDiary, releaseDay, storyDay } = await import("./demo");
 		const name = params.get("demo");
 		// ?demo=day-N: the demo day's first N beats, played at once (for screenshots of a beat).
 		const beat = name?.match(/^day-(\d)$/);
 		const day = demo(beat ? null : name, theme);
 		for (const [id, sign] of Object.entries(day.signs)) office.setSign(id, sign);
-		show(day.snapshot);
-		if (beat) for (const b of demoDay().slice(0, Number(beat[1]))) show(b.snapshot);
+		// ?demo=story keeps its own diary: an invented week before, today from its own snapshots.
+		// The other demos keep none, so their walls and boards look the same at any hour.
+		const memory = newMemory();
+		let diary: Diary | undefined = name === "story" ? demoDiary(day.snapshot) : undefined;
+		const showDemo = (s: Snapshot) => {
+			if (diary) director.diary = diary = noteSnapshot(diary, memory, s);
+			show(s);
+		};
+		showDemo(day.snapshot);
+		if (beat) for (const b of demoDay().slice(0, Number(beat[1]))) showDemo(b.snapshot);
 		// Plain ?demo plays the day through the director: arrivals, a review, a wait, departures.
-		// ?demo=release plays the release crew's beats. Frozen scenes (tests, screenshots) stay on
-		// their first moment.
-		const days = { "": demoDay, release: releaseDay } as Record<string, (() => { after: number; snapshot: Snapshot }[]) | undefined>;
+		// ?demo=release plays the release crew's beats, ?demo=story the story's. Frozen scenes
+		// (tests, screenshots) stay on their first moment.
+		const days = { "": demoDay, release: releaseDay, story: storyDay } as Record<string, (() => { after: number; snapshot: Snapshot }[]) | undefined>;
 		const play = days[name ?? ""];
 		if (play && !params.has("frozen")) {
-			const timers = play().map(({ after, snapshot }) => setTimeout(() => !scene.frozen && show(snapshot), after));
+			const timers = play().map(({ after, snapshot }) => setTimeout(() => !scene.frozen && showDemo(snapshot), after));
 			scene.stopDemo = () => timers.forEach(clearTimeout);
 		}
 		return;
@@ -344,7 +379,11 @@ function blank(): void {
 	}
 
 	const rpc = Electroview.defineRPC<BusybodiesRPC>({
-		handlers: { messages: { snapshot: show, about: () => shell.about(), theme: ({ id }) => (setTheme(themeId(id)), shell.themeChanged()), settings: (s) => (setToggles(s), shell.togglesChanged()) } },
+		handlers: { messages: { snapshot: show, about: () => shell.about(), theme: ({ id }) => (setTheme(themeId(id)), shell.themeChanged()), settings: (s) => (setToggles(s), shell.togglesChanged()),
+				// The snapshot that changed the diary comes right after it, and draws it.
+				diary: (d) => void (director.diary = diaryOf(d)),
+			},
+		},
 	});
 	new Electroview({ rpc });
 	bridge = {
@@ -356,6 +395,7 @@ function blank(): void {
 		setToggles: (change) => void rpc.request.setToggles(change),
 	};
 
-	const first = await rpc.request.snapshot();
+	const [first, kept] = await Promise.all([rpc.request.snapshot(), rpc.request.diary().catch(() => null)]);
+	if (kept) director.diary = diaryOf(kept);
 	if (first) show(first);
 })();

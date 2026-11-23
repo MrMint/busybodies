@@ -46,16 +46,91 @@ export const COSTUMES: Record<Role, Costume> = {
 	designer: { hat: "hat/designer", front: "front/scarf", scale: 1 },
 };
 
-/** The agent tool's subagent types are free text; map the common ones onto a costume. Anything
- * unknown builds things, which is what most of them do. */
-export function roleFor(agentType: string | undefined): Role {
+/**
+ * Regulars (plan-alive wave 3, "story and continuity"): the same project and role come back as the
+ * same character, day after day. A regular's key is the diary's (a hash of the project, never its
+ * name), its costume and its place among the same costume in that project (`:0`, `:1`...), so it
+ * is the same on any machine and any day; everything about it is picked from that key: a short
+ * name, and an accessory worn on the face (or none). The puppet takes the key as its id, so its
+ * loop phases and rare variants are the regular's own too.
+ */
+export const REGULAR_NAMES = [
+	"Pip", "Bo", "Tam", "Dot", "Wren", "Ozzy", "Mo", "Juno", "Kit", "Lou", "Nell", "Rafe", "Sol", "Tilly",
+	"Vee", "Ziggy", "Bea", "Cal", "Fen", "Gus", "Hal", "Ivy", "Jem", "Lark", "Moss", "Nib", "Odo", "Plum",
+] as const;
+
+/** Accessories a regular may wear on the face: a slot name the atlas has in every theme. The
+ * reviewer's costume already wears glasses. */
+export const REGULAR_WEAR = [undefined, undefined, "wear/glasses"] as const;
+
+export interface Regular {
+	/** `<project key>:<role>:<n>`. */
+	key: string;
+	name: string;
+	wear?: string;
+}
+
+function fnv(s: string): number {
+	let h = 0x811c9dc5;
+	for (let i = 0; i < s.length; i++) {
+		h ^= s.charCodeAt(i);
+		h = Math.imul(h, 0x01000193) >>> 0;
+	}
+	return h >>> 0;
+}
+
+/** The regular with this key (`<project key>:<role>:<n>`): its name and accessory, from the key alone. */
+export function regularOf(key: string): Regular {
+	const role = key.split(":")[1] as Role | undefined;
+	const name = REGULAR_NAMES[fnv(`${key}|name`) % REGULAR_NAMES.length]!;
+	const wear = role && COSTUMES[role]?.wear ? undefined : REGULAR_WEAR[fnv(`${key}|wear`) % REGULAR_WEAR.length];
+	return { key, name, ...(wear ? { wear } : {}) };
+}
+
+/** The diary's regular (`<project key>:<role>`) a regular's key belongs to. */
+export const diaryRegular = (key: string): string => key.split(":").slice(0, 2).join(":");
+
+/** A costume from the agent type's name, tried in this order. The tool's own types land here too:
+ * "Explore" explores, "Plan" designs, "claude-code-guide" scouts. */
+const BY_NAME: [Role, RegExp][] = [
+	["reviewer", /review/],
+	["verifier", /verif|test|qa/],
+	["designer", /design|\bui\b|\bart\b|\bplan|architect/],
+	["explorer", /explor/],
+	["scout", /scout|search|survey|find|research|guide/],
+	["lead", /lead|main|session/],
+	["builder", /build/],
+];
+
+/** What a task asks for, by its words. The one that comes first in the task wins, so "Find and fix
+ * the leak" is a scout's job and "Fix the failing test" a builder's. */
+const BY_TASK: [Role, RegExp][] = [
+	["reviewer", /\b(review|audit|critique|proofread|second opinion)/],
+	["verifier", /\b(verif|test|validat|reproduc|confirm|check|qa\b)/],
+	["designer", /\b(design|plan|architect|mock ?up|sketch|wireframe|ui\b|ux\b)/],
+	["explorer", /\bexplor/],
+	["scout", /\b(scout|search|survey|find|research|investigat|look (up|into|for|at|through)|locate|trace|read|fetch|summari[sz]|gather|inventory|map out|understand|where )/],
+	["builder", /\b(build|implement|fix|add|writ|refactor|updat|migrat|port\b|creat|make|chang|edit|renam|remov|delet|bump|wire|set ?up|install|clean)/],
+];
+
+/**
+ * The costume for a crew member. The agent type is free text: a custom type names its job
+ * ("code-reviewer", "test-runner"). A generic one ("general-purpose", or none) says nothing, so
+ * the task its parent gave it decides. Anything still unknown builds things, which is what most
+ * agents do. Both inputs are fixed for an agent's life, so its costume never changes.
+ */
+export function roleFor(agentType: string | undefined, task?: string): Role {
 	const t = (agentType ?? "").toLowerCase();
-	if (!t) return "builder";
-	if (/review/.test(t)) return "reviewer";
-	if (/verif|test|qa/.test(t)) return "verifier";
-	if (/design|\bui\b|\bart\b/.test(t)) return "designer";
-	if (/explor/.test(t)) return "explorer";
-	if (/scout|search|survey|find|research/.test(t)) return "scout";
-	if (/lead|main|session/.test(t)) return "lead";
-	return "builder";
+	for (const [role, re] of BY_NAME) if (re.test(t)) return role;
+	return roleForTask(task) ?? "builder";
+}
+
+function roleForTask(task: string | undefined): Role | undefined {
+	const t = (task ?? "").toLowerCase();
+	let best: { role: Role; at: number } | undefined;
+	for (const [role, re] of BY_TASK) {
+		const at = t.search(re);
+		if (at >= 0 && (!best || at < best.at)) best = { role, at };
+	}
+	return best?.role;
 }

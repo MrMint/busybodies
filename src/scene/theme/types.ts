@@ -7,6 +7,7 @@ import type { DeskProps, Lamp, PlannerRow, Tray } from "../director/metrics";
 import type { Who } from "../office/slot";
 import type { Phase } from "../office/daylight";
 import type { Area, AreaKind, Band, Fixture, Rect } from "../office/world";
+import type { SceneStaging } from "../office/staging";
 import type { ThemeId } from "./id";
 import type { SignText, ThemeWords } from "./words";
 
@@ -108,6 +109,33 @@ export interface SceneTheme {
 	arms: boolean;
 	/** Light, the view out of the windows, floor materials and the room names (office/light.ts). */
 	light: SceneLight;
+	/** How the theme stages the place (office/staging.ts): desks or lines, a corridor or a conveyor,
+	 * what moves on its own, the idle habits. Absent: the office's (`DEFAULT_STAGING`). */
+	staging?: SceneStaging;
+	/** Painters for what a staging adds to the floor (belts, booths, the dock); needed only with a
+	 * `line` bay or a `conveyor` hall. */
+	stage?: StagePainters;
+}
+
+/**
+ * What a staging adds, painted by the theme into plain Graphics (office/ambient.ts places them and
+ * moves only their transforms): each around its own origin, in world px.
+ */
+export interface StagePainters {
+	/** A line's belt frame, from (0, 0) at its left end's top surface to (w, 0), its front below. */
+	belt(g: Graphics, w: number): void;
+	/** The belt's slats: drawn once from -pitch to w, slid along by the life clock. */
+	slats(g: Graphics, w: number, pitch: number): void;
+	/** The rollers at each end, over the slats' overhang. */
+	rollers(g: Graphics, w: number, pitch: number): void;
+	/** A part riding the belt, for a kind of work (read, web, search, edit, shell, test), centred. */
+	part(g: Graphics, kind: string): void;
+	/** The lead's booth, round its desk: drawn behind the lead, from the desk front's centre. */
+	booth(g: Graphics): void;
+	/** The dock at the hallway's end: its right edge at x = 0, the hallway's top at y = 0. */
+	dock(g: Graphics, h: number): void;
+	/** A PR crate riding the hallway's belt, its base centre at (0, 0). */
+	crate(g: Graphics): void;
 }
 
 /** A colour per time-of-day phase (office/daylight.ts). */

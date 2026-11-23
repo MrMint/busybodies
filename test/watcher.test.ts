@@ -144,6 +144,38 @@ describe("SnapshotBuilder", () => {
 		expect(s.agents[0]!.children.map((a) => [a.id, a.depth, a.status])).toEqual([["kid", 2, "running"]]);
 	});
 
+	test("asks git which repository and branch a session is on, for any worktree layout", async () => {
+		const code = await mkdtemp(join(tmpdir(), "bb-code-"));
+		try {
+			// The main checkout, a worktree in a sibling folder, and one of a bare repository.
+			const repo = join(code, "kettle");
+			await write(join(repo, ".git", "HEAD"), "ref: refs/heads/main\n");
+			await write(join(repo, ".git", "worktrees", "spout-fix", "HEAD"), "ref: refs/heads/spout-fix\n");
+			const sibling = join(code, "kettle-spout-fix");
+			await write(join(sibling, ".git"), `gitdir: ${join(repo, ".git", "worktrees", "spout-fix")}\n`);
+			await write(join(code, "lid.git", "worktrees", "hinge", "HEAD"), "4f1c0de\n");
+			const bare = join(code, "wt", "hinge");
+			await write(join(bare, ".git"), "gitdir: ../../lid.git/worktrees/hinge\n");
+			await session(401, "s-main", repo);
+			await session(402, "s-sibling", sibling);
+			await session(403, "s-bare", bare);
+			await session(404, "s-plain", "/Users/you/code/pantry");
+
+			const snap = await build([401, 402, 403, 404]);
+			const by = new Map(snap.sessions.map((s) => [s.id, s]));
+			expect(by.get("s-main")).toMatchObject({ project: "kettle", branch: "main", title: "kettle" });
+			expect(by.get("s-main")!.worktree).toBeUndefined();
+			expect(by.get("s-sibling")).toMatchObject({ project: "kettle", worktree: "kettle-spout-fix", branch: "spout-fix" });
+			// A detached HEAD has no branch.
+			expect(by.get("s-bare")).toMatchObject({ project: "lid", worktree: "hinge" });
+			expect(by.get("s-bare")!.branch).toBeUndefined();
+			// No repository there (or none we can see): the folder's name, as before.
+			expect(by.get("s-plain")).toMatchObject({ project: "pantry" });
+		} finally {
+			await rm(code, { recursive: true, force: true });
+		}
+	});
+
 	test("nests a side session under the live session that started it", async () => {
 		await session(201, "s-lead", "/Users/you/code/teapot", { hostSessionId: "local_lead" });
 		await session(202, "s-side", "/Users/you/code/teapot", { hostSessionId: "local_side" });

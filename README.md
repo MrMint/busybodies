@@ -66,7 +66,8 @@ rm -rf /Applications/Busybodies.app ~/Library/Application\ Support/app.busybodie
 ## What it reads, and privacy
 
 Busybodies reads your coding agent's own local files: its list of running sessions, their
-transcripts and its subagents' details. It reads them **read-only**: it never writes to them or
+transcripts and its subagents' details, plus the `.git` pointer and `HEAD` of each live session's
+folder, to group worktrees with their repository and show the branch. It reads them **read-only**: it never writes to them or
 changes the agent's settings. The one exception is the optional "waiting on you" hook
 (`tools/hooks.ts`), and only if you install it yourself.
 

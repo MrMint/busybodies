@@ -5,6 +5,7 @@
 import type { Container } from "pixi.js";
 import type { Slot } from "./world";
 import type { LookAt } from "../rig/gaze";
+import type { Role } from "../rig/roles";
 
 export type { Slot };
 
@@ -17,11 +18,16 @@ export interface Who {
 	kind: "lead" | "crew";
 	/** The agent's role ("scout", "reviewer", ...), or "lead". */
 	role: string;
+	/** The costume, when whoever placed it already chose one (rig/roles.ts `roleFor`). */
+	look?: Role;
 	mood: Mood;
 	/** Height in world pixels. */
 	size: number;
 	/** A key to pick a colour from, so one project's leads match: the project, or the role. */
 	tint: string;
+	/** Optional: the regular it is (rig/roles.ts `regularOf`): the same face, accessory and name for
+	 * the same project and role, every day. */
+	regular?: string;
 }
 
 export interface Character {

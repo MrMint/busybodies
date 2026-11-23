@@ -37,6 +37,7 @@ import {
 	type WallItem,
 	type World,
 	type Yard,
+	beltsFor,
 	roomHeight,
 	roomWidth,
 	shredderFor,
@@ -45,6 +46,7 @@ import {
 import { LEAD_SIZE } from "./placement";
 import { bellFrom } from "./rigpoints";
 import { OFFICE_WORDS } from "../theme/words";
+import { DEFAULT_STAGING, type Staging } from "./staging";
 
 interface Room {
 	/** Stable for the room's life: "meeting", "lobby", "kitchen", or "room-<n>". */
@@ -77,14 +79,17 @@ export class FloorPlan {
 	#bands: Record<Band, Room[]> = { top: [], bottom: [] };
 	#rooms = new Map<string, Room>(); // by project
 	#next = 0;
+	#staging: Staging = { bay: DEFAULT_STAGING.bay, hall: DEFAULT_STAGING.hall };
 
 	constructor() {
 		this.#bands.top.push(common("meeting", "top"));
 		this.#bands.bottom.push(common("lobby", "bottom"), common("yours", "bottom"), common("kitchen", "bottom"));
 	}
 
-	/** Fold a snapshot into the plan and return the world it gives. */
-	update(snapshot: Snapshot): World {
+	/** Fold a snapshot into the plan and return the world it gives, staged as the theme says
+	 * (office/staging.ts): the rooms and desks are the same in every staging. */
+	update(snapshot: Snapshot, staging: Staging = DEFAULT_STAGING): World {
+		this.#staging = { bay: staging.bay, hall: staging.hall, ...(staging.habits ? { habits: staging.habits } : {}) };
 		const all = seats(snapshot.sessions);
 		const live = new Set(all.map((s) => s.session.id));
 
@@ -168,6 +173,7 @@ export class FloorPlan {
 			let x = 0;
 			for (const room of this.#bands[band]) {
 				const area = build(room, x);
+				if (this.#staging.bay === "line" && area.kind === "project") area.belts = beltsFor(area);
 				areas.push(area);
 				for (const d of area.desks) desks.set(d.id, d);
 				for (const w of area.wall) if (w.slot) signs.push({ id: w.slot, kind: w.kind as SignSlot["kind"], areaId: area.id, rect: w.rect });
@@ -178,9 +184,16 @@ export class FloorPlan {
 		const hallway = { x: 0, y: 0, w: right, h: HALL };
 		const top = Math.min(0, ...areas.map((a) => a.rect.y));
 		const bottom = Math.max(HALL, ...areas.map((a) => a.rect.y + a.rect.h));
-		return { bounds: { x: 0, y: top, w: right, h: bottom - top }, hallway, areas, desks, signs, yards: yardsOf(areas, right, top, bottom) };
+		const staging = { ...this.#staging };
+		const mid = HALL / 2;
+		const conveyor = staging.hall === "conveyor" ? { y: mid, x0: 0, x1: right, dock: { x: right - DOCK_W / 2, y: mid } } : undefined;
+		const yards = yardsOf(areas, right, top, bottom);
+		return { bounds: { x: 0, y: top, w: right, h: bottom - top }, hallway, areas, desks, signs, yards, staging, ...(conveyor ? { conveyor } : {}) };
 	}
 }
+
+/** The dock at the hallway's right end (staging `conveyor`): this wide. */
+export const DOCK_W = 56;
 
 /**
  * The footprint's gaps: in each band, past its last room (the hallway runs the building's whole

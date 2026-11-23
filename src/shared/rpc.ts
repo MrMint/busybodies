@@ -2,6 +2,7 @@
 // Both windows (the full office and the compact one) speak it.
 import type { RPCSchema } from "electrobun/view";
 import type { Snapshot } from "../watcher/model";
+import type { Diary } from "./diary";
 
 /** What the app knows about itself and where it looks, for the About screen and empty states. */
 export interface AppStatus {
@@ -30,8 +31,10 @@ export type BusybodiesRPC = {
 			openProjectPage: { params: undefined; response: boolean };
 			/** Pick the scene theme (from the settings cog): saved, and both windows switch. */
 			setTheme: { params: { id: string }; response: boolean };
-			/** Sound and calm office (from the settings cog): saved, the tray updates, both windows hear. */
-			setToggles: { params: { sound?: boolean; calm?: boolean }; response: boolean };
+			/** Sound, calm office and the look (from the settings cog): saved, the tray updates, both windows hear. */
+			setToggles: { params: { sound?: boolean; calm?: boolean; look?: string }; response: boolean };
+			/** The office's diary (counts and kinds only: src/shared/diary.ts), for a scene that just loaded. */
+			diary: { params: undefined; response: Diary | null };
 		};
 		messages: {};
 	}>;
@@ -45,8 +48,10 @@ export type BusybodiesRPC = {
 			about: undefined;
 			/** Switch the scene theme (from the tray's Theme menu or the settings cog): `office` or `factory`. */
 			theme: { id: string };
-			/** The tray's Sound and Calm office toggles, as saved. Only the full office window plays sound. */
-			settings: { sound: boolean; calm: boolean };
+			/** The tray's Sound and Calm office toggles and its Look (`plain`, `pixel` or `night`), as saved. Only the full office window plays sound. */
+			settings: { sound: boolean; calm: boolean; look?: string };
+			/** The office's diary, whenever it changes (counts and kinds only: src/shared/diary.ts). */
+			diary: Diary;
 		};
 	}>;
 };
