@@ -307,6 +307,41 @@ vendingKick: Kicking the vending machine
    4   260ms  { eyes: 'wide', look: 'downR', brows: 'up', mouth: 'open', armL: 'hip', armR: 'low', work: 'vendingDrop' }
    5   390ms  { eyes: 'happy', look: 'downR', mouth: 'grin', armL: 'hip', armR: 'cheer', work: 'vendingDrop' }
 
+boothMug: A brew over the line
+  on idle, rare 1 in Infinity, once; 5 frames, 2080 ms (16 beats)
+  may say: "Quality control. Of the tea."
+   1   520ms  { eyes: 'half', look: 'downR', mouth: 'small', armL: 'raise', armR: 'hip', holdL: 'mug' }
+   2   390ms  { eyes: 'closed', mouth: 'small', armL: 'sip', armR: 'hip', holdL: 'mug' }
+   3   390ms  { eyes: 'happy', look: 'downR', mouth: 'grin', armL: 'raise', armR: 'hip', holdL: 'mug' }
+   4   390ms  { eyes: 'half', look: 'right', brows: 'one', mouth: 'flat', armL: 'raise', armR: 'point', holdL: 'mug' }
+   5   390ms  { eyes: 'half', look: 'downR', mouth: 'smirk', armL: 'raise', armR: 'hip', holdL: 'mug' }
+
+boothWatch: Keeping an eye on the line
+  on idle, rare 1 in Infinity, once; 5 frames, 1950 ms (15 beats)
+  may say: "Nobody move. I mean: keep moving."
+   1   520ms  { mouth: 'small', armL: 'face', armR: 'face', body: 'leanL', wear: 'binoc' }
+   2   260ms  { mouth: 'flat', armL: 'face', armR: 'face', wear: 'binoc' }
+   3   520ms  { mouth: 'small', armL: 'face', armR: 'face', body: 'leanR', wear: 'binoc' }
+   4   260ms  { eyes: 'wide', brows: 'up', mouth: 'open', armL: 'face', armR: 'face', body: 'leanR' }
+   5   390ms  { eyes: 'happy', look: 'downR', mouth: 'grin', armL: 'low', armR: 'wave1' }
+
+boothLean: Hands behind the head
+  on idle, rare 1 in Infinity, once; 4 frames, 1820 ms (14 beats)
+  may say: "The line runs itself. I made sure."
+   1   650ms  { eyes: 'half', mouth: 'smirk', armL: 'head', armR: 'head' }
+   2   390ms  { eyes: 'closed', mouth: 'yawn', armL: 'head', armR: 'head', feet: 'tip' }
+   3   520ms  { eyes: 'half', look: 'downR', mouth: 'small', armL: 'head', armR: 'head' }
+   4   260ms  { eyes: 'wide', look: 'downR', brows: 'up', mouth: 'small', armL: 'low', armR: 'head' }
+
+boothCall: On the booth phone
+  on idle, rare 1 in Infinity, once; 5 frames, 1820 ms (14 beats)
+  may say: "Yes. Yes. It's on the belt."
+   1   520ms  { eyes: 'half', look: 'upR', brows: 'one', mouth: 'small', armL: 'ear', armR: 'head', holdL: 'receiver' }
+   2   260ms  { look: 'upR', brows: 'up', mouth: 'open', armL: 'ear', armR: 'wave1', body: 'nod', holdL: 'receiver' }
+   3   390ms  { eyes: 'squint', look: 'right', brows: 'flat', mouth: 'flat', armL: 'ear', armR: 'head', holdL: 'receiver' }
+   4   260ms  { eyes: 'happy', look: 'upR', mouth: 'grin', armL: 'ear', armR: 'wave2', body: 'nod', holdL: 'receiver' }
+   5   390ms  { eyes: 'half', look: 'right', mouth: 'smirk', armL: 'ear', armR: 'head', holdL: 'receiver' }
+
 waiting: Waiting on you
   on waiting, loop; 10 frames, 2990 ms (23 beats)
   may say: "Whenever you are ready." "No rush. Some rush."

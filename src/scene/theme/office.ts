@@ -15,7 +15,7 @@ import { Container, Graphics } from "pixi.js";
 import type { Lamp, PlannerRow, Tray } from "../director/metrics";
 import { GREEN, INK, PAPER_SIGNS, RED, SHADOW, SUN, type SignStyle, batched, hash, label, line, signboard, text, wob } from "../office/paper";
 import { rotRect } from "../rig/theme";
-import { PROPS } from "../office/propspots";
+import { KITCHEN_WALL, PROPS, ceilingPanels } from "../office/propspots";
 import type { Who } from "../office/slot";
 import type { Area, Rect } from "../office/world";
 import { crewBuild } from "./build";
@@ -120,11 +120,9 @@ function room(g: Graphics, c: Container, a: Area, sign: (slot: string) => SignTe
 
 /** Fluorescent ceiling panels along the top of the back wall: a tube in a white housing every
  * so often, with a cold glow under it. */
-function fluorescents(g: Graphics, { x, y, w }: Rect): void {
-	const n = Math.max(1, Math.round(w / 190));
-	const step = w / n;
-	for (let i = 0; i < n; i++) {
-		const cx = x + step * (i + 0.5);
+function fluorescents(g: Graphics, r: Rect): void {
+	const y = r.y;
+	for (const { cx } of ceilingPanels(r)) {
 		g.rect(cx - 34, y + 9, 68, 5).fill({ color: 0xeaf6ff, alpha: 0.55 });
 		g.roundRect(cx - 38, y + 3, 76, 7, 3).fill(0xf7fbff).stroke({ width: 2, color: INK });
 		g.roundRect(cx - 33, y + 5, 66, 3, 1.5).fill(0xdff4ff);
@@ -133,22 +131,22 @@ function fluorescents(g: Graphics, { x, y, w }: Rect): void {
 
 /** The kitchen's mug wall, between the fridge and the sign, just over the coffee machine: a shelf
  * of novelty mugs under the banner that explains them. Small: it reads zoomed in, and is quiet at
- * office zoom. */
+ * office zoom. office/propspots.ts KITCHEN_WALL places it, clear of the machine and its steam. */
 function mugWall(g: Graphics, a: Area): Container {
-	const x = a.rect.x + 114;
-	// Clear of the ceiling panel over it and the room's name painted above the wall.
-	const y = a.rect.y + 18;
-	const w = 78;
+	const { x: dx, y: dy, w, h } = KITCHEN_WALL.mugWall;
+	const x = a.rect.x + dx;
+	const y = a.rect.y + dy;
 	const mugs = [0xffffff, 0xffd0e4, SUN, 0x9be3ff, 0xa5e6c9];
-	const sy = y + 21;
+	const sy = y + h - 3.6;
 	for (let k = 0; k < mugs.length; k++) {
 		const mx = x + 4 + k * 15;
-		g.roundRect(mx, sy - 10, 9, 10, 2).fill(mugs[k]!).stroke({ width: 1.4, color: INK });
-		g.moveTo(mx + 9, sy - 8).arc(mx + 9, sy - 5.5, 2.5, -Math.PI / 2, Math.PI / 2).stroke({ width: 1.2, color: INK });
-		if (k % 2 === 0) g.rect(mx + 2, sy - 6.5, 5, 1.6).fill({ color: INK, alpha: 0.5 });
+		g.roundRect(mx, sy - 9, 9, 9, 2).fill(mugs[k]!).stroke({ width: 1.4, color: INK });
+		g.moveTo(mx + 9, sy - 7.5).arc(mx + 9, sy - 5, 2.5, -Math.PI / 2, Math.PI / 2).stroke({ width: 1.2, color: INK });
+		if (k % 2 === 0) g.rect(mx + 2, sy - 6, 5, 1.6).fill({ color: INK, alpha: 0.5 });
 	}
 	g.roundRect(x, sy, w, 3.6, 1.5).fill(0xd9a066).stroke({ width: 1.5, color: INK });
-	g.roundRect(x, y - 1, w, 12, 3).fill(0xffffff).stroke({ width: 1.5, color: INK });
+	// The banner over the mugs' tops, its two lines clear of its edge.
+	g.roundRect(x, y - 1, w, 13, 3).fill(0xffffff).stroke({ width: 1.5, color: INK });
 	const t = text("you don't have to be busy\nto work here", 4.6, { fontWeight: "800", align: "center", lineHeight: 5.2 });
 	if (t.width > w - 4) t.scale.set((w - 4) / t.width);
 	t.anchor.set(0.5, 0);
@@ -473,8 +471,8 @@ function drawFurniture(kind: FurnitureKind): Graphics {
 			break;
 		case "counter":
 			desk(g, 0xffffff, 0xf1f3fa, 130);
-			// The coffee machine: a dark box with two lights and a cup.
-			g.roundRect(-58, -126, 44, 52, 8).fill(INK);
+			// The coffee machine: a dark box with two lights and a cup (propspots.ts KITCHEN_WALL).
+			g.roundRect(KITCHEN_WALL.machine.x0, KITCHEN_WALL.machine.top, KITCHEN_WALL.machine.x1 - KITCHEN_WALL.machine.x0, 52, 8).fill(INK);
 			g.circle(-45, -114, 4).fill(RED).circle(-31, -114, 4).fill(GREEN);
 			g.roundRect(-47, -96, 22, 18, 4).fill(0x8a5a3c).stroke({ width: 3, color: 0xffffff });
 			g.rect(6, -88, 15, 15).fill(0xffffff).stroke(line(3)).rect(28, -88, 15, 15).fill(0xffffff).stroke(line(3));
@@ -789,4 +787,4 @@ export const OFFICE_THEME: SceneTheme = {
 
 /** The office keeps its desks and its corridor; what moves on its own is the steam off the coffee,
  * the kitchen's ceiling fan and the copier's light (office/ambient.ts). */
-OFFICE_THEME.staging = { bay: "desks", hall: "corridor", ambient: ["steam", "fan", "printer"] };
+OFFICE_THEME.staging = { bay: "desks", hall: "corridor", ambient: ["steam", "fan", "printer", "flicker"] };

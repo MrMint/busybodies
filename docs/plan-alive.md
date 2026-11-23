@@ -191,11 +191,24 @@ the light both lean on walls. What's left is under "After wave 3" below.
   the way `ThemeWords` and `StoryWords` do.
 - The compact strip's tiles name areas by the office's words in every theme; sound plays the office
   hum in the kitchen.
-- The factory's idle foreman plays habits inside the booth, half hidden; the PR crate starts mid-bay
-  instead of following the arm's crate; ambient life only in the kitchen, copiers and hallway.
-- Story: the framed PR goes up when the diary hears of the merge, not when the reply reaches the
-  lead; glasses are the only regular accessory; 28 regular names can collide.
-- The mug wall still sits partly under the kitchen's painted name (no room to move it further).
+- ~~The factory's idle foreman plays habits inside the booth, half hidden~~ (wave 4 stream N: a
+  line's lead has its own habits, `leadHabits`, played at head height over its bench: binoculars,
+  a brew, a call, hands behind the head, the stretch). ~~The PR crate starts mid-bay~~ (it takes over
+  where the arm lets go of it, drops down the bay dock's chute and pops up on the hallway's belt in
+  line with it: `office/crate.ts`). ~~Ambient life only in the kitchen, copiers and hallway~~ (a
+  fluorescent tube in every office room flickers now and then; every factory press has a pilot
+  lamp). Still open: the foreman never comes down from the booth; stepping it out onto the floor to
+  slack needs a free spot by a crowded line and the story beats' "at the desk" checks to allow it.
+- ~~Story: the framed PR goes up when the diary hears of the merge~~ (a merge whose reply is still
+  being fetched holds its frame back: it goes up as the lead gets back to the desk and celebrates,
+  `framesPending`). ~~Glasses are the only regular accessory~~ (also a flower, earrings, freckles, a
+  pin and a plaster, `rig/accessories.ts`, the same in every theme). ~~28 regular names can
+  collide~~ (70 names, and the regulars on the floor at once never share one: a clash parts the
+  same way every time, `regularNamesFor`).
+- ~~The mug wall still sits partly under the kitchen's painted name~~ (what covered it at room zoom
+  was the coffee machine's top and its steam: the wall hangs a little higher and the steam rises
+  off the cup in front of the machine, thinning out below the shelf; `KITCHEN_WALL` holds the
+  geometry and a test keeps them apart).
 - **Life runs at 30 fps for now** (the owner, after comparing 10 and 20 by eye: both read choppy).
   Push on the visuals first; one **performance pass** over all of it comes once the look settles.
   Its starting points: life costs frames, not characters (stream J's profile); the 100 ms beat grid

@@ -4,8 +4,9 @@ import { describe, expect, test } from "bun:test";
 import { direct } from "../src/scene/director/direct";
 import type { View } from "../src/scene/director/social";
 import { STORY, headlinesFor, regularsOf } from "../src/scene/director/story";
-import { DECOR, FACTORY_STORY, BAKERY_STORY, OFFICE_STORY, boardText, decorFor, frameSpots, regularNames, storyStyle } from "../src/scene/office/decor-plan";
-import { REGULAR_NAMES, regularOf } from "../src/scene/rig/roles";
+import { DECOR, FACTORY_STORY, BAKERY_STORY, OFFICE_STORY, boardText, decorFor, framesPending, frameSpots, regularNames, storyStyle } from "../src/scene/office/decor-plan";
+import { REGULAR_NAMES, REGULAR_WEAR, regularName, regularNamesFor, regularOf } from "../src/scene/rig/roles";
+import { ACCESSORIES } from "../src/scene/rig/accessories";
 import { type Diary, type DiaryDay, localDay, projectKey } from "../src/shared/diary";
 import type { World } from "../src/scene/director/types";
 import { FloorPlan } from "../src/scene/office/layout";
@@ -226,6 +227,29 @@ describe("the walls remember", () => {
 		expect(decorFor(floor.areas.find((a) => a.name === "saucer")!, { diary, now: T0 })).toBeUndefined();
 	});
 
+	test("a merge's frame goes up as its lead gets back to the desk with the reply, not when the diary hears of it", () => {
+		const st = stage();
+		const merged = [session("s1", { prs: pr("MERGED") })];
+		st.step([session("s1", { prs: pr("OPEN") })], T0);
+		let d = st.step(merged, T0 + SEC);
+		const reply = d.world.story!.replies!.s1!;
+		const home = d.floor.areas.find((a) => a.kind === "project" && a.name === "teapot")!;
+		// The diary already counts it, its only merge this week (it hears first: main.ts).
+		const one: Diary = { v: 1, days: { [localDay(T0)]: { counts: { sessions: 1, prsMerged: 1 }, projects: { [projectKey("teapot")]: { sessions: 1, prsMerged: 1 } }, regulars: [], marks: [] } } };
+		const wall = (now: number) => decorFor(home, { diary: one, now, replies: st.world.story?.replies })?.frames.length ?? 0;
+		expect(framesPending(home, { replies: d.world.story!.replies, now: T0 + SEC })).toBe(1);
+		expect(wall(T0 + SEC)).toBe(0);
+		// Through the walk to the outbox and back, still held; back at the desk, it goes up.
+		let now = T0 + SEC;
+		while (d.wake !== undefined && st.world.story?.replies?.s1?.back === undefined) d = st.step(merged, (now = d.wake));
+		const back = st.world.story!.replies!.s1!.back!;
+		expect(back).toBeGreaterThan(reply.takes);
+		expect(wall(back - 1)).toBe(0);
+		expect(wall(back)).toBe(1);
+		// A reply in another room holds nothing back here.
+		expect(framesPending(home, { replies: { s9: { station: "room:elsewhere:outbox", back: undefined } }, now })).toBe(0);
+	});
+
 	test("the lobby board: headlines while they're up, the day's ledger at closing, else the theme's own", () => {
 		const headlines = { at: T0, since: T0 - MIN, until: T0 + STORY.headlineMs, counts: { merged: 2, sendoff: 1 } };
 		expect(boardText({ diary, headlines, now: T0 + SEC }, OFFICE_STORY, "noon")).toEqual({ title: "WHILE YOU WERE OUT", body: "2 PRs merged\n1 long one waved off" });
@@ -271,6 +295,54 @@ describe("regulars", () => {
 		expect(rs.some((r) => r.wear === undefined)).toBe(true);
 		for (const r of rs) expect(REGULAR_NAMES).toContain(r.name as (typeof REGULAR_NAMES)[number]);
 		expect(regularOf("pabc:reviewer:0").wear).toBeUndefined();
+	});
+
+	test("regulars wear more than glasses: a flower, earrings, freckles, a pin, a plaster, or nothing", () => {
+		for (const w of REGULAR_WEAR) if (w) expect(w === "wear/glasses" || (ACCESSORIES as readonly string[]).includes(w), w).toBe(true);
+		const worn = new Map<string | undefined, number>();
+		for (let i = 0; i < 800; i++) {
+			const w = regularOf(`p${i.toString(36)}:scout:0`).wear;
+			worn.set(w, (worn.get(w) ?? 0) + 1);
+		}
+		for (const w of REGULAR_WEAR) expect(worn.get(w) ?? 0, String(w)).toBeGreaterThan(40);
+		// The same regular wears the same thing every day.
+		expect(regularOf("pq7:builder:1").wear).toBe(regularOf("pq7:builder:1").wear);
+	});
+
+	test("no two regulars on the floor share a name: a clash parts the same way whatever the order", () => {
+		const keys = Array.from({ length: 40 }, (_, i) => `p${(i * 7919).toString(36)}:${["lead", "builder", "scout", "verifier"][i % 4]}:${i % 2}`);
+		const names = regularNamesFor(keys);
+		expect(new Set(names.values()).size).toBe(keys.length);
+		expect(regularNamesFor([...keys].reverse())).toEqual(names);
+		// Find a real clash: two keys whose own names are the same.
+		const seen = new Map<string, string>();
+		let pair: [string, string] | undefined;
+		for (let i = 0; !pair; i++) {
+			const k = `pz${i}:scout:0`;
+			const n = regularName(k);
+			if (seen.has(n)) pair = [seen.get(n)!, k];
+			else seen.set(n, k);
+		}
+		const [a, b] = [...pair].sort() as [string, string];
+		const both = regularNamesFor([b, a]);
+		expect(both.get(a)).toBe(regularName(a));
+		expect(both.get(b)).not.toBe(both.get(a));
+		expect(both.get(b)).toBe(regularName(b, 1) === regularName(a) ? regularName(b, 2) : regularName(b, 1));
+		// Alone, each keeps its own.
+		expect(regularNamesFor([b]).get(b)).toBe(regularName(b));
+		// Even a full floor of them gets every name once.
+		const many = Array.from({ length: REGULAR_NAMES.length }, (_, i) => `pm${i}:lead:0`);
+		expect(new Set(regularNamesFor(many).values()).size).toBe(REGULAR_NAMES.length);
+	});
+
+	test("the names you'd recognise on the floor never clash", () => {
+		const p1 = projectKey("teapot");
+		const p2 = projectKey("saucer");
+		const regs = [`${p1}:lead:0`, `${p1}:scout:0`, `${p2}:lead:0`, `${p2}:scout:0`, `${p1}:scout:1`];
+		const diary: Diary = { v: 1, days: Object.fromEntries([0, 1].map((d) => [localDay(T0 - d * 86_400_000), { counts: {}, projects: {}, regulars: regs.map((r) => r.split(":").slice(0, 2).join(":")), marks: [] }])) };
+		const names = regularNames(regs.map((r, i) => ({ key: `k${i}`, regular: r })), { diary, now: T0 });
+		expect(names.size).toBe(regs.length);
+		expect(new Set(names.values()).size).toBe(regs.length);
 	});
 
 	test("you recognise a regular (its name shows) once the diary has seen it on two days", () => {

@@ -505,6 +505,54 @@ export const POSES: Pose[] = [
 		],
 	}),
 
+	// The foreman's booth habits (theme/factory-staging.ts `leadHabits`): up in the booth, its bench
+	// and screen come to the foreman's chin, so these play at head height (binoculars, a phone at the
+	// ear, hands behind the head, a mug at the lips), looking out over the line. Played by name,
+	// never by the idle trigger.
+	pose({
+		name: "boothMug", title: "A brew over the line", trigger: "idle", rarity: 0, play: "once",
+		lines: ["Quality control. Of the tea."],
+		frames: [
+			["e-half l-downR m-small hl-mug al-raise ar-hip", 4],
+			["e-closed m-small hl-mug al-sip ar-hip", 3],
+			["e-happy l-downR m-grin hl-mug al-raise ar-hip", 3],
+			["e-half l-right b-one m-flat hl-mug al-raise ar-point", 3],
+			["e-half l-downR m-smirk hl-mug al-raise ar-hip", 3],
+		],
+	}),
+	pose({
+		name: "boothWatch", title: "Keeping an eye on the line", trigger: "idle", rarity: 0, play: "once",
+		lines: ["Nobody move. I mean: keep moving."],
+		frames: [
+			["a-binoc m-small al-face ar-face bd-leanL", 4],
+			["a-binoc m-flat al-face ar-face", 2],
+			["a-binoc m-small al-face ar-face bd-leanR", 4],
+			["e-wide b-up m-open al-face ar-face bd-leanR", 2],
+			["e-happy l-downR m-grin al-low ar-wave1", 3],
+		],
+	}),
+	pose({
+		name: "boothLean", title: "Hands behind the head", trigger: "idle", rarity: 0, play: "once",
+		lines: ["The line runs itself. I made sure."],
+		frames: [
+			["e-half m-smirk al-head ar-head", 5],
+			["e-closed m-yawn al-head ar-head f-tip", 3],
+			["e-half l-downR m-small al-head ar-head", 4],
+			["e-wide l-downR b-up m-small al-low ar-head", 2],
+		],
+	}),
+	pose({
+		name: "boothCall", title: "On the booth phone", trigger: "idle", rarity: 0, play: "once",
+		lines: ["Yes. Yes. It's on the belt."],
+		frames: [
+			["e-half l-upR b-one m-small hl-receiver al-ear ar-head", 4],
+			["l-upR b-up m-open hl-receiver al-ear ar-wave1 bd-nod", 2],
+			["e-squint l-right b-flat m-flat hl-receiver al-ear ar-head", 3],
+			["e-happy l-upR m-grin hl-receiver al-ear ar-wave2 bd-nod", 2],
+			["e-half l-right m-smirk hl-receiver al-ear ar-head", 3],
+		],
+	}),
+
 	// Acted --------------------------------------------------------------------------------------
 	pose({
 		name: "waiting", title: "Waiting on you", trigger: "waiting", rarity: 1, play: "loop",

@@ -3,7 +3,9 @@
 // redrawn only when what it shows changes (never per frame: nothing here moves).
 //
 //   framed PRs   a small frame per PR merged in the project this week, hung in the gaps between the
-//                back wall's signs, whiteboard and windows (two to a gap)
+//                back wall's signs, whiteboard and windows (two to a gap). A merge the room's lead is
+//                still fetching the reply for (director/story.ts) waits: its frame goes up as the lead
+//                gets back to the desk with the reply and celebrates, the payoff of the beat
 //   bunting      a pennant per day this week the project was in, strung over the room's planner
 //   stars        a gold star on the room's sign per red streak fixed this week (up to three)
 //   lobby board  the lobby's frame: "while you were out" when you come back (the director's
@@ -16,7 +18,7 @@
 import type { ThemeId } from "../theme/id";
 import type { Headlines, StoryKind } from "../director/story";
 import { type Counts, type Diary, daysSeen, localDay, projectKey, weekOf } from "../../shared/diary";
-import { diaryRegular, regularOf } from "../rig/roles";
+import { diaryRegular, regularNamesFor } from "../rig/roles";
 import type { Phase } from "./daylight";
 import type { SignText } from "../theme/words";
 import type { SceneTheme } from "../theme/types";
@@ -27,12 +29,15 @@ import type { Area, World } from "./world";
  * it come in on this many days. */
 export const RECOGNISED_DAYS = 2;
 
-/** The names of the regulars you'd recognise, by character key. */
+/** The names of the regulars you'd recognise, by character key. No two on the floor share a name
+ * (rig/roles.ts `regularNamesFor`): among them, a clash is settled the same way every time. */
 export function regularNames(cast: Pick<Who, "key" | "regular">[], view: StoryView | undefined): Map<string, string> {
 	const out = new Map<string, string>();
 	if (!view?.diary) return out;
 	const today = (view.day ?? localDay)(view.now);
-	for (const w of cast) if (w.regular && daysSeen(view.diary, diaryRegular(w.regular), today) >= RECOGNISED_DAYS) out.set(w.key, regularOf(w.regular).name);
+	const known = cast.filter((w): w is Pick<Who, "key"> & { regular: string } => !!w.regular && daysSeen(view.diary!, diaryRegular(w.regular), today) >= RECOGNISED_DAYS);
+	const names = regularNamesFor(known.map((w) => w.regular));
+	for (const w of known) out.set(w.key, names.get(w.regular)!);
 	return out;
 }
 
@@ -44,6 +49,17 @@ export interface StoryView {
 	now: number;
 	/** The day for a time (default the local day). */
 	day?: (ms: number) => string;
+	/** The merged PRs' replies under way (director/story.ts), by session: which outbox, and when the
+	 * lead is back at its desk with it. A room's frame for one goes up then, not when the diary
+	 * hears of the merge. */
+	replies?: Record<string, { station: string; back?: number }>;
+}
+
+/** How many of a room's merges are still on their way to the wall: replies fetched from its outbox
+ * whose lead isn't back at the desk yet. */
+export function framesPending(a: Pick<Area, "stations">, view: Pick<StoryView, "replies" | "now">): number {
+	const ids = new Set((a.stations ?? []).map((s) => s.id));
+	return Object.values(view.replies ?? {}).filter((r) => ids.has(r.station) && (r.back === undefined || view.now < r.back)).length;
 }
 
 export const DECOR = {
@@ -212,7 +228,7 @@ export function frameSpots(a: Pick<Area, "rect" | "wall">): { x: number; y: numb
 export function decorFor(a: Area, view: StoryView | undefined): RoomDecor | undefined {
 	if (a.kind !== "project" || !view?.diary) return undefined;
 	const week = weekOf(view.diary, projectKey(a.name), (view.day ?? localDay)(view.now));
-	const frames = frameSpots(a).slice(0, week.counts.prsMerged ?? 0);
+	const frames = frameSpots(a).slice(0, Math.max(0, (week.counts.prsMerged ?? 0) - framesPending(a, view)));
 	const planner = a.wall.find((w) => w.kind === "planner")?.rect;
 	const pennants: RoomDecor["pennants"] = [];
 	if (planner) {

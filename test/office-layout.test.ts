@@ -2,6 +2,7 @@
 // title here is invented.
 import { describe, expect, test } from "bun:test";
 import { FloorPlan } from "../src/scene/office/layout";
+import { KITCHEN_WALL, ceilingPanels } from "../src/scene/office/propspots";
 import { STATIONS_BASE, STATION_CREW, STRIP, type Rect, type World, crewSlot } from "../src/scene/office/world";
 import type { Agent } from "../src/watcher/model";
 import type { Session, Snapshot } from "../src/watcher/model";
@@ -278,4 +279,42 @@ describe("stations", () => {
 			else expect(grown.shredder!.base.y - grown.floorY).toBe(st.base.y - room.floorY);
 		}
 	});
+});
+
+describe("the kitchen's back wall", () => {
+	test("the mug wall hangs clear of the ceiling panel, the fridge, the sign, the coffee machine and its steam", () => {
+		for (const n of [1, 4, 12]) {
+			const w = new FloorPlan().update(snap(Array.from({ length: n }, (_, i) => session(`p${i % 5}`))));
+			const k = w.areas.find((a) => a.kind === "kitchen")!;
+			const m = KITCHEN_WALL.mugWall;
+			const mug = { x: k.rect.x + m.x, y: k.rect.y + m.y - 1, w: m.w, h: m.h + 1 };
+			expect(mug.y).toBeGreaterThanOrEqual(k.rect.y + KITCHEN_WALL.ceiling);
+			const fridge = k.fixtures.find((f) => f.kind === "fridge")!;
+			expect(mug.x).toBeGreaterThan(fridge.x + 42);
+			for (const it of k.wall) expect(overlaps(mug, it.rect), it.kind).toBe(false);
+			const counter = k.fixtures.find((f) => f.kind === "counter")!;
+			const c = KITCHEN_WALL.machine;
+			const machine = { x: counter.x + c.x0, y: counter.y + c.top, w: c.x1 - c.x0, h: 52 };
+			expect(overlaps(mug, machine)).toBe(false);
+			// The steam's last visible wisp (past `fadeFrom` of its rise it is all but gone) stays under the shelf.
+			const st = KITCHEN_WALL.steam;
+			const top = counter.y - st.dy - st.rise * KITCHEN_WALL.wisp.fadeFrom - KITCHEN_WALL.wisp.r;
+			expect(top).toBeGreaterThan(mug.y + mug.h);
+			// It rises off the cup in front of the machine.
+			expect(counter.x - st.dx).toBeGreaterThan(machine.x);
+			expect(counter.x - st.dx).toBeLessThan(machine.x + machine.w);
+		}
+	});
+});
+
+test("a room's ceiling panels (one of which flickers) sit evenly along its back wall, inside it", () => {
+	for (const w of [180, 430, 830, 1200]) {
+		const ps = ceilingPanels({ x: 100, y: -50, w });
+		expect(ps.length).toBe(Math.max(1, Math.round(w / 190)));
+		for (const p of ps) {
+			expect(p.cx - 38).toBeGreaterThanOrEqual(100);
+			expect(p.cx + 38).toBeLessThanOrEqual(100 + w);
+			expect(p.y).toBe(-45);
+		}
+	}
 });

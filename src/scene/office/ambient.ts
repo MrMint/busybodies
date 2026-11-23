@@ -5,7 +5,9 @@
 //   steam    off the kitchen's coffee machine            (office)
 //   fan      the kitchen's ceiling fan                   (office)
 //   printer  the copier's light, blinking                (office)
+//   flicker  a fluorescent tube in each room, stuttering now and then   (office)
 //   beacon   a turning beacon on the press, while a build runs in the bay   (factory)
+//   pilot    the press's pilot lamp in every bay, blinking slow amber       (factory)
 //   vents    steam puffing from the aisle's floor vents  (factory)
 //   sparks   weld sparks off a busy line's belt          (factory)
 //   ovens    the deck ovens' windows glowing and flickering           (bakery)
@@ -24,7 +26,9 @@
 import { Container, Graphics, Rectangle, type Renderer, Sprite, type Texture } from "pixi.js";
 import { unit } from "../rig/player";
 import type { SceneTheme, StagePainters } from "../theme/types";
+import { type CrateRide, crateAt, crateRide } from "./crate";
 import { INK } from "./paper";
+import { KITCHEN_WALL, ceilingPanels } from "./propspots";
 import { type AmbientKind, stagingOf } from "./staging";
 import { DOCK_W } from "./layout";
 import { BELT, type Belt, type Fixture, type Rect, type World } from "./world";
@@ -40,6 +44,10 @@ export const AMBIENT = {
 	beacon: 0.9,
 	/** The printer's light: on this long, once in each period (ms). */
 	led: { on: 260, period: [1800, 3000] },
+	/** A press's pilot lamp: on this long, once in each period (ms). */
+	pilot: { on: 900, period: [2400, 3400] },
+	/** A tube's flicker: a stutter (off, on, off for these ms) once in each period (ms). */
+	flicker: { stutter: [70, 60, 140], period: [8000, 15000] },
 	/** A vent's puff: its period (ms) and the share of it spent puffing. */
 	vent: { period: [3600, 5600], share: 0.45 },
 	/** Weld sparks: a burst this long (ms), once in each period. */
@@ -58,8 +66,6 @@ export const AMBIENT = {
 	sprinkles: { n: 16, fall: [4200, 6800] },
 	/** Pastries on the hallway's conveyor: this far apart, at this speed (px/s). */
 	parade: { pitch: 66, speed: 26, scale: 1.5 },
-	/** A PR crate: it waits for the arm to set it down, then rides at this speed (px/s), at least. */
-	crate: { delay: 2200, speed: 240, maxMs: 8000, fade: 300 },
 } as const;
 
 /** What the scene knows that the ambient life shows. */
@@ -70,6 +76,9 @@ export interface AmbientFacts {
 	building: Set<string>;
 	/** Each session's crew build: topped once its PR goes up. */
 	topped: Map<string, boolean>;
+	/** Where the bay's arm sets a session's PR crate down (its base, on the bay's loading dock) and
+	 * how long until it lets go: the conveyor's crate takes over from there (crate.ts). */
+	setDown?: Map<string, { x: number; y: number; delay?: number }>;
 }
 
 /** Something on the life clock: placed for a time `t` (ms) of it. */
@@ -83,12 +92,8 @@ interface Piece {
 
 interface Crate {
 	view: Container;
-	from: number;
-	to: number;
-	y: number;
+	ride: CrateRide;
 	t: number;
-	ms: number;
-	delay: number;
 }
 
 const range = (id: string, salt: string, [lo, hi]: readonly [number, number]) => lo + unit(id, salt) * (hi - lo);
@@ -143,7 +148,7 @@ export class Ambient {
 	}
 
 	/** For the inspector: what is staged and what moves. */
-	info(): { ambient: readonly AmbientKind[]; pieces: Record<string, number>; parts: number; crates: { t: number; ms: number; x: number }[]; lifeMs: number } {
+	info(): { ambient: readonly AmbientKind[]; pieces: Record<string, number>; parts: number; crates: { t: number; ms: number; x: number; y: number }[]; lifeMs: number } {
 		const pieces: Record<string, number> = {};
 		let parts = 0;
 		for (const [key, p] of this.#pieces) {
@@ -151,7 +156,7 @@ export class Ambient {
 			pieces[kind] = (pieces[kind] ?? 0) + 1;
 			if (kind === "parts") parts += p.views[0]?.children.length ?? 0;
 		}
-		return { ambient: this.#kinds, pieces, parts, crates: this.#crates.map((c) => ({ t: Math.round(c.t), ms: c.ms, x: Math.round(c.view.x) })), lifeMs: Math.round(this.#t) };
+		return { ambient: this.#kinds, pieces, parts, crates: this.#crates.map((c) => ({ t: Math.round(c.t), ms: c.ride.delay + c.ride.ms, x: Math.round(c.view.x), y: Math.round(c.view.y) })), lifeMs: Math.round(this.#t) };
 	}
 
 	/** Bring everything in line with the world: build what is new, drop what went, keep the rest. */
@@ -191,11 +196,20 @@ export class Ambient {
 				if (st.kind !== "build") continue;
 				if (has("ovens")) put(`oven:${st.id}`, `${st.base.x},${st.base.y}`, () => this.#oven(st.id, st.base));
 				if (has("printer")) put(`led:${st.id}`, `${st.base.x},${st.base.y}`, () => this.#led(st.id, st.base));
+				if (has("pilot")) put(`pilot:${st.id}`, `${st.base.x},${st.base.y}`, () => this.#led(st.id, st.base, 0xffb02e, AMBIENT.pilot));
 				if (has("beacon") && facts.building.has(a.id)) put(`beacon:${st.id}`, `${st.base.x},${st.base.y}`, () => this.#beacon(st.id, st.base));
+			}
+			// One tube in the room stutters now and then, picked from its id.
+			if (has("flicker")) {
+				const panels = ceilingPanels(a.rect);
+				const p = panels[Math.floor(unit(a.id, "flicker") * panels.length)]!;
+				put(`flicker:${a.id}`, `${p.cx},${p.y}`, () => this.#flicker(a.id, p));
 			}
 			if (a.kind === "kitchen") {
 				const counter = a.fixtures.find((f) => f.kind === "counter");
-				if (has("steam") && counter) put(`steam:${a.id}`, `${counter.x},${counter.y}`, () => this.#steam(a.id, counter.x - 36, counter.y - 128));
+				// Off the cup in the machine's hatch, in front of the machine, so it thins out before the
+				// mug wall above (propspots.ts KITCHEN_WALL).
+				if (has("steam") && counter) put(`steam:${a.id}`, `${counter.x},${counter.y}`, () => this.#steam(a.id, counter.x - KITCHEN_WALL.steam.dx, counter.y - KITCHEN_WALL.steam.dy));
 				if (has("fan")) put(`fan:${a.id}`, `${a.rect.x},${a.floorY}`, () => this.#fan(a.rect.x + 62, a.floorY + 160));
 			}
 			if (a.kind === "yours" && has("marquee")) {
@@ -233,7 +247,10 @@ export class Ambient {
 			if (!stage || !conveyor || !topped || was !== false) continue;
 			const desk = world.desks.get(session);
 			const area = desk && world.areas.find((a) => a.id === desk.areaId);
-			if (area) this.#ship(stage, area.rect, conveyor.y, conveyor.dock.x);
+			// From where the arm sets it down, when it lets go; without the arm, the belt by the bay's dock.
+			const down = facts.setDown?.get(session);
+			const from = down ?? (area ? { x: area.rect.x + ARM_DOCK_X, y: conveyor.y + 9 } : undefined);
+			if (from) this.#ship(stage, crateRide(from, conveyor.y + 9, conveyor.dock.x, down?.delay));
 		}
 		for (const s of [...this.#topped.keys()]) if (!facts.topped.has(s)) this.#topped.delete(s);
 	}
@@ -247,10 +264,10 @@ export class Ambient {
 	/** Move the crates on by `ms` (acting time). */
 	step(ms: number): void {
 		for (const c of this.#crates) {
-			c.t = Math.min(c.delay + c.ms, c.t + ms);
+			c.t = Math.min(c.ride.delay + c.ride.ms, c.t + ms);
 			placeCrate(c);
 		}
-		const done = this.#crates.filter((c) => c.t >= c.delay + c.ms);
+		const done = this.#crates.filter((c) => c.t >= c.ride.delay + c.ride.ms);
 		for (const c of done) c.view.destroy({ children: true, context: true });
 		if (done.length) this.#crates = this.#crates.filter((c) => !done.includes(c));
 	}
@@ -364,14 +381,36 @@ export class Ambient {
 		return { views: [g], movers: [] };
 	}
 
-	/** The copier's light: a green blink on its panel, now and then. */
-	#led(id: string, base: { x: number; y: number }): Omit<Piece, "sig"> {
-		const g = new Graphics().circle(0, 0, 2.6).fill(0x5cff9d).stroke({ width: 1.2, color: INK });
+	/** The copier's light: a green blink on its panel, now and then (or, in amber and slower, a
+	 * press's pilot lamp). */
+	#led(id: string, base: { x: number; y: number }, colour = 0x5cff9d, blink: { on: number; period: readonly [number, number] } = AMBIENT.led): Omit<Piece, "sig"> {
+		const g = new Graphics().circle(0, 0, 2.6).fill(colour).stroke({ width: 1.2, color: INK });
 		g.position.set(base.x + 15, base.y - 33);
 		this.#add(g, base.y + 0.5);
-		const period = range(id, "led", AMBIENT.led.period);
+		const period = range(id, "led", blink.period);
 		const phase = unit(id, "led-phase") * period;
-		return { views: [g], movers: [(t) => (g.visible = wrap(t + phase, period) < AMBIENT.led.on)] };
+		return { views: [g], movers: [(t) => (g.visible = wrap(t + phase, period) < blink.on)] };
+	}
+
+	/** A fluorescent tube going on the blink: dark for a moment, back, dark again, back, now and then. */
+	#flicker(id: string, p: { cx: number; y: number }): Omit<Piece, "sig"> {
+		const g = new Graphics();
+		g.roundRect(p.cx - 33, p.y, 66, 3, 1.5).fill(0x8d97ab);
+		g.rect(p.cx - 34, p.y + 4, 68, 5).fill({ color: INK, alpha: 0.12 });
+		g.visible = false;
+		this.#add(g);
+		const period = range(id, "flicker", AMBIENT.flicker.period);
+		const phase = unit(id, "flicker-phase") * period;
+		const [off1, on, off2] = AMBIENT.flicker.stutter;
+		return {
+			views: [g],
+			movers: [
+				(t) => {
+					const u = wrap(t + phase, period);
+					g.visible = u < off1 || (u >= off1 + on && u < off1 + on + off2);
+				},
+			],
+		};
 	}
 
 	/** A turning beacon on the press's head, while a build runs: the lamp, and its beam sweeping. */
@@ -414,7 +453,7 @@ export class Ambient {
 				(t) => {
 					wisps.forEach((g, k) => {
 						const u = wrap(t / period + k / 3, 1);
-						g.position.set(Math.sin(u * 2 * Math.PI + k) * 3, -u * 26);
+						g.position.set(Math.sin(u * 2 * Math.PI + k) * 3, -u * KITCHEN_WALL.steam.rise);
 						g.scale.set(0.6 + u * 0.8);
 						g.alpha = Math.sin(Math.PI * u) * 0.7;
 					});
@@ -670,21 +709,26 @@ export class Ambient {
 		return { views: [g], movers: [] };
 	}
 
-	/** A PR's crate: on the hallway's belt in front of its bay, then off to the dock. */
-	#ship(stage: StagePainters, room: Rect, y: number, dock: number): void {
+	/** A PR's crate: set down on its bay's loading dock, across onto the hallway's belt, off to the dock. */
+	#ship(stage: StagePainters, ride: CrateRide): void {
 		const view = this.#baked("crate", (g) => stage.crate(g));
-		const from = Math.round(room.x + room.w / 2);
-		const ms = Math.min(AMBIENT.crate.maxMs, (Math.max(0, dock - from) / AMBIENT.crate.speed) * 1000);
-		const c: Crate = { view, from, to: dock, y: y + 9, t: 0, ms, delay: AMBIENT.crate.delay };
-		this.#add(view, c.y);
+		const c: Crate = { view, ride, t: 0 };
+		this.#add(view, ride.from.y);
 		placeCrate(c);
 		this.#crates.push(c);
 	}
 }
 
+/** Without an arm's word, a crate starts on the belt this far into its bay (by the station strip,
+ * where the bay's dock is). */
+const ARM_DOCK_X = 40;
+
+/** The crate where its ride has it, sorted by its base as it crosses to the belt. */
 function placeCrate(c: Crate): void {
-	const u = Math.max(0, c.t - c.delay) / Math.max(1, c.ms);
-	c.view.visible = c.t >= c.delay;
-	c.view.position.set(c.from + (c.to - c.from) * Math.min(1, u), c.y);
-	c.view.alpha = Math.min(1, (c.delay + c.ms - c.t) / AMBIENT.crate.fade);
+	const at = crateAt(c.ride, c.t);
+	c.view.visible = at.visible;
+	c.view.position.set(at.x, at.y);
+	c.view.scale.set(at.scale);
+	c.view.zIndex = at.y;
+	c.view.alpha = at.alpha;
 }

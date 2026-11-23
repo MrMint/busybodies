@@ -56,7 +56,7 @@ export class Director {
 
 	/** The office's `story` option: the diary and the story's headlines, for the decor on the walls
 	 * and the lobby's board (office/decor.ts). */
-	story = (): StoryView => ({ diary: this.diary, headlines: this.#world?.story?.headlines, now: this.now });
+	story = (): StoryView => ({ diary: this.diary, headlines: this.#world?.story?.headlines, replies: this.#world?.story?.replies, now: this.now });
 
 	/** The office's `cast` option: direct this snapshot and place everyone with a cue. */
 	cast = (snap: Snapshot, floor: Floor, opts: { life?: boolean } = {}): Placed[] => {

@@ -6,7 +6,9 @@ import { describe, expect, test } from "bun:test";
 import { direct } from "../src/scene/director/direct";
 import { HABIT, habitAt } from "../src/scene/director/habits";
 import { FloorPlan } from "../src/scene/office/layout";
-import { DEFAULT_STAGING, stagingOf } from "../src/scene/office/staging";
+import { DEFAULT_STAGING, habitsFor, stagingOf } from "../src/scene/office/staging";
+import { FACTORY_STAGING } from "../src/scene/theme/factory-staging";
+import { CRATE, crateAt, crateRide } from "../src/scene/office/crate";
 import { BELT, OVERLAP, type World, crewSpots } from "../src/scene/office/world";
 import { HABITS, POSE } from "../src/scene/rig/poses";
 import type { Agent, Session, Snapshot } from "../src/watcher/model";
@@ -169,6 +171,48 @@ describe("the theme's idle habits", () => {
 	});
 });
 
+describe("the foreman's booth habits", () => {
+	const lead = FACTORY_STAGING.leadHabits!;
+
+	test("a line's lead plays the booth's habits; its crew, and any lead off a line, the theme's", () => {
+		expect(habitsFor(FACTORY_STAGING, true)).toEqual(lead);
+		expect(habitsFor(FACTORY_STAGING, false)).toEqual(FACTORY_STAGING.habits!);
+		expect(habitsFor({ ...FACTORY_STAGING, bay: "desks" }, true)).toEqual(FACTORY_STAGING.habits!);
+		expect(habitsFor({ bay: "line", hall: "conveyor", habits: ["drumSit"] }, true)).toEqual(["drumSit"]);
+		expect(habitsFor(undefined, true)).toBeUndefined();
+	});
+
+	test("they read over the bench: nothing sat on or laid out on the floor, hands up at the head, never by the idle trigger", () => {
+		const high = new Set(["face", "head", "ear", "sip", "up", "cheer", "hi", "wave1", "wave2"]);
+		for (const name of lead) {
+			const p = POSE[name]!;
+			expect(p).toBeDefined();
+			expect(p.frames.some((f) => high.has(f.armL) || high.has(f.armR)), name).toBe(true);
+			for (const f of p.frames) {
+				expect(f.props.back).toBeUndefined();
+				expect(f.props.front).toBeUndefined();
+				expect(f.props.work).toBeUndefined();
+				expect(["rest", "tip"]).toContain(f.feet);
+				expect(f.body).not.toBe("nap");
+			}
+			if (!HABITS.some((h) => h.name === name)) expect(p.habit).toBeUndefined();
+		}
+	});
+
+	test("the director gives an idle foreman, up in its booth, only the booth's habits", () => {
+		const T = 5_000_000;
+		const seen = new Set<string>();
+		for (let i = 0; i < 12; i++) {
+			const s = snap([session(`kettle-${i}`, { state: "idle", stateSince: 0 })]);
+			const floor = new FloorPlan().update(s, FACTORY_STAGING);
+			const d = direct(undefined, s, T + i * 61_000, floor, { life: true });
+			for (const a of Object.values(d.world.actors)) if (a.spot === "desk") seen.add(a.pose);
+		}
+		expect(seen.size).toBeGreaterThan(1);
+		for (const p of seen) expect(lead).toContain(p);
+	});
+});
+
 describe("a change of stage", () => {
 	test("switched live, the cast takes the new stage's spots at once instead of walking over", () => {
 		const agent = (id: string, status: Agent["status"]): Agent => ({ id, role: "scout", task: "Invented", depth: 1, status, lastWriteAt: 0, children: [] });
@@ -190,3 +234,40 @@ describe("a change of stage", () => {
 	});
 });
 
+
+describe("a PR crate's ride", () => {
+	const from = { x: 380, y: -330 };
+	const ride = crateRide(from, 40, 2400, 1600);
+
+	test("it is the arm's crate until the arm lets go, then shows just where it was set down, at the arm's size", () => {
+		expect(crateAt(ride, 1599).visible).toBe(false);
+		expect(crateAt(ride, 1600)).toMatchObject({ x: from.x, y: from.y, scale: CRATE.armScale, visible: true, alpha: 1 });
+		expect(crateAt(ride, 1600 + CRATE.hold - 1)).toMatchObject({ x: from.x, y: from.y, alpha: 1 });
+	});
+
+	test("it drops down the dock's chute, pops up on the belt in line with the dock, then rides the belt to the hallway's dock", () => {
+		const gone = crateAt(ride, 1600 + CRATE.hold + CRATE.drop);
+		expect(gone.alpha).toBe(0);
+		expect(gone.x).toBe(from.x);
+		const up = crateAt(ride, 1600 + CRATE.hold + CRATE.drop + CRATE.pop);
+		expect(up).toMatchObject({ x: from.x, y: 40, scale: 1, alpha: 1 });
+		let was = up;
+		for (let t = 1600 + CRATE.hold + CRATE.drop + CRATE.pop; t <= ride.delay + ride.ms; t += 50) {
+			const at = crateAt(ride, t);
+			expect(at.y).toBe(40);
+			expect(at.x).toBeGreaterThanOrEqual(was.x);
+			was = at;
+		}
+		const end = crateAt(ride, ride.delay + ride.ms);
+		expect(end.x).toBe(2400);
+		expect(end.alpha).toBe(0);
+	});
+
+	test("without the arm's word it pops up on the belt after the fallback delay, at full size", () => {
+		const bare = crateRide({ x: 700, y: 40 }, 40, 2400);
+		expect(bare.delay).toBe(CRATE.delay);
+		expect(bare.chute).toBe(false);
+		expect(crateAt(bare, CRATE.delay - 1).visible).toBe(false);
+		expect(crateAt(bare, CRATE.delay + CRATE.pop)).toMatchObject({ x: 700, y: 40, scale: 1, alpha: 1 });
+	});
+});
