@@ -347,6 +347,10 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 	const view = opts.view;
 	const before = prev?.actors ?? {};
 	const first = prev === undefined;
+	// The stage changed under the cast (a theme switched live): spots that moved with it are taken
+	// at once, not walked to, since the whole office was just drawn again.
+	const staged = `${floor.staging?.bay ?? "desks"}/${floor.staging?.hall ?? "corridor"}`;
+	const restaged = prev !== undefined && (prev.stage ?? "desks/corridor") !== staged;
 	const list = specs(snap);
 	const places = assign(list, floor, before);
 	const events: WorldEvent[] = [];
@@ -735,12 +739,12 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 		const arriving = !was || was.gone !== undefined;
 		// A crew spot can move without changing its name, when a free cell nearby is taken or freed.
 		const moved = was !== undefined && (was.slot.x !== place.slot.x || was.slot.y !== place.slot.y) && /^(crew|station|queue):/.test(place.spot);
-		if (was && !arriving && (was.area !== place.area || was.spot !== place.spot || moved)) {
+		if (was && !arriving && !restaged && (was.area !== place.area || was.spot !== place.spot || moved)) {
 			const from = here(was, now);
 			const path = pathBetween(floor, was.area, from, place.area, place.slot);
 			walk = { path, ms: walkMs(path, gait.speed), since: now };
 			events.push({ type: "walk", key: s.key, at: now, from: was.spot, to: place.spot, ms: walk.ms });
-		} else if (was && !arriving && was.walk && now < was.walk.since + was.walk.ms) {
+		} else if (was && !arriving && !restaged && was.walk && now < was.walk.since + was.walk.ms) {
 			walk = was.walk;
 		} else if (arriving && !first && s.kind === "crew" && !place.spot.startsWith("crew:")) {
 			// A new hire whose job is elsewhere (a reviewer) starts at its desk and walks there.
@@ -908,7 +912,7 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 	if (headlines) story.headlines = headlines;
 
 	const due = wakes.filter((t) => t > now);
-	const world: World = { at: now, actors, builds, metrics, story };
+	const world: World = { at: now, actors, builds, metrics, story, stage: staged };
 	if (Object.keys(rush).length) world.rush = rush;
 	if (Object.keys(handoffs).length) world.handoffs = handoffs;
 	if (Object.keys(mail).length) world.mail = mail;

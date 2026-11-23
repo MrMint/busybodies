@@ -151,6 +151,9 @@ export interface World {
 	metrics?: Metrics;
 	/** Story and continuity: merged PRs' replies, send-offs, the log and its headlines (story.ts). */
 	story?: Story;
+	/** How the floor was staged (office/staging.ts: bay and hallway), so a change of stage (a theme
+	 * switched live) puts everyone straight on their new spots rather than walking them over. */
+	stage?: string;
 }
 
 export type WorldEvent =

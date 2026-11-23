@@ -3,12 +3,13 @@
 // bay into a line with a belt, strings the crew along it, and runs the hallway's conveyor to a dock.
 // Every project and title here is invented.
 import { describe, expect, test } from "bun:test";
+import { direct } from "../src/scene/director/direct";
 import { HABIT, habitAt } from "../src/scene/director/habits";
 import { FloorPlan } from "../src/scene/office/layout";
 import { DEFAULT_STAGING, stagingOf } from "../src/scene/office/staging";
 import { BELT, OVERLAP, type World, crewSpots } from "../src/scene/office/world";
 import { HABITS, POSE } from "../src/scene/rig/poses";
-import type { Session, Snapshot } from "../src/watcher/model";
+import type { Agent, Session, Snapshot } from "../src/watcher/model";
 
 let n = 0;
 const session = (project: string, extra: Partial<Session> = {}): Session => ({
@@ -167,3 +168,25 @@ describe("the theme's idle habits", () => {
 		}
 	});
 });
+
+describe("a change of stage", () => {
+	test("switched live, the cast takes the new stage's spots at once instead of walking over", () => {
+		const agent = (id: string, status: Agent["status"]): Agent => ({ id, role: "scout", task: "Invented", depth: 1, status, lastWriteAt: 0, children: [] });
+		const crew = session("teapot", { state: "idle", agents: [agent("a1", "finished"), agent("a2", "running"), agent("a3", "running"), agent("a4", "running")] });
+		const s = snap([crew]);
+		const T = 1_000_000;
+		const office = direct(undefined, s, T, new FloorPlan().update(s));
+		expect(office.world.stage).toBe("desks/corridor");
+		const line = new FloorPlan().update(s, LINE);
+		const switched = direct(office.world, s, T + 5_000, line);
+		const crewKeys = Object.keys(switched.world.actors).filter((k) => k.startsWith("a:"));
+		// The stage really moved them, and nobody walks for it.
+		expect(crewKeys.some((k) => switched.world.actors[k]!.slot.x !== office.world.actors[k]!.slot.x || switched.world.actors[k]!.slot.y !== office.world.actors[k]!.slot.y)).toBe(true);
+		expect(switched.events.filter((e) => e.type === "walk")).toEqual([]);
+		for (const k of crewKeys) expect(switched.world.actors[k]!.walk).toBeUndefined();
+		expect(switched.world.stage).toBe("line/conveyor");
+		// On the same stage, a spot that moves is still walked to.
+		expect(direct(switched.world, s, T + 10_000, line).world.stage).toBe("line/conveyor");
+	});
+});
+
