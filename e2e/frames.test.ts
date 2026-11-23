@@ -54,7 +54,7 @@ async function measure(page: Page, ms = 2000) {
 }
 
 /** Frame budgets hold in every theme (src/scene/theme/): `?theme=` on each scene. */
-const THEMES = ["office", "factory"] as const;
+const THEMES = ["office", "factory", "kitchen"] as const;
 
 for (const theme of THEMES)
 describe(`frame budgets (${theme})`, () => {
@@ -164,6 +164,7 @@ for (const [theme, demo] of [
 	["office", "demo"],
 	["factory", "demo"],
 	["factory", "demo=release"],
+	["kitchen", "demo"],
 ] as const)
 describe(`draw calls (${theme}, ${demo})`, () => {
 	test("a busy frame takes at most 30 WebGL draws", async () => {

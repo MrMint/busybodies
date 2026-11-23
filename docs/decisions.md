@@ -1151,3 +1151,41 @@ later (it is the director's placing).
 **Left for later.** Office ambient beyond the kitchen and the copier (a fan per room, the printer's
 light going amber while it prints); the conveyor's crates come from the bay's middle rather than
 following the arm's crate out of the bay; the factory's vents are in the hallway only.
+
+## 2026-11-22: lived in, wave 3, stream H (a third theme: the Line)
+
+`?theme=kitchen` ("The Line" in the tray's Theme menu and the settings sheet) proves the theme seam
+with a restaurant kitchen, on the office's floor plan (no staging of its own). It needed no change to
+`SceneTheme`, the layout, the director or the office: a scene theme (`theme/kitchen.ts`), a rig
+(`rig/kitchen.ts`), words, and registration. The places that picked a theme with
+`id === "factory" ? ... : ...` (`sceneTheme`, `rigTheme`, `wordsFor`) are now tables keyed by
+`ThemeId`, so the type checker names every place a fourth theme must fill.
+
+Project rooms are stations on the line: subway tile under a steel extraction hood, red quarry tiles
+with a drain, the room's colour as a band of tiles. The hallway is the line itself, a rubber mat
+down the middle. The meeting room is the pass (a shelf under heat lamps, a ticket spike), the
+kitchen is staff meal with the walk-in's door, the lobby the host stand (the night watch naps in a
+giant stockpot), your office the chef's table, where the sign says SERVICE!. The planner is the
+ticket rail (ORDERED, FIRING, SERVED), the in-tray the mise tray of deli tubs, the mugs quart deli
+cups, the test lamp a heat-lamp bulb, the drawers a lowboy, the skip the scraps bucket, the crew
+build a layer cake with an ORDER UP pick.
+
+The rig repaints by part name as the office's and the factory's do, so every pose plays unchanged.
+The cast is in chef whites (bodies), told apart by headwear: the lead a tall toque with a headset and
+the neckerchief (the project accent), builders red bandanas and butcher's stripes, scouts (runners) a
+backwards cap and a black waist apron with an order pad, explorers (foragers) a bucket hat with a
+sprig, reviewers a sous chef's toque with tasting spoons, verifiers a hairnet and a probe
+thermometer, designers (platers) a short black toque and a squeeze bottle. The work: a meat mallet
+pounding a cutlet flatter each strike on a butcher block, a pasta machine's crank, a layer cake for
+the brick stack, a blowtorch, the menu for the blueprint; at the stations a lowboy drawer of deli
+tubs, a sandwich press on an oven (a burnt toastie for the jam), tasting with a spoon and bowls that
+get a green or red pick, a takeout order pad, the pass for the outbox (the PR is a plate under a
+cloche), a scraps bin. The paper rig's brass service bell stays, and calls "service!". Tests hold
+every repaint within 6 rig units of the paper part (no exemptions) and the cutlet's top on each
+nail stroke. No ambient life of its own (stream G owns per-theme life). `docs/rig/pose-sheet-kitchen.png`
+is the sheet.
+
+Left: the sass voice still writes office lines on the Line's signs (OUT OF OFFICE, ONE CUP PER GREEN
+BUILD), the compact strip's tiles use the areas' office names in every theme, the copier poses still
+feed a paper sheet (the sheet parts are the paper rig's), sound uses the office's hum, and pose
+titles still speak of copiers and stamps.

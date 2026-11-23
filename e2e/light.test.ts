@@ -88,7 +88,7 @@ describe("light", () => {
 		await page.close();
 	}, T);
 
-	for (const theme of ["office", "factory"])
+	for (const theme of ["office", "factory", "kitchen"])
 		test(`a busy night frame in the ${theme} stays within the draw budget, at a room stop too`, async () => {
 			const page = await open(`demo&frozen&hour=23&theme=${theme}`);
 			const draws = await page.evaluate(() => {

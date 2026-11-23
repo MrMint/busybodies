@@ -60,10 +60,17 @@ describe("tray menu", () => {
 		expect(item(on, "Compact mode (⌘⌥B)")).toBeDefined();
 	});
 
+	test("the Theme menu lists every theme, the Line among them, the saved one checked", () => {
+		const theme = trayMenu({ ...status, theme: "kitchen" }, "CommandOrControl+Alt+B").find((m) => "label" in m && m.label === "Theme") as { submenu: { label: string; action: string; checked: boolean }[] };
+		expect(theme.submenu.map((m) => m.label)).toEqual(["Office", "Factory", "The Line"]);
+		expect(theme.submenu.find((m) => m.checked)?.action).toBe("theme:kitchen");
+	});
+
 	test("a click names its action; unknown ones are ignored", () => {
 		expect(trayAction("sound")).toEqual({ kind: "sound" });
 		expect(trayAction("calm")).toEqual({ kind: "calm" });
 		expect(trayAction("theme:factory")).toEqual({ kind: "theme", id: "factory" });
+		expect(trayAction("theme:kitchen")).toEqual({ kind: "theme", id: "kitchen" });
 		expect(trayAction("theme:moon")).toBeUndefined();
 		expect(trayAction("nope")).toBeUndefined();
 		expect(trayAction(undefined)).toBeUndefined();
