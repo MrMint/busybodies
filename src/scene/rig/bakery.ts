@@ -1,7 +1,6 @@
 // The bakery's rig (plan-alive wave 4, stream L): a patisserie gone over the top. The same cast and
 // parts as the paper rig, repainted by name as the office's and the factory's are, so every pose
-// plays unchanged: the crew in pastel bakers' gear, each role told apart by its headwear at room
-// zoom; the builder's work becomes baking on the same points (reach.ts WORK), and the station parts
+// plays unchanged: the crew in over-the-top sweet accessories (below); the builder's work becomes baking on the same points (reach.ts WORK), and the station parts
 // the hands work become bakery kit at the same working points (reach.ts STATION, AT, TRAY,
 // PLANNER), at about the same size, so the solved reaches still land on the business ends:
 //
@@ -25,27 +24,24 @@
 //
 // The bell is the paper rig's brass bell; its ding says "fresh!". Drawn like the office: cut paper,
 // ink outlines, flat fills, with a white gloss on everything sweet and sprinkles wherever they fit.
-// Costumes, by role (the headwear does the telling apart):
+// Costumes are accessories, not wigs (as the office's): the body keeps its role colour, each role
+// wears one sweet idea on the dome (the headwear does the telling apart at room zoom) and one small
+// thing pinned low on the belly, and nothing covers the eyes or touches the mouth:
 //
-//   lead      the head baker: the tallest toque, banded in the project accent with a bow on it, a
-//             big accent bow at the collar and a croissant brooch on the jacket
-//   builder   the bread baker: a pink gingham headscarf knotted in a bow on top, a candy-striped
-//             bib apron with a whisk in the pocket and an oven mitt, flour everywhere
-//   scout     the barista: a coffee-brown flat cap with a bean pin, a Breton top, a brown waist
-//             apron with a takeaway cup steaming in its pocket
+//   lead      the head baker: the tallest toque, banded in the project accent with a bow on it, and
+//             an accent ribbon bow on the belly
+//   builder   the bread baker: a pink gingham bow on top with a baguette through it, flour on the
+//             dome, a croissant brooch
+//   scout     the barista: a coffee-brown flat cap with a cappuccino balanced on it, a coffee-bean pin
 //   explorer  the candy-maker: a candy-striped paper cap with a swirl lollipop stuck in it, a
-//             candy-cane strap and a jar of gumballs on the hip
-//   reviewer  the pâtissier: a puffed mushroom toque, the double-breasted jacket, a chocolate
-//             bow tie, a tasting fork and spoon in the pocket, gold glasses on a chain
+//             wrapped bonbon
+//   reviewer  the pâtissier: a puffed mushroom toque, gold half-moon glasses, a chocolate macaron pin
 //   verifier  the taster: a cupcake hat (pleated liner, three swirls of frosting, sprinkles, a
-//             cherry), a dotted smock, a prize doughnut rosette
-//   designer  the cake decorator: a tiny tiered cake on a headband, a mint smock with icing dripping
-//             off the collar, a piping bag and a palette knife in the pocket
+//             cherry), a prize doughnut rosette
+//   designer  the cake decorator: a tiny tiered cake on a headband, a piping bag pinned on
 import type { Graphics } from "pixi.js";
-import { bodyEdge } from "./factory";
 import { AT, BELL, PLANNER, STATION, STICKY, TRAY, WORK, handAt } from "./reach";
-import { ROLES } from "./roles";
-import { ANCHORS, type Painter, type Palette, PAPER_PALETTE, RED, type Theme, TRAY_FULL, W, burstAt, line, mochiPath, paperTheme, rotRect, sparkle, text } from "./theme";
+import { ANCHORS, type Painter, type Palette, PAPER_PALETTE, RED, type Theme, TRAY_FULL, W, burstAt, line, paperTheme, rotRect, sparkle, text } from "./theme";
 
 /** Bakery colours, on top of the paper palette. */
 export const BAKERY = {
@@ -93,17 +89,16 @@ export const BAKERY = {
 const SPRINKLES = [0xff5c9a, 0xffd23f, 0x3d9bff, 0x2ecc71, 0xffffff, 0xb07ae8, 0xff8a1f] as const;
 
 /** The costumes, the builder's work and the station parts the bakery repaints; everything else
- * (faces, hands, limbs, the receiver, the card tray, the bell, most effects) is the paper rig's, on
- * purpose. The tests hold this list. */
+ * (bodies, faces, hands, limbs, the receiver, the card tray, the bell, most effects) is the paper
+ * rig's, on purpose. The tests hold this list. */
 export const BAKERY_REPAINTS = [
-	...ROLES.map((r) => `body/${r}`),
 	"hat/lead", "hat/lead-cup", "hat/builder", "hat/scout", "hat/explorer", "hat/reviewer", "hat/verifier", "hat/designer",
 	"front/tie", "front/apron", "front/kerchief", "front/straps", "front/bowtie", "front/badge", "front/scarf",
 	"wear/glasses",
 	"held/hammer", "held/wrench", "held/bolt", "held/gear", "held/brick", "held/torch", "held/map", "held/brush", "held/mug", "held/paper", "held/trophy",
 	"held/stamp", "held/stampG", "held/stampR", "held/envelope", "held/crumple", "held/slip", "held/feed1", "held/feed2", "held/feed3",
 	"held/sticky", "held/stickyFlap",
-	"prop/plan", "prop/plan2", "prop/roll", "prop/box", "prop/bigEnvelope",
+	"prop/plan", "prop/plan2", "prop/roll", "prop/box", "prop/bigEnvelope", "prop/drum",
 	"work/nail1", "work/nail2", "work/nail3", "work/bent", "work/nut1", "work/nut2", "work/nut3", "work/crate",
 	"work/stack", "work/stackL", "work/stackR", "work/brick",
 	"work/cabinet", "work/drawer", "work/drawerGap",
@@ -186,16 +181,6 @@ function bands(g: Graphics, region: number[], color: number, step: number, w: nu
 		const c = clipConvex(s, region);
 		if (c.length >= 6) g.poly(c).fill({ color, alpha });
 	}
-}
-
-/** A half-ellipse dome standing on `base`: from the left foot, over the top, to the right foot. */
-function dome(cx: number, base: number, halfW: number, h: number, n = 18): number[] {
-	const pts: number[] = [];
-	for (let i = 0; i <= n; i++) {
-		const t = (i / n) * Math.PI;
-		pts.push(cx - halfW * Math.cos(t), base - h * Math.sin(t));
-	}
-	return pts;
 }
 
 /** The cut-paper gloss: a soft white highlight. */
@@ -301,71 +286,17 @@ export function bakeryTheme(p: Palette = PAPER_PALETTE): Theme {
 		sprinkles(g, x - w * 0.4, y - h - w * 0.45, x + w * 0.4, y - h - w * 0.08, 5, seed, w / 14);
 	};
 
-	// Bodies: each role's own garment below the face, the role colour above, so the roles still tell
-	// apart by colour too. The head baker and the pâtissier wear the double-breasted white jacket.
-	const outline = mochiPath();
-	const lower: number[] = [];
-	for (let i = 0; i < outline.length; i += 2) if (outline[i + 1]! >= -21) lower.push(outline[i]!, outline[i + 1]!);
+	// Costumes: accessories, not wigs (as the office's, rig/office.ts). The body keeps its role
+	// colour (the paper rig's own body: no jackets, smocks, bib aprons or stripes over it); each role
+	// gets one over-the-top sweet idea on the dome, clear of the brows and the big eyes, and one small
+	// thing pinned low on the belly, clear of the mouth and the cheeks (reach.ts ANCHORS).
+
+	/** Belly pieces sit this far below the board's (reach.ts frontY), clear of the big eyes. */
+	const B = F + 3;
+	/** A flour puff, `s` big, dusted on the dome. */
 	const flour = (g: Graphics, x: number, y: number, s: number) => {
-		for (const [dx, dy, r] of [[0, 0, 3.2], [3, 1.5, 2.4], [-2.6, 2, 2], [1.4, -2.4, 1.8]] as const) g.circle(x + dx * s, y + dy * s, r * s).fill({ color: 0xffffff, alpha: 0.82 });
+		for (const [dx, dy, r] of [[0, 0, 3.2], [3, 1.5, 2.4], [-2.6, 2, 2], [1.4, -2.4, 1.8]] as const) g.circle(x + dx * s, y + dy * s, r * s).fill({ color: 0xffffff, alpha: 0.85 });
 	};
-	const buttons = (g: Graphics, colour: number) => {
-		line(g, [6, -18, 3, -3], 1.1, BAKERY.whitesShade);
-		for (const x of [-11, 13]) for (const y of [-14, -8]) {
-			g.circle(x + (y + 14) * 0.1, y, 1.8).fill(colour).stroke({ width: 0.8, color: ink });
-		}
-	};
-	const GARMENT: Record<(typeof ROLES)[number], { fill: number; seam: number; dress?: (g: Graphics) => void }> = {
-		lead: {
-			fill: BAKERY.whites,
-			seam: BAKERY.pink,
-			dress: (g) => {
-				buttons(g, BAKERY.pinkDeep);
-				croissant(g, -26, -10, 13);
-			},
-		},
-		builder: {
-			fill: BAKERY.cream,
-			seam: BAKERY.whitesShade,
-			dress: (g) => {
-				flour(g, -36, -46, 1);
-				flour(g, 34, -56, 0.8);
-				flour(g, -30, -8, 0.9);
-			},
-		},
-		scout: { fill: 0xffffff, seam: BAKERY.navy, dress: (g) => bands(g, lower, BAKERY.navy, 4.6, 2, "h") },
-		explorer: { fill: 0xffffff, seam: BAKERY.berry, dress: (g) => bands(g, lower, BAKERY.berry, 8, 3.4, "v", 0.7) },
-		reviewer: { fill: BAKERY.whites, seam: BAKERY.lavender, dress: (g) => buttons(g, BAKERY.choc) },
-		verifier: {
-			fill: BAKERY.pinkPale,
-			seam: BAKERY.pink,
-			dress: (g) => {
-				for (let y = -17; y < 0; y += 5.5) for (let x = -44 + ((y + 17) % 11 ? 3 : 0); x < 46; x += 7) if (bodyEdge(y) > Math.abs(x) + 3) g.circle(x, y, 1.7).fill(0xffffff);
-			},
-		},
-		designer: {
-			fill: BAKERY.mint,
-			seam: BAKERY.mintDeep,
-			dress: (g) => sprinkles(g, -40, -14, 40, -3, 22, 3, 1, (x, y) => bodyEdge(y) > Math.abs(x) + 3),
-		},
-	};
-	for (const role of ROLES) {
-		const col = p.role[role];
-		const gm = GARMENT[role];
-		parts[`body/${role}`] = (g) => {
-			g.poly(outline).fill(col);
-			g.poly(lower).fill(gm.fill);
-			gm.dress?.(g);
-			// The collar band.
-			g.poly([-bodyEdge(-21) + 1, -21, bodyEdge(-21) - 1, -21, bodyEdge(-18) - 1, -18, -bodyEdge(-18) + 1, -18]).fill(gm.seam);
-			line(g, [-bodyEdge(-21) + 1, -21, bodyEdge(-21) - 1, -21], 1.4, mix(gm.seam, ink, 0.45));
-			// The cake decorator's collar drips with icing.
-			if (role === "designer") drips(g, -bodyEdge(-20) + 2, bodyEdge(-20) - 2, -19.5, 0xffffff, [3, 7, 4, 9, 3, 6, 10, 4, 7, 3], ink, 1.8, 1.5);
-			g.ellipse(-19, -54, 12, 7).fill({ color: 0xffffff, alpha: 0.3 });
-			g.ellipse(0, -7, 38, 6).fill({ color: p.shadow, alpha: 0.06 });
-			g.poly(outline).stroke({ width: W.body, color: ink, join: "round" });
-		};
-	}
 
 	/** A toque: a band round the head and a puffed, pleated crown `tall` above it, `wide` across. */
 	const toque = (g: Graphics, tall: number, wide: number, pleats = 3, fill: number = BAKERY.whites, pleat: number = BAKERY.whitesShade) => {
@@ -387,80 +318,74 @@ export function bakeryTheme(p: Palette = PAPER_PALETTE): Theme {
 		g.roundRect(-28, T - 6, 56, 9, 3).fill(fill).stroke({ width: W.part, color: ink });
 	};
 
-	// The lead: the head baker. The tallest toque in the house; its band and the bow on it are the
-	// project accent (`hat/lead-cup` is tinted, so it is drawn white), and so is the big bow at the
-	// collar. A croissant brooch is pinned to the jacket.
+	// The lead: the head baker. The tallest toque in the house, dusted with flour; its band and the
+	// bow on it are the project accent (`hat/lead-cup` is tinted, so it is drawn white), and so is the
+	// ribbon bow pinned low on the belly (`front/tie`, tinted too).
 	parts["hat/lead"] = (g) => {
 		toque(g, 44, 66, 5);
-		// A dusting of flour on the crown.
 		for (const [x, y] of [[-14, T - 30], [9, T - 40], [20, T - 22]] as const) g.circle(x, y, 1.1).fill(BAKERY.whitesShade);
 	};
 	parts["hat/lead-cup"] = (g) => {
 		g.roundRect(-29, T - 7, 58, 10, 3).fill(0xffffff).stroke({ width: W.part, color: ink });
 		line(g, [-26, T - 4, 26, T - 4], 0.9, 0xd9d9e2);
-		// The bow on the band's right, its tails hanging.
+		// The bow on the band's right, its tails hanging (they stop well above the brows).
 		const bx = 20;
 		const by = T - 2;
-		g.poly([bx, by, bx + 3, by + 11, bx + 6, by + 9, bx + 2, by]).fill(0xffffff).stroke({ width: 1.3, color: ink, join: "round" });
+		g.poly([bx, by, bx + 3, by + 9, bx + 6, by + 7, bx + 2, by]).fill(0xffffff).stroke({ width: 1.3, color: ink, join: "round" });
 		g.poly([bx, by, bx - 11, by - 8, bx - 12, by + 4]).fill(0xffffff).stroke({ width: 1.4, color: ink, join: "round" });
 		g.poly([bx, by, bx + 11, by - 9, bx + 13, by + 3]).fill(0xffffff).stroke({ width: 1.4, color: ink, join: "round" });
 		g.circle(bx, by - 1, 3).fill(0xffffff).stroke({ width: 1.3, color: ink });
 	};
 	parts["front/tie"] = (g) => {
-		// A big bow at the collar: two loops, the knot, two tails.
-		const y = F - 2;
+		// A ribbon bow: two loops, the knot, two short tails, all low on the belly.
+		const y = B - 1;
 		for (const s of [-1, 1] as const) {
-			g.poly([s * 2, y + 4, s * 7, y + 17, s * 12, y + 14, s * 4, y + 3]).fill(0xffffff).stroke({ width: 1.5, color: ink, join: "round" });
-			g.moveTo(s * 2, y).bezierCurveTo(s * 10, y - 12, s * 24, y - 8, s * 20, y + 1).bezierCurveTo(s * 22, y + 9, s * 10, y + 10, s * 2, y + 3).closePath().fill(0xffffff).stroke({ width: 1.6, color: ink, join: "round" });
-			line(g, [s * 6, y + 1, s * 15, y - 2], 1, 0xd9d9e2);
+			g.poly([s * 1.5, y + 2, s * 5, y + 11, s * 9, y + 9, s * 3.5, y + 1]).fill(0xffffff).stroke({ width: 1.4, color: ink, join: "round" });
+			g.moveTo(s * 2, y).bezierCurveTo(s * 7, y - 8, s * 15, y - 6, s * 13.5, y).bezierCurveTo(s * 15, y + 5.5, s * 7, y + 6, s * 2, y + 2).closePath().fill(0xffffff).stroke({ width: 1.5, color: ink, join: "round" });
+			line(g, [s * 5, y + 0.4, s * 10.5, y - 1.6], 1, 0xd9d9e2);
 		}
-		g.roundRect(-4, y - 3.5, 8, 8, 2.6).fill(0xffffff).stroke({ width: 1.5, color: ink });
+		g.roundRect(-3.2, y - 2.8, 6.4, 6.4, 2.2).fill(0xffffff).stroke({ width: 1.4, color: ink });
 	};
 
-	// Builders: the bread baker. A pink gingham headscarf knotted in a bow on top, a candy-striped bib
-	// apron with a whisk in its pocket, an oven mitt hanging off the waist string, flour everywhere.
+	// Builders: the bread baker. A pink gingham bow knotted on top of the dome with a baguette tucked
+	// through it, flour on the dome where it wiped its brow; a croissant brooch.
+	/** A baguette from (x1, y1) to (x2, y2), `r` thick: a golden crust, slashes along it. */
+	const stick = (g: Graphics, x1: number, y1: number, x2: number, y2: number, r: number) => {
+		const l = Math.hypot(x2 - x1, y2 - y1);
+		const [ux, uy] = [(x2 - x1) / l, (y2 - y1) / l];
+		line(g, [x1, y1, x2, y2], r * 2 + 2.4, ink);
+		line(g, [x1, y1, x2, y2], r * 2, BAKERY.golden);
+		for (let k = 1; k < 5; k++) {
+			const [cx, cy] = [x1 + ux * l * (k / 5), y1 + uy * l * (k / 5)];
+			line(g, [cx - ux * 3 - uy * r * 0.5, cy - uy * 3 + ux * r * 0.5, cx + ux * 3 + uy * r * 0.5, cy + uy * 3 - ux * r * 0.5], 1.4, BAKERY.vanilla);
+		}
+		line(g, [x1 + ux * 3 - uy * r * 0.45, y1 + uy * 3 + ux * r * 0.45, x2 - ux * 3 - uy * r * 0.45, y2 - uy * 3 + ux * r * 0.45], 1, BAKERY.goldenDeep);
+	};
 	parts["hat/builder"] = (g) => {
-		const scarf = dome(0, T + 9, 35, 25);
-		g.poly(scarf).fill(BAKERY.pinkPale);
-		bands(g, scarf, BAKERY.pinkDeep, 7, 3.4, "v", 0, 0.5);
-		bands(g, scarf, BAKERY.pinkDeep, 7, 3.4, "h", 0, 0.5);
-		g.poly(scarf).stroke({ width: W.part, color: ink, join: "round" });
-		line(g, [-33, T + 6, 0, T + 2, 33, T + 6], 1.3, mix(BAKERY.pinkDeep, ink, 0.3));
-		flour(g, -18, T - 6, 0.8);
-		// The bow on top.
-		const bx = 8;
-		const by = T - 15;
-		g.poly([bx, by, bx - 15, by - 10, bx - 16, by + 2]).fill(BAKERY.pinkDeep).stroke({ width: 1.6, color: ink, join: "round" });
-		g.poly([bx, by, bx + 15, by - 12, bx + 17, by + 1]).fill(BAKERY.pinkDeep).stroke({ width: 1.6, color: ink, join: "round" });
-		for (const [x, y] of [[bx - 11, by - 4], [bx + 11, by - 6], [bx - 7, by - 2], [bx + 7, by - 3]] as const) g.circle(x, y, 1.1).fill(0xffffff);
-		g.circle(bx, by, 3.6).fill(BAKERY.pinkDeep).stroke({ width: 1.5, color: ink });
+		stick(g, -30, T - 4, 30, T - 26, 4.6);
+		flour(g, -22, T + 6, 0.9);
+		flour(g, 24, T + 4, 0.6);
+		// The bow: gingham loops (stripes both ways), the knot, two tails lying on the dome.
+		const bx = 2;
+		const by = T - 8;
+		for (const s of [-1, 1] as const) {
+			g.poly([bx + s * 2, by + 3, bx + s * 8, by + 10, bx + s * 12, by + 7, bx + s * 5, by + 2]).fill(BAKERY.pinkDeep).stroke({ width: 1.4, color: ink, join: "round" });
+			const loop = [bx, by, bx + s * 22, by - 14, bx + s * 24, by + 8];
+			g.poly(loop).fill(BAKERY.pinkPale);
+			bands(g, loop, BAKERY.pinkDeep, 5, 2.4, "v", 0, 0.55);
+			bands(g, loop, BAKERY.pinkDeep, 5, 2.4, "h", 0, 0.55);
+			g.poly(loop).stroke({ width: 1.8, color: ink, join: "round" });
+		}
+		g.circle(bx, by, 4.4).fill(BAKERY.pinkDeep).stroke({ width: 1.6, color: ink });
+		gloss(g, bx - 1.4, by - 1.6, 1.6, 1, 0.8);
 	};
 	parts["front/apron"] = (g) => {
-		const y0 = F - 3;
-		const y1 = -1;
-		const bib = [-13, y0, 13, y0, bodyEdge(y1) - 6, y1, -bodyEdge(y1) + 6, y1];
-		g.poly(bib).fill(0xffffff);
-		bands(g, bib, BAKERY.pink, 6, 2.6, "v");
-		// A floury handprint.
-		g.circle(-10, F + 10, 3.2).fill({ color: 0xffffff, alpha: 0.9 });
-		for (let k = 0; k < 4; k++) g.ellipse(-14.5 + k * 3, F + 5.2 - (k === 1 || k === 2 ? 0.8 : 0), 1, 2.2).fill({ color: 0xffffff, alpha: 0.9 });
-		// The pocket, a whisk standing in it.
-		line(g, [10, F + 4, 12, F - 3], 1.6, ink);
-		for (const rx of [3.2, 1.8]) g.ellipse(12.6, F - 6.5, rx, 4.6).stroke({ width: 1, color: BAKERY.steelDark });
-		g.roundRect(5, F + 2, 12, 8, 1.5).fill(BAKERY.pink).stroke({ width: 1.3, color: ink });
-		g.poly(bib).stroke({ width: 1.8, color: ink, join: "round" });
-		line(g, [-13, y0, -24, -24], 1.4, ink);
-		line(g, [13, y0, 24, -24], 1.4, ink);
-		line(g, [-bodyEdge(F + 6) + 2, F + 6, bodyEdge(F + 6) - 2, F + 6], 1.6, ink);
-		// The oven mitt hanging off the string on the right: quilted, with its thumb out.
-		g.ellipse(21, F + 13, 3, 4.4).fill(BAKERY.pinkDeep).stroke({ width: 1.3, color: ink });
-		g.roundRect(22, F + 6, 11, 15, 5).fill(BAKERY.pinkDeep).stroke({ width: 1.4, color: ink });
-		for (const k of [0, 1, 2]) line(g, [23.5, F + 10 + k * 3.5, 31.5, F + 8 + k * 3.5], 0.8, 0xffffff);
-		g.roundRect(22.5, F + 4, 10, 4, 1.4).fill(0xffffff).stroke({ width: 1.2, color: ink });
+		croissant(g, 10, B - 1, 23);
+		g.circle(10, B - 1.4, 1.2).fill(BAKERY.gold);
 	};
 
-	// Scouts: the barista. A coffee-brown flat cap with a bean pinned on it, a Breton top, and a waist
-	// apron with a takeaway cup steaming in its pocket.
+	// Scouts: the barista. A coffee-brown flat cap with a cappuccino balanced on its crown (steam
+	// curling up, away from the face); a coffee-bean pin.
 	const bean = (g: Graphics, x: number, y: number, r: number, a = 0.5) => {
 		g.save();
 		g.translateTransform(-x, -y).rotateTransform(a).translateTransform(x, y);
@@ -469,30 +394,36 @@ export function bakeryTheme(p: Palette = PAPER_PALETTE): Theme {
 		g.restore();
 	};
 	parts["hat/scout"] = (g) => {
-		// The brim across the brow, then the soft crown over it, pulled a little to the right.
-		g.moveTo(-24, T + 3).quadraticCurveTo(6, T + 17, 36, T + 2).quadraticCurveTo(8, T + 9, -24, T + 3).closePath().fill(BAKERY.coffeeDark).stroke({ width: W.part, color: ink, join: "round" });
-		g.ellipse(3, T - 5, 35, 12).fill(BAKERY.coffee).stroke({ width: W.part, color: ink });
-		line(g, [-30, T + 1, 36, T + 1], 1.6, BAKERY.crema);
-		for (const x of [-14, 4, 21]) line(g, [x * 0.8 + 3, T - 15, x + 3, T + 0], 1, BAKERY.coffeeDark);
-		gloss(g, -14, T - 10, 9, 3, 0.35);
-		g.circle(3, T - 16, 2.4).fill(BAKERY.coffeeDark).stroke({ width: 1.2, color: ink });
-		bean(g, -21, T - 3, 4.4);
+		// The brim, then the soft crown over it, pulled a little to the right.
+		g.moveTo(-22, T + 3).quadraticCurveTo(6, T + 11, 34, T + 1).quadraticCurveTo(8, T + 6, -22, T + 3).closePath().fill(BAKERY.coffeeDark).stroke({ width: W.part, color: ink, join: "round" });
+		g.ellipse(3, T - 4, 32, 10).fill(BAKERY.coffee).stroke({ width: W.part, color: ink });
+		for (const x of [-14, 4, 21]) line(g, [x * 0.8 + 3, T - 13, x + 3, T + 1], 1, BAKERY.coffeeDark);
+		gloss(g, -14, T - 8, 8, 2.6, 0.35);
+		bean(g, -19, T - 1, 4);
+		// The cappuccino on top: a saucer, a white cup, the foam with a heart, steam rising.
+		const cx = 6;
+		const cy = T - 13;
+		g.ellipse(cx, cy, 13, 3).fill(0xffffff).stroke({ width: 1.5, color: ink });
+		g.moveTo(cx + 8, cy - 9).bezierCurveTo(cx + 15, cy - 10, cx + 15, cy - 3, cx + 7.5, cy - 3).stroke({ width: 3.4, color: ink, cap: "round" });
+		g.moveTo(cx + 8, cy - 9).bezierCurveTo(cx + 15, cy - 10, cx + 15, cy - 3, cx + 7.5, cy - 3).stroke({ width: 1.6, color: 0xffffff, cap: "round" });
+		g.moveTo(cx - 9, cy - 13).lineTo(cx + 9, cy - 13).quadraticCurveTo(cx + 8, cy - 1, cx, cy - 1).quadraticCurveTo(cx - 8, cy - 1, cx - 9, cy - 13).closePath().fill(0xffffff).stroke({ width: 1.6, color: ink, join: "round" });
+		g.ellipse(cx, cy - 13, 9, 2.6).fill(BAKERY.crema).stroke({ width: 1.2, color: ink });
+		g.moveTo(cx, cy - 11.6).bezierCurveTo(cx - 3.4, cy - 13.6, cx - 1.6, cy - 15.4, cx, cy - 14).bezierCurveTo(cx + 1.6, cy - 15.4, cx + 3.4, cy - 13.6, cx, cy - 11.6).fill(0xffffff);
+		gloss(g, cx - 5, cy - 9, 1.4, 2.4, 0.9);
+		for (const x of [cx - 4, cx + 3]) g.moveTo(x, cy - 17).quadraticCurveTo(x - 3, cy - 20, x, cy - 24).quadraticCurveTo(x + 3, cy - 27, x, cy - 31).stroke({ width: 1.6, color: 0xc8cfdf, cap: "round" });
 	};
 	parts["front/kerchief"] = (g) => {
-		g.roundRect(-26, F + 2, 52, 14, 3).fill(BAKERY.coffee).stroke({ width: 1.8, color: ink });
-		for (let x = -23; x < 23; x += 4) line(g, [x, F + 4.2, x + 2, F + 4.2], 0.9, BAKERY.crema);
-		// The pocket and the cup in it: a lid, a kraft sleeve with a heart, steam curling off.
-		g.poly([-19, F - 6, -7, F - 6, -8.4, F + 8, -17.6, F + 8]).fill(0xffffff).stroke({ width: 1.3, color: ink, join: "round" });
-		g.rect(-18.4, F - 1, 10.8, 5).fill(BAKERY.crema);
-		g.moveTo(-13, F + 3).bezierCurveTo(-16, F + 0.5, -14, F - 1, -13, F + 0.4).bezierCurveTo(-12, F - 1, -10, F + 0.5, -13, F + 3).fill(BAKERY.berry);
-		g.roundRect(-20, F - 9, 14, 3.6, 1.4).fill(0xffffff).stroke({ width: 1.2, color: ink });
-		for (const x of [-15, -11]) g.moveTo(x, F - 10).quadraticCurveTo(x - 3, F - 13, x, F - 16).quadraticCurveTo(x + 3, F - 19, x, F - 22).stroke({ width: 1.1, color: 0xb5bdd0, cap: "round" });
-		g.roundRect(-21, F + 4, 16, 10, 1.5).fill(BAKERY.coffeeDark).stroke({ width: 1.2, color: ink });
-		bean(g, 14, F + 9, 3.6, -0.4);
+		// A round cream enamel pin with two coffee beans on it.
+		const x = -12;
+		const y = B - 1;
+		g.circle(x, y, 9).fill(BAKERY.cream).stroke({ width: 1.6, color: ink });
+		g.circle(x, y, 7).stroke({ width: 0.9, color: BAKERY.crema });
+		bean(g, x - 2.6, y + 0.8, 3.8, 0.7);
+		bean(g, x + 3, y - 1.2, 3.8, -0.5);
 	};
 
 	// Explorers: the candy-maker (the small one, trailing its scout). A candy-striped paper cap with
-	// a swirl lollipop stuck in its side, a candy-cane strap, and a jar of gumballs on the hip.
+	// a swirl lollipop stuck in its side; a wrapped bonbon pinned on.
 	const lollipop = (g: Graphics, x: number, y: number, r: number) => {
 		g.circle(x, y, r).fill(0xffffff);
 		const pts: number[] = [];
@@ -509,38 +440,25 @@ export function bakeryTheme(p: Palette = PAPER_PALETTE): Theme {
 		line(g, [16, T - 2, 25, T - 26], 3.6, ink);
 		line(g, [16, T - 2, 25, T - 26], 2, 0xffffff);
 		lollipop(g, 27, T - 33, 10);
-		const cap = [-31, T + 7, -27, T - 9, -4, T - 15, 4, T - 15, 27, T - 9, 31, T + 7];
+		const cap = [-30, T + 5, -26, T - 10, -4, T - 16, 4, T - 16, 26, T - 10, 30, T + 5];
 		g.poly(cap).fill(0xffffff);
 		bands(g, cap, BAKERY.berry, 8, 3.4, "v", 0.6);
 		g.poly(cap).stroke({ width: W.part, color: ink, join: "round" });
-		line(g, [-27, T + 3, 27, T + 3], 1.2, mix(BAKERY.berry, ink, 0.3));
-		line(g, [-24, T - 9, 24, T - 9], 1, 0xd5d5e0);
+		line(g, [-26, T + 1, 26, T + 1], 1.2, mix(BAKERY.berry, ink, 0.3));
+		line(g, [-23, T - 10, 23, T - 10], 1, 0xd5d5e0);
 	};
 	parts["front/straps"] = (g) => {
-		line(g, [-32, -20, 18, F + 14], 4.8, ink);
-		line(g, [-32, -20, 18, F + 14], 3, 0xffffff);
-		for (let k = 0; k < 7; k++) {
-			const t = (k + 0.3) / 7;
-			const x = -32 + 50 * t;
-			const y = -20 + (F + 34) * t;
-			line(g, [x - 1.4, y - 1, x + 1.4, y + 1.4], 2, BAKERY.berry);
-		}
-		// A wrapped sweet in the strap.
-		g.poly([-24, -13, -28, -16, -28, -10]).fill(BAKERY.lemon).stroke({ width: 0.9, color: ink, join: "round" });
-		g.poly([-16, -13, -12, -16, -12, -10]).fill(BAKERY.lemon).stroke({ width: 0.9, color: ink, join: "round" });
-		g.ellipse(-20, -13, 4.4, 3).fill(BAKERY.lemon).stroke({ width: 1, color: ink });
-		// The gumball jar on the hip.
-		const jar = { x: 13, y: F - 1, w: 16, h: 15 };
-		g.roundRect(jar.x, jar.y, jar.w, jar.h, 4).fill({ color: BAKERY.glass, alpha: 0.7 });
-		const balls = [BAKERY.berry, BAKERY.lemon, BAKERY.sky, BAKERY.mintDeep, BAKERY.pinkDeep, 0xb07ae8, BAKERY.lemonDeep, BAKERY.berry];
-		balls.forEach((c, i) => g.circle(jar.x + 3.5 + (i % 3) * 4.5 + (Math.floor(i / 3) % 2) * 2, jar.y + jar.h - 3.2 - Math.floor(i / 3) * 4, 2.2).fill(c).stroke({ width: 0.6, color: ink }));
-		g.rect(jar.x + 2, jar.y + 2, 2, jar.h - 4).fill({ color: 0xffffff, alpha: 0.7 });
-		g.roundRect(jar.x, jar.y, jar.w, jar.h, 4).stroke({ width: 1.4, color: ink });
-		g.roundRect(jar.x - 1, jar.y - 4, jar.w + 2, 4.4, 1.5).fill(BAKERY.pinkDeep).stroke({ width: 1.3, color: ink });
+		// A bonbon in a twist of lemon wrapper, a berry swirl on it.
+		const x = 4;
+		const y = B - 1;
+		for (const s of [-1, 1] as const) g.poly([x + s * 7, y, x + s * 16.5, y - 6.4, x + s * 15, y, x + s * 16.5, y + 6.4]).fill(BAKERY.lemon).stroke({ width: 1.3, color: ink, join: "round" });
+		g.ellipse(x, y, 9.6, 6.6).fill(BAKERY.lemon).stroke({ width: 1.5, color: ink });
+		g.moveTo(x - 5, y + 2).bezierCurveTo(x - 3, y - 4, x + 2, y + 4, x + 5, y - 2).stroke({ width: 1.8, color: BAKERY.berry, cap: "round" });
+		gloss(g, x - 3, y - 2.6, 2.4, 1.1, 0.8);
 	};
 
 	// Reviewers: the pâtissier, who tastes everything before it goes in the window. A puffed mushroom
-	// toque, a chocolate bow tie, a tasting fork and spoon in the pocket, gold glasses on a chain.
+	// toque, gold half-moon glasses it peers over, and a macaron pin.
 	parts["hat/reviewer"] = (g) => {
 		g.moveTo(-24, T + 1)
 			.bezierCurveTo(-54, T - 6, -44, T - 34, -12, T - 30)
@@ -552,35 +470,22 @@ export function bakeryTheme(p: Palette = PAPER_PALETTE): Theme {
 		for (const x of [-26, -10, 8, 26]) g.moveTo(x * 0.6, T - 4).quadraticCurveTo(x * 1.05, T - 14, x * 0.95, T - 26).stroke({ width: 1.3, color: BAKERY.whitesShade });
 		g.ellipse(-22, T - 22, 8, 4).fill({ color: 0xffffff, alpha: 0.95 });
 		g.roundRect(-27, T - 6, 54, 9, 3).fill(BAKERY.whites).stroke({ width: W.part, color: ink });
-		line(g, [-25, T - 1.5, 25, T - 1.5], 1.3, BAKERY.lavender);
-		macaron(g, -15, T - 1.5, 9, BAKERY.chocLight, BAKERY.buttercream);
+		g.rect(-25.5, T - 3, 51, 3).fill(BAKERY.lavender);
 	};
 	parts["front/bowtie"] = (g) => {
-		// The chocolate bow tie at the collar.
-		const y = F - 4;
-		g.poly([0, y, -11, y - 5, -11, y + 5]).fill(BAKERY.choc).stroke({ width: 1.4, color: ink, join: "round" });
-		g.poly([0, y, 11, y - 5, 11, y + 5]).fill(BAKERY.choc).stroke({ width: 1.4, color: ink, join: "round" });
-		for (const [x, dy] of [[-7, -1.5], [-6, 2], [7, -1.6], [6, 2]] as const) g.circle(x, y + dy, 0.9).fill(BAKERY.pink);
-		g.roundRect(-2.6, y - 2.6, 5.2, 5.2, 1.6).fill(BAKERY.chocLight).stroke({ width: 1.2, color: ink });
-		// The pocket: a cake fork and a tasting spoon.
-		line(g, [13, F + 6, 12, F - 6], 1.8, ink);
-		line(g, [13, F + 6, 12, F - 6], 0.9, BAKERY.gold);
-		for (const dx of [-1.6, 0, 1.6]) line(g, [12 + dx, F - 6, 12 + dx * 1.1, F - 10], 0.8, ink);
-		line(g, [18.5, F + 6, 19.5, F - 6], 1.8, ink);
-		line(g, [18.5, F + 6, 19.5, F - 6], 0.9, BAKERY.gold);
-		g.ellipse(19.6, F - 8, 2.4, 3.2).fill(BAKERY.gold).stroke({ width: 1, color: ink });
-		g.roundRect(9, F + 1, 14, 9, 1.5).fill(BAKERY.whitesShade).stroke({ width: 1.3, color: ink });
-		line(g, [9.5, F + 3.5, 22.5, F + 3.5], 1, BAKERY.lavender);
+		macaron(g, 13, B - 1, 18, BAKERY.chocLight, BAKERY.buttercream);
 	};
 	parts["wear/glasses"] = (g) => {
-		const y = A.eyeY + 3;
-		g.moveTo(-26, -46).quadraticCurveTo(-34, -10, 0, -12).quadraticCurveTo(34, -10, 26, -46).stroke({ width: 1.2, color: BAKERY.gold });
-		for (let k = 0; k < 9; k++) g.circle(-22 + k * 5.5, -14 - (k === 0 || k === 8 ? 8 : k === 1 || k === 7 ? 3 : 0), 0.9).fill(BAKERY.gold);
-		for (const x of [-A.eyeX, A.eyeX]) g.circle(x, y, 8.4).fill({ color: 0xffffff, alpha: 0.22 }).stroke({ width: 2.2, color: ink });
-		for (const x of [-A.eyeX, A.eyeX]) g.circle(x, y, 8.4).stroke({ width: 1, color: BAKERY.gold });
-		line(g, [-7.6, y - 1, 7.6, y - 1], 1.8, ink);
-		line(g, [-24.4, y - 1, -27, -46], 1.5, ink);
-		line(g, [24.4, y - 1, 27, -46], 1.5, ink);
+		// Gold half-moons the size of the big eyes' frames (as the office's), the flat top across the
+		// eyes' lower third, so the eyes show over them.
+		const y = A.eyeY + 3.7;
+		const r = 13.2;
+		for (const x of [-A.eyeX, A.eyeX]) {
+			g.moveTo(x - r, y).lineTo(x + r, y).arc(x, y, r, 0, Math.PI).closePath().fill({ color: 0xffffff, alpha: 0.3 }).stroke({ width: 2.6, color: ink, join: "round" });
+			g.moveTo(x - r + 1.6, y).arc(x, y, r - 1.6, Math.PI, 0, true).stroke({ width: 1, color: BAKERY.gold });
+		}
+		line(g, [-A.eyeX + r, y, A.eyeX - r, y], 2.2, ink);
+		line(g, [-A.eyeX + r + 1, y, A.eyeX - r - 1, y], 0.9, BAKERY.gold);
 	};
 
 	// Verifiers: the taster. A cupcake for a hat (a pleated liner round the head, three swirls of
@@ -604,24 +509,23 @@ export function bakeryTheme(p: Palette = PAPER_PALETTE): Theme {
 		cherry(g, 4, T - 40, 5);
 	};
 	parts["front/badge"] = (g) => {
-		const x = 16;
-		const y = F + 1;
+		const x = 15;
+		const y = B - 3;
 		for (const [dx, a] of [[-3, -0.2], [3, 0.2]] as const) {
 			const tx = x + dx;
-			g.poly([tx - 3, y + 3, tx + 3, y + 3, tx + 3 + a * 10, y + 16, tx + a * 10, y + 13, tx - 3 + a * 10, y + 16]).fill(BAKERY.sky).stroke({ width: 1.2, color: ink, join: "round" });
+			g.poly([tx - 3, y + 3, tx + 3, y + 3, tx + 3 + a * 8, y + 12, tx + a * 8, y + 10, tx - 3 + a * 8, y + 12]).fill(BAKERY.sky).stroke({ width: 1.2, color: ink, join: "round" });
 		}
-		g.star(x, y, 12, 10.5, 8.5, 0).fill(BAKERY.sky).stroke({ width: 1.2, color: ink, join: "round" });
-		doughnut(g, x, y, 7.4, BAKERY.pink, 2);
+		g.star(x, y, 12, 9.6, 7.8, 0).fill(BAKERY.sky).stroke({ width: 1.2, color: ink, join: "round" });
+		doughnut(g, x, y, 6.6, BAKERY.pink, 2);
 	};
 
-	// Designers: the cake decorator. A tiny three-tier cake perched on a headband with a satin bow,
-	// a mint smock with icing dripping off the collar (the body's), a piping bag and a palette knife
-	// in the pocket.
+	// Designers: the cake decorator. A tiny three-tier cake perched on a headband with a satin bow;
+	// a piping bag pinned on, a swirl of icing at its tip.
 	parts["hat/designer"] = (g) => {
-		g.moveTo(-36, T + 14).bezierCurveTo(-32, T - 10, 32, T - 10, 36, T + 14).stroke({ width: 5.4, color: ink, cap: "round" });
-		g.moveTo(-36, T + 14).bezierCurveTo(-32, T - 10, 32, T - 10, 36, T + 14).stroke({ width: 3, color: BAKERY.pinkDeep, cap: "round" });
+		g.moveTo(-37, T + 11).bezierCurveTo(-33, T - 12, 33, T - 12, 37, T + 11).stroke({ width: 5.4, color: ink, cap: "round" });
+		g.moveTo(-37, T + 11).bezierCurveTo(-33, T - 12, 33, T - 12, 37, T + 11).stroke({ width: 3, color: BAKERY.pinkDeep, cap: "round" });
 		const cx = -6;
-		const cy = T - 5;
+		const cy = T - 6;
 		g.save();
 		g.translateTransform(-cx, -cy).rotateTransform(-0.16).translateTransform(cx, cy);
 		g.ellipse(cx, cy + 1, 21, 3.4).fill(BAKERY.gold).stroke({ width: 1.6, color: ink });
@@ -640,25 +544,25 @@ export function bakeryTheme(p: Palette = PAPER_PALETTE): Theme {
 		g.restore();
 		// The satin bow on the band's right.
 		const bx = 30;
-		const by = T + 2;
+		const by = T;
 		g.poly([bx, by, bx - 9, by - 9, bx - 10, by + 4]).fill(BAKERY.mint).stroke({ width: 1.4, color: ink, join: "round" });
 		g.poly([bx, by, bx + 9, by - 10, bx + 11, by + 2]).fill(BAKERY.mint).stroke({ width: 1.4, color: ink, join: "round" });
 		g.circle(bx, by - 1, 2.8).fill(BAKERY.mintDeep).stroke({ width: 1.2, color: ink });
 	};
 	parts["front/scarf"] = (g) => {
-		// The piping bag standing in the pocket, icing at its tip.
-		g.poly([9.5, F + 2, 17.5, F + 2, 14.2, F - 12, 12.8, F - 12]).fill(0xffffff).stroke({ width: 1.2, color: ink, join: "round" });
-		g.poly([10.6, F - 2, 16.4, F - 2, 14.4, F - 10, 12.6, F - 10]).fill(BAKERY.pink);
-		g.poly([12.6, F - 12, 14.4, F - 12, 13.5, F - 15.6]).fill(BAKERY.steel).stroke({ width: 0.9, color: ink, join: "round" });
-		g.circle(13.5, F - 17.4, 1.8).fill(BAKERY.pinkDeep).stroke({ width: 0.8, color: ink });
-		// The palette knife.
-		line(g, [21, F + 3, 22, F - 6], 2, ink);
-		line(g, [21, F + 3, 22, F - 6], 1, BAKERY.wood);
-		g.roundRect(20.6, F - 15, 3.2, 10, 1.6).fill(BAKERY.steel).stroke({ width: 1, color: ink });
-		g.roundRect(7, F, 18, 10, 1.5).fill(BAKERY.mintDeep).stroke({ width: 1.3, color: ink });
-		line(g, [8, F + 2.6, 24, F + 2.6], 0.9, 0xffffff);
-		// Icing smeared down the front.
-		g.circle(-12, -12, 2.2).circle(-14, -6, 1.5).circle(-9, -7, 1.2).fill(BAKERY.pinkDeep);
+		// The piping bag lying aslant: the twisted end low on the left, the steel nozzle up on the
+		// right with a pink star of icing coming out.
+		const [x0, y0, x1, y1] = [-12, B + 2, 10, B - 7];
+		const l = Math.hypot(x1 - x0, y1 - y0);
+		const [nx, ny] = [-(y1 - y0) / l, (x1 - x0) / l];
+		const wide = 5.2;
+		g.poly([x0 + nx * wide, y0 + ny * wide, x1, y1, x0 - nx * wide, y0 - ny * wide]).fill(0xffffff).stroke({ width: 1.4, color: ink, join: "round" });
+		g.poly([x0 + (x1 - x0) * 0.25 + nx * wide * 0.7, y0 + (y1 - y0) * 0.25 + ny * wide * 0.7, x1 - (x1 - x0) * 0.12, y1 - (y1 - y0) * 0.12, x0 + (x1 - x0) * 0.25 - nx * wide * 0.7, y0 + (y1 - y0) * 0.25 - ny * wide * 0.7]).fill(BAKERY.pink);
+		line(g, [x0 - (x1 - x0) * 0.12, y0 - (y1 - y0) * 0.12, x0, y0], 3.4, BAKERY.mintDeep);
+		g.circle(x0, y0, 1.6).fill(BAKERY.mintDeep).stroke({ width: 0.9, color: ink });
+		g.poly([x1 - 2, y1 + 0.6, x1 + 1, y1 - 2, x1 + 4.4, y1 - 3]).fill(BAKERY.steel).stroke({ width: 1, color: ink, join: "round" });
+		g.star(x1 + 6.4, y1 - 4.2, 6, 3.8, 2, 0.3).fill(BAKERY.pinkDeep).stroke({ width: 1, color: ink, join: "round" });
+		gloss(g, x0 + 6, y0 - 4.4, 2.6, 1, 0.8);
 	};
 
 	// Held tools -----------------------------------------------------------------------------------
@@ -835,6 +739,30 @@ export function bakeryTheme(p: Palette = PAPER_PALETTE): Theme {
 		g.circle(0, -24.6, 2.8).fill(BAKERY.gold).stroke({ width: 1.4, color: ink });
 		g.poly(rotRect(15, -3, 9, 6, 0.2)).fill(BAKERY.ticket).stroke({ width: 1, color: ink, join: "round" });
 		line(g, [12.4, -3.6, 17.6, -2.4], 0.8, BAKERY.pinkDeep);
+	};
+
+	// The drum sat on (the bakery's flour-sack nap): a fat flour sack, its top slumped where the
+	// baker sits, the neck tied off at one end, a wheat sheaf stamped on it, flour puffing out.
+	parts["prop/drum"] = (g) => {
+		g.moveTo(-46, -3)
+			.quadraticCurveTo(-48, -26, -42, -38)
+			.quadraticCurveTo(-22, -44, 0, -40)
+			.quadraticCurveTo(22, -44, 42, -38)
+			.quadraticCurveTo(48, -26, 46, -3)
+			.quadraticCurveTo(0, 3, -46, -3)
+			.closePath()
+			.fill(0xf3e4c8)
+			.stroke({ width: W.part, color: ink, join: "round" });
+		for (const [x0, x1] of [[-30, -26], [24, 30]] as const) g.moveTo(x0, -30).quadraticCurveTo(x0 - 3, -18, x1, -6).stroke({ width: 1.2, color: 0xd8c39c });
+		// The stamp: a wheat sheaf in a ring.
+		g.circle(0, -18, 9).stroke({ width: 1.4, color: BAKERY.chocLight });
+		line(g, [0, -11, 0, -24], 1.4, BAKERY.chocLight);
+		for (const s of [-1, 1]) for (const y of [-23, -19.5, -16]) g.ellipse(s * 2.4, y, 1.6, 2.6).fill(BAKERY.chocLight);
+		// The tied neck on the right, and flour puffing from it.
+		g.ellipse(44, -30, 3.6, 6.4).fill(0xf3e4c8).stroke({ width: 1.8, color: ink });
+		line(g, [40.5, -36, 40.5, -24], 2.6, BAKERY.berry);
+		for (const [x, y, r] of [[-37, -42.5, 2.2], [-30, -43.5, 1.6], [32, -43, 1.8]] as const) g.circle(x, y, r).fill({ color: 0xffffff, alpha: 0.9 });
+		gloss(g, -20, -30, 8, 2.4, 0.45);
 	};
 
 	// The work out front (reach.ts WORK) ---------------------------------------------------------

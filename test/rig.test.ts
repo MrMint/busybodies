@@ -706,8 +706,10 @@ describe("themes", async () => {
 			// No new parts: the bakery dresses the slots the paper rig has.
 			expect(Object.keys(bakery.parts).filter((n) => !paper.parts[n])).toEqual([]);
 			// Every hat and front piece is the bakery's own (no hard hat or pith helmet behind the
-			// counter), and so is every body (each role's own garment).
-			for (const n of Object.keys(paper.parts).filter((n) => /^(hat|front|body)\//.test(n))) expect(repainted.has(n), n).toBe(true);
+			// counter). The bodies are the paper rig's: accessories, not garments, so the body colour
+			// stays the role's tell.
+			for (const n of Object.keys(paper.parts).filter((n) => /^(hat|front)\//.test(n))) expect(repainted.has(n), n).toBe(true);
+			for (const n of Object.keys(paper.parts).filter((n) => n.startsWith("body/"))) expect(repainted.has(n), n).toBe(false);
 			// The construction gear and the office's stations are all bakery kit, and the confetti is sprinkles.
 			for (const n of ["held/hammer", "work/nail1", "work/stack", "work/nut1", "work/copier", "work/forms", "work/outbox", "work/tray4", "work/cabinet", "prop/bigEnvelope", "fx/conf1"]) expect(repainted.has(n), n).toBe(true);
 		});

@@ -28,6 +28,7 @@ hammer: Whacking it until it compiles
   on busy, loop, roles builder; 12 frames, 2340 ms (18 beats)
   may say: "It compiles in my heart."
   in the office: Stapling until it compiles
+  in the bakery: Rolling it out until it compiles; may say: "It rises in my heart."
    1   260ms  { look: 'downR', brows: 'flat', mouth: 'flat', armL: 'hip', armR: 'wind', holdR: 'hammer', work: 'nail1' }
    2   130ms  { eyes: 'squint', look: 'downR', brows: 'angry', mouth: 'flat', armL: 'hip', armR: 'hit1', holdR: 'hammer', work: 'nail1' }
    3   130ms  { eyes: 'squint', look: 'downR', brows: 'angry', mouth: 'flat', armL: 'hip', armR: 'hit2', fx: 'hit', holdR: 'hammer', work: 'nail2' }
@@ -66,6 +67,7 @@ exploring: Exploring with a torch
   on busy, loop, roles explorer; 5 frames, 1430 ms (11 beats)
   may say: "It's dark in node_modules."
   in the office: Exploring with a laser pointer
+  in the bakery: Exploring with a crème brûlée torch
    1   390ms  { eyes: 'wide', look: 'left', brows: 'up', mouth: 'small', armL: 'low', armR: 'raise', holdR: 'torch' }
    2   390ms  { eyes: 'wide', look: 'right', brows: 'up', mouth: 'open', armL: 'low', armR: 'point', holdR: 'torch' }
    3   130ms  { eyes: 'closed', look: 'right', mouth: 'small', armL: 'low', armR: 'point', holdR: 'torch' }
@@ -92,6 +94,7 @@ verifying: Verifying under the glass
 painting: Moving it two pixels
   on busy, loop, roles designer; 6 frames, 1690 ms (13 beats)
   may say: "Two pixels. Trust me."
+  in the bakery: Piping it two pixels over
    1   260ms  { eyes: 'squint', look: 'right', mouth: 'blep', armL: 'hip', armR: 'raise', body: 'leanR', holdR: 'brush' }
    2   260ms  { eyes: 'squint', look: 'right', mouth: 'blep', armL: 'hip', armR: 'out', body: 'leanR', holdR: 'brush' }
    3   260ms  { eyes: 'squint', look: 'right', mouth: 'blep', armL: 'hip', armR: 'raise', body: 'leanR', holdR: 'brush' }
@@ -103,6 +106,7 @@ blueprint: Reading the blueprint
   on working, loop, roles builder; 10 frames, 2990 ms (23 beats)
   may say: "Measure twice. Read once."
   in the office: Reading the printout; may say: "Print twice. Read once."
+  in the bakery: Reading the recipe; may say: "Weigh twice. Bake once."
    1   260ms  { look: 'down', mouth: 'small', armL: 'sheet', armR: 'sheet', front: 'roll' }
    2   260ms  { eyes: 'wide', look: 'down', brows: 'up', mouth: 'small', armL: 'sheet', armR: 'sheet', front: 'plan' }
    3   390ms  { look: 'down', brows: 'one', mouth: 'small', armL: 'sheet', armR: 'trace1', front: 'plan' }
@@ -118,6 +122,7 @@ rummage: Looking for the right part
   on working, loop, roles builder; 10 frames, 2730 ms (21 beats)
   may say: "It was here a minute ago."
   in the office: Looking for the tape dispenser
+  in the bakery: Looking for the right macaron; may say: "It was in the basket a minute ago."
    1   390ms  { look: 'downR', brows: 'one', mouth: 'small', armL: 'hip', armR: 'dig', body: 'leanR', work: 'crate' }
    2   130ms  { eyes: 'squint', look: 'downR', brows: 'one', mouth: 'blep', armL: 'hip', armR: 'lift', body: 'leanR', work: 'crate' }
    3   260ms  { eyes: 'squint', look: 'downR', brows: 'one', mouth: 'blep', armL: 'hip', armR: 'dig', body: 'leanR', work: 'crate' }
@@ -133,6 +138,7 @@ tinker: Tinkering while it runs
   on working, loop, roles builder; 9 frames, 2340 ms (18 beats)
   may say: "Tighten. Untighten. Tighten."
   in the office: Sharpening while it runs; may say: "Sharper. Sharper. Gone."
+  in the bakery: Cranking the mixer while it runs; may say: "Whisk. Unwhisk. Whisk."
    1   260ms  { look: 'downR', brows: 'flat', mouth: 'blep', armL: 'hip', armR: 'wr1', holdR: 'wrench', work: 'nut1' }
    2   260ms  { eyes: 'squint', look: 'downR', brows: 'one', mouth: 'blep', armL: 'hip', armR: 'wr2', holdR: 'wrench', work: 'nut2' }
    3   260ms  { eyes: 'squint', look: 'downR', brows: 'one', mouth: 'blep', armL: 'hip', armR: 'wr3', holdR: 'wrench', work: 'nut3' }
@@ -146,6 +152,7 @@ tinker: Tinkering while it runs
 poke: Poking it to see if it holds
   on working, loop, roles builder; 9 frames, 1820 ms (14 beats)
   may say: "If it wobbles, it's a feature."
+  in the bakery: Poking the cake to see if it holds
    1   260ms  { look: 'downR', brows: 'one', mouth: 'small', armL: 'low', armR: 'draw', holdL: 'clip', work: 'stack' }
    2   130ms  { eyes: 'squint', look: 'downR', brows: 'one', mouth: 'flat', armL: 'low', armR: 'poke', holdL: 'clip', work: 'stack' }
    3   130ms  { eyes: 'wide', look: 'downR', brows: 'up', mouth: 'small', armL: 'low', armR: 'draw', holdL: 'clip', work: 'stackR' }
@@ -160,6 +167,7 @@ thumb: Whacked the thumb
   on test-failed, once, roles builder; 9 frames, 2210 ms (17 beats)
   may say: "Ow. The test hit me."
   in the office: Stapled the thumb
+  in the bakery: Rolled over the thumb
    1   260ms  { look: 'downR', brows: 'flat', mouth: 'flat', armL: 'hip', armR: 'wind', holdR: 'hammer', work: 'nail1' }
    2   130ms  { eyes: 'squint', look: 'downR', brows: 'angry', mouth: 'flat', armL: 'hip', armR: 'hit1', holdR: 'hammer', work: 'nail1' }
    3   260ms  { eyes: 'wide', look: 'downR', brows: 'up', mouth: 'open', armL: 'out', armR: 'flap1', body: 'back', fx: 'hit', work: 'bent' }
@@ -244,6 +252,7 @@ feetUp: Feet up
 faceDown: Face down on the keys
   on idle-long, once, slacking habit; 3 frames, 1560 ms (12 beats)
   may say: "zzz" "I was resting my context."
+  in the bakery: Face down on the bench
    1   520ms  { eyes: 'closed', mouth: 'drool', armL: 'low', armR: 'low', body: 'nap', fx: 'z1', front: 'desk' }
    2   520ms  { eyes: 'closed', mouth: 'small', armL: 'low', armR: 'low', body: 'nap', fx: 'z2', front: 'desk' }
    3   520ms  { eyes: 'closed', mouth: 'drool', armL: 'low', armR: 'low', body: 'nap', fx: 'z3', front: 'desk' }
@@ -267,6 +276,7 @@ scrolling: Scrolling
 waterCooler: Water cooler
   on idle, once, slacking habit; 5 frames, 1690 ms (13 beats)
   may say: "So anyway, the human said 'quick fix'."
+  in the bakery: Lemonade at the café
    1   260ms  { look: 'left', brows: 'up', mouth: 'open', armL: 'raise', armR: 'out', holdL: 'mug' }
    2   260ms  { look: 'left', mouth: 'grin', armL: 'raise', armR: 'hip', holdL: 'mug' }
    3   390ms  { eyes: 'closed', look: 'left', mouth: 'small', armL: 'sip', armR: 'hip', holdL: 'mug' }
@@ -347,6 +357,41 @@ boothCall: On the booth phone
    3   390ms  { eyes: 'squint', look: 'right', brows: 'flat', mouth: 'flat', armL: 'ear', armR: 'head', holdL: 'receiver' }
    4   260ms  { eyes: 'happy', look: 'upR', mouth: 'grin', armL: 'ear', armR: 'wave2', body: 'nod', holdL: 'receiver' }
    5   390ms  { eyes: 'half', look: 'right', mouth: 'smirk', armL: 'ear', armR: 'head', holdL: 'receiver' }
+
+cappuccinoSip: Sipping a cappuccino
+  on idle, rare 1 in Infinity, once; 5 frames, 2080 ms (16 beats)
+  may say: "Foam first. Feelings later."
+   1   390ms  { eyes: 'half', look: 'left', mouth: 'small', armL: 'raise', armR: 'hip', holdL: 'mug' }
+   2   520ms  { eyes: 'closed', mouth: 'small', armL: 'sip', armR: 'hip', holdL: 'mug' }
+   3   390ms  { eyes: 'happy', cheeks: 'blush', mouth: 'grin', armL: 'raise', armR: 'hip', holdL: 'mug' }
+   4   390ms  { eyes: 'closed', mouth: 'small', armL: 'sip', armR: 'hip', body: 'back', holdL: 'mug' }
+   5   390ms  { eyes: 'half', look: 'right', brows: 'one', mouth: 'smirk', armL: 'raise', armR: 'hip', holdL: 'mug' }
+
+macaronSneak: Sneaking a macaron
+  on idle, rare 1 in Infinity, once; 5 frames, 1690 ms (13 beats)
+  may say: "Nobody saw that. Nobody count them."
+   1   390ms  { eyes: 'half', look: 'left', brows: 'flat', mouth: 'flat', armL: 'hip', armR: 'raise', holdR: 'bolt' }
+   2   390ms  { eyes: 'half', look: 'right', brows: 'flat', mouth: 'flat', armL: 'hip', armR: 'raise', holdR: 'bolt' }
+   3   260ms  { eyes: 'closed', brows: 'up', mouth: 'open', armL: 'hip', armR: 'sip', holdR: 'bolt' }
+   4   390ms  { eyes: 'happy', cheeks: 'blush', mouth: 'grin', armL: 'hip', armR: 'low' }
+   5   260ms  { eyes: 'wide', look: 'left', brows: 'up', mouth: 'small', armL: 'hip', armR: 'low' }
+
+forkLick: Licking the cake fork
+  on idle, rare 1 in Infinity, once; 5 frames, 1950 ms (15 beats)
+  may say: "Tasting is part of the job."
+   1   390ms  { eyes: 'half', look: 'right', mouth: 'small', armL: 'hip', armR: 'raise', holdR: 'stamp' }
+   2   390ms  { eyes: 'closed', mouth: 'open', armL: 'hip', armR: 'sip', holdR: 'stamp' }
+   3   390ms  { eyes: 'happy', cheeks: 'blush', mouth: 'grin', armL: 'hip', armR: 'raise', holdR: 'stamp' }
+   4   390ms  { eyes: 'closed', mouth: 'small', armL: 'hip', armR: 'sip', body: 'back', holdR: 'stamp' }
+   5   390ms  { eyes: 'shine', mouth: 'grin', armL: 'cheer', armR: 'raise', holdR: 'stamp' }
+
+flourNap: Napping on a flour sack
+  on idle, rare 1 in Infinity, once; 4 frames, 1950 ms (15 beats)
+  may say: "zzz" "Five minutes. Then croissants."
+   1   390ms  { eyes: 'half', mouth: 'yawn', armL: 'head', armR: 'head', feet: 'wide', body: 'back', back: 'drum' }
+   2   520ms  { eyes: 'closed', mouth: 'small', armL: 'head', armR: 'head', feet: 'wide', body: 'back', fx: 'z1', back: 'drum' }
+   3   520ms  { eyes: 'closed', mouth: 'drool', armL: 'head', armR: 'head', feet: 'kick', body: 'back', fx: 'z2', back: 'drum' }
+   4   520ms  { eyes: 'closed', mouth: 'small', armL: 'head', armR: 'head', feet: 'wide', body: 'back', fx: 'z3', back: 'drum' }
 
 waiting: Waiting on you
   on waiting, loop; 10 frames, 2990 ms (23 beats)
@@ -490,6 +535,7 @@ walk: Walking somewhere
 carry: Carrying a piece over
   on walking, loop, roles builder; 5 frames, 1040 ms (8 beats)
   in the office: Carrying a ream
+  in the bakery: Carrying a cake layer
    1   260ms  { look: 'right', brows: 'one', mouth: 'small', armL: 'low', armR: 'shoulder', feet: 'swingL', holdR: 'brick' }
    2   260ms  { look: 'right', brows: 'one', mouth: 'small', armL: 'down', armR: 'shoulder', feet: 'swingR', body: 'bob', holdR: 'brick' }
    3   260ms  { look: 'right', brows: 'one', mouth: 'small', armL: 'low', armR: 'shoulder', feet: 'swingL', holdR: 'brick' }
@@ -499,6 +545,7 @@ carry: Carrying a piece over
 place: Adding a piece to the build
   on working, once, roles builder; 8 frames, 1430 ms (11 beats)
   in the office: Setting a ream on the pile
+  in the bakery: Adding a layer to the cake
    1   130ms  { look: 'right', brows: 'one', mouth: 'small', armL: 'low', armR: 'shoulder', holdR: 'brick' }
    2   260ms  { look: 'right', brows: 'one', mouth: 'small', armL: 'low', armR: 'set', holdR: 'brick' }
    3   130ms  { look: 'right', brows: 'flat', mouth: 'small', armL: 'low', armR: 'pat2', work: 'brick' }
@@ -511,6 +558,7 @@ place: Adding a piece to the build
 fileFolder: Flipping through a folder
   on working, loop; 15 frames, 3380 ms (26 beats)
   in the factory: Flipping through the parts bin
+  in the bakery: Checking the dough in the proofing drawer
    1   260ms  { look: 'right', brows: 'one', mouth: 'small', armL: 'low', armR: 'grip', work: 'cabinet' }
    2   260ms  { eyes: 'squint', look: 'right', brows: 'flat', mouth: 'blep', armL: 'low', armR: 'pull', body: 'leanL', work: 'drawer' }
    3   260ms  { look: 'right', brows: 'one', mouth: 'small', armL: 'low', armR: 'tab1', body: 'up', work: 'drawer' }
@@ -530,6 +578,7 @@ fileFolder: Flipping through a folder
 cardThumb: Thumbing through the card catalogue
   on working, loop; 12 frames, 2340 ms (18 beats)
   in the factory: Thumbing through the bolt bin
+  in the bakery: Thumbing through the recipe cards
    1   260ms  { look: 'right', brows: 'one', mouth: 'small', armL: 'low', armR: 'card1', body: 'up', work: 'cards' }
    2   130ms  { eyes: 'squint', look: 'right', brows: 'one', mouth: 'blep', armL: 'low', armR: 'card2', body: 'up', work: 'cardsA' }
    3   130ms  { eyes: 'squint', look: 'right', brows: 'one', mouth: 'blep', armL: 'low', armR: 'card3', body: 'up', work: 'cardsB' }
@@ -546,6 +595,7 @@ cardThumb: Thumbing through the card catalogue
 copierFeed: Feeding the copier
   on working, loop; 11 frames, 2340 ms (18 beats)
   in the factory: Feeding the press
+  in the bakery: Sliding croissants into the oven
    1   260ms  { look: 'right', brows: 'one', mouth: 'small', armL: 'low', armR: 'under', holdR: 'paper', work: 'copier' }
    2   130ms  { eyes: 'squint', look: 'right', brows: 'one', mouth: 'blep', armL: 'low', armR: 'lid', body: 'up', holdR: 'paper', work: 'lidHalf' }
    3   260ms  { look: 'right', brows: 'up', mouth: 'small', armL: 'low', armR: 'lay', body: 'up', holdR: 'paper', work: 'lidUp' }
@@ -561,6 +611,7 @@ copierFeed: Feeding the copier
 copierKick: Kicking the jammed copier
   on working, once; 12 frames, 2990 ms (23 beats)
   in the factory: Kicking the jammed press
+  in the bakery: Kicking the stuck oven door
    1   130ms  { look: 'right', brows: 'one', mouth: 'small', armL: 'low', armR: 'press', work: 'copier' }
    2   260ms  { eyes: 'wide', look: 'right', brows: 'up', mouth: 'open', armL: 'low', armR: 'press', work: 'jam' }
    3   130ms  { eyes: 'squint', look: 'downR', brows: 'one', mouth: 'flat', armL: 'low', armR: 'door', work: 'jam' }
@@ -576,6 +627,7 @@ copierKick: Kicking the jammed copier
 
 stampGreen: Stamping it approved
   on working, loop; 8 frames, 1430 ms (11 beats)
+  in the bakery: Tasting it: yes
    1   260ms  { look: 'right', brows: 'one', mouth: 'small', armL: 'low', armR: 'st1', body: 'up', holdR: 'stamp', work: 'forms' }
    2   130ms  { eyes: 'squint', look: 'right', brows: 'one', mouth: 'blep', armL: 'low', armR: 'ink', body: 'up', holdR: 'stamp', work: 'forms' }
    3   130ms  { look: 'right', brows: 'one', mouth: 'small', armL: 'low', armR: 'st1', body: 'up', holdR: 'stampG', work: 'forms' }
@@ -587,6 +639,7 @@ stampGreen: Stamping it approved
 
 stampRed: Stamping it rejected
   on working, once; 7 frames, 1950 ms (15 beats)
+  in the bakery: Tasting it: no
    1   260ms  { look: 'right', brows: 'flat', mouth: 'flat', armL: 'low', armR: 'st1', body: 'up', holdR: 'stamp', work: 'formsR' }
    2   130ms  { eyes: 'squint', look: 'right', brows: 'flat', mouth: 'flat', armL: 'low', armR: 'ink', body: 'up', holdR: 'stamp', work: 'formsR' }
    3   260ms  { look: 'right', brows: 'worry', mouth: 'flat', armL: 'low', armR: 'st2', body: 'up', holdR: 'stampR', work: 'formsR' }
@@ -598,6 +651,7 @@ stampRed: Stamping it rejected
 phone: On the phone
   on working, loop; 13 frames, 2210 ms (17 beats)
   in the factory: On the radio
+  in the bakery: Taking an order on the phone
    1   390ms  { eyes: 'half', look: 'upR', brows: 'one', mouth: 'small', armL: 'ear', armR: 'low', holdL: 'receiver', holdR: 'pencil', work: 'note0' }
    2   130ms  { look: 'upR', brows: 'up', mouth: 'small', armL: 'ear', armR: 'low', body: 'nod', holdL: 'receiver', holdR: 'pencil', work: 'note0' }
    3   130ms  { look: 'upR', brows: 'up', mouth: 'small', armL: 'ear', armR: 'low', holdL: 'receiver', holdR: 'pencil', work: 'note0' }
@@ -615,6 +669,7 @@ phone: On the phone
 mailDrop: Dropping the envelope in the outbox
   on working, once; 10 frames, 2080 ms (16 beats)
   in the factory: Dropping the carton on the pallet
+  in the bakery: Setting a pastry box on the counter
    1   130ms  { eyes: 'happy', look: 'right', brows: 'up', mouth: 'grin', armL: 'present', armR: 'present', front: 'bigEnvelope', work: 'outbox' }
    2   260ms  { look: 'right', brows: 'one', mouth: 'small', armL: 'low', armR: 'card', holdR: 'envelope', work: 'outbox' }
    3   260ms  { look: 'right', brows: 'one', mouth: 'small', armL: 'low', armR: 'post', holdR: 'envelope', work: 'outbox' }
@@ -629,6 +684,7 @@ mailDrop: Dropping the envelope in the outbox
 shred: Feeding the shredder
   on working, loop; 7 frames, 1170 ms (9 beats)
   in the factory: Feeding the crusher
+  in the bakery: Tipping burnt cookies in the crumb bin
    1   260ms  { look: 'right', brows: 'one', mouth: 'small', armL: 'low', armR: 'pick', body: 'up', work: 'shred' }
    2   130ms  { look: 'right', brows: 'one', mouth: 'small', armL: 'low', armR: 'slide', body: 'up', holdR: 'slip', work: 'shred4' }
    3   130ms  { look: 'right', brows: 'one', mouth: 'small', armL: 'low', armR: 'feed1', body: 'up', holdR: 'feed1', work: 'shred4' }
@@ -661,6 +717,7 @@ queueWait: Waiting in line
 buried: Buried under the in-tray
   on working, loop; 14 frames, 2470 ms (19 beats)
   in the factory: Buried under the hopper
+  in the bakery: Buried under a tray of pastries
    1   130ms  { eyes: 'wide', look: 'down', brows: 'worry', mouth: 'flat', armL: 'type1', armR: 'type3', fx: 'sweat1', front: 'desk', work: 'tray4' }
    2   130ms  { eyes: 'wide', look: 'down', brows: 'worry', mouth: 'flat', armL: 'type3', armR: 'type1', front: 'desk', work: 'tray4R' }
    3   130ms  { eyes: 'wide', look: 'down', brows: 'worry', mouth: 'flat', armL: 'type1', armR: 'type3', front: 'desk', work: 'tray4' }
@@ -721,6 +778,7 @@ ticketSlump: Slumped in line, ticket drooping
 bellRing: Ringing the bell on your desk
   on working, once; 7 frames, 2080 ms (16 beats)
   in the factory: Ringing the shift bell on your desk
+  in the bakery: Ringing the bell on your counter
    1   260ms  { look: 'right', brows: 'one', mouth: 'small', armL: 'low', armR: 'low', holdL: 'ticket', work: 'bell' }
    2   260ms  { eyes: 'squint', look: 'right', brows: 'one', mouth: 'blep', armL: 'low', armR: 'poise', holdL: 'ticket', work: 'bell' }
    3   130ms  { eyes: 'squint', look: 'right', brows: 'angry', mouth: 'flat', armL: 'low', armR: 'ring', fx: 'ding', holdL: 'ticket', work: 'bellDing' }
@@ -732,6 +790,7 @@ bellRing: Ringing the bell on your desk
 stickyCarry: Carrying a sticky note
   on working, loop; 5 frames, 1040 ms (8 beats)
   in the factory: Carrying a work tag
+  in the bakery: Carrying an order slip
    1   260ms  { look: 'upR', brows: 'up', mouth: 'small', armL: 'low', armR: 'tipUp', feet: 'swingL', holdR: 'sticky' }
    2   260ms  { look: 'upR', brows: 'up', mouth: 'small', armL: 'down', armR: 'tipUp', feet: 'swingR', body: 'bob', holdR: 'stickyFlap' }
    3   260ms  { look: 'upR', brows: 'up', mouth: 'small', armL: 'low', armR: 'tipUp', feet: 'swingL', holdR: 'sticky' }
@@ -741,6 +800,7 @@ stickyCarry: Carrying a sticky note
 stickyPost: Posting a sticky note on the planner
   on working, once; 12 frames, 2470 ms (19 beats)
   in the factory: Hanging a work tag on the job board
+  in the bakery: Pinning an order slip on the order board
    1   260ms  { look: 'upR', brows: 'up', mouth: 'small', armL: 'low', armR: 'tipUp', holdR: 'sticky' }
    2   260ms  { eyes: 'squint', look: 'upR', brows: 'one', mouth: 'blep', armL: 'low', armR: 'stick', feet: 'tip', body: 'reach', work: 'stickyOn' }
    3   130ms  { eyes: 'squint', look: 'upR', brows: 'flat', mouth: 'blep', armL: 'low', armR: 'smooth1', feet: 'tip', body: 'reach', work: 'stickyOn' }
@@ -772,6 +832,7 @@ rushRun: Running, papers flying
 envelopeCarry: Carrying the PR envelope
   on working, loop; 5 frames, 1040 ms (8 beats)
   in the factory: Carrying the PR crate
+  in the bakery: Carrying the PR cake
    1   260ms  { eyes: 'happy', look: 'right', brows: 'up', mouth: 'grin', armL: 'present', armR: 'present', feet: 'swingL', front: 'bigEnvelope' }
    2   260ms  { eyes: 'happy', look: 'upR', brows: 'up', mouth: 'grin', armL: 'present', armR: 'present', feet: 'kneeR', body: 'bob', front: 'bigEnvelope' }
    3   260ms  { eyes: 'happy', look: 'right', brows: 'up', mouth: 'grin', armL: 'present', armR: 'present', feet: 'swingR', front: 'bigEnvelope' }
@@ -781,6 +842,7 @@ envelopeCarry: Carrying the PR envelope
 copierFeud: A running feud with the copier
   on working, loop; 18 frames, 3640 ms (28 beats)
   in the factory: A running feud with the press
+  in the bakery: A running feud with the oven
    1   260ms  { eyes: 'squint', look: 'right', brows: 'angry', mouth: 'shout', armL: 'out', armR: 'hip', feet: 'boot', body: 'leanL', work: 'kicked' }
    2   260ms  { eyes: 'wide', look: 'right', brows: 'up', mouth: 'open', armL: 'low', armR: 'hip', work: 'kickSpit' }
    3   130ms  { eyes: 'squint', look: 'downR', brows: 'angry', mouth: 'flat', armL: 'low', armR: 'pluck', work: 'jam' }

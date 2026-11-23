@@ -22,17 +22,18 @@ export function paintAccessories(parts: Record<string, Painter>, p: Palette): vo
 	const ink = p.ink;
 	const A = ANCHORS;
 
-	// A daisy tucked in at the side of the head, by the right eye, below where a hat's brim comes.
+	// A daisy tucked in at the side of the head, up and out from the right eye (clear of it and the
+	// brow), below where a hat's brim comes.
 	parts["wear/flower"] = (g: Graphics) => {
-		const cx = 36;
-		const cy = -54;
+		const cx = 39;
+		const cy = -58;
 		for (let k = 0; k < 5; k++) {
 			const a = (k * Math.PI * 2) / 5 - Math.PI / 2;
 			g.ellipse(cx + Math.cos(a) * 4.6, cy + Math.sin(a) * 4.6, 3.4, 3.4).fill(PETAL).stroke({ width: 1.5, color: ink });
 		}
 		g.circle(cx, cy, 2.8).fill(p.sun).stroke({ width: 1.4, color: ink });
 		// A leaf, tucked behind.
-		g.ellipse(cx - 7, cy + 5, 3.6, 1.8).fill(p.go).stroke({ width: 1.2, color: ink });
+		g.ellipse(cx + 3, cy + 7.5, 3.6, 1.8).fill(p.go).stroke({ width: 1.2, color: ink });
 	};
 
 	// Small gold hoops at either side of the head, just above the shoulders.
@@ -51,19 +52,20 @@ export function paintAccessories(parts: Record<string, Painter>, p: Palette): vo
 		g.fill({ color: FRECKLE, alpha: 0.75 });
 	};
 
-	// A round enamel pin with a little heart, low on the body's left, clear of the front piece.
+	// A round enamel pin with a little heart, low on the body's left, clear of the front piece and
+	// below the cheek.
 	parts["wear/pin"] = (g: Graphics) => {
-		const cx = -30;
-		const cy = -13;
+		const cx = -28;
+		const cy = -10;
 		g.circle(cx, cy, 5.6).fill(PIN).stroke({ width: 1.8, color: ink });
 		g.circle(cx - 1.3, cy - 1.2, 1.5).circle(cx + 1.3, cy - 1.2, 1.5).fill(0xffffff);
 		g.poly([cx - 2.7, cy - 0.6, cx + 2.7, cy - 0.6, cx, cy + 2.6]).fill(0xffffff);
 	};
 
-	// A sticking plaster at a slant on the forehead, over the right brow.
+	// A sticking plaster at a slant on the forehead, above the right brow (the brow still shows).
 	parts["wear/plaster"] = (g: Graphics) => {
-		const cx = 22;
-		const cy = -58;
+		const cx = 20;
+		const cy = -62;
 		const a = -0.45;
 		const c = Math.cos(a);
 		const s = Math.sin(a);
