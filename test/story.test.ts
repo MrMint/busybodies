@@ -4,7 +4,7 @@ import { describe, expect, test } from "bun:test";
 import { direct } from "../src/scene/director/direct";
 import type { View } from "../src/scene/director/social";
 import { STORY, headlinesFor, regularsOf } from "../src/scene/director/story";
-import { DECOR, FACTORY_STORY, KITCHEN_STORY, OFFICE_STORY, boardText, decorFor, frameSpots, regularNames, storyStyle } from "../src/scene/office/decor";
+import { DECOR, FACTORY_STORY, KITCHEN_STORY, OFFICE_STORY, boardText, decorFor, frameSpots, regularNames, storyStyle } from "../src/scene/office/decor-plan";
 import { REGULAR_NAMES, regularOf } from "../src/scene/rig/roles";
 import { type Diary, type DiaryDay, localDay, projectKey } from "../src/shared/diary";
 import type { World } from "../src/scene/director/types";
