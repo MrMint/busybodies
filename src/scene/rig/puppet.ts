@@ -86,6 +86,8 @@ export class Puppet extends Container {
 	#skin: number;
 	#springs: SpringSet<ChannelName>;
 	#pop = { face: new Spring(1, FEEL.pop), heldL: new Spring(1, FEEL.pop), heldR: new Spring(1, FEEL.pop), front: new Spring(1, FEEL.pop), fx: new Spring(1, FEEL.pop) };
+	/** The pops as a list, for the per-frame loops (no array made each frame). */
+	#pops: Spring[] = Object.values(this.#pop);
 	/** How the eyes and mouth arrive on a change: a slight swell, not a squash. */
 	static readonly FACE_KICK = 1.04;
 
@@ -315,7 +317,7 @@ export class Puppet extends Container {
 	/** Jump every spring to its target. */
 	snap(): void {
 		this.#springs.snap();
-		for (const p of Object.values(this.#pop)) {
+		for (const p of this.#pops) {
 			p.target = 1;
 			p.snap();
 		}
@@ -324,7 +326,7 @@ export class Puppet extends Container {
 
 	get settled(): boolean {
 		if (!this.#springs.settled) return false;
-		for (const p of Object.values(this.#pop)) if (!p.settled) return false;
+		for (const p of this.#pops) if (!p.settled) return false;
 		return true;
 	}
 
@@ -375,7 +377,7 @@ export class Puppet extends Container {
 		if (!this.animating) return;
 		this.#advance(ms * this.#tempo);
 		this.#springs.step(ms / 1000);
-		for (const p of Object.values(this.#pop)) p.step(ms / 1000);
+		for (const p of this.#pops) p.step(ms / 1000);
 		this.#apply();
 	}
 

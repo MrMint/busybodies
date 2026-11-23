@@ -108,22 +108,27 @@ export class Spring {
 /** A named set of springs moving together, such as every channel of one puppet. */
 export class SpringSet<K extends string> {
 	readonly springs: Record<K, Spring>;
+	/** The same springs as a list: every frame asks each puppet whether it has settled, and a loop
+	 * over an array is several times cheaper than `for...in` over the record. */
+	readonly #list: Spring[] = [];
 	constructor(initial: Record<K, number>, feelOf: (k: K) => SpringFeel) {
 		this.springs = {} as Record<K, Spring>;
-		for (const k of Object.keys(initial) as K[]) this.springs[k] = new Spring(initial[k], feelOf(k));
+		for (const k of Object.keys(initial) as K[]) this.#list.push((this.springs[k] = new Spring(initial[k], feelOf(k))));
 	}
 	setTargets(t: Record<K, number>): void {
 		for (const k in t) this.springs[k].target = t[k];
 	}
 	get settled(): boolean {
-		for (const k in this.springs) if (!this.springs[k].settled) return false;
+		const list = this.#list;
+		for (let i = 0; i < list.length; i++) if (!list[i]!.settled) return false;
 		return true;
 	}
 	step(seconds: number): void {
-		for (const k in this.springs) this.springs[k].step(seconds);
+		const list = this.#list;
+		for (let i = 0; i < list.length; i++) list[i]!.step(seconds);
 	}
 	snap(): void {
-		for (const k in this.springs) this.springs[k].snap();
+		for (const s of this.#list) s.snap();
 	}
 	value(k: K): number {
 		return this.springs[k].value;
