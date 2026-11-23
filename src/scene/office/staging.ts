@@ -9,14 +9,16 @@
 //   hall   "corridor": a hallway to walk down (the office)
 //          "conveyor": the hallway's belt carries PR crates down to the dock at its end (the factory)
 //   ambient  what moves on its own on the life clock (office/ambient.ts): steam off the coffee, a
-//          ceiling fan, the printer's light; a beacon while a build runs, steam vents, weld sparks
-//   habits the idle habits the theme's cast rotates through (rig/poses.ts names; director/habits.ts)
+//          ceiling fan, the printer's light, a fluorescent tube's flicker in every room; a beacon
+//          while a build runs, every press's pilot lamp, steam vents, weld sparks
+//   habits the idle habits the theme's cast rotates through (rig/poses.ts names; director/habits.ts),
+//          and a line's lead its own up in the booth, where only its head and hat show
 //
 // A theme without a staging gets the office's behaviour (`stagingOf`), so a new theme only says
 // what it changes. Pixi-free: the layout, the director and tests read it.
 
 /** Things that move on their own, on the life clock (office/ambient.ts draws each). */
-export type AmbientKind = "steam" | "fan" | "printer" | "beacon" | "vents" | "sparks";
+export type AmbientKind = "steam" | "fan" | "printer" | "flicker" | "beacon" | "pilot" | "vents" | "sparks";
 
 /** What the world carries (office/world.ts `World.staging`): the layout reads the bay and the hall,
  * the director the habits. */
@@ -25,7 +27,16 @@ export interface Staging {
 	hall: "corridor" | "conveyor";
 	/** The idle habits, in rotation order (pose names). None: the rig's seven (rig/poses.ts HABITS). */
 	habits?: readonly string[];
+	/** A line bay's lead stands up in its booth behind its bench (theme/factory.ts booth), which
+	 * comes to its chin: its habits, played at head height, in place of `habits` (which sit on drums
+	 * and kick vending machines on the floor). None: the lead plays `habits` like the rest. */
+	leadHabits?: readonly string[];
 }
+
+/** The idle habits for a character in this staging: a lead at its desk in a line bay plays the
+ * booth's own, the rest the theme's (none: the rig's seven). */
+export const habitsFor = (staging: Staging | undefined, lead: boolean): readonly string[] | undefined =>
+	(lead && staging?.bay === "line" && staging.leadHabits?.length ? staging.leadHabits : staging?.habits);
 
 export interface SceneStaging extends Staging {
 	ambient: readonly AmbientKind[];

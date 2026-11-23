@@ -68,6 +68,7 @@ describe("staging", () => {
 					pieces: s.pieces,
 					conveyor: s.conveyor,
 					hallway: b.layout()!.hallway,
+					rooms: b.layout()!.areas.length,
 				};
 			});
 		const f = await facts(factory);
@@ -78,7 +79,10 @@ describe("staging", () => {
 		expect(f.pieces.dock).toBe(1);
 		expect(f.pieces.vent).toBeGreaterThan(0);
 		expect(f.conveyor!.x1).toBe(f.hallway.x + f.hallway.w);
-		expect(f.ambient).toEqual(["beacon", "vents", "sparks"]);
+		expect(f.ambient).toEqual(["beacon", "pilot", "vents", "sparks"]);
+		// Every bay's press has its pilot lamp; every office room a tube that flickers.
+		expect(f.pieces.pilot).toBeGreaterThan(0);
+		expect(f.pieces.flicker ?? 0).toBe(0);
 		// The office keeps its desks and corridor, with its own ambient life.
 		expect([o.bay, o.hall]).toEqual(["desks", "corridor"]);
 		expect(o.belts).toEqual([]);
@@ -88,6 +92,7 @@ describe("staging", () => {
 		expect(o.pieces.steam).toBe(1);
 		expect(o.pieces.fan).toBe(1);
 		expect(o.pieces.led).toBeGreaterThan(0);
+		expect(o.pieces.flicker).toBe(o.rooms);
 		await factory.close();
 		await office.close();
 	}, T);
@@ -137,7 +142,7 @@ describe("staging", () => {
 		}
 	}, T);
 
-	test("a PR's crate rides the hallway's conveyor to the dock, then it is gone and nothing moves for it", async () => {
+	test("a PR's crate starts where the arm sets it down, rides the hallway's conveyor to the dock, then it is gone and nothing moves for it", async () => {
 		const page = await open("demo&settle=600000&theme=factory");
 		const ride = await page.evaluate(() => {
 			const b = window.__busybodies!;
@@ -147,16 +152,22 @@ describe("staging", () => {
 			busy.prs = [{ number: 4242, url: "https://example.invalid/pull/4242", at: s.at }];
 			b.show(s);
 			const start = b.staging().crates;
+			const desk = b.layout()!.areas.flatMap((a) => a.desks.map((d) => ({ d, rect: a.rect }))).find((x) => x.d.id === busy.id)!;
+			const belt = b.staging().conveyor!.y + 9;
 			// Ten frames a render: the ride is ~400 frames, and a render per frame is slow headless.
 			let steps = 0;
 			while (b.staging().crates.length && steps < 1200) {
 				b.step(10);
 				steps += 10;
 			}
-			return { start, steps, after: b.staging().crates.length, dock: b.staging().conveyor!.dock.x };
+			return { start, steps, after: b.staging().crates.length, dock: b.staging().conveyor!.dock.x, bay: desk.rect, belt };
 		});
 		expect(ride.start).toHaveLength(1);
 		expect(ride.start[0]!.x).toBeLessThan(ride.dock);
+		// On the bay's loading dock, by its left wall where the arm sets it down, not mid-bay on the belt.
+		expect(ride.start[0]!.x).toBeGreaterThan(ride.bay.x);
+		expect(ride.start[0]!.x).toBeLessThan(ride.bay.x + ride.bay.w / 3);
+		expect(ride.start[0]!.y).not.toBe(ride.belt);
 		expect(ride.steps).toBeGreaterThan(60);
 		expect(ride.after).toBe(0);
 		await page.close();
