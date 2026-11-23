@@ -33,7 +33,8 @@ music or a call, or sounds like people talking in the room.
 | Layer | What | When | How loud |
 |---|---|---|---|
 | Room | The theme's bed: hum and typing, the belt's clack, the oven and the shop door (sound.ts), or a recorded loop (tools/ambience.ts) | Always, while live | Lowest; dips under a voice in front |
-| Murmur | Babble for the ordinary said bubbles: chatter, reactions, the busy lines | A few every 10 s at most, short | Well under the front, never on top of each other |
+| Crowd | A distant murmur of the office at work: a few talkers chatting on and off from the syllable banks, muffled and mostly room; more talkers and shorter pauses the busier it is | Always, in the babble modes; fades in and out over seconds | Under everything but the room; dips under a key beat |
+| Murmur | Babble for the ordinary said bubbles of the room the camera is zoomed into (zoomed out, the crowd stands in) | A few every 10 s at most, one whole phrase each | Well under the front, never on top of each other |
 | Earcons | The bell, chime, stamp, two-note red, rustle, grind | On their events, rate-limited | Clear, short |
 | Front voice | A key beat: waiting on you, done, back to work | One at a time, at most 3 a minute | The loudest voice; the room dips |
 
@@ -53,13 +54,19 @@ plain or "small" deliveries). Babble still felt closer to a crowd of mochis than
 - **The synthesised babble** (the first cut) stays as the fallback: lines with nothing recorded, a
   clip that won't decode.
 
+**Background, not foreground (owner, 2026-11-23).** It should feel like a background hum of
+everyone working: intentional, never cut off, never on top of you. So a phrase is always whole
+(stopped at a word, the last syllable trailing off over about 120 ms), key beats sit in the crowd
+rather than over it, and individual babble comes only from the room you're looking at.
+
 ## The sound lab
 
 `?demo&sound&lab` adds a timeline of its own (crew chatter every few seconds, a key beat every 20
 to 35) and a panel to switch, live:
 
 - **mode**: synth babble, syllables, + reactions, + full lines (`?voice=` sets the first)
-- **murmur** on or off, and the front and murmur levels
+- **murmur** on or off (zoomed room only), and the front, murmur and **crowd** levels
+- **smooth syllables**, **shape voices** and **room**: before and after for the blend pass
 - **pitch** on top of the theme's
 - **key beat now**, and a log of what played and how
 

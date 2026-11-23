@@ -249,6 +249,21 @@ describe("the sound lab's parts: syllables and the murmur", async () => {
 		if (quiet) expect(quiet.gain).toBeGreaterThan(1);
 	});
 
+	test("smooth: whole phrases only, and a phrase's last syllable trails off", () => {
+		const text = "Hold my coffee. Actually, drink it. I have a meeting.";
+		const one = grainPlan("s:1", text, sung, { phrase: true });
+		expect(one.length).toBe(wordsOf("Hold my coffee.").reduce((n, w) => n + w.syllables, 0));
+		expect(one.at(-1)!.release).toBeGreaterThan(0.1);
+		// Mid-line stops trail off too; nothing else does.
+		const all = grainPlan("s:1", text, sung);
+		expect(all.filter((g) => g.release).length).toBe(3);
+		// Capped, it stops after a whole word: the syllables add up to whole words.
+		const capped = grainPlan("s:1", text, sung, { max: 4 });
+		const sums = wordsOf(text).reduce<number[]>((acc, w) => [...acc, (acc.at(-1) ?? 0) + w.syllables], []);
+		expect(sums).toContain(capped.length);
+		expect(capped.at(-1)!.release).toBeGreaterThan(0.1);
+	});
+
 	test("smooth: the raw switch, and a bank with no pitches, give the first cut", () => {
 		expect(grainPlan("s:1", "Hello there.", sung, { raw: true }).every((g) => g.gap > 0)).toBe(true);
 		expect(grainPlan("s:1", "Hello there.", bank).every((g) => g.gap > 0)).toBe(true);

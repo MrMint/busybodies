@@ -258,6 +258,8 @@ export interface GrainStep {
 	gap: number;
 	/** Its level, evening out loud and quiet syllables. */
 	gain: number;
+	/** A phrase's last syllable trails off: its fade-out, in seconds (else the usual short one). */
+	release?: number;
 }
 
 /**
@@ -319,7 +321,7 @@ function seq(seed: number): () => number {
  * `base` is cents on top (the theme's pitch plus the character's own); `max` caps the syllables
  * (the murmur is short). Every choice comes from the character and the words, never Math.random.
  */
-export function grainPlan(who: string, text: string, bank: readonly GrainClip[], o: { max?: number; base?: number; raw?: boolean } = {}): GrainStep[] {
+export function grainPlan(who: string, text: string, bank: readonly GrainClip[], o: { max?: number; base?: number; raw?: boolean; phrase?: boolean } = {}): GrainStep[] {
 	const max = o.max ?? 14;
 	const base = o.base ?? 0;
 	const r = seq(hash(`grain|${who}|${text}`));
@@ -333,9 +335,18 @@ export function grainPlan(who: string, text: string, bank: readonly GrainClip[],
 	const loud = median(pool.map((g) => g.db ?? -20)) ?? -20;
 	const { tune } = babbleOf(text);
 	let words = wordsOf(text);
-	// Over the cap, keep the opening words and the last one (it carries the tune's end).
-	while (words.reduce((n, w) => n + w.syllables, 0) > max && words.length > 1) words.splice(words.length - 2, 1);
+	// `phrase`: the first sentence only (the murmur, the crowd).
+	if (o.phrase) {
+		const stop = words.findIndex((w) => w.pause === "stop");
+		if (stop >= 0) words = words.slice(0, stop + 1);
+	}
+	// Over the cap, stop at the last whole word that fits: never mid-sentence noise, never a hole.
+	let total = 0;
+	words = words.filter((w) => (total += w.syllables) <= max || total === w.syllables);
+	if (words.length) words[words.length - 1] = { ...words.at(-1)!, pause: "end" };
 	const n = Math.min(max, words.reduce((k, w) => k + w.syllables, 0));
+	// A phrase's last syllable wants to linger: the longer syllables, when there are some.
+	const long = pool.map((g, j) => j).filter((j) => pool[j]!.end - pool[j]!.start >= 0.16);
 	// The voice's middle, moved by the theme and the character, onto the key: where the tune starts from.
 	const home = nearestStep(12 * Math.log2(mid! / MOCHI_KEY.rootHz) + base / 100);
 	const out: GrainStep[] = [];
@@ -350,8 +361,10 @@ export function grainPlan(who: string, text: string, bank: readonly GrainClip[],
 			const lift = k === 0 && w.syllables > 1 ? 0.6 : 0;
 			const note = LADDER[Math.max(0, Math.min(LADDER.length - 1, home + Math.round(steps + lift)))]!;
 			// A word keeps to one take when it can, so its syllables sound like one word.
+			const final = (k === w.syllables - 1 || i === n - 1) && (w.pause === "stop" || w.pause === "end");
 			const same = pool.map((g, j) => j).filter((j) => pool[j]!.clip === clip && j !== last);
-			const choices = same.length && r() < 0.8 ? same : pool.map((_, j) => j).filter((j) => j !== last);
+			const lasting = long.filter((j) => j !== last);
+			const choices = final && lasting.length ? lasting : same.length && r() < 0.8 ? same : pool.map((_, j) => j).filter((j) => j !== last);
 			const j = choices[Math.floor(r() * choices.length)] ?? 0;
 			const g = pool[j]!;
 			last = j;
@@ -360,7 +373,8 @@ export function grainPlan(who: string, text: string, bank: readonly GrainClip[],
 			const end = k === w.syllables - 1 || i === n - 1;
 			const gap = !end ? -0.03 : w.pause === "comma" ? 0.16 : w.pause === "stop" ? 0.24 : w.pause === "end" ? 0 : 0.04 + r() * 0.025;
 			const gain = Math.max(0.6, Math.min(1.6, 10 ** ((loud - (g.db ?? loud)) / 20))) * (k === 0 ? 1.08 : 1) * (i === n - 1 ? 0.92 : 1);
-			out.push({ file: g.file, start: g.start, end: g.end, cents: Math.round((note - own) * 100), gap: Math.round(gap * 1000) / 1000, gain: Math.round(gain * 100) / 100 });
+			// The last syllable borrows a little of the recording after its cut, and fades out slowly.
+			out.push({ file: g.file, start: g.start, end: final ? g.end + 0.08 : g.end, cents: Math.round((note - own) * 100), gap: Math.round(gap * 1000) / 1000, gain: Math.round(gain * 100) / 100, ...(final ? { release: 0.12 } : {}) });
 		}
 	}
 	return out;

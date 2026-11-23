@@ -21,7 +21,7 @@ import type { Stop, View } from "../scene/office/camera";
 import type { World as Floor } from "../scene/office/world";
 import { type Say, keyFor } from "../scene/sass";
 import type { TriggerKind } from "../scene/sass/types";
-import { EMPTY_MANIFEST, type GrainStep, Mouth, type VoiceManifest, type VoiceMode, babbleHz, babbleOf, grainPlan, lineKey, ownVoice, pickTake, pitchCents, templated } from "../scene/sass/voiced";
+import { EMPTY_MANIFEST, type GrainStep, type ThemeVoices, corpus, Mouth, type VoiceManifest, type VoiceMode, babbleHz, babbleOf, grainPlan, lineKey, ownVoice, pickTake, pitchCents, templated } from "../scene/sass/voiced";
 import type { ThemeId } from "../scene/theme/id";
 import { type Sound, hashId, loudness, panFor, seq, zoomedArea } from "./sound";
 
@@ -60,6 +60,8 @@ export interface SpeechMix {
 	shape: boolean;
 	/** The shared room's level (sound.ts `roomChain`): 0 dry, 1 the default. */
 	room: number;
+	/** The crowd's level, 0 (off) to 2; it runs in the babble modes. */
+	crowd: number;
 }
 
 export interface Spoken {
@@ -82,6 +84,8 @@ export interface SpeechState {
 	/** Lines with a clip, in the current theme. */
 	clips: number;
 	room: { file?: string; running: boolean };
+	/** The crowd, while it murmurs (a babble mode, live, with banks): how many talkers, and phrases so far. */
+	crowd?: { talkers: number; phrases: number };
 	/** The last lines spoken, newest last. */
 	last: Spoken[];
 }
@@ -109,8 +113,18 @@ const BABBLE_GAIN = 0.22;
 const GRAIN_GAIN = 0.8;
 /** The murmur, against the front. */
 const UNDER_GAIN = 0.35;
-/** The murmur is short: at most this many syllables. */
-const MURMUR_SYLLABLES = 6;
+/** The murmur is one short phrase: at most this many syllables. */
+const MURMUR_SYLLABLES = 8;
+/** Key beats sit in the crowd, not on top of it. */
+const FRONT_LEVEL = 0.7;
+/**
+ * The crowd: a soft, distant murmur of the office at work, from the same syllable banks. Up to
+ * `CROWD_TALKERS` talkers chat on and off (more of them the busier it is), each phrase panned
+ * somewhere on the floor, all of it muffled and sent to the room.
+ */
+const CROWD_GAIN = 0.16;
+const CROWD_TALKERS = 6;
+const CROWD_SEND = 0.8;
 /** A syllable's rounded edges: in, and out (they overlap within a word, so it's a little longer). */
 const GRAIN_IN = 0.014;
 const GRAIN_OUT = 0.045;
@@ -133,6 +147,7 @@ export class Speech {
 	#murmur: Mouth;
 	#mix: SpeechMix;
 	#vbus?: { ctx: AudioContext; input: AudioNode };
+	#crowd?: Crowd;
 	#manifest?: VoiceManifest;
 	#loading?: Promise<void>;
 	#status: SpeechState["manifest"] = "none";
@@ -145,7 +160,7 @@ export class Speech {
 		this.#host = host;
 		this.#mouth = new Mouth({ graceMs: host.graceMs });
 		this.#murmur = new Mouth({ graceMs: host.graceMs, murmur: true });
-		this.#mix = { mode: host.mode ?? "synth", murmur: true, front: 1, under: 1, smooth: true, shape: true, room: 1 };
+		this.#mix = { mode: host.mode ?? "synth", murmur: true, front: 1, under: 1, smooth: true, shape: true, room: 1, crowd: 1 };
 	}
 
 	/** From each voice run: the bubbles that just went up. Speaks at most one key beat, and murmurs at most one other. */
@@ -164,7 +179,10 @@ export class Speech {
 		const front = this.#mouth.choose(heard, now);
 		if (front) void this.#say(front, "front", bus);
 		if (this.#mix.mode === "synth" || !this.#mix.murmur) return;
-		const under = this.#murmur.choose(heard.filter((h) => h !== front), now);
+		// The murmur is for the room you're looking at: zoomed out, the crowd stands in for it.
+		const zoomed = zoomedArea(this.#host.stop(), this.#host.floor());
+		if (!zoomed) return;
+		const under = this.#murmur.choose(heard.filter((h) => h !== front && this.#host.areaOf(h.who) === zoomed), now);
 		if (under) void this.#say(under, "murmur", bus);
 	}
 
@@ -175,6 +193,8 @@ export class Speech {
 	setMix(change: Partial<SpeechMix>): void {
 		this.#mix = { ...this.#mix, ...change };
 		if (change.room !== undefined) this.#host.sound.setRoom(change.room);
+		if (change.crowd !== undefined || change.mode !== undefined) this.update();
+		if (change.crowd !== undefined && this.#crowd) this.#crowd.level(change.crowd);
 	}
 
 	/**
@@ -213,9 +233,12 @@ export class Speech {
 		const bus = this.#host.sound.bus();
 		if (!bus) {
 			this.#mouth.live(undefined);
+			this.#crowd?.stop();
+			this.#crowd = undefined;
 			return this.#stopRoom();
 		}
 		this.#load();
+		this.#syncCrowd(bus);
 		const theme = this.#host.theme();
 		const loop = this.#loops?.find((l) => l.theme === theme);
 		if (this.#room && (this.#room.theme !== theme || this.#room.file !== loop?.file)) this.#stopRoom();
@@ -245,6 +268,7 @@ export class Speech {
 			mix: this.mix,
 			clips: t ? Object.keys(t.lines).length : 0,
 			room: { file: this.#room?.file, running: !!this.#room?.src },
+			crowd: this.#crowd && { talkers: this.#crowd.talkers, phrases: this.#crowd.phrases },
 			last: [...this.#last],
 		};
 	}
@@ -307,7 +331,7 @@ export class Speech {
 			const own = ownVoice(who, Object.keys(voices.grains));
 			const bank = own ? voices.grains[own] : undefined;
 			if (bank) {
-				steps = grainPlan(who, text, bank, { max: layer === "murmur" ? MURMUR_SYLLABLES : undefined, base: cents + pitch, raw: !this.#mix.smooth });
+				steps = grainPlan(who, text, bank, { max: layer === "murmur" ? MURMUR_SYLLABLES : undefined, phrase: layer === "murmur", base: cents + pitch, raw: !this.#mix.smooth });
 				for (const file of new Set(steps.map((s) => s.file))) {
 					const b = await this.#buffer(ctx, `voice/${file}`);
 					if (b) grains.set(file, b);
@@ -323,7 +347,7 @@ export class Speech {
 		const rect = area ? floor?.areas.find((a) => a.id === area)?.rect : undefined;
 		const pan = panFor(rect, this.#host.view(), this.#host.width());
 		const near = loudness(area, zoomedArea(this.#host.stop(), floor));
-		const room = near * (layer === "front" ? this.#mix.front : this.#mix.under * UNDER_GAIN);
+		const room = near * (layer === "front" ? this.#mix.front * FRONT_LEVEL : this.#mix.under * UNDER_GAIN);
 		const out = ctx.createGain();
 		const panner = ctx.createStereoPanner();
 		panner.pan.value = pan;
@@ -358,6 +382,7 @@ export class Speech {
 		}
 		if (layer === "front") {
 			this.#host.sound.duck(at, secs);
+			this.#crowd?.duck(at, secs);
 			if (this.#room) {
 				const g = this.#room.out.gain;
 				g.cancelScheduledValues(ctx.currentTime);
@@ -371,6 +396,25 @@ export class Speech {
 		}, (LEAD_IN + secs + 1) * 1000);
 		this.#last.push({ who, text, layer, how, file: buf ? clip!.file : undefined, cents, at: Math.round(at * 1000) / 1000, secs: Math.round(secs * 1000) / 1000, pan, gain: Math.round(out.gain.value * 100) / 100 });
 		if (this.#last.length > 12) this.#last.shift();
+	}
+
+	/** The crowd runs while live, in a babble mode, with banks for this theme and its level above 0. */
+	#syncCrowd(bus: { ctx: AudioContext; out: AudioNode; room: AudioNode }): void {
+		const theme = this.#host.theme();
+		const voices = this.#manifest?.themes[theme];
+		const want = this.#mix.mode !== "synth" && this.#mix.crowd > 0 && !!voices?.grains && Object.keys(voices.grains).length > 0;
+		if (this.#crowd && (!want || this.#crowd.theme !== theme || this.#crowd.ctx !== bus.ctx)) {
+			this.#crowd.stop();
+			this.#crowd = undefined;
+		}
+		if (!want || this.#crowd) return;
+		const lines = corpus(theme).filter((l) => !l.beat).map((l) => l.text.replace(/\{[a-z0-9]+\}/gi, "la"));
+		this.#crowd = new Crowd(bus, theme, voices!, lines, {
+			heat: () => this.#host.sound.heat,
+			buffer: (file) => this.#buffer(bus.ctx, `voice/${file}`),
+			level: this.#mix.crowd,
+			smooth: () => this.#mix.smooth,
+		});
 	}
 
 	#stopRoom(): void {
@@ -444,7 +488,7 @@ export function playGrains(ctx: BaseAudioContext, out: AudioNode, at: number, st
 		const dur = Math.max(0.03, Math.min(s.end, buf.duration) - s.start);
 		const len = dur / 2 ** (s.cents / 1200);
 		const fin = Math.min(GRAIN_IN, len / 3);
-		const fout = Math.min(GRAIN_OUT, len / 2);
+		const fout = Math.min(s.release ?? GRAIN_OUT, len / 2);
 		const src = ctx.createBufferSource();
 		src.buffer = buf;
 		src.detune.value = s.cents;
@@ -464,3 +508,118 @@ export function playGrains(ctx: BaseAudioContext, out: AudioNode, at: number, st
 /** Quarter-sine edges, as curves for `setValueCurveAtTime`. */
 const EDGE_IN = Float32Array.from({ length: 16 }, (_, i) => Math.sin(((i / 15) * Math.PI) / 2));
 const EDGE_OUT = Float32Array.from({ length: 16 }, (_, i) => Math.cos(((i / 15) * Math.PI) / 2));
+
+/**
+ * The crowd: talkers chatting on and off in the distance, from the theme's syllable banks. A timer
+ * looks half a second ahead every 250 ms (like the room tone's) and starts the next phrase for any
+ * talker who is due; the busier the office (Sound's heat), the more talkers and the shorter their
+ * pauses. Every phrase is a sentence from the bank's chatter, muffled, panned somewhere on the floor,
+ * and sent to the room. Its level fades in and out over seconds and dips under a key beat.
+ */
+class Crowd {
+	readonly ctx: AudioContext;
+	readonly theme: ThemeId;
+	#out: GainNode;
+	#in: AudioNode;
+	#timer: ReturnType<typeof setInterval>;
+	#talkers: { next: number; n: number }[] = [];
+	#level: number;
+	#r = seq(hashId("crowd"));
+	/** For the inspector: talkers wanted now, and phrases started. */
+	talkers = 0;
+	phrases = 0;
+
+	constructor(
+		bus: { ctx: AudioContext; out: AudioNode; room: AudioNode },
+		theme: ThemeId,
+		voices: ThemeVoices,
+		lines: string[],
+		o: { heat(): number; buffer(file: string): Promise<AudioBuffer | undefined>; level: number; smooth(): boolean },
+	) {
+		this.ctx = bus.ctx;
+		this.theme = theme;
+		const ctx = bus.ctx;
+		this.#level = o.level;
+		this.#out = ctx.createGain();
+		this.#out.gain.value = 0;
+		this.#out.gain.setTargetAtTime(CROWD_GAIN * o.level, ctx.currentTime, 2);
+		// Far off: the highs go, and much of it is the room.
+		const far = ctx.createBiquadFilter();
+		far.type = "lowpass";
+		far.frequency.value = 1_700;
+		far.Q.value = 0.5;
+		const send = ctx.createGain();
+		send.gain.value = CROWD_SEND;
+		far.connect(this.#out);
+		this.#out.connect(bus.out);
+		this.#out.connect(send).connect(bus.room);
+		this.#in = far;
+		const banks = Object.entries(voices.grains ?? {});
+		const buffers = new Map<string, AudioBuffer>();
+		const files = [...new Set(banks.flatMap(([, b]) => b.map((c) => c.file)))];
+		const ready = Promise.all(files.map(async (f) => {
+			const b = await o.buffer(f);
+			if (b) buffers.set(f, b);
+		}));
+		let loaded = false;
+		void ready.then(() => (loaded = true));
+		this.#timer = setInterval(() => {
+			if (!loaded || !banks.length || !lines.length) return;
+			const now = ctx.currentTime;
+			const heat = o.heat();
+			const want = heat > 0 ? 1 + Math.round(heat * (CROWD_TALKERS - 1)) : 1;
+			this.talkers = want;
+			while (this.#talkers.length < CROWD_TALKERS) this.#talkers.push({ next: now + 0.5 + this.#r() * 4, n: 0 });
+			for (let t = 0; t < want; t++) {
+				const talker = this.#talkers[t]!;
+				if (talker.next > now + 0.5) continue;
+				const at = Math.max(now + 0.05, talker.next);
+				const [voice, bank] = banks[(t * 5 + talker.n) % banks.length]!;
+				const who = `crowd:${t}:${voice}`;
+				const text = lines[Math.floor(this.#r() * lines.length)]!;
+				const base = (voices.pitch ?? 0) * 100 + pitchCents(who);
+				const steps = grainPlan(`${who}:${talker.n++}`, text, bank, { phrase: true, max: 9, base, raw: !o.smooth() }).filter((s) => buffers.has(s.file));
+				const pause = (1.2 + this.#r() * 3.5) * (1.6 - heat);
+				if (!steps.length) {
+					talker.next = at + pause;
+					continue;
+				}
+				const g = ctx.createGain();
+				g.gain.value = 0.7 + this.#r() * 0.5;
+				const pan = ctx.createStereoPanner();
+				pan.pan.value = (this.#r() * 2 - 1) * 0.75;
+				g.connect(pan).connect(this.#in);
+				const secs = playGrains(ctx, g, at, steps, buffers);
+				this.phrases++;
+				talker.next = at + secs + pause;
+				setTimeout(() => {
+					g.disconnect();
+					pan.disconnect();
+				}, (at - now + secs + 1) * 1000);
+			}
+		}, 250);
+	}
+
+	level(level: number): void {
+		this.#level = level;
+		const g = this.#out.gain;
+		g.cancelScheduledValues(this.ctx.currentTime);
+		g.setTargetAtTime(CROWD_GAIN * level, this.ctx.currentTime, 0.3);
+	}
+
+	/** Dip under a key beat. */
+	duck(at: number, secs: number): void {
+		const g = this.#out.gain;
+		g.cancelScheduledValues(this.ctx.currentTime);
+		g.setTargetAtTime(CROWD_GAIN * this.#level * 0.5, at, 0.1);
+		g.setTargetAtTime(CROWD_GAIN * this.#level, at + secs, 0.6);
+	}
+
+	stop(): void {
+		clearInterval(this.#timer);
+		const g = this.#out.gain;
+		g.cancelScheduledValues(this.ctx.currentTime);
+		g.setTargetAtTime(0, this.ctx.currentTime, 0.4);
+		setTimeout(() => this.#out.disconnect(), 2_500);
+	}
+}

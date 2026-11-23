@@ -452,6 +452,11 @@ export class Sound {
 		for (const cue of cues) this.#play(cue);
 	}
 
+	/** How busy the office is, 0..1 (`heatOf`): the crowd's size follows it (speech.ts). */
+	get heat(): number {
+		return this.#heat;
+	}
+
 	/** For the speech player (speech.ts): the running context, the master bus and the shared room's send, while live. */
 	bus(): { ctx: AudioContext; out: AudioNode; room: AudioNode } | undefined {
 		return this.#live && this.#ctx && this.#master && this.#room ? { ctx: this.#ctx, out: this.#master, room: this.#room } : undefined;
