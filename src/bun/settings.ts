@@ -1,10 +1,12 @@
 // The app's own settings: a small JSON file in its data folder (Electrobun's `Utils.paths.userData`).
-// Only what the user picks in the tray menu lives here: the scene theme, sound (off by default) and
-// calm office (off by default: the system's reduced motion still calms it). Reading is forgiving:
-// a missing, torn or hand-edited file gives the defaults, and unknown keys are kept as they are.
+// Only what the user picks in the tray menu lives here: the scene theme, sound (off by default),
+// calm office (off by default: the system's reduced motion still calms it) and the look (plain by
+// default). Reading is forgiving: a missing, torn or hand-edited file gives the defaults, and
+// unknown keys are kept as they are.
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { DEFAULT_THEME, type ThemeId, themeId } from "../scene/theme/id";
+import { DEFAULT_LOOK, type LookId, lookId } from "../shared/look";
 
 export interface Settings {
 	theme: ThemeId;
@@ -12,9 +14,11 @@ export interface Settings {
 	sound: boolean;
 	/** No life in a quiet office, and no sound (`?calm`). */
 	calm: boolean;
+	/** How the scene is drawn: plain, pixel or night (`?look=`, src/mainview/look.ts). */
+	look: LookId;
 }
 
-export const DEFAULT_SETTINGS: Settings = { theme: DEFAULT_THEME, sound: false, calm: false };
+export const DEFAULT_SETTINGS: Settings = { theme: DEFAULT_THEME, sound: false, calm: false, look: DEFAULT_LOOK };
 
 export const settingsFile = (dataDir: string) => join(dataDir, "settings.json");
 
@@ -32,6 +36,7 @@ export function readSettings(file: string): Settings & Record<string, unknown> {
 		// Only a real `true` turns either on: a hand-edited "yes" or 1 keeps the default.
 		sound: raw.sound === true,
 		calm: raw.calm === true,
+		look: lookId(raw.look),
 	};
 }
 
@@ -49,5 +54,5 @@ export function writeSettings(file: string, change: Partial<Settings>): Settings
 /** The window's query for these settings: the query string is the scene's one entry point, so a
  * window opens as `?theme=factory&sound&calm` and later changes arrive over RPC. */
 export function settingsQuery(s: Settings): string[] {
-	return [`theme=${s.theme}`, s.sound ? "sound" : "", s.calm ? "calm" : ""].filter(Boolean);
+	return [`theme=${s.theme}`, s.sound ? "sound" : "", s.calm ? "calm" : "", s.look !== DEFAULT_LOOK ? `look=${s.look}` : ""].filter(Boolean);
 }

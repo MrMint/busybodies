@@ -1,5 +1,6 @@
 // Idle habits (plan-alive stream B). An idle character slacks off in one of the seven habits
-// (rig/poses.ts HABITS), picked from its id. With life on (the window on screen, not calm), the
+// (rig/poses.ts HABITS), or in the theme's own (office/staging.ts `habits`: the factory's crew sit on
+// oil drums, play cards on a pallet, kick the vending machine), picked from its id. With life on (the window on screen, not calm), the
 // habit rotates every minute or two and plays again every 20 to 30 s, so a quiet office keeps a
 // gentle rhythm: a burst, a rest, a burst. In calm mode it is what it always was: one habit, played
 // once, moving on every ten minutes. Pure: the same key and clock give the same habit, and every
@@ -33,12 +34,16 @@ export interface Habit {
 	wake: number;
 }
 
-/** The habit an idle character (idle since `since`) is in at `now`. */
-export function habitAt(key: string, since: number, now: number, life: boolean): Habit {
-	const n = HABITS.length;
+const RIG_HABITS = HABITS.map((h) => h.name);
+
+/** The habit an idle character (idle since `since`) is in at `now`, from the theme's `set` of
+ * habits (pose names; none or empty: the rig's seven). */
+export function habitAt(key: string, since: number, now: number, life: boolean, set?: readonly string[]): Habit {
+	const names = set?.length ? set : RIG_HABITS;
+	const n = names.length;
 	if (!life) {
 		const turn = Math.max(0, Math.floor((now - since) / HABIT.calmRotateMs));
-		return { pose: HABITS[(hash(key) + turn) % n]!.name, wake: since + (turn + 1) * HABIT.calmRotateMs };
+		return { pose: names[(hash(key) + turn) % n]!, wake: since + (turn + 1) * HABIT.calmRotateMs };
 	}
 	const turnMs = pickMs(key, "habit-turn", HABIT.turnMs);
 	const replayMs = pickMs(key, "habit-replay", HABIT.replayMs);
@@ -49,5 +54,5 @@ export function habitAt(key: string, since: number, now: number, life: boolean):
 	const replays = Math.floor((now - turnStart) / replayMs);
 	const replayStart = turnStart + replays * replayMs;
 	const next = Math.min(turnStart + turnMs, replayStart + replayMs);
-	return { pose: HABITS[(hash(key) + turn) % n]!.name, since: Math.max(since, replayStart), wake: next };
+	return { pose: names[(hash(key) + turn) % n]!, since: Math.max(since, replayStart), wake: next };
 }

@@ -136,10 +136,11 @@ function fluorescents(g: Graphics, { x, y, w }: Rect): void {
  * office zoom. */
 function mugWall(g: Graphics, a: Area): Container {
 	const x = a.rect.x + 114;
-	const y = a.rect.y + 14;
+	// Clear of the ceiling panel over it and the room's name painted above the wall.
+	const y = a.rect.y + 18;
 	const w = 78;
 	const mugs = [0xffffff, 0xffd0e4, SUN, 0x9be3ff, 0xa5e6c9];
-	const sy = y + 25;
+	const sy = y + 21;
 	for (let k = 0; k < mugs.length; k++) {
 		const mx = x + 4 + k * 15;
 		g.roundRect(mx, sy - 10, 9, 10, 2).fill(mugs[k]!).stroke({ width: 1.4, color: INK });
@@ -147,7 +148,7 @@ function mugWall(g: Graphics, a: Area): Container {
 		if (k % 2 === 0) g.rect(mx + 2, sy - 6.5, 5, 1.6).fill({ color: INK, alpha: 0.5 });
 	}
 	g.roundRect(x, sy, w, 3.6, 1.5).fill(0xd9a066).stroke({ width: 1.5, color: INK });
-	g.roundRect(x, y - 1, w, 13, 3).fill(0xffffff).stroke({ width: 1.5, color: INK });
+	g.roundRect(x, y - 1, w, 12, 3).fill(0xffffff).stroke({ width: 1.5, color: INK });
 	const t = text("you don't have to be busy\nto work here", 4.6, { fontWeight: "800", align: "center", lineHeight: 5.2 });
 	if (t.width > w - 4) t.scale.set((w - 4) / t.width);
 	t.anchor.set(0.5, 0);
@@ -783,3 +784,9 @@ export const OFFICE_THEME: SceneTheme = {
 	arms: false,
 	light: OFFICE_LIGHT,
 };
+
+// --- Staging (office/staging.ts) ----------------------------------------------------------------
+
+/** The office keeps its desks and its corridor; what moves on its own is the steam off the coffee,
+ * the kitchen's ceiling fan and the copier's light (office/ambient.ts). */
+OFFICE_THEME.staging = { bay: "desks", hall: "corridor", ambient: ["steam", "fan", "printer"] };

@@ -162,6 +162,10 @@ Owns a new `src/mainview/sound.ts`, `src/bun/settings.ts`, `src/bun/tray.ts`, `s
 
 ## Wave 3: the bigger moves
 
+**Landed** as four streams (G staging, H the Line, I story, J looks), merged in that order; see the
+wave 3 entries in `docs/decisions.md`. The Line was picked over the Allotment: the floor plan and
+the light both lean on walls. What's left is under "After wave 3" below.
+
 - **Themes own their staging.** A layout grammar from the theme: the factory's bays become lines
   with a belt across the floor, crew along it, the foreman up in a booth, tool calls riding the belt
   as parts (only while a kind is held), PR crates down the hallway conveyor to the dock. Per-theme
@@ -179,6 +183,26 @@ Owns a new `src/mainview/sound.ts`, `src/bun/settings.ts`, `src/bun/tray.ts`, `s
   project and role), rooms that collect decor through the week, the day's ledger at closing.
 - **Looks as render passes**: pixel as a quarter-resolution render upscaled nearest; night is the
   light layer's night phase.
+
+## After wave 3
+
+- **The sass voice doesn't know the theme.** Its lines and wall signs are the office's in every
+  theme ("Out of office. In the office." on the Line's wall). Give `sass/lines.ts` per-theme lines,
+  the way `ThemeWords` and `StoryWords` do.
+- The compact strip's tiles name areas by the office's words in every theme; sound plays the office
+  hum in the kitchen.
+- The factory's idle foreman plays habits inside the booth, half hidden; the PR crate starts mid-bay
+  instead of following the arm's crate; ambient life only in the kitchen, copiers and hallway.
+- Story: the framed PR goes up when the diary hears of the merge, not when the reply reaches the
+  lead; glasses are the only regular accessory; 28 regular names can collide.
+- The mug wall still sits partly under the kitchen's painted name (no room to move it further).
+- **Life runs at 30 fps for now** (the owner, after comparing 10 and 20 by eye: both read choppy).
+  Push on the visuals first; one **performance pass** over all of it comes once the look settles.
+  Its starting points: life costs frames, not characters (stream J's profile); the 100 ms beat grid
+  is in place, so a lower rate (`?lifefps=`) still shows every blink; render only the rooms on
+  camera; skip springs on settled puppets.
+- Rerun the full e2e suite and `tools/profile.sh` on a quiet machine: every wave 3 stream and the
+  merge ran under a load average of 35 to 80, where Chrome times out.
 
 ## Risks
 

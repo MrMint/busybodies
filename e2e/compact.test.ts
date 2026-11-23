@@ -36,7 +36,7 @@ afterAll(async () => {
 }, 30_000);
 
 async function open(query: string): Promise<Page> {
-	const page = await browser.newPage({ viewport: { width: 440, height: 300 } });
+	const page = await browser.newPage({ viewport: { width: 440, height: 340 } });
 	await page.goto(`http://localhost:${server.port}/?inspect&compact&${query}`);
 	await page.waitForFunction(() => window.__busybodies?.ready === true && !!window.__busybodies.shot(), undefined, { timeout: 15_000 });
 	return page;
@@ -101,9 +101,9 @@ describe("compact: a live camera", () => {
 		const layout = await page.evaluate(() => window.__busybodies!.layout()!.areas.map((a) => a.id));
 		expect(tiles.map((t) => t.area)).toEqual(layout);
 		expect(tiles.some((t) => t.cls.includes("busy"))).toBe(true);
-		for (const t of tiles) expect(t.bottom).toBeLessThanOrEqual(300);
+		for (const t of tiles) expect(t.bottom).toBeLessThanOrEqual(340);
 		// The canvas leaves room for the strip.
-		expect(await page.evaluate(() => document.querySelector("canvas")!.getBoundingClientRect().height)).toBeLessThan(300);
+		expect(await page.evaluate(() => document.querySelector("canvas")!.getBoundingClientRect().height)).toBeLessThan(340);
 
 		const target = layout.find((id) => id !== (tiles.find((t) => t.cls.includes(" on"))?.area))!;
 		await page.click(`#bb-tiles .tile[data-area="${target}"]`);

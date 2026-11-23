@@ -4,6 +4,7 @@
 // as on the FloorBusy board, and the camera scales the whole world to the window.
 import type { StationKind } from "../director/stations";
 import type { Point } from "./slot";
+import type { Staging } from "./staging";
 import { STATION_REACH } from "../director/stations";
 
 export interface Rect {
@@ -95,6 +96,35 @@ export interface Area {
 	stations: Station[];
 	/** A project room's shredder, in the back corner opposite the strip (see `shredderFor`). */
 	shredder?: Station;
+	/** A line bay's belts (staging `line`): one across each row that has a desk (see `beltsFor`). */
+	belts?: Belt[];
+}
+
+/**
+ * A line's belt (staging `line`): across a row of a bay, in front of its desks. Its top surface runs
+ * from (x, y) to (x + w, y); its front edge draws at `depth`, so the crew standing behind it (feet
+ * above y) show from the knees up, working on it. The desks on that row are the line's.
+ */
+export interface Belt {
+	/** Stable while its row stands: `<area id>:belt:<row>`. */
+	id: string;
+	areaId: string;
+	row: number;
+	x: number;
+	y: number;
+	w: number;
+	depth: number;
+	/** The sessions whose desks stand on this row, left to right. */
+	desks: string[];
+}
+
+/** The hallway's conveyor (staging `conveyor`): its belt runs along the hallway's middle, from the
+ * left end to the dock at the right, where PR crates go off. */
+export interface Conveyor {
+	y: number;
+	x0: number;
+	x1: number;
+	dock: Point;
 }
 
 /** The office's furniture for each station kind (the office theme). Kinds without one get no station yet. */
@@ -140,6 +170,10 @@ export interface World {
 	/** Every desk by session id. */
 	desks: Map<string, Desk>;
 	signs: SignSlot[];
+	/** How the theme stages it (office/staging.ts); absent is the office's: desks, a corridor. */
+	staging?: Staging;
+	/** The hallway's conveyor, with a `conveyor` hall. */
+	conveyor?: Conveyor;
 }
 
 // Sizes, from the FloorBusy board.
@@ -304,6 +338,40 @@ const WIDE: [dx: number, dy: number, facing: 1 | -1][] = [
 	[62, 92, -1],
 ];
 
+/**
+ * The line's spots (staging `line`), relative to the desk front's centre: three along the belt,
+ * standing behind it facing downstream (each one's work lands in the gap before the next), then a
+ * pair in front of it facing each other across their work.
+ */
+const LINE: [dx: number, dy: number, facing: 1 | -1][] = [
+	[-70, 50, 1],
+	[0, 50, 1],
+	[70, 50, 1],
+	[-56, 92, 1],
+	[56, 92, -1],
+];
+
+/** A line's belt, from the desk front's centre: its top surface this far down, its ends this far in
+ * from the row's outer cells, its front edge this deep. */
+export const BELT = { y: 62, inset: 8, front: 8, pitch: 16 } as const;
+
+/** A bay's belts: one across each row with a desk on it, the row's cells end to end. */
+export function beltsFor(area: Pick<Area, "id" | "cells" | "desks" | "cols">): Belt[] {
+	if (!area.cols) return [];
+	const out: Belt[] = [];
+	const rows = Math.ceil(area.cells.length / area.cols);
+	for (let row = 0; row < rows; row++) {
+		const cells = area.cells.slice(row * area.cols, (row + 1) * area.cols);
+		const desks = area.desks.filter((d) => d.row === row).sort((a, b) => a.col - b.col);
+		if (!cells.length || !desks.length) continue;
+		const x = cells[0]!.x + BELT.inset;
+		const w = cells[cells.length - 1]!.x + CELL_W - BELT.inset - x;
+		const y = cells[0]!.y + 78 + BELT.y;
+		out.push({ id: `${area.id}:belt:${row}`, areaId: area.id, row, x, y, w, depth: y + BELT.front, desks: desks.map((d) => d.id) });
+	}
+	return out;
+}
+
 /** Spots on a bare cell (a row with no desks), relative to the cell's top-left corner. */
 const BARE: [dx: number, dy: number, facing: 1 | -1][] = [
 	[48, 64, 1],
@@ -314,7 +382,7 @@ const BARE: [dx: number, dy: number, facing: 1 | -1][] = [
 
 /**
  * Where a desk's crew stand, in fill order, spaced so each one's work shows: four wide spots in the
- * desk's own cell, then the free cells it is lent. A free cell is lent to exactly one desk: the one
+ * desk's own cell (on a line, the five along its belt: `LINE`), then the free cells it is lent. A free cell is lent to exactly one desk: the one
  * it lies in front of, else the one it lies behind, else its left neighbour, else its right. A
  * bare cell (its row has no desks) gives four spots; a free desk's cell gives the four in front of
  * that desk. Past these, the old tight pattern (`crewSlot`) takes the overflow.
@@ -322,8 +390,9 @@ const BARE: [dx: number, dy: number, facing: 1 | -1][] = [
 export function crewSpots(world: World, desk: Desk): Slot[] {
 	const area = world.areas.find((a) => a.id === desk.areaId);
 	const out: Slot[] = [];
+	const pattern = world.staging?.bay === "line" ? LINE : WIDE;
 	const wide = (x: number, y: number) => {
-		for (const [dx, dy, facing] of WIDE) out.push({ x: x + dx, y: y + dy, depth: y + dy, facing });
+		for (const [dx, dy, facing] of pattern) out.push({ x: x + dx, y: y + dy, depth: y + dy, facing });
 	};
 	wide(desk.at.x, desk.at.y);
 	if (!area) return out;
