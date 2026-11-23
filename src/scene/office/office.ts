@@ -758,8 +758,8 @@ export class Office extends Container {
 			const gap = Math.min(x - c.pane.x, c.pane.x + c.pane.w - (x + c.w));
 			const a = Math.max(0, Math.min(1, (gap - 1) / 6));
 			c.view.position.set(x, c.y);
+			// Faded out by alpha alone: a visibility change rebuilds the world (depth.ts).
 			c.view.alpha = a * alpha;
-			c.view.visible = a > 0;
 		}
 	}
 

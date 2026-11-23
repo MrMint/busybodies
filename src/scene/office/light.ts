@@ -130,7 +130,8 @@ export class Light extends Container {
 				s = new Sprite(Texture.WHITE);
 				s.tint = 0x000000;
 				s.blendMode = "multiply";
-				s.visible = false;
+				// Off by alpha, not visible: the flicker would rebuild the world every frame (depth.ts).
+				s.alpha = 0;
 				this.#rush.set(a.id, s);
 				this.#flicker.addChild(s);
 			}
@@ -155,7 +156,6 @@ export class Light extends Container {
 		for (const [id, s] of this.#rush) {
 			const a = off ? 0 : flicker(this.#t, hash(id));
 			s.alpha = a;
-			s.visible = a > 0;
 		}
 	}
 
