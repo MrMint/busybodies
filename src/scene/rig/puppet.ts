@@ -88,6 +88,10 @@ export class Puppet extends Container {
 	#pop = { face: new Spring(1, FEEL.pop), heldL: new Spring(1, FEEL.pop), heldR: new Spring(1, FEEL.pop), front: new Spring(1, FEEL.pop), fx: new Spring(1, FEEL.pop) };
 	/** The pops as a list, for the per-frame loops (no array made each frame). */
 	#pops: Spring[] = Object.values(this.#pop);
+	/** The parts that come and go (props, the desk, the work, binoculars, the fx) shown now. They
+	 * come and go by alpha, not `visible`: Pixi rebuilds the whole office's draw list on any
+	 * visibility change, and a busy cast swaps props every few frames. Alpha 0 draws nothing. */
+	#on = new Set<Sprite>();
 	/** How the eyes and mouth arrive on a change: a slight swell, not a squash. */
 	static readonly FACE_KICK = 1.04;
 
@@ -189,9 +193,12 @@ export class Puppet extends Container {
 		// The face pops about its middle, not about the body's base.
 		this.#face.origin.set(0, A.eyeY + 6);
 		this.#wear = s("wear/binoc");
-		this.#wear.visible = false;
+		this.#wear.alpha = 0;
 		const worn = costume.wear ?? (opts.wear && atlas.has(opts.wear) ? opts.wear : undefined);
-		if (worn) this.#costumeWear = s(worn);
+		if (worn) {
+			this.#costumeWear = s(worn);
+			this.#on.add(this.#costumeWear);
+		}
 		this.#hat = s(costume.hat);
 		if (opts.role === "lead") {
 			this.#cup = s("hat/lead-cup");
@@ -204,23 +211,23 @@ export class Puppet extends Container {
 		);
 
 		this.#deskSprite = s("prop/desk");
-		this.#deskSprite.visible = false;
+		this.#deskSprite.alpha = 0;
 		// The work out front stands on the floor: it doesn't ride the body.
 		this.#work = s("work/nail1");
-		this.#work.visible = false;
+		this.#work.alpha = 0;
 
 		// Arms and anything held in front ride a layer of their own with the torso's transform, so a
 		// desk can sit between the body and the hands on its keyboard.
 		this.#front = s("prop/box");
-		this.#front.visible = false;
+		this.#front.alpha = 0;
 		this.#armL = this.#arm(-1);
 		this.#armR = this.#arm(1);
 		this.#upper.addChild(this.#front, this.#armL.root, this.#armR.root);
 
 		this.#fx = s("fx/pop");
-		this.#fx.visible = false;
+		this.#fx.alpha = 0;
 
-		this.#back.visible = false;
+		this.#back.alpha = 0;
 		this.rig.addChild(this.#shadow, this.#back, this.#legL, this.#legR, this.#torso, this.#deskSprite, this.#work, this.#upper, this.#fx);
 		this.addChild(this.rig);
 
@@ -241,7 +248,7 @@ export class Puppet extends Container {
 		hand.y = A.fore;
 		const handSprite = new Sprite(a.get(`hand/${this.role}`));
 		const held = new Sprite(a.get("held/mug"));
-		held.visible = false;
+		held.alpha = 0;
 		hand.addChild(handSprite, held);
 		fore.addChild(foreSprite, hand);
 		root.addChild(upper, fore);
@@ -445,14 +452,14 @@ export class Puppet extends Container {
 		this.#armR.held.tint = f.props.right === "finger" ? this.#skin : 0xffffff;
 		const front = f.props.front === "desk" ? undefined : f.props.front;
 		this.#swap(this.#front, front && `prop/${front}`, (prev.props.front === "desk" ? undefined : prev.props.front) !== front, this.#pop.front);
-		this.#deskSprite.visible = this.#desk && f.props.front === "desk";
+		this.#show(this.#deskSprite, this.#desk && f.props.front === "desk");
 		// The work changes state in place (the nail goes down): no pop, so the change is the effect.
-		this.#work.visible = !!f.props.work;
+		this.#show(this.#work, !!f.props.work);
 		if (f.props.work && f.props.work !== prev.props.work) {
 			this.#work.texture = a.get(`work/${f.props.work}`);
 			this.#work.anchor.copyFrom(this.#work.texture.defaultAnchor ?? { x: 0, y: 0 });
 		}
-		this.#back.visible = !!f.props.back;
+		this.#show(this.#back, !!f.props.back);
 		if (f.props.back && f.props.back !== prev.props.back) this.#back.texture = a.get(`prop/${f.props.back}`);
 		// Feet up go on the desk, in front of it, and a kick swings out in front of the body;
 		// otherwise legs stand behind the body.
@@ -464,9 +471,9 @@ export class Puppet extends Container {
 			this.rig.addChildAt(this.#legL, at);
 			this.rig.addChildAt(this.#legR, at + 1);
 		}
-		this.#wear.visible = f.props.wear === "binoc";
+		this.#show(this.#wear, f.props.wear === "binoc");
 		// Binoculars cover the eyes, and the reviewer's glasses would sit on top of them.
-		if (this.#costumeWear) this.#costumeWear.visible = !this.#wear.visible;
+		if (this.#costumeWear) this.#show(this.#costumeWear, f.props.wear !== "binoc");
 		this.#swap(this.#fx, f.fx && `fx/${f.fx}`, prev.fx !== f.fx, this.#pop.fx, 0.7);
 	}
 
@@ -514,11 +521,11 @@ export class Puppet extends Container {
 	 * turning into another (a sheet unrolling, a brick changing hands) just changes. */
 	#swap(sprite: Sprite, name: string | undefined, changed: boolean, pop: Spring, from = 0.55): void {
 		if (!name) {
-			sprite.visible = false;
+			this.#show(sprite, false);
 			return;
 		}
-		const arriving = !sprite.visible;
-		sprite.visible = true;
+		const arriving = !this.#on.has(sprite);
+		this.#show(sprite, true);
 		if (!changed) return;
 		sprite.texture = this.#atlas.get(name);
 		sprite.anchor.copyFrom(sprite.texture.defaultAnchor ?? { x: 0, y: 0 });
@@ -526,6 +533,14 @@ export class Puppet extends Container {
 		pop.value = from;
 		pop.velocity = 0;
 		pop.target = 1;
+	}
+
+	/** Show or hide a part that comes and goes (see `#on`). The fx's alpha also follows its pop. */
+	#show(sprite: Sprite, on: boolean): void {
+		if (on === this.#on.has(sprite)) return;
+		if (on) this.#on.add(sprite);
+		else this.#on.delete(sprite);
+		sprite.alpha = on ? (sprite === this.#fx ? Math.max(0, Math.min(1, this.#pop.fx.value)) : 1) : 0;
 	}
 
 	#kick(pop: Spring, to: number): void {
@@ -563,9 +578,8 @@ export class Puppet extends Container {
 		this.#browR.position.set(A.eyeX, A.browY + v("browRY"));
 		this.#browR.rotation = v("browRR") * RAD;
 		const ba = Math.max(0, Math.min(1, v("browA")));
-		this.#browL.alpha = ba;
-		this.#browR.alpha = ba;
-		this.#browL.visible = this.#browR.visible = ba > 0.01;
+		// Under 0.01 the brows are off; by alpha, not visible (see `#on`).
+		this.#browL.alpha = this.#browR.alpha = ba > 0.01 ? ba : 0;
 		this.#cheekL.scale.set(v("cheek"));
 		this.#cheekR.scale.set(v("cheek"));
 
@@ -575,7 +589,7 @@ export class Puppet extends Container {
 
 		this.#fx.position.set(v("bodyX"), v("bodyY") + A.base);
 		this.#fx.scale.set(pop.fx.value);
-		this.#fx.alpha = Math.max(0, Math.min(1, pop.fx.value));
+		this.#fx.alpha = this.#on.has(this.#fx) ? Math.max(0, Math.min(1, pop.fx.value)) : 0;
 	}
 
 	#armPose(arm: ArmParts, shoulder: number, elbow: number, hand: number, heldScale: number): void {
