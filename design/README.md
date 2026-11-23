@@ -13,8 +13,8 @@ real scene; the app draws with PixiJS.
 - **Characters: mochi-shaped cut-paper puppets.** About 18 separate parts that spring between
   poses, with seven role costumes (lead, builder, scout, explorer, reviewer, verifier, designer),
   twelve faces, and seven ways of slacking off. `Shapes` records the body-shape comparison and
-  what mochi costs: arms start wide of the face, there's no chest (roles read from hats and
-  props), and hats stretch.
+  what mochi costs: arms start wide of the face, there's no chest (roles read from body colour,
+  hats and props), and hats stretch.
 - **Voice: affectionate roast, never mean to the human, nothing crude.** `Lines` is the line
   bank: 81 lines in 16 trigger groups, each marked as said, thought or sign. Its structured
   source is `BANK` in `generators/r3.py`.

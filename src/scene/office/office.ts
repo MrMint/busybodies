@@ -29,14 +29,20 @@ import { FloorPlan } from "./layout";
 import { Ambient, type AmbientFacts } from "./ambient";
 import { stagingOf } from "./staging";
 import { type FurnitureKind, INK, type SignText, grainTexture, label, noise, pill, wobblyRect } from "./paper";
-import { type Placed, Placement, crewOf } from "./placement";
+import { LEAD_SIZE, type Placed, Placement, crewOf } from "./placement";
 import type { DeskProps, Metrics } from "../director/metrics";
 import { deskProps, plannerSig, propsSig } from "./props";
 import type { Character, CharacterFactory } from "./slot";
-import { type Area, BUILD, type Desk, type Rect, type World } from "./world";
+import { AISLE, type Area, BUILD, DESK_TOP, type Desk, type Rect, SEAT, type World } from "./world";
+import { trayOnDesk } from "./rigpoints";
+import { CARD, MONITOR } from "./propspots";
 import { DecorLayer, type RoomDecor, type StoryView, boardText, regularNames, storyStyle } from "./decor";
 
 const BUILD_H = BUILD.brickH;
+
+/** How far a buried lead sinks behind its desk: the rig's pile's foot (rigpoints.ts trayOnDesk) to
+ * just under the desk top's back edge (DESK_TOP), so it stands on the desk instead of floating. */
+const BURIED_DROP = Math.ceil(DESK_TOP + 2 - trayOnDesk(SEAT, LEAD_SIZE).y);
 import { OFFICE_THEME } from "../theme/office";
 import { FALLEN, buildTop } from "../theme/build";
 import { RobotArm } from "../theme/arm";
@@ -147,6 +153,8 @@ export class Office extends Container {
 	#snapshot?: Snapshot;
 
 	#areas = new Map<string, Item>();
+	/** The footprint's gaps made places (World.yards, the theme's `patio`), by their rect. */
+	#yards = new Map<string, Item & { rect: Rect }>();
 	#halls: Container[] = [];
 	#items = new Map<string, Item>();
 	#tabs = new Map<string, Item>();
@@ -567,7 +575,7 @@ export class Office extends Container {
 		this.#said.clear();
 		for (const b of this.#bubbleFor.values()) drop(b.view);
 		this.#bubbleFor.clear();
-		for (const map of [this.#areas, this.#items, this.#planners, this.#tabs]) {
+		for (const map of [this.#areas, this.#items, this.#planners, this.#tabs, this.#yards]) {
 			for (const item of map.values()) drop(item.view);
 			map.clear();
 		}
@@ -639,7 +647,10 @@ export class Office extends Container {
 			// The building's base, its edge cut by hand.
 			this.#slab.clear().poly(wobblyRect(slabRect, 17, 2.2, 60), true).fill(this.#theme.slab);
 		}
-		this.#outside?.update(slabRect, this.#theme.lawn, this.#theme.light, this.#phase);
+		// The path out starts under the lobby, at the slab's edge.
+		const lobby = world.areas.find((a) => a.kind === "lobby");
+		const door = lobby?.band === "bottom" ? { x: Math.round(lobby.rect.x + lobby.rect.w / 2), y: slabRect.y + slabRect.h } : undefined;
+		this.#outside?.update(slabRect, this.#theme.lawn, this.#theme.light, this.#phase, door);
 		this.#drawFloor(world);
 		this.#drawClouds(world);
 		// People first: the director runs in their cast, and the desks show its crew builds.
@@ -857,6 +868,27 @@ export class Office extends Container {
 			drop(item.view);
 			this.#areas.delete(id);
 		}
+		// The gaps in the footprint, made places: under the rooms, over the slab.
+		const yards = new Set<string>();
+		for (const y of world.yards) {
+			const key = `${y.band}|${y.rect.x},${y.rect.y},${y.rect.w},${y.rect.h}`;
+			yards.add(key);
+			if (this.#yards.has(key)) continue;
+			const g = new Graphics();
+			this.#theme.patio(g, y.rect, y.band);
+			const grain = new Graphics().rect(y.rect.x, y.rect.y, y.rect.w, y.rect.h).fill(new FillPattern(grainTexture(), "repeat"));
+			grain.alpha = 0.4;
+			const view = new Container({ label: `yard:${key}` });
+			view.addChild(g, grain);
+			this.#floor.addChildAt(view, 0);
+			this.#yards.set(key, { view, sig: key, rect: y.rect });
+			this.#cache(view, y.rect);
+		}
+		for (const [key, item] of this.#yards) {
+			if (yards.has(key)) continue;
+			drop(item.view);
+			this.#yards.delete(key);
+		}
 		// The hallway, in chunks so each cached texture stays small enough to zoom into.
 		const h = world.hallway;
 		const chunks = Math.ceil(h.w / HALL_CHUNK);
@@ -887,7 +919,7 @@ export class Office extends Container {
 		// The paper pass: materials, the view out, grain and the room's name (material.ts).
 		const words = this.#theme.words;
 		const name = a.kind === "project" ? a.name : words.areas[a.kind];
-		dressRoom(c, a, { light: this.#theme.light, phase: this.#phase, name, sun });
+		dressRoom(c, a, { light: this.#theme.light, phase: this.#phase, name, sun, rug: this.#theme.rug?.(a) });
 		return c;
 	}
 
@@ -933,7 +965,8 @@ export class Office extends Container {
 				const x = cell.x + cell.w / 2;
 				const y = cell.y + 78;
 				put(`empty:${cell.x},${cell.y}`, "empty", x, y, y, () => this.#desk(undefined));
-				put(`echair:${cell.x},${cell.y}`, "chair", x - 26, cell.y + 32, cell.y + 32, () => this.#baked("chair"));
+				const chair = y + SEAT.y - 4;
+				put(`echair:${cell.x},${cell.y}`, "chair", x + SEAT.x, chair, chair, () => this.#baked("chair"));
 			}
 			for (const d of a.desks) {
 				const s = sessions.get(d.id)!;
@@ -983,6 +1016,10 @@ export class Office extends Container {
 	#desk(s: Session | undefined, build?: CrewBuild, props?: DeskProps, desk?: Desk): Container {
 		const c = new Container();
 		c.addChild(this.#baked("desk"));
+		// The screen at the desk's right end (propspots.ts MONITOR), under the props in front of it.
+		const screen = this.#baked(s?.state === "busy" ? "screen-lit" : "screen-off");
+		screen.position.set(MONITOR.x, MONITOR.y);
+		c.addChild(screen);
 		if (s) {
 			// A rebuilt desk starts with every brick at rest; a new brick, or a new fall, moves once.
 			const key = `desk:${s.id}`;
@@ -1022,9 +1059,6 @@ export class Office extends Container {
 			detail.visible = this.#stop.kind !== "office";
 			c.addChild(always, detail);
 		}
-		const screen = this.#baked(s?.state === "busy" ? "screen-lit" : "screen-off");
-		screen.position.set(46, -64);
-		c.addChild(screen);
 		if (s) {
 			const [title, sub] = deskCard(s, this.#names.get(`s:${s.id}`));
 			const card = new Container();
@@ -1047,7 +1081,7 @@ export class Office extends Container {
 				word.position.set(7, 31);
 				card.addChild(word);
 			}
-			card.position.set(-w / 2, word ? -44 : -40);
+			card.position.set(-w / 2, word ? CARD.top : CARD.topShort);
 			card.rotation = -0.02;
 			// Name cards show at the room and desk stops; at office zoom they're clutter.
 			card.label = "card";
@@ -1117,6 +1151,7 @@ export class Office extends Container {
 		this.#bake(res);
 		for (const [id, item] of this.#areas) this.#cache(item.view, roomBounds(this.#data.areas.find((a) => a.id === id)!.rect));
 		for (const c of this.#halls) this.#cache(c, { x: 0, y: 0, w: HALL_CHUNK, h: this.#data.hallway.h });
+		for (const item of this.#yards.values()) this.#cache(item.view, item.rect);
 	}
 
 	#drawPeople(world: World, snapshot: Snapshot): void {
@@ -1140,7 +1175,9 @@ export class Office extends Container {
 				this.#people.set(who.key, p);
 				this.#depth.addChild(p.view);
 			} else p.update(who);
-			p.place(slot);
+			// Buried in the in-tray: the rig's pile stands on the lead's desk-top line, which sits higher
+			// than this desk's lowered top (world.ts DESK_TOP), so the lead sinks to put it there.
+			p.place(cue?.pose === "buried" && cue.spot === "desk" && !cue.walk ? { ...slot, y: slot.y + BURIED_DROP } : slot);
 			if (cue) p.act?.(cue);
 			// A walker keeps its own depth as it moves; everyone else stands at the slot's.
 			if (!p.moving) p.view.zIndex = slot.depth;
@@ -1189,8 +1226,10 @@ export class Office extends Container {
 		for (const c of this.#tasks.removeChildren()) c.destroy({ children: true });
 		for (const p of list) {
 			const name = this.#names.get(p.who.key);
-			const t = pill(name ? `${name} · ${clipText(p.task!, 13)}` : clipText(p.task!, 16), 6.5);
-			t.position.set(p.slot.x - t.width / 2, p.slot.y + 4);
+			const t = pill(name ? `${name} · ${clipText(p.task!, 13)}` : clipText(p.task!, 14), 6.5);
+			// Just under its owner's feet: the crew's rows (world.ts AISLE) leave a pill's height
+			// between one row's feet and the next row's faces.
+			t.position.set(p.slot.x - t.width / 2, p.slot.y + AISLE.pill.gap);
 			this.#tasks.addChild(t);
 		}
 		this.#opts.wake();

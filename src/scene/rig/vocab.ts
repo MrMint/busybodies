@@ -14,7 +14,7 @@ export const MOUTHS = ["rest", "flat", "small", "pout", "grin", "open", "wobble"
 export type Mouth = (typeof MOUTHS)[number];
 
 /** Where the face looks: the whole face slides a little inside the body. */
-export const LOOKS = { center: [0, 0], left: [-5.5, 0], right: [5.5, 0], up: [0, -4.5], down: [0, 5], upR: [4.5, -4], downR: [5, 4.5] } as const;
+export const LOOKS = { center: [0, 0], left: [-4, 0], right: [4, 0], up: [0, -3.5], down: [0, 3.5], upR: [3.5, -3], downR: [3.5, 3] } as const;
 export type Look = keyof typeof LOOKS;
 
 /** Brows spring: [yL, rotL, yR, rotR, alpha]. Rotation is about each brow's centre. */

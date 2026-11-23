@@ -18,6 +18,9 @@ export type { Cue, Walk };
 
 export interface Actor {
 	key: string;
+	/** Stepped aside from a desk's end place while a brick run to the build spot beside it is under
+	 * way (world.ts `yieldFrom`): it walks back when the run is over. */
+	yielding?: true;
 	kind: Who["kind"];
 	/** The session it belongs to (a lead's own). */
 	session: string;

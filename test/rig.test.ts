@@ -628,11 +628,12 @@ describe("themes", async () => {
 	});
 
 	describe("the office", async () => {
-		const { officeTheme, OFFICE_REPAINTS, OFFICE_EXTRAS } = await import("../src/scene/rig/office");
+		const { officeTheme, OFFICE_REPAINTS, OFFICE_EXTRAS, OFFICE_DROPS } = await import("../src/scene/rig/office");
 		const { rigTheme } = await import("../src/scene/rig/themes");
 		const office = officeTheme();
 		const officeBox = measure(office);
 		const repainted = new Set<string>(OFFICE_REPAINTS);
+		const dropped = new Set<string>(OFFICE_DROPS);
 
 		test("the office's rig is the office theme; the factory keeps its own", () => {
 			expect(rigTheme("office").name).toBe("office");
@@ -640,15 +641,17 @@ describe("themes", async () => {
 		});
 
 		test("the office repaints the costumes and the builder's work by name, and nothing else", () => {
-			for (const name of Object.keys(paper.parts)) expect(office.parts[name], name).toBeDefined();
+			// Every paper part but the few it drops on purpose (the designer's bare belly).
+			for (const name of Object.keys(paper.parts)) expect(office.parts[name], name).toEqual(dropped.has(name) ? undefined : expect.anything());
+			for (const name of OFFICE_DROPS) expect(paper.parts[name], `${name} is a paper part`).toBeDefined();
 			for (const name of OFFICE_REPAINTS) {
 				expect(paper.parts[name], `${name} is a paper part`).toBeDefined();
 				expect(office.parts[name], `${name} is repainted`).not.toBe(paper.parts[name]);
 			}
-			for (const name of Object.keys(paper.parts)) if (!repainted.has(name)) expect(officeBox.get(name), name).toEqual(paperBox.get(name)!);
+			for (const name of Object.keys(paper.parts)) if (!repainted.has(name) && !dropped.has(name)) expect(officeBox.get(name), name).toEqual(paperBox.get(name)!);
 			expect(Object.keys(office.parts).filter((n) => !paper.parts[n]).sort()).toEqual([...OFFICE_EXTRAS].sort());
 			// No hard hat, apron, kerchief or pith helmet is left in the office: every hat and front piece is its own.
-			for (const n of Object.keys(paper.parts).filter((n) => /^(hat|front)\//.test(n))) expect(repainted.has(n), n).toBe(true);
+			for (const n of Object.keys(paper.parts).filter((n) => /^(hat|front)\//.test(n))) expect(repainted.has(n) || dropped.has(n), n).toBe(true);
 		});
 
 		test("every piece of construction gear is repainted, and the factory keeps it", () => {
@@ -660,8 +663,10 @@ describe("themes", async () => {
 		test("a repainted prop keeps its size and its working ends, so the solved reaches still land", () => {
 			for (const [name, b] of officeBox) expect(b.x1 - b.x0, name).toBeGreaterThan(0);
 			// Except where no hand meets the prop's far edge: the laser pointer's beam is thinner than the
-			// torch's cone (the hand holds the pen, where the torch's handle was).
-			const free = new Set(["held/torch"]);
+			// torch's cone (the hand holds the pen, where the torch's handle was); the sharpener's crank
+			// is a slim arm whose cap meets the hub where the wrench's jaw met the nut (the hub is the
+			// sharpener's, out front); and the pencil sticks out of the sharpener's far side.
+			const free = new Set(["held/torch", "held/wrench", "work/nut1", "work/nut2", "work/nut3"]);
 			for (const name of OFFICE_REPAINTS.filter((n) => /^(work|held|prop)\//.test(n) && !free.has(n))) {
 				const a = paperBox.get(name)!;
 				const b = officeBox.get(name)!;

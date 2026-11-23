@@ -4,7 +4,8 @@
 // from the counters it keeps between snapshots.
 import type { Snapshot } from "../../watcher/model";
 import { LIMITS, MIN, allSessions, crewCount, localClock, members, type DetectOptions } from "./detect";
-import { LINES } from "./lines";
+import { DEFAULT_THEME, type ThemeId } from "../theme/id";
+import { type Line, LINES, linesIn } from "./lines";
 import { fill } from "./scheduler";
 import { type LineVars, type Role, type SignPlace, hash } from "./types";
 
@@ -25,6 +26,8 @@ export function slotName(place: SignPlace, project: string): string {
 export interface CounterOptions extends DetectOptions {
 	/** A local calendar day for an epoch-ms time, for "today". Default: the machine's clock. */
 	day?: (ms: number) => string;
+	/** The scene theme whose words the signs use (lines.ts `themed`). Default: the office. */
+	theme?: ThemeId;
 }
 
 export const localDay = (ms: number) => new Date(ms).toDateString();
@@ -35,15 +38,22 @@ export const plantFor = (idleMin: number) => (idleMin >= 30 ? "wilting" : idleMi
 /** The mug pile, by how long its room has been idle: one mug per 10 minutes, up to 6. */
 export const mugsFor = (idleMin: number) => Math.min(6, Math.floor(idleMin / 10));
 
-const bank = (text: string) => {
-	const l = LINES.find((x) => x.kind === "sign" && x.text === text);
-	if (!l) throw new Error(`not in the line bank: ${text}`);
-	return l.text;
+/** A sign from the bank, found by its base text, in the theme's words. */
+const bank = (text: string, theme: ThemeId) => {
+	const i = LINES.findIndex((x) => x.kind === "sign" && x.text === text);
+	if (i < 0) throw new Error(`not in the line bank: ${text}`);
+	return linesIn(theme)[i]!.text;
 };
-const DAYS_SINCE = bank("Days since a test broke: {n}");
-const FAIL_STREAK = bank("Fail streak: {n}. New personal best.");
-const PR_TALLY = bank("PRs today: {count}. Humility: 0.");
-const fridgeLines = (tag: string) => LINES.filter((l) => l.trigger === "fridge" && l.tag === tag);
+/** The counters' own signs, in a theme's words. */
+const signsIn = (theme: ThemeId) => ({
+	daysSince: bank("Days since a test broke: {n}", theme),
+	failStreak: bank("Fail streak: {n}. New personal best.", theme),
+	prTally: bank("PRs today: {count}. Humility: 0.", theme),
+	// The kitchen's counter: its sign, with today's tally after it.
+	cups: bank("One cup per green build.", theme),
+});
+// Checked on load: a sign the counters use that went missing from the bank fails here, not later.
+signsIn(DEFAULT_THEME);
 
 interface RoomCount {
 	lastTestFailAt?: number;
@@ -54,9 +64,18 @@ export class Counters {
 	#rooms = new Map<string, RoomCount>();
 	#greens = { day: "", n: 0 };
 	#seenCmd = new Map<string, number>();
+	#signs!: ReturnType<typeof signsIn>;
+	#fridgeLines!: Line[];
 
 	constructor(opts: CounterOptions = {}) {
 		this.#opts = opts;
+		this.theme = opts.theme ?? DEFAULT_THEME;
+	}
+
+	/** Switch the signs to another theme's words. */
+	set theme(theme: ThemeId) {
+		this.#signs = signsIn(theme);
+		this.#fridgeLines = linesIn(theme).filter((l) => l.trigger === "fridge");
 	}
 
 	/** Reads a snapshot into the counters, then returns the text every counter slot should show. */
@@ -88,11 +107,11 @@ export class Counters {
 			const crew = ss.flatMap(members);
 			const streak = Math.max(0, ...crew.map((m) => m.commands?.failStreak ?? 0));
 			const failAt = this.#rooms.get(p)?.lastTestFailAt;
-			if (streak >= 3) out.set(slotName("board", p), fill(FAIL_STREAK, { n: streak })!);
-			else if (failAt !== undefined) out.set(slotName("board", p), fill(DAYS_SINCE, { n: Math.max(0, Math.floor((now - failAt) / (24 * 60 * MIN))) })!);
+			if (streak >= 3) out.set(slotName("board", p), fill(this.#signs.failStreak, { n: streak })!);
+			else if (failAt !== undefined) out.set(slotName("board", p), fill(this.#signs.daysSince, { n: Math.max(0, Math.floor((now - failAt) / (24 * 60 * MIN))) })!);
 
 			const prs = ss.flatMap((s) => s.prs ?? []).filter((pr) => pr.at === undefined || day(pr.at) === today);
-			if (prs.length) out.set(slotName("sign", p), fill(PR_TALLY, { count: prs.length })!);
+			if (prs.length) out.set(slotName("sign", p), fill(this.#signs.prTally, { count: prs.length })!);
 
 			// The room's gags run on how long the whole room has been idle.
 			const allIdle = ss.every((s) => s.state === "idle" && !s.waiting);
@@ -100,7 +119,7 @@ export class Counters {
 			out.set(slotName("plant", p), plantFor(idleMin));
 			out.set(slotName("mugs", p), String(mugsFor(idleMin)));
 		}
-		if (this.#greens.n > 0) out.set("kitchen:sign", `One cup per green build. Today: ${this.#greens.n}.`);
+		if (this.#greens.n > 0) out.set("kitchen:sign", `${this.#signs.cups} Today: ${this.#greens.n}.`);
 
 		const note = this.#fridge(snap, now, clock, hour);
 		if (note) out.set("fridge", note);
@@ -140,7 +159,7 @@ export class Counters {
 		if (idle) concerns.push({ tag: "idle", key: idle.id, vars: { name: idle.title, min: five(now - idle.stateSince) } });
 
 		for (const c of concerns) {
-			const lines = fridgeLines(c.tag).filter((l) => !l.needs || (c.crew?.[l.needs.role] ?? 0) >= l.needs.n);
+			const lines = this.#fridgeLines.filter((l) => l.tag === c.tag && (!l.needs || (c.crew?.[l.needs.role] ?? 0) >= l.needs.n));
 			if (!lines.length) continue;
 			const l = lines[hash(`${c.tag}|${c.key}`) % lines.length]!;
 			const text = fill(l.text, c.vars);

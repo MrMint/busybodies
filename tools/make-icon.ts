@@ -7,8 +7,10 @@
  * Everything is procedural: each pixel is shaded from a few shapes, supersampled for smooth
  * edges, and written with a small PNG encoder. No image libraries, no randomness, so the same
  * code always makes the same bytes. Shapes and colours follow the mochi characters in
- * `design/renders/ShapeRoomMochi.png`: a dome body wider than it is tall, a thick navy outline,
- * big round eyes, pink cheeks and a small smile.
+ * the rig's cast: a dome body wider than it is tall, a thick navy outline, and the rig's face:
+ * tall wide-set ink eyes with no white, each with a violet glow in its lower third, a big white
+ * highlight up and right and a small one down and left, pink cheeks out past the eyes' outer
+ * lower corners, and a small "u" smile tucked between the eyes.
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -30,7 +32,8 @@ const BODY = hex("#5fd3c0");
 const BODY_SHADE = hex("#43b8a6");
 const SHINE = hex("#ffffff", 0.55);
 const WHITE = hex("#ffffff");
-const BLUSH = hex("#ff8fb1", 0.85);
+const BLUSH = hex("#ff9eb1", 0.85);
+const GLOW = hex("#7b68e0", 0.85);
 const SHADOW = hex("#1f2340", 0.16);
 
 /** A point inside a shape, in icon units: the canvas runs 0..1024 on both axes. */
@@ -91,18 +94,17 @@ const layers: Array<[Inside, RGBA]> = [
 	[body, BODY],
 	[and(body, not(dome(494, 575, 300, 250, 170))), BODY_SHADE],
 	[ellipse(400, 440, 70, 34), SHINE],
-	// Eyes: navy rim, white, pupil, and a catchlight.
-	[circle(410, 590, 74), INK],
-	[circle(614, 590, 74), INK],
-	[circle(410, 590, 56), WHITE],
-	[circle(614, 590, 56), WHITE],
-	[circle(422, 598, 32), INK],
-	[circle(602, 598, 32), INK],
-	[circle(434, 584, 11), WHITE],
-	[circle(614, 584, 11), WHITE],
-	[ellipse(320, 680, 44, 24), BLUSH],
-	[ellipse(704, 680, 44, 24), BLUSH],
-	[smile(512, 662, 40, 20), INK],
+	// Eyes: tall ink ovals with a violet glow low inside, a big highlight up and right and a small
+	// one down and left (same side on both eyes, not mirrored).
+	...[389, 635].flatMap((ex): Array<[Inside, RGBA]> => [
+		[ellipse(ex, 580, 60, 75), INK],
+		[and(ellipse(ex, 580, 60, 75), ellipse(ex, 617, 37, 25)), GLOW],
+		[circle(ex + 18, 552, 22), WHITE],
+		[circle(ex - 22, 602, 10), WHITE],
+	]),
+	[ellipse(287, 655, 42, 24), BLUSH],
+	[ellipse(737, 655, 42, 24), BLUSH],
+	[smile(512, 614, 26, 16), INK],
 ];
 
 /** Shades one pixel of a `size`-pixel icon by averaging an n×n grid of samples inside it. */

@@ -1,5 +1,6 @@
 // What each theme calls things: the common areas' names and subtitles, the default sign texts, the
-// planner's columns and the door plate. Pixi-free, so the layout, the tray and tests can read it.
+// planner's columns, the door plate, and the poses' titles where the theme paints a different thing
+// in the hands. Pixi-free, so the layout, the tray, the pose sheet and tests can read it.
 // The layout names areas with the office's words (`Area.name` is the area's identity: tools and
 // tests aim at "kitchen" or "your office" in any theme); the office's tabs show the theme's.
 import type { AreaKind } from "../office/world";
@@ -11,6 +12,14 @@ export interface SignText {
 }
 
 export type CommonKind = Exclude<AreaKind, "project">;
+
+/** A pose as one theme names it, where it differs from the pose's own (rig/poses.ts): the poses are
+ * shared and the rig paints the theme's things, so only the words change. */
+export interface PoseWords {
+	title?: string;
+	/** The lines the sheet lists for it (pose lines with a frame's `say` keep theirs). */
+	lines?: readonly string[];
+}
 
 export interface ThemeWords {
 	/** What the tab on each common area says (a project room's tab says the project). */
@@ -25,6 +34,8 @@ export interface ThemeWords {
 	columns: readonly [string, string, string];
 	/** The plate on your door. */
 	door: string;
+	/** Pose titles and lines in this theme's words, by pose name; the rest keep the pose's own. */
+	poses: Readonly<Record<string, PoseWords>>;
 }
 
 export const OFFICE_WORDS: ThemeWords = {
@@ -38,6 +49,17 @@ export const OFFICE_WORDS: ThemeWords = {
 	serving: (n) => ({ title: "NOW SERVING", body: n === undefined ? "Nobody. Yet." : `No. ${n}` }),
 	columns: ["TO DO", "DOING", "DONE"],
 	door: "YOU",
+	// The builder's work is paperwork here (rig/office.ts): the workshop words go with the workshop.
+	poses: {
+		hammer: { title: "Stapling until it compiles" },
+		thumb: { title: "Stapled the thumb" },
+		carry: { title: "Carrying a ream" },
+		place: { title: "Setting a ream on the pile" },
+		blueprint: { title: "Reading the printout", lines: ["Print twice. Read once."] },
+		rummage: { title: "Looking for the tape dispenser" },
+		tinker: { title: "Sharpening while it runs", lines: ["Sharper. Sharper. Gone."] },
+		exploring: { title: "Exploring with a laser pointer" },
+	},
 };
 
 export const FACTORY_WORDS: ThemeWords = {
@@ -51,6 +73,22 @@ export const FACTORY_WORDS: ThemeWords = {
 	serving: (n) => ({ title: "NEXT UP", body: n === undefined ? "Nobody. Yet." : `No. ${n}` }),
 	columns: ["QUEUED", "ON LINE", "SHIPPED"],
 	door: "FOREMAN",
+	// The stations are machines here (rig/factory.ts): the office's furniture words go with it.
+	poses: {
+		fileFolder: { title: "Flipping through the parts bin" },
+		cardThumb: { title: "Thumbing through the bolt bin" },
+		copierFeed: { title: "Feeding the press" },
+		copierKick: { title: "Kicking the jammed press" },
+		copierFeud: { title: "A running feud with the press" },
+		phone: { title: "On the radio" },
+		mailDrop: { title: "Dropping the carton on the pallet" },
+		shred: { title: "Feeding the crusher" },
+		buried: { title: "Buried under the hopper" },
+		bellRing: { title: "Ringing the shift bell on your desk" },
+		stickyCarry: { title: "Carrying a work tag" },
+		stickyPost: { title: "Hanging a work tag on the job board" },
+		envelopeCarry: { title: "Carrying the PR crate" },
+	},
 };
 
 export const KITCHEN_WORDS: ThemeWords = {
@@ -64,8 +102,15 @@ export const KITCHEN_WORDS: ThemeWords = {
 	serving: (n) => ({ title: "SERVICE!", body: n === undefined ? "All quiet. Yet." : `No. ${n}` }),
 	columns: ["ORDERED", "FIRING", "SERVED"],
 	door: "CHEF",
+	poses: {},
 };
 
 const WORDS: Record<ThemeId, ThemeWords> = { office: OFFICE_WORDS, factory: FACTORY_WORDS, kitchen: KITCHEN_WORDS };
 
 export const wordsFor = (id: ThemeId): ThemeWords => WORDS[id] ?? OFFICE_WORDS;
+
+/** A pose's title and lines in a theme's words. */
+export function poseWords(id: ThemeId, pose: { name: string; title: string; lines: readonly string[] }): { title: string; lines: readonly string[] } {
+	const w = wordsFor(id).poses[pose.name];
+	return { title: w?.title ?? pose.title, lines: w?.lines ?? pose.lines };
+}

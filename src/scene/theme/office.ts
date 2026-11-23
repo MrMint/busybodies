@@ -13,11 +13,12 @@
 //   shredder, tickets, bell: furniture bodies (the shredder's slot and pile are the rig's)
 import { Container, Graphics } from "pixi.js";
 import type { Lamp, PlannerRow, Tray } from "../director/metrics";
-import { GREEN, INK, PAPER_SIGNS, RED, SHADOW, SUN, type SignStyle, batched, hash, label, line, signboard, text, wob } from "../office/paper";
+import { GREEN, INK, PAPER_SIGNS, RED, SHADOW, SUN, type SignStyle, batched, hash, label, line, noise, signboard, text, wob } from "../office/paper";
 import { rotRect } from "../rig/theme";
-import { PROPS } from "../office/propspots";
+import { mix } from "../office/light";
+import { MONITOR, PROPS } from "../office/propspots";
 import type { Who } from "../office/slot";
-import type { Area, Rect } from "../office/world";
+import { type Area, type Band, DESK_TOP, type Rect } from "../office/world";
 import { crewBuild } from "./build";
 import type { FurnitureKind, SceneLight, SceneTheme } from "./types";
 import { OFFICE_WORDS, type SignText } from "./words";
@@ -26,16 +27,27 @@ export const LAWN = 0xbfe8c6;
 export const SLAB = 0x46536f;
 export const HALL_FLOOR = 0xf3efe2;
 
-/** Wall and floor colours. Projects take them in the order their rooms were built. */
+/** Wall and floor colours. Projects take them in the order their rooms were built. The back wall
+ * carries the project's colour and the floor is only a pale tint of it: the floor is the cast's
+ * background, so a blue builder never stands on a blue floor (the rug, a shade deeper, and the side
+ * walls carry the colour down the room). */
 export const ROOM_COLOURS: [number, number][] = [
-	[0xffe9cf, 0xffc47f], // orange
-	[0xdeecff, 0xa6d0ff], // blue
-	[0xdff7ec, 0xa5e6c9], // green
-	[0xffe6f0, 0xffbdd6], // pink
-	[0xeee7ff, 0xd2c0ff], // lilac
-	[0xfff6c9, 0xffe08a], // yellow
-	[0xe3f7ff, 0x9fdcf5], // cyan
+	[0xffd9a8, 0xfff1dc], // orange
+	[0xc4dcff, 0xe9f2ff], // blue
+	[0xbfecd6, 0xe8f8f0], // green
+	[0xffcfe0, 0xffeef4], // pink
+	[0xdccfff, 0xf2edff], // lilac
+	[0xffeaa6, 0xfff8dc], // yellow
+	[0xbfe6f7, 0xe6f6fd], // cyan
 ];
+
+/** A project room's rug under its desks: a step deeper than its floor, never near a body colour,
+ * edged in the wall's colour so the room reads as its project's from the whole-office stop. */
+function rugOf(a: Area): { fill: number; edge: number } | undefined {
+	if (a.kind !== "project") return undefined;
+	const [wall, floor] = ROOM_COLOURS[a.hue % ROOM_COLOURS.length]!;
+	return { fill: mix(floor, wall, 0.35), edge: mix(wall, INK, 0.12) };
+}
 export const COMMON_COLOURS = {
 	meeting: [0xf1f3fa, 0xcfd6ea],
 	lobby: [0xf6f1e4, 0xe8dfc8],
@@ -80,6 +92,96 @@ function hallway(g: Graphics, r: Rect): void {
 	g.moveTo(r.x, r.y + 2.5).lineTo(r.x + r.w, r.y + 2.5).moveTo(r.x, r.y + r.h - 2.5).lineTo(r.x + r.w, r.y + r.h - 2.5).stroke(line(5));
 }
 
+// --- The patio ----------------------------------------------------------------------------------
+
+const STONE = 0xebe5d6;
+
+/** A gap in the footprint as a small paved patio: pale stone flags, a bench, planters in the
+ * corners; whatever its size, with as much as fits. Drawn in world coordinates, baked. */
+function patio(g: Graphics, r: Rect, _band: Band): void {
+	const p = { x: r.x + 7, y: r.y + 7, w: r.w - 14, h: r.h - 14 };
+	if (p.w < 18 || p.h < 18) return;
+	g.roundRect(p.x, p.y, p.w, p.h, 8).fill(STONE);
+	// Flags: rows of slabs, every other row's joints half a slab over, a few a shade off (from
+	// the place's position, so the same every load).
+	const fh = 26;
+	const fw = 42;
+	const seed = Math.round(r.x + r.y * 3);
+	for (let y = p.y, j = 0; y < p.y + p.h - 6; y += fh, j++) {
+		for (let x = p.x - (j % 2 ? fw / 2 : 0), i = 0; x < p.x + p.w - 6; x += fw, i++) {
+			if (noise(i, j, seed) > 0.14) continue;
+			const x0 = Math.max(p.x + 3, x + 2);
+			const x1 = Math.min(p.x + p.w - 3, x + fw - 2);
+			if (x1 - x0 > 8) g.rect(x0, y + 3, x1 - x0, Math.min(fh, p.y + p.h - y) - 6);
+		}
+	}
+	g.fill({ color: 0xddd5c2 });
+	for (let y = p.y + fh; y < p.y + p.h - 4; y += fh) g.rect(p.x + 3, y, p.w - 6, 1.5);
+	for (let y = p.y, j = 0; y < p.y + p.h - 4; y += fh, j++) {
+		for (let x = p.x + (j % 2 ? fw / 2 : fw); x < p.x + p.w - 6; x += fw) g.rect(x, y + 2, 1.5, Math.min(fh, p.y + p.h - y) - 4);
+	}
+	g.fill({ color: INK, alpha: 0.09 });
+	g.roundRect(p.x, p.y, p.w, p.h, 8).stroke({ width: 3, color: INK, alpha: 0.45 });
+	// What stands on it, back to front.
+	const things: [number, () => void][] = [];
+	const corner = p.w >= 48 && p.h >= 64;
+	if (corner) {
+		things.push([p.y + 50, () => planter(g, p.x + 26, p.y + 50, 0)]);
+		things.push([p.y + p.h - 10, () => planter(g, p.x + p.w - 26, p.y + p.h - 10, 1)]);
+	}
+	if (p.w >= 150 && p.h >= 150) {
+		things.push([p.y + 50, () => planter(g, p.x + p.w - 26, p.y + 50, 2)]);
+		things.push([p.y + p.h - 10, () => planter(g, p.x + 26, p.y + p.h - 10, 3)]);
+	}
+	const wide = p.w >= 200 && p.h >= 200;
+	if (p.w >= 80 && p.h >= 150) {
+		const bw = Math.min(120, p.w - 22);
+		const bx = wide ? p.x + p.w * 0.64 : p.x + p.w / 2;
+		things.push([p.y + p.h * 0.62, () => bench(g, bx, p.y + p.h * 0.62, bw)]);
+	}
+	// Room for more: a table under a parasol, with a chair either side.
+	if (wide) things.push([p.y + p.h * 0.4, () => parasol(g, p.x + p.w * 0.3, p.y + p.h * 0.4)]); else if (!corner) things.push([p.y + p.h - 6, () => planter(g, p.x + p.w / 2, p.y + p.h - 6, 0)]);
+	for (const [, draw] of things.sort((a, b) => a[0] - b[0])) draw();
+}
+
+const BLOOMS = [0xff8fa3, 0xffd166, 0xb69cff, 0xffffff];
+
+/** A wooden planter box with a round shrub and a few flowers, its base's centre at (x, y). */
+function planter(g: Graphics, x: number, y: number, k: number): void {
+	g.setTransform(1.25, 0, 0, 1.25, x - x * 1.25, y - y * 1.25);
+	g.ellipse(x + 3, y + 1, 21, 5).fill(SHADOW);
+	g.circle(x - 9, y - 26, 11).circle(x + 8, y - 28, 12).circle(x, y - 36, 11).fill(INK);
+	g.circle(x - 9, y - 26, 9.5).circle(x + 8, y - 28, 10.5).circle(x, y - 36, 9.5).fill(k % 2 ? 0x47c97f : 0x3fb874);
+	g.circle(x - 4, y - 36, 3.4).fill({ color: 0xffffff, alpha: 0.22 });
+	for (let i = 0; i < 4; i++) g.circle(x - 10 + i * 7, y - 30 - (i % 2) * 7, 2.4).fill(BLOOMS[(k + i) % BLOOMS.length]!).stroke({ width: 1, color: INK });
+	g.roundRect(x - 17, y - 20, 34, 20, 3).fill(0xd9a066).stroke(line(2.5));
+	g.moveTo(x - 17, y - 13).lineTo(x + 17, y - 13).stroke({ width: 1.2, color: INK, alpha: 0.4 });
+	g.setTransform(1, 0, 0, 1, 0, 0);
+}
+
+/** A round café table under a striped parasol, a chair either side, its foot's centre at (x, y). */
+function parasol(g: Graphics, x: number, y: number): void {
+	g.ellipse(x + 5, y + 2, 34, 7).fill(SHADOW);
+	for (const side of [-1, 1]) {
+		const cx = x + side * 26;
+		g.roundRect(cx - 8, y - 30, 16, 14, 4).fill(0x8fc8ff).stroke(line(2));
+		g.rect(cx - 7, y - 16, 3, 16).rect(cx + 4, y - 16, 3, 16).fill(SLAB);
+	}
+	g.rect(x - 1.5, y - 74, 3, 74).fill(SLAB);
+	g.ellipse(x, y - 24, 17, 5).fill(0xffffff).stroke(line(2.2));
+	g.moveTo(x - 36, y - 66).quadraticCurveTo(x, y - 98, x + 36, y - 66).closePath().fill(0xffffff).stroke(line(2.5));
+	g.moveTo(x - 12, y - 66).quadraticCurveTo(x - 6, y - 90, x, y - 82).quadraticCurveTo(x + 6, y - 90, x + 12, y - 66).closePath().fill(0xff8fa3);
+	g.moveTo(x - 36, y - 66).quadraticCurveTo(x, y - 98, x + 36, y - 66).stroke(line(2.5));
+}
+
+/** A park bench seen from the front: slatted back and seat on dark iron legs, centred at (x, y). */
+function bench(g: Graphics, x: number, y: number, w: number): void {
+	g.ellipse(x + 4, y + 1, w / 2 + 2, 6).fill(SHADOW);
+	g.roundRect(x - w / 2 + 6, y - 30, 5, 30, 2).roundRect(x + w / 2 - 11, y - 30, 5, 30, 2).fill(SLAB);
+	g.roundRect(x - w / 2, y - 40, w, 8, 3).roundRect(x - w / 2, y - 29, w, 8, 3).fill(0xc98a55).stroke(line(2));
+	g.roundRect(x - w / 2 - 3, y - 17, w + 6, 8, 3).fill(0xd9a066).stroke(line(2.2));
+}
+
 // --- Wall items -------------------------------------------------------------------------------
 
 function windowPane(g: Graphics, { x, y, w, h }: Rect, seed: number): void {
@@ -113,6 +215,7 @@ function room(g: Graphics, c: Container, a: Area, sign: (slot: string) => SignTe
 		else if (w.kind !== "planner") c.addChild(signboard(w.kind, w.rect, w.slot ? sign(w.slot) : undefined, seed + i, OFFICE_SIGNS));
 	}
 	if (a.kind === "kitchen") c.addChild(mugWall(g, a));
+	if (a.kind === "yours") bossCorner(g, a);
 	for (const [k, r] of posterSpots(a).entries()) c.addChild(poster(g, r, seed + k * 7));
 }
 
@@ -449,14 +552,75 @@ function yourDoor(g: Graphics, { x, y, w, h }: Rect): Container {
 	return t;
 }
 
+/**
+ * Your office, lightly furnished as the boss's: a framed picture under NOW SERVING, and in the
+ * right-hand corner (clear of the door in, the ticket machine, the counter with the bell, the queue
+ * down the left and middle, and the YOU door) a rug, a wingback armchair and a low bookcase with a
+ * trophy on it. Nobody stands or walks there, so it is drawn flat into the room's layer.
+ */
+function bossCorner(g: Graphics, a: Area): void {
+	const { x, y } = a.rect;
+	const f = a.floorY;
+	// The picture: a gilt frame, a sunset over hills.
+	const px = x + 128;
+	const py = y + 69;
+	g.rect(px + 3, py + 3, 44, 30).fill(SHADOW);
+	g.rect(px, py, 44, 30).fill(0xf2bd3c).stroke(line(2.5));
+	g.rect(px + 5, py + 5, 34, 20).fill(0xffc58f);
+	g.circle(px + 25, py + 17, 5).fill(0xfff0a6);
+	g.poly([px + 5, py + 25, px + 15, py + 15, px + 23, py + 21, px + 31, py + 13, px + 39, py + 20, px + 39, py + 25]).fill(0x6c9b7a);
+	// The rug.
+	g.roundRect(x + 204, f + 86, 84, 92, 14).fill(0xc7524f).stroke({ width: 2, color: INK, alpha: 0.4 });
+	g.roundRect(x + 211, f + 93, 70, 78, 10).stroke({ width: 2.5, color: 0xf2bd3c, alpha: 0.85 });
+	g.roundRect(x + 220, f + 102, 52, 60, 8).fill({ color: 0xffffff, alpha: 0.12 });
+	// The armchair: a wingback in green leather, facing out.
+	const cx = x + 246;
+	const cy = f + 140;
+	g.ellipse(cx + 4, cy + 2, 38, 8).fill(SHADOW);
+	g.roundRect(cx - 26, cy - 74, 52, 60, 14).fill(0x2f8f6b).stroke(line(3));
+	for (const bx of [-12, 0, 12]) g.circle(cx + bx, cy - 52, 1.8).fill({ color: INK, alpha: 0.5 });
+	g.roundRect(cx - 24, cy - 30, 48, 18, 6).fill(0x3aa57c).stroke(line(2.5));
+	g.roundRect(cx - 36, cy - 44, 14, 38, 6).roundRect(cx + 22, cy - 44, 14, 38, 6).fill(0x3aa57c).stroke(line(3));
+	g.rect(cx - 30, cy - 6, 5, 7).rect(cx + 25, cy - 6, 5, 7).fill(0x8a5a3c);
+	// The bookcase: two shelves of books, a trophy on top.
+	const bx = x + 236;
+	const by = f + 238;
+	g.rect(bx - 20, by - 50, 46, 50).fill(SHADOW);
+	g.roundRect(bx - 23, by - 52, 46, 52, 3).fill(0xb7794a).stroke(line(3));
+	g.moveTo(bx - 23, by - 26).lineTo(bx + 23, by - 26).stroke(line(2));
+	const spines = [0x3d7dff, 0xff6b6b, 0xffd166, 0x2fcf83, 0x8c5cff, 0xffffff];
+	for (const [row, top] of [[0, by - 48], [1, by - 22]] as const) {
+		for (let i = 0; i < 5; i++) {
+			const h = 15 + ((i + row) % 3) * 2;
+			g.rect(bx - 18 + i * 7, top + 19 - h, 6, h).fill(spines[(i + row * 2) % spines.length]!).stroke({ width: 1, color: INK });
+		}
+	}
+	// The trophy: a gold cup on a plinth.
+	g.rect(bx - 7, by - 58, 14, 6).fill(INK);
+	g.rect(bx - 2, by - 65, 4, 8).fill(0xf2bd3c).stroke({ width: 1.2, color: INK });
+	g.moveTo(bx - 10, by - 82).lineTo(bx + 10, by - 82).quadraticCurveTo(bx + 9, by - 66, bx, by - 65).quadraticCurveTo(bx - 9, by - 66, bx - 10, by - 82).closePath().fill(0xf7c948).stroke(line(2));
+	g.moveTo(bx - 10, by - 79).quadraticCurveTo(bx - 16, by - 77, bx - 9, by - 71).moveTo(bx + 10, by - 79).quadraticCurveTo(bx + 16, by - 77, bx + 9, by - 71).stroke({ width: 1.8, color: INK });
+	g.rect(bx - 4, by - 79, 2.5, 8).fill({ color: 0xffffff, alpha: 0.6 });
+}
+
 // --- Furniture ------------------------------------------------------------------------------
 
 
-/** A desk: the top surface behind, the front panel below. 150 wide, its front 44 tall. */
-function desk(g: Graphics, front: number, top: number, w = 150): void {
+/** A desk: the top surface behind, the front panel below. 150 wide, its front 44 tall; the top's
+ * back edge at `back` (a work desk's is DESK_TOP, low enough that its lead's face shows over it). */
+function desk(g: Graphics, front: number, top: number, w = 150, back = -70): void {
 	g.rect(-w / 2 + 5, -44 + 6, w, 44).fill(SHADOW);
-	g.roundRect(-w / 2 - 12, -70, w + 24, 32, 8).fill(top).stroke(line(4));
+	g.roundRect(-w / 2 - 12, back, w + 24, -38 - back, 8).fill(top).stroke(line(4));
 	g.roundRect(-w / 2, -44, w, 44, 5).fill(front).stroke(line(4));
+}
+
+/** The desk's screen, its stand's foot at the origin (propspots.ts MONITOR): an ink foot and neck,
+ * the screen in an ink outline, filled `face`. */
+function screen(g: Graphics, face: number): void {
+	const { w, h, neck } = MONITOR;
+	g.roundRect(-9, -3, 18, 4, 2).fill(INK);
+	g.rect(-3, -neck - 1, 6, neck).fill(INK);
+	g.roundRect(-w / 2, -neck - h, w, h, 6).fill(face).stroke(line(4));
 }
 
 function drawFurniture(kind: FurnitureKind): Graphics {
@@ -464,7 +628,7 @@ function drawFurniture(kind: FurnitureKind): Graphics {
 	switch (kind) {
 		case "desk":
 			cubicleWall(g);
-			desk(g, 0xe9bd80, 0xf7dcb0);
+			desk(g, 0xe9bd80, 0xf7dcb0, 150, DESK_TOP);
 			break;
 		case "table":
 			desk(g, 0xffffff, 0xf1f3fa, 180);
@@ -516,13 +680,12 @@ function drawFurniture(kind: FurnitureKind): Graphics {
 			g.roundRect(4, -40, 54, 6, 3).roundRect(4, -26, 40, 6, 3).fill({ color: INK, alpha: 0.6 });
 			break;
 		case "screen-lit":
-			g.rect(-6, -2, 12, 12).fill(INK);
-			g.roundRect(-31, -44, 62, 44, 7).fill(INK).stroke(line(4));
-			g.rect(-24, -36, 22, 4).rect(-24, -27, 22, 4).rect(-12, -18, 12, 3).fill(0x5dffa0);
+			// A deep slate face, not a slab of ink: the lead is the darkest thing at its desk.
+			screen(g, 0x39446e);
+			g.rect(-17, -46, 17, 3.5).rect(-17, -39, 17, 3.5).rect(-8, -32, 9, 3).fill(0x5dffa0);
 			break;
 		case "screen-off":
-			g.rect(-6, -2, 12, 12).fill(INK);
-			g.roundRect(-31, -44, 62, 44, 7).fill(0xaab2cc).stroke(line(4));
+			screen(g, 0xaab2cc);
 			break;
 		case "shredder":
 		case "tickets":
@@ -779,6 +942,8 @@ export const OFFICE_THEME: SceneTheme = {
 	furniture: drawFurniture,
 	desk: { tray: inTray, mugs: mugPile, lamp: testLamp, drawers, skip },
 	planner: (r, rows) => plannerOf(r, rows),
+	rug: rugOf,
+	patio,
 	crewBuild: (b, seed) => crewBuild(b, seed, BINDERS),
 	nightWatch: NIGHT_WATCH,
 	arms: false,

@@ -2,15 +2,16 @@
 // Replays a recorded fixture through the sass module and prints who said what, when, so the
 // voice can be reviewed by reading. Times print in UTC so the dump is the same on every machine.
 //
-//   bun tools/sass-dump.ts [fixture name or path] [--zoom 2] [--seed 1] [--room <project>] [--tail 30]
+//   bun tools/sass-dump.ts [fixture name or path] [--zoom 2] [--seed 1] [--room <project>] [--tail 30] [--theme factory]
 //
 // --zoom is the camera scale (0.4 is the whole office, 2 is zoomed into a room), --room puts the
 // camera on one project's room, --tail keeps the clock running for that many minutes after the
-// last frame.
+// last frame, --theme speaks in that scene theme's words (default: the office).
 import { readFileSync } from "node:fs";
 import { parseRecording } from "../src/watcher/replay";
 import { type Output, Sass, allSessions, members, utcClock, utcDay, utcHour } from "../src/scene/sass";
 import type { Snapshot } from "../src/watcher/model";
+import { themeId } from "../src/scene/theme/id";
 
 const args = process.argv.slice(2);
 const flag = (name: string, dflt: string) => {
@@ -21,6 +22,7 @@ const zoom = Number(flag("zoom", "2"));
 const seed = Number(flag("seed", "1"));
 const room = flag("room", "") || undefined;
 const tail = Number(flag("tail", "30")) * 60_000;
+const theme = themeId(flag("theme", "office"));
 const name = args[0] ?? "busy-release";
 const path = name.includes("/") || name.endsWith(".ndjson") ? name : new URL(`../fixtures/${name}.ndjson`, import.meta.url).pathname;
 const frames = parseRecording(readFileSync(path, "utf8"));
@@ -29,7 +31,7 @@ if (!frames.length) {
 	process.exit(1);
 }
 
-const sass = new Sass({ seed, hour: utcHour, clock: utcClock, day: utcDay });
+const sass = new Sass({ seed, hour: utcHour, clock: utcClock, day: utcDay, theme });
 const view = { zoom, room };
 const who = new Map<string, string>();
 const learn = (s: Snapshot) => {
@@ -50,7 +52,7 @@ const print = (at: number, out: Output) => {
 	}
 };
 
-console.log(`# ${frames.length} frames from ${path.split("/").pop()}, zoom ${zoom}${room ? `, room ${room}` : ""}, seed ${seed}\n`);
+console.log(`# ${frames.length} frames from ${path.split("/").pop()}, zoom ${zoom}${room ? `, room ${room}` : ""}, seed ${seed}, ${theme}\n`);
 const end = frames[frames.length - 1]!.at + tail;
 for (let i = 0; i < frames.length; i++) {
 	const f = frames[i]!;

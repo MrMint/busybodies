@@ -11,7 +11,7 @@ import { Container, Graphics } from "pixi.js";
 import type { Lamp, PlannerRow, Tray } from "../director/metrics";
 import { GREEN, INK, RED, SHADOW, type SignStyle, batched, hash, label, line, signboard, wob } from "../office/paper";
 import { PROPS } from "../office/propspots";
-import type { Area, Rect } from "../office/world";
+import type { Area, Band, Rect } from "../office/world";
 import { crewBuild } from "./build";
 import { COMMON_COLOURS, NIGHT_WATCH, ROOM_COLOURS } from "./office";
 import type { FurnitureKind, SceneLight, SceneTheme } from "./types";
@@ -619,6 +619,12 @@ function ticketRail(r: Rect, rows: PlannerRow[]): Container {
 	return c;
 }
 
+/** A gap in the footprint: a plain concrete pad (placeholder until the theme paints its own). */
+function pad(g: Graphics, r: Rect, _band: Band): void {
+	if (r.w < 32 || r.h < 32) return;
+	g.roundRect(r.x + 7, r.y + 7, r.w - 14, r.h - 14, 6).fill(0xd8d2c6).stroke({ width: 3, color: INK, alpha: 0.45 });
+}
+
 /** The Line's light (office/light.ts): warm heat lamps in round pools, an alley out of the
  * windows at the back of a city block, the yard with its bins and pallets. */
 export const KITCHEN_LIGHT: SceneLight = {
@@ -661,6 +667,7 @@ export const KITCHEN_THEME: SceneTheme = {
 	furniture,
 	desk: { tray: miseTray, mugs: deliCups, lamp: heatBulb, drawers: lowboy, skip: scraps },
 	planner: ticketRail,
+	patio: pad,
 	crewBuild: (b, seed) => crewBuild(b, seed, CAKE_BUILD),
 	nightWatch: { ...NIGHT_WATCH, tint: "night-chef" },
 	arms: false,

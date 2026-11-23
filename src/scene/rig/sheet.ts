@@ -10,6 +10,8 @@ import { STATION_POSE, type StationKind } from "../director/stations";
 import { BELL, BELL_BASE, HANDOFF, PLANNER, STATION, STICKY } from "./reach";
 import { ROLES, type Role } from "./roles";
 import { FACES } from "./vocab";
+import { THEME_IDS, type ThemeId } from "../theme/id";
+import { poseWords } from "../theme/words";
 
 const INK = 0x2b2340;
 const CELL = 120;
@@ -106,15 +108,19 @@ function closeUp(): { only?: string[]; zoom: number; part: [number, number] } {
 	return { ...(only?.length ? { only } : {}), zoom: Math.max(1, Math.min(4, Number(q?.get("zoom")) || 1)), part };
 }
 
-/** Every pose, each followed by its variant passes (Pose.beats) as rows of their own: same name
- * (so the same stand and facing), titled for the beat. */
-const SHEET_POSES: Pose[] = POSES.flatMap((p) => [
-	p,
-	...(p.beats?.passes ?? []).map((b): Pose => ({ ...p, title: `${p.title}: a beat, "${b.name}"`, frames: b.frames, beats: undefined, lines: [] })),
-]);
+/** Every pose in a theme's words (theme/words.ts), each followed by its variant passes (Pose.beats)
+ * as rows of their own: same name (so the same stand and facing), titled for the beat. */
+const sheetPoses = (id: ThemeId | undefined): Pose[] =>
+	POSES.flatMap((p) => {
+		const w = id ? poseWords(id, p) : p;
+		const q: Pose = { ...p, title: w.title, lines: [...w.lines] };
+		return [q, ...(p.beats?.passes ?? []).map((b): Pose => ({ ...q, title: `${q.title}: a beat, "${b.name}"`, frames: b.frames, beats: undefined, lines: [] }))];
+	});
 
 export function buildPoseSheet(atlas: Atlas): { sheet: Container; width: number; height: number; puppets: Puppet[] } {
 	const { only, zoom, part } = closeUp();
+	// The rig's theme picks the words; the paper rig (the base both repaint) keeps the poses' own.
+	const SHEET_POSES = sheetPoses((THEME_IDS as readonly string[]).includes(atlas.theme.name) ? (atlas.theme.name as ThemeId) : undefined);
 	const shown = SHEET_POSES.filter((p) => p.name !== "rest" && (!only || only.includes(p.name)));
 	const per = Math.ceil(shown.length / part[1]);
 	const mine = new Set(shown.slice(part[0] * per, (part[0] + 1) * per));

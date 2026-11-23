@@ -8,7 +8,9 @@ import { HANDOFF_LOOK, NOTICE, RIPPLE, type View, freshReturn, pairUp, rippleDel
 import { TRIP } from "../src/scene/director/trips";
 import type { World } from "../src/scene/director/types";
 import { FloorPlan } from "../src/scene/office/layout";
-import { CROWD, OVERLAP, crewSpot, crewSpots, crowdSlot, faceFront, restagger } from "../src/scene/office/world";
+import { AISLE, CROWD, OVERLAP, SQUEEZE, bodyRect, buildSlot, crewPlaces, crewSpot, crewSpots, crowdSlot, endGaps, endPlaces, faceFront, faceZone, floorFoot, meets, restagger, yieldFrom } from "../src/scene/office/world";
+import { CARD } from "../src/scene/office/propspots";
+import { demo } from "../src/mainview/demo";
 import { AT_VIEWER, GAZE, aimAt } from "../src/scene/rig/gaze";
 import { POSE, duration } from "../src/scene/rig/poses";
 import type { Agent, Session, Snapshot } from "../src/watcher/model";
@@ -210,35 +212,99 @@ describe("hand-off anticipation", () => {
 	});
 });
 
+describe("a front-row desk's crew", () => {
+	/** The busy demo's floor, and its desks whose aisle is the room's last floor (a crowd row below
+	 * it would stand outside the room). */
+	const front = () => {
+		const floor = new FloorPlan().update(demo(null).snapshot);
+		const desks = [...floor.desks.values()].filter((d) => {
+			const area = floor.areas.find((a) => a.id === d.areaId)!;
+			return crowdSlot(d, 0).y > floorFoot(area);
+		});
+		return { floor, desks };
+	};
+	const body = 2 * 45 * (58 / 85);
+
+	test("five crew at Ship release 2.4 and six at Release 3.0 stand four in a clean row plus the end place, no squeeze", () => {
+		const { floor, desks } = front();
+		const d = floor.desks.get("demo-session-14")!;
+		expect(desks).toContain(d);
+		const places = crewPlaces(floor, d, 5);
+		expect(places.slice(0, 4)).toEqual(crewSpots(floor, d).slice(0, 4));
+		expect(places[4]!).toMatchObject({ x: d.at.x + SQUEEZE.end.dx, y: d.at.y + SQUEEZE.end.dy });
+		// Its end's gap holds its neighbour's build spot: the place is kept all the same (it yields).
+		expect(endGaps(floor, d)[0]!.builder).toBe(floor.desks.get(endGaps(floor, d)[0]!.builder!)!.id);
+		const rel = new FloorPlan().update(demo("release").snapshot);
+		const r = rel.desks.get("demo-session-7")!;
+		const six = crewPlaces(rel, r, 6);
+		expect(six.slice(0, 4)).toEqual(crewSpots(rel, r).slice(0, 4));
+		const area = rel.areas.find((a) => a.id === r.areaId)!;
+		for (const p of six) expect(p.y).toBeLessThanOrEqual(floorFoot(area));
+		// Every front-row desk: four plus its ends never squeeze, and all stand on the floor.
+		for (const desk of desks) {
+			const area = floor.areas.find((a) => a.id === desk.areaId)!;
+			const n = 4 + endPlaces(floor, desk).length;
+			const ps = crewPlaces(floor, desk, n);
+			expect(ps.slice(0, 4)).toEqual(crewSpots(floor, desk).slice(0, 4));
+			for (const p of ps) expect(p.y).toBeLessThanOrEqual(floorFoot(area));
+		}
+		// A crew too big for the row and the ends (seven here) does squeeze, within the room.
+		const seven = crewPlaces(floor, d, 7);
+		expect(seven.slice(0, 4).some((p, i) => p.x !== crewSpots(floor, d)[i]!.x)).toBe(true);
+		for (const p of seven) expect(p.y).toBeLessThanOrEqual(floorFoot(floor.areas.find((a) => a.id === d.areaId)!));
+	});
+
+	test("a gap is one desk's place, and its yield spot keeps faces and name cards clear", () => {
+		const { floor, desks } = front();
+		const cards = [...floor.desks.values()].map((k) => ({ x: k.at.x - CARD.maxW / 2, y: k.at.y + CARD.top, w: CARD.maxW, h: CARD.foot - CARD.top }));
+		for (const d of desks) {
+			for (const g of endGaps(floor, d)) {
+				const y = yieldFrom(g.slot);
+				expect(y.y - g.slot.y).toBe(SQUEEZE.yieldDy);
+				const body = bodyRect(y, 58);
+				for (const c of cards) expect(meets(body, c)).toBe(false);
+				for (const c of cards) expect(meets(bodyRect(g.slot, 58), c)).toBe(false);
+				// The builder at the spot in the gap: its face clear of the one stepping aside.
+				if (g.builder) expect(meets(faceZone(buildSlot(floor.desks.get(g.builder)!), 58), body)).toBe(false);
+			}
+		}
+		// Neighbouring desks never both take one gap.
+		const ends = desks.flatMap((desk) => endPlaces(floor, desk).map((p) => ({ desk: desk.id, p })));
+		for (const a of ends) for (const b of ends) if (a.desk !== b.desk) expect(Math.abs(a.p.x - b.p.x) >= body || Math.abs(a.p.y - b.p.y) >= 58).toBe(true);
+	});
+});
+
 describe("staging", () => {
 	const desk = () => {
 		const floor = new FloorPlan().update({ at: T0, sessions: [release(six(["Edit", "Edit", "Edit", "Edit", "Edit", "Edit"]))] });
 		return { floor, desk: floor.desks.get("rel")! };
 	};
 
-	test("the crowd: a loose arc facing the lead, in the desk's cell, nobody square behind anyone", () => {
+	test("the crowd: rows down the aisle, each a pill and a face lower, half a place over, facing the lead", () => {
 		const { floor, desk: d } = desk();
 		const spots = crewSpots(floor, d);
-		// One full arc (three rows); past that a very big crew still crowds.
-		const all = Array.from({ length: spots.length + CROWD.perRow * CROWD.rows }, (_, i) => crewSpot(spots, d, i));
+		// Two rows past the spaced spots (three, then four abreast).
+		const all = Array.from({ length: spots.length + 7 }, (_, i) => crewSpot(spots, d, i));
 		const crowd = all.slice(spots.length);
-		for (const p of crowd) {
+		for (const [k, p] of crowd.entries()) {
 			expect(Math.abs(p.x - d.at.x)).toBeLessThanOrEqual(CROWD.reach);
-			expect(p.y).toBeLessThanOrEqual(d.cell.y + d.cell.h);
+			expect(p.y).toBe(d.at.y + AISLE.front + (k < 3 ? 1 : 2) * AISLE.row);
 			expect(p.facing).toBe(p.x < d.lead.x ? 1 : -1);
 		}
+		// Offset by half a place from the row before: nobody square behind anyone.
+		const first = new Set(crowd.slice(0, 3).map((p) => p.x - d.at.x));
+		for (const x of AISLE.places) expect(first.has(x)).toBe(false);
 		for (let i = spots.length; i < all.length; i++)
 			for (let j = 0; j < i; j++) expect(Math.abs(all[i]!.x - all[j]!.x) < OVERLAP.dx && Math.abs(all[i]!.y - all[j]!.y) < OVERLAP.dy).toBe(false);
-		// The outer ones stand further back: it bends round the desk.
-		expect(crowdSlot(d, 0).y).toBeLessThan(crowdSlot(d, 2).y);
 		// A spot's place depends only on the spots before it: crew:i means the same place however big the crew.
 		expect(crewSpot(spots, d, spots.length + 3)).toEqual(all[spots.length + 3]!);
+		expect(crowdSlot(d, 0).y).toBeLessThan(crowdSlot(d, 3).y);
 	});
 
 	test("restagger steps a spot off one it would stand on; the rear of a close pair faces the front one", () => {
 		const { desk: d } = desk();
 		const front = { x: d.at.x, y: d.at.y + 60, depth: d.at.y + 60, facing: 1 as const };
-		const moved = restagger({ ...front, y: front.y - 5, depth: front.y - 5 }, [front], d);
+		const moved = restagger({ ...front, x: front.x + 5 }, [front], d);
 		expect(Math.abs(moved.x - front.x) >= OVERLAP.dx || Math.abs(moved.y - front.y) >= OVERLAP.dy).toBe(true);
 		const rear = { x: d.at.x + 20, y: d.at.y + 46, depth: d.at.y + 46, facing: 1 as const };
 		const [r, f] = faceFront([

@@ -1011,14 +1011,15 @@ verifier's green visor, pocket protector and sleeve garter (`arm/upper/verifier`
 beret, round glasses and black turtleneck (the one body repaint).
 
 The work is paperwork on the same points: a giant stapler on a sheaf squashed and stapled a strike
-at a time, on an in-tray stand; a crank pencil sharpener turned a third a stroke (a hole punch
+at a time, on an in-tray stand (now stacked letter trays); a crank pencil sharpener turned a third a stroke (a hole punch
 doesn't turn, so it went in the banker's box); reams and binders for bricks; a green-bar printout
 for the blueprint; a laser pointer for the torch. Tests hold every repaint within 6 rig units of the
-paper part, so the solved reaches still land. The set: fluorescent panels, a motivational poster in
+paper part, so the solved reaches still land (since the theme-fit pass below, bar the crank and
+the sharpener). The set: fluorescent panels, a motivational poster in
 any bare stretch of back wall, a whiteboard flowchart, a cubicle wall with a family photo at each
 desk's end, a ficus, a water cooler with paper cones, a mug wall in the kitchen, a recycling bin
 for the skip, and a crew tower of reams and binders with a sticky-note flag; all baked, so the
-draw-call budget is unchanged. Left: pose titles in poses.ts still speak of hammers and bricks.
+draw-call budget is unchanged. The pose titles and the crew's lines followed in the theme-fit pass.
 
 ## 2026-11-22: lived in, wave 2, stream E (compact becomes a live camera)
 
@@ -1319,3 +1320,131 @@ own keeps the old behaviour. It only reads, like the rest of the watcher.
 
 `?demo=stock` is someone else's day: the tool's own subagent types, terminal sessions, branches from
 git. A director test checks that its crew still wears six costumes.
+
+## 2026-11-22: the lead is the star (desk art direction)
+
+**The lead's face is a keep-out zone.** At the room and desk stops the lead was buried: a solid
+ink screen over one cheek, the crew build over the other, the in-tray over its mouth. Now nothing
+drawn at a desk in front of its lead meets its face (`faceZone` in office/world.ts: the torso's
+x -45..45, y -52..-18, scaled to its size; tested over every desk of the busiest demos, the build
+at any height). The lead sits at `SEAT` (-6, -42 from the desk front's centre), its feet where
+they were so a back-row head still clears the wall signs; the desk top's back edge came down to
+`DESK_TOP` (-60) instead, so the whole face, mouth included, shows over it. The build takes the
+desk's left end (`BUILD.left` -87), the screen its right end (46 by 34 on a neck, a deep slate
+face with the green lines in the office, green-slate with amber in the factory), and the in-tray,
+mugs and lamp sit low or off to the side (`PROPS`, `MONITOR`, `deskParts` in propspots.ts). The
+rig's own in-tray still shows in front of the face while the lead plays `buried`: that is the joke.
+
+**Crew stand in rows down the aisle.** Four abreast in front of the desk, 54 px apart (a 58 px
+crew member is 61 wide, so neighbours overlap by about 12%), the first row's feet 58 px down so a
+head clears the name card; the outer pair first, facing in, so two have their work between them
+(`AISLE`). Each row below is a task pill and a face lower (64 px) and half a place over, so at the
+desk stop a pill hangs between the rows and crosses no face (tested). Lent cells come next; a crew
+too big for both spills into further rows, which in a full front-row room stand out in the hallway.
+Task pills hang just under the feet and clip at 14 characters, so four abreast don't overlap.
+
+## 2026-11-22: theme fit (the tools and the words follow the theme)
+
+**In the office, nothing a builder works with reads as the workshop.** Renaming was not enough: the
+"stapler" was a red T on a stick and the "crank" a bar with a round end, a hammer and a wrench. The
+poses and their solved arms stay shared; only what is painted changes. The stapler is drawn side on
+along the old hammer's handle, gripped near its tail, its steel base on the striking side, so at a
+strike it lies flat on the sheaf with the palm on its back end. The crank is a slim arm with a
+wooden knob and a cap; the hub is the sharpener's, a boxy body with a fat pencil going in shorter
+every turn and a shavings drawer that fills. The sawhorse-shaped stand is stacked letter trays; the
+binder clip and the tape dispenser were simplified and enlarged within their old boxes. The crank
+and the sharpener are exempt from the 6-unit box test (no hand meets their far edges).
+
+**The words are per theme with the smallest mechanism each needed.** Pose titles: `ThemeWords.poses`
+(theme/words.ts), a title and sheet lines by pose name where a theme paints a different thing; the
+pose sheet and `tools/pose-dump.ts` show them. The office names the paperwork ("Stapling until it
+compiles"); the factory names its machines where the station titles said copier, shredder or
+in-tray. Spoken lines: a line may carry `themed` wording per theme (sass/lines.ts), same trigger,
+tiers and tags; `linesIn(theme)` is the bank as a theme speaks it, the scheduler and the counters
+read it, and the voice learns the theme at start; a live switch (`Voice.theme`) changes bubbles and
+new sign lines only, because what the voice already wrote stays up (the theme e2e holds it), so the
+counters' signs keep the starting theme's words until the next launch. The count of lines is
+unchanged. `tools/sass-dump.ts --theme factory` reads the factory's.
+
+## 2026-11-22: the room pass (art direction)
+
+**Floors are backgrounds.** Each project room's floor was a saturated pastel at the cast's own hue
+and value (blue builders on a blue floor). The office theme's `ROOM_COLOURS` now put the project's
+colour on the back wall and side walls and only a pale tint on the floor (orange 0xffd9a8 over
+0xfff1dc, blue 0xc4dcff over 0xe9f2ff, and so on); the rug under the desks is a step deeper
+(35% of the way from floor to wall) with a band in the wall's colour, so rooms still tell apart
+at the whole-office stop. The factory keeps the old pairs (`BAY_TINTS`): it mixes them into steel
+and concrete, where they never fought the cast. Wall signs went from SUN to a sticky-note yellow
+(`NOTE_YELLOW`, 0xffe66b): they were the loudest thing in every room.
+
+**The footprint's gaps are places.** Where a band of rooms ends short of the building, or a room
+is shallower than its band, the slab showed as a bare navy block that read as a bug. `World.yards`
+lists those gaps (layout.ts `yardsOf`), and the theme's `patio` paints each one, baked like a room
+and lit like the lawn: the office's is pale stone flags with planters in the corners, a bench, and a
+parasol table when there is room; the factory's a concrete apron with pallets and oil drums.
+
+**The yard is composed.** A jittered grid over the lawn keeps a spot where a density says so: high
+at the building's corners, thinning toward the building and the middle of its long sides, clumped
+by a slow noise; the kind follows the distance (flowers and bushes near, round and tall narrow trees
+and the big clumps further out), flowers in three colours by region, sizes varied, nothing below
+the building tall enough to tuck under the slab. Stepping stones run from under the lobby across
+the lawn (the factory's are walkway slabs; its yard uses bollards, drums, pallets and crates). All
+from position, all baked sprites in the two existing layers, so it adds no draw calls.
+
+**Your office is the boss's.** A framed picture under NOW SERVING, and in the right-hand corner no
+one walks or queues in, a rug, a wingback armchair and a low bookcase with a trophy, drawn into the
+room's layer.
+
+**Crew never leave their room.** A desk at the room's front has no floor below its aisle row, so the
+crowd's next row stood in the hallway. Now `crewPlaces` (world.ts) checks every spot against the
+room's floor (`floorFoot`); if any would fall off it, the row of four keeps its normal spacing and
+the extras first stand beside the desk's ends (`endGaps`: the middle of the gap to the next desk,
+feet just behind the desk front, drawn in front of it; none against the station strip or past the
+side wall). A gap is one place: it goes to the desk on its left, so two desks never stand crew on
+each other. A gap also holds the build spot of the desk on its right (`buildSlot`). A tower stands
+for most of a desk's life but a builder visits for a moment, so the place is kept, and while a brick
+run to that spot is under way (from setting off to stepping away) the one on it steps aside, 24 px
+straight forward (`yieldFrom`: clear of the builder's face and both name cards), facing the builder,
+and walks back when the run is over; only that one moves. The aisle tests treat a yielding character
+like a walking one. Only past the free ends does the row tighten (`SQUEEZE`: up to six abreast at
+42 px, overlapping up to 35% of a body, slid inside the side walls); any further crowd is held at
+the room's foot. The director places crew once every crew member has its number, since the places
+depend on how many there are, and a lead's foreman visit skips a shoulder someone else's place
+takes. Tests hold every standing crew member on its own room's floor, five at Ship release 2.4 and
+six at Release 3.0 standing four in a row plus the end with no squeeze, and the squeeze for a crew
+too big for both. The corner plant
+moved to the back (behind the shredder; below the hallway, just left of the door), off the front
+corner where the rightmost desk's crew stand; a lead playing `buried` sinks 8 px so the rig's pile
+stands on the lowered desk top instead of floating over it.
+
+## 2026-11-22: the face and the outfits (character art direction)
+
+**The eyes carry the character.** At room zoom the old rest eye (an 8 by 11 ink dot) was a speck,
+and every expression read alike. The eyes are now big, glossy and set wide and low (`ANCHORS` in
+reach.ts: x ±20.5, y -35.5): a rest eye 20 by 25 with no white, a violet glow in its lower half,
+a big highlight up and right and a small one down and left; every other eye, brow, mouth and cheek
+in the set was redrawn to match (theme.ts), `shine` and `tear` sparklier still. The mouth is small
+and tucked between the eyes, and the big mouths stay clear of the eyes above and the belly below.
+
+**Accessories, not wigs.** Stream D's office cast wore hair caps and garments (a pompadour, spiky
+hair, a ponytail, a cardigan, a fleece vest, a turtleneck). Hair made the mochi read as little
+people; garments covered the body colour, which is what tells roles apart; each character carried
+too many small ideas to read at room zoom; and collars and boom mics near the mouth read as a
+second mouth or a beard. The rule now, for every theme's costume: one silhouette idea on the dome,
+one small thing on the belly, the body colour left alone, and nothing touching the mouth. In the
+office (rig/office.ts): the lead a headset whose boom stops short of the mouth, one tuft, and a
+short loud tie; builders a pencil behind the ear, a forgotten sticky note on the dome and a crooked
+tie; the scout a top-knot with a scrunchie and a big ID badge; the explorer shades parked on top and
+a bum bag; the reviewer a bun with a pencil through it, half-moon glasses and pearls; the verifier a
+translucent green eyeshade and a pocket protector (and the sleeve garter); the designer a beret and
+big round frames, its body no longer repainted and its scarf dropped (`OFFICE_DROPS`). Belly pieces
+sit 16 units below the board's `frontY`, clear of the big eyes. The factory kept its costumes bar
+three that broke the rule against the new face: the scout's bandana became a neckerchief knotted
+low to one side, the designer's leather scarf a short apron bib, and the reviewer's two goggles one
+wraparound shield with a bridge notch so the mouth stays clear.
+
+**The icons wear the rig's face.** The app icon (`tools/make-icon.ts`) and the three menu-bar faces
+(`tools/tray-icons.ts`, template images with the face cut out and a highlight dot put back in each
+eye) were redrawn from the old round white eyes to the rig's: tall wide-set ink eyes with the glow
+and two highlights, cheeks out past the eyes, a small smile between them. When the rig's face
+changes, these follow.

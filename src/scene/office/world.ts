@@ -174,6 +174,16 @@ export interface World {
 	staging?: Staging;
 	/** The hallway's conveyor, with a `conveyor` hall. */
 	conveyor?: Conveyor;
+	/** The building's footprint not covered by rooms or the hallway: where a band of rooms ends
+	 * short of the building, or a room is shallower than its band. Outside, on the slab: the theme
+	 * makes each one a place (a patio, a yard). None when the bands are flush. */
+	yards: Yard[];
+}
+
+/** A gap in the building's footprint, beside or behind the rooms of one band. */
+export interface Yard {
+	rect: Rect;
+	band: Band;
 }
 
 // Sizes, from the FloorBusy board.
@@ -295,21 +305,78 @@ export function shredderUse(st: Pick<Station, "at" | "base">, size: number): Slo
 export const roomWidth = (cols: number) => SIDE * 2 + STRIP.w + cols * CELL_W;
 export const roomHeight = (rows: number) => WALL + rows * ROW + FRONT;
 
+// --- Who stands where at a desk ------------------------------------------------------------------
+//
+// The lead is the star: its face (eyes, cheeks, mouth) is a keep-out zone that nothing drawn at its
+// desk may cover (`faceZone`; propspots.ts lays the desk out around it). Its crew stand in a row
+// along the aisle in front of the desk, below its name card and spaced so no two overlap by more
+// than AISLE.overlap of a body; a second row is a pill's height and a face lower, so each task pill
+// (at the desk stop) sits between the rows and crosses no face.
+
+/** Where the lead sits behind its desk, from the desk front's centre: left of the middle, so the
+ * crew build has the desk's left end and the screen its right, both clear of its face. Its feet are
+ * as before (a back-row lead's head stays clear of the wall signs); the desk top's back edge was
+ * lowered instead (theme `desk`, DESK_TOP), so its whole face shows above the desk. */
+export const SEAT = { x: -6, y: -42 } as const;
+
+/** The desk top's back edge, from the desk front's centre (both themes draw it there). */
+export const DESK_TOP = -60;
+
+/** A standing character's proportions in its own units (rig/reach.ts: 85 to its height, the torso's
+ * base 15 up from the feet, the body 90 wide, the face from the brows to the cheeks' foot). */
+const BODY = { unit: 85, base: 15, halfW: 45, faceTop: 52, faceFoot: 18 } as const;
+
+/** A character's body, from its feet and height: as wide as its torso, from its feet to its top. */
+export function bodyRect(feet: { x: number; y: number }, size: number): Rect {
+	const k = size / BODY.unit;
+	return { x: feet.x - BODY.halfW * k, y: feet.y - size, w: BODY.halfW * 2 * k, h: size };
+}
+
+/** A character's face (eyes, cheeks, mouth), standing at rest: its torso's x -45..45, y -52..-18. */
+export function faceZone(feet: { x: number; y: number }, size: number): Rect {
+	const k = size / BODY.unit;
+	return { x: feet.x - BODY.halfW * k, y: feet.y - (BODY.base + BODY.faceTop) * k, w: BODY.halfW * 2 * k, h: (BODY.faceTop - BODY.faceFoot) * k };
+}
+
+/** The overlap of two rects along x, if they meet at all (else 0). */
+export const overlapX = (a: Rect, b: Rect): number =>
+	a.y < b.y + b.h && b.y < a.y + a.h ? Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)) : 0;
+
+/** True if two rects share any area. */
+export const meets = (a: Rect, b: Rect): boolean => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+
 /**
- * Crew positions around a desk, relative to the desk front's centre: a row in front, one each side
- * of the desk, then a second row. They stand well forward, so the desk's name card stays readable. Index order is fill order, so the first few look natural.
+ * The aisle in front of a desk, relative to its front's centre. `front`: the first row's feet,
+ * where a full-size crew member's head clears the name card. `places`: its x, four abreast at
+ * `pitch`, so neighbours overlap by under `overlap` of a body (a 58 px crew member is 61 wide). The
+ * outer pair comes first, facing in, so two crew have their work between them. `row`: how much
+ * lower the next row stands (a task pill and a face), offset by half a place. `pill`: where a task
+ * pill hangs under its owner's feet, and its height.
+ */
+export const AISLE = {
+	front: 58,
+	pitch: 54,
+	places: [-81, 81, -27, 27],
+	row: 64,
+	overlap: 0.15,
+	pill: { gap: 1, h: 12 },
+} as const;
+
+/**
+ * Crew positions around a desk with no director (placement.ts), relative to the desk front's
+ * centre: the aisle's row, then a second, back towards the desk's sides. Index order is fill order.
  */
 const CREW: [number, number][] = [
-	[-60, 46],
-	[0, 52],
-	[60, 46],
+	[-81, AISLE.front],
+	[81, AISLE.front],
+	[-27, AISLE.front],
+	[27, AISLE.front],
+	[-54, 88],
+	[54, 88],
+	[0, 88],
 	[-100, 10],
 	[100, 10],
-	[-30, 80],
-	[30, 80],
-	[-88, 76],
-	[88, 76],
-	[0, 88],
+	[0, 70],
 ];
 export const CREW_SLOTS = CREW.length;
 
@@ -328,27 +395,23 @@ export function crewSlot(desk: Desk, i: number): Slot {
 	return { x, y, depth: y, facing: dx > 0 ? -1 : 1 };
 }
 
-/** Spots in front of a desk, relative to its front's centre, with room on the facing side for a
- * character's work (a bench, a crate, a machine: about 40 px past its body). Left of centre faces
- * right, right of centre faces left, so the work sits between the pair. */
-const WIDE: [dx: number, dy: number, facing: 1 | -1][] = [
-	[-62, 40, 1],
-	[62, 40, -1],
-	[-62, 92, 1],
-	[62, 92, -1],
-];
+/** Spots in the aisle in front of a desk (its own, or a free desk lent to it), relative to its
+ * front's centre: AISLE's row, the outer pair first, facing in (their work between them), then the
+ * inner pair, facing the lead. */
+const WIDE: [dx: number, dy: number, facing: 1 | -1][] = AISLE.places.map((dx, i) => [dx, AISLE.front, i % 2 === 0 ? 1 : -1]);
 
 /**
  * The line's spots (staging `line`), relative to the desk front's centre: three along the belt,
  * standing behind it facing downstream (each one's work lands in the gap before the next), then a
- * pair in front of it facing each other across their work.
+ * pair in front of it facing each other across their work, an aisle row (AISLE.row) lower than the
+ * three, so the three's task pills hang between them and cross no face.
  */
 const LINE: [dx: number, dy: number, facing: 1 | -1][] = [
 	[-70, 50, 1],
 	[0, 50, 1],
 	[70, 50, 1],
-	[-56, 92, 1],
-	[56, 92, -1],
+	[-56, 50 + AISLE.row, 1],
+	[56, 50 + AISLE.row, -1],
 ];
 
 /** A line's belt, from the desk front's centre: its top surface this far down, its ends this far in
@@ -372,25 +435,30 @@ export function beltsFor(area: Pick<Area, "id" | "cells" | "desks" | "cols">): B
 	return out;
 }
 
-/** Spots on a bare cell (a row with no desks), relative to the cell's top-left corner. */
+/** A desk's own spots in this world's staging: the aisle's row, or a line's. */
+const ownPattern = (world: Pick<World, "staging">) => (world.staging?.bay === "line" ? LINE : WIDE);
+
+/** Spots on a bare cell (a row with no desks), relative to the cell's top-left corner: a pair, then
+ * a second pair a row lower and half a place in, facing out, so the first pair's task pills hang
+ * between the rows and each one's work shows. */
 const BARE: [dx: number, dy: number, facing: 1 | -1][] = [
 	[48, 64, 1],
 	[172, 64, -1],
-	[48, 140, 1],
-	[172, 140, -1],
+	[48 + AISLE.pitch / 2 + 4, 64 + AISLE.row + 2, -1],
+	[172 - AISLE.pitch / 2 - 4, 64 + AISLE.row + 2, 1],
 ];
 
 /**
- * Where a desk's crew stand, in fill order, spaced so each one's work shows: four wide spots in the
- * desk's own cell (on a line, the five along its belt: `LINE`), then the free cells it is lent. A free cell is lent to exactly one desk: the one
- * it lies in front of, else the one it lies behind, else its left neighbour, else its right. A
- * bare cell (its row has no desks) gives four spots; a free desk's cell gives the four in front of
- * that desk. Past these, the old tight pattern (`crewSlot`) takes the overflow.
+ * Where a desk's crew stand, in fill order: the four spots of its own aisle (on a line, the five
+ * along its belt: `LINE`), then the free cells it is lent. A free cell is lent to exactly one desk:
+ * the one it lies in front of, else the one it lies behind, else its left neighbour, else its right.
+ * A bare cell (its row has no desks) gives four spots; a free desk's cell gives the four in front of
+ * that desk. Past these, the crowd (`crowdSlot`) takes the overflow.
  */
 export function crewSpots(world: World, desk: Desk): Slot[] {
 	const area = world.areas.find((a) => a.id === desk.areaId);
 	const out: Slot[] = [];
-	const pattern = world.staging?.bay === "line" ? LINE : WIDE;
+	const pattern = ownPattern(world);
 	const wide = (x: number, y: number) => {
 		for (const [dx, dy, facing] of pattern) out.push({ x: x + dx, y: y + dy, depth: y + dy, facing });
 	};
@@ -413,8 +481,8 @@ export function crewSpots(world: World, desk: Desk): Slot[] {
 }
 
 /** The i-th spot of a desk's crew: `crewSpots` first, then the crowd (`crowdSlot`) for the rest,
- * re-staggered off anyone it would stand on (`restagger`). A spot depends only on the spots before
- * it, so `crew:<i>` names the same place however big the crew gets. */
+ * moved along its row off anyone it would stand on (`restagger`). A spot depends only on the spots
+ * before it, so `crew:<i>` names the same place however big the crew gets. */
 export function crewSpot(spots: Slot[], desk: Desk, i: number): Slot {
 	if (i < spots.length) return spots[i]!;
 	const all = [...spots];
@@ -427,45 +495,150 @@ export function crewSpot(spots: Slot[], desk: Desk, i: number): Slot {
 export const inCrowd = (spots: Slot[], i: number) => i >= spots.length;
 
 /**
- * The crowd: crew past the spaced spots stand in a loose arc in front of the desk, rows staggered
- * by half a place so nobody stands square behind another, the outer ones a little further back (the
- * arc bends round the desk), each facing the lead.
+ * The crowd: crew past the spaced spots stand in further rows down the aisle, each AISLE.row lower
+ * than the last and offset by half a place from it (three, then four abreast), never square behind
+ * anyone, each facing the lead. A big crew in a full room spills out of its cell this way rather
+ * than stacking up on the desk's name card.
  */
-export const CROWD = { perRow: 6, pitch: 34, left: -85, front: 58, row: 13, bend: 14, rows: 3, reach: 104 } as const;
+export const CROWD = { rows: [[0, -54, 54], [-27, 27, -81, 81]], reach: 108 } as const;
 
 export function crowdSlot(desk: Desk, k: number): Slot {
-	const row = Math.floor(k / CROWD.perRow);
-	const j = k % CROWD.perRow;
-	const r = row % CROWD.rows;
-	const cycle = Math.floor(row / CROWD.rows);
-	const dx = Math.max(-CROWD.reach, Math.min(CROWD.reach, CROWD.left + j * CROWD.pitch + (r % 2) * (CROWD.pitch / 2) + (cycle % 2) * 8));
-	const dy = Math.round(CROWD.front + r * CROWD.row + (cycle % 2) * 4 - CROWD.bend * (dx / 90) ** 2);
+	let row = 0;
+	let left = k;
+	while (left >= CROWD.rows[row % 2]!.length) left -= CROWD.rows[row++ % 2]!.length;
+	const dx = CROWD.rows[row % 2]![left]!;
 	const x = desk.at.x + dx;
-	const y = desk.at.y + dy;
+	const y = desk.at.y + AISLE.front + (row + 1) * AISLE.row;
 	return { x, y, depth: y, facing: x < desk.lead.x ? 1 : -1 };
 }
 
-/** How close two crew may stand before the rear one is hidden (feet, px): nearly square behind.
- * The crowd's rows are staggered by half a place, so a rear one shows past the front one's side. */
-export const OVERLAP = { dx: 16, dy: 24 } as const;
+/**
+ * When the crowd's next row would stand outside the room (a desk in the room's front row: its aisle
+ * is the last floor before the hallway or the outside), the extras first stand beside the desk's
+ * ends, in the gap between it and the next desk (`end`: the gap's middle, `dy` the feet, drawn just
+ * in front of the desk), and the row of four keeps its normal spacing. A gap is one place, however
+ * many desks border it: it goes to the desk on its left (that desk's right end), so a desk's left end
+ * is its own only with no desk beside it. A gap also holds the build spot of the desk on its right
+ * (`buildSlot`, just past that desk's left end): a tower stands for most of a desk's life but a
+ * builder visits for a moment, so the place is kept and its occupant steps aside (`yieldFrom`,
+ * `yieldDy` forward) only while a brick run to that spot is under way. Only past the free ends does the row tighten: up to `abreast` at `pitch` (neighbours
+ * overlap by up to `overlap` of a body, more than AISLE's), still on the room's floor. A standing
+ * crew member's feet are always on its own room's floor (`foot`: how far above the room's bottom
+ * edge, the frame, they may come).
+ */
+export const SQUEEZE = {
+	pitch: 42,
+	abreast: 6,
+	overlap: 0.35,
+	end: { dx: CELL_W / 2, dy: -4 },
+	yieldDy: 24,
+	foot: 8,
+} as const;
 
-/** Where a re-staggered spot may try, nearest first: half steps aside, then a little back or forward. */
-const STAGGER_X = [0, 17, -17, 34, -34, 51, -51, 68, -68, 85, -85, 102, -102];
-const STAGGER_Y = [0, -8, 8, -16, 16, 24, -24];
+/** The lowest a standing character's feet may be in an area: its floor's bottom, inside the frame. */
+export const floorFoot = (a: Pick<Area, "rect">) => a.rect.y + a.rect.h - FRONT - SQUEEZE.foot;
 
-/** Re-stagger a crew spot that would stand on an earlier one: the nearest place a half step or so
- * aside (or a little back or forward) that is clear, still in front of the desk and in its cell. If
- * there is none (a very big crew), it crowds in where it was. */
+/** The x range a body `half` wide may stand in, in an area: inside its side walls and clear of the
+ * station strip (a project room's crew never stand among its stations' users). */
+const inside = (a: Pick<Area, "rect" | "kind">, half: number) =>
+	[a.rect.x + (a.kind === "project" || a.kind === "vacant" ? SIDE + STRIP.w : 13) + half, a.rect.x + a.rect.w - 13 - half] as const;
+
+/** The crew body's half width, at the size STATION_REACH is measured for. */
+const CREW_HALF = (BODY.halfW * STATION_CREW_PX) / BODY.unit;
+
+/** A desk's own end places (SQUEEZE), right end first, each with the desk whose build spot is in
+ * its gap (`buildSlot` is just past a desk's left end): the right-hand neighbour's, or its own. */
+export function endGaps(world: World, desk: Desk): { slot: Slot; builder?: string }[] {
+	const area = world.areas.find((a) => a.id === desk.areaId);
+	if (!area) return [];
+	const [lo, hi] = inside(area, CREW_HALF);
+	const beside = (col: number) => area.desks.find((d) => d.row === desk.row && d.col === col);
+	const out: { slot: Slot; builder?: string }[] = [];
+	for (const side of [1, -1] as const) {
+		const x = desk.at.x + side * SQUEEZE.end.dx;
+		if (x < lo || x > hi) continue;
+		// The gap's owner is the desk on its left: our left end is the left neighbour's right end.
+		if (side < 0 && beside(desk.col - 1)) continue;
+		const y = desk.at.y + SQUEEZE.end.dy;
+		const builder = side > 0 ? beside(desk.col + 1)?.id : desk.id;
+		out.push({ slot: { x, y, depth: desk.at.y + 1, facing: side > 0 ? -1 : 1 }, ...(builder ? { builder } : {}) });
+	}
+	return out;
+}
+
+/** The places beside a desk's ends that are its own (`endGaps`). */
+export const endPlaces = (world: World, desk: Desk): Slot[] => endGaps(world, desk).map((g) => g.slot);
+
+/** Where the one on an end place steps aside to while a brick run to the build spot in its gap is
+ * under way: a short step forward (SQUEEZE.yieldDy), clear of the builder's face and both name
+ * cards, facing the builder as it comes up from the row. */
+export function yieldFrom(end: Slot): Slot {
+	const y = end.y + SQUEEZE.yieldDy;
+	return { x: end.x, y, depth: y, facing: 1 };
+}
+
+/**
+ * Where a desk's `n` crew stand: `crewSpot`'s places while they all stand on the room's floor; else
+ * the row of four as it is, the spots in lent cells, the desk's free ends (`endPlaces`), and only
+ * then the row tightened to as many abreast as it takes (up to six), then (a crowd past all that)
+ * the crowd's places held at the room's foot. Spot `crew:i` is the i-th; once the row tightens, its
+ * places move as the crew grows (they walk there).
+ */
+export function crewPlaces(world: World, desk: Desk, n: number): Slot[] {
+	const spots = crewSpots(world, desk);
+	const normal = Array.from({ length: n }, (_, i) => crewSpot(spots, desk, i));
+	const area = world.areas.find((a) => a.id === desk.areaId);
+	if (!area) return normal;
+	const foot = floorFoot(area);
+	if (normal.every((s) => s.y <= foot)) return normal;
+	const own = ownPattern(world).length;
+	// The aisle's row always stands on the floor; a line's front pair may not, in a front-row bay.
+	const row = spots.slice(0, own).filter((s) => s.y <= foot);
+	const lent = spots.slice(own).filter((s) => s.y <= foot);
+	const ends = endPlaces(world, desk);
+	const extra = n - row.length - lent.length - ends.length;
+	if (extra <= 0) return [...row, ...lent, ...ends].slice(0, n);
+	// The ends are used up: the row tightens, centred on the desk, slid to keep inside the walls.
+	const abreast = Math.min(SQUEEZE.abreast, row.length + extra);
+	const [lo, hi] = inside(area, CREW_HALF);
+	const xs = Array.from({ length: abreast }, (_, k) => (k - (abreast - 1) / 2) * SQUEEZE.pitch);
+	const left = desk.at.x + xs[0]!;
+	const right = desk.at.x + xs[xs.length - 1]!;
+	const shift = left < lo ? lo - left : right > hi ? hi - right : 0;
+	// Fill order: the outer pair first (facing in, their work between them), then inwards.
+	const order = [...xs].sort((p, q) => Math.abs(q) - Math.abs(p) || p - q);
+	const y = desk.at.y + AISLE.front;
+	const tight: Slot[] = order.map((dx) => {
+		const x = Math.round(desk.at.x + dx + shift);
+		return { x, y, depth: y, facing: x < desk.lead.x ? 1 : -1 };
+	});
+	const out = [...tight.slice(0, row.length), ...lent, ...ends, ...tight.slice(row.length)];
+	// A crowd past all of that: the crowd's places, but never off the floor.
+	for (let i = out.length; i < n; i++) {
+		const s = normal[i] ?? crewSpot(spots, desk, i);
+		const fy = Math.min(s.y, foot);
+		out.push({ ...s, y: fy, depth: fy });
+	}
+	return out.slice(0, n);
+}
+
+/** How close two crew may stand (feet, px): closer than this both ways, one covers the other's face
+ * or its pill does. */
+export const OVERLAP = { dx: AISLE.pitch - 2, dy: AISLE.row } as const;
+
+/** Where a re-staggered spot may try, nearest first: half places along its row. */
+const STAGGER_X = [0, 27, -27, 54, -54, 81, -81, 108, -108];
+
+/** Move a crew spot that would stand on an earlier one along its row to the nearest clear place,
+ * still in front of the desk. If there is none (a very big crew), it crowds in where it was. */
 export function restagger(slot: Slot, earlier: Slot[], desk: Desk): Slot {
 	const clear = (x: number, y: number) => !earlier.some((p) => Math.abs(p.x - x) < OVERLAP.dx && Math.abs(p.y - y) < OVERLAP.dy);
 	if (clear(slot.x, slot.y)) return slot;
-	for (const oy of STAGGER_Y)
-		for (const ox of STAGGER_X) {
-			const x = slot.x + ox;
-			const y = slot.y + oy;
-			if (Math.abs(x - desk.at.x) > CROWD.reach || y - desk.at.y < 12 || y > desk.cell.y + desk.cell.h) continue;
-			if (clear(x, y)) return { x, y, depth: y, facing: x < desk.lead.x ? 1 : -1 };
-		}
+	for (const ox of STAGGER_X) {
+		const x = slot.x + ox;
+		if (Math.abs(x - desk.at.x) > CROWD.reach) continue;
+		if (clear(x, slot.y)) return { ...slot, x, facing: x < desk.lead.x ? 1 : -1 };
+	}
 	return slot;
 }
 
@@ -489,8 +662,10 @@ export function faceFront(slots: { slot: Slot; turn: boolean }[]): Slot[] {
 }
 
 /** The crew's build on a desk (office.ts draws it): bricks this big, stacked this many to a course,
- * from this corner of the desk's left end, relative to the desk front's centre. */
-export const BUILD = { brickW: 12, brickH: 9, wide: 3, left: -86, floor: -52 } as const;
+ * from the desk's left end (the outer end, away from the screen), relative to the desk front's
+ * centre. Its three columns end left of the lead's face (SEAT), so however tall it grows it never
+ * covers it. */
+export const BUILD = { brickW: 12, brickH: 9, wide: 3, left: -87, floor: -52 } as const;
 
 /** Where a builder stands to set a brick on its desk's build: just past the desk's left end, a
  * little back, facing the tower. */

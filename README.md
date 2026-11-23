@@ -47,7 +47,7 @@ rm -rf /Applications/Busybodies.app ~/Library/Application\ Support/app.busybodie
 ## What it shows
 
 - **Rooms are projects**, off a hallway. **Desks are sessions**; a busy project fills rows of
-  them. **Subagents** stand around their session's desk, smaller the deeper they're nested.
+  them. **Subagents** stand in a row at their session's desk, smaller the deeper they're nested.
 - Busy agents type frantically; idle ones put their feet up, spin their chairs or scroll their
   phones; finished ones queue for coffee and go home. Reviews happen in the meeting room. A session **waiting on you** holds
   up a sign, and its room pulses.
