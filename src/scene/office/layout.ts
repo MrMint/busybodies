@@ -265,6 +265,11 @@ function desk(id: string, areaId: string, room: Room, i: number, cell: Rect): De
 const slot = (x: number, y: number, facing: 1 | -1 = 1): Slot => ({ x, y, depth: y, facing });
 const fixture = (kind: Fixture["kind"], x: number, y: number): Fixture => ({ kind, x, y, depth: y });
 
+/** Where signs and whiteboards hang on a back wall, down from its top: their foot is clear of
+ * head height (a back-row lead's head is ~36 px above the floor line, WALL down). */
+export const SIGN_TOP = 12;
+export const SIGN_FOOT = 64;
+
 /** Back-wall dressing for a project room, from its width alone, so it never shuffles. */
 function dressRoom(a: Area): void {
 	const { x, y, w } = a.rect;
@@ -273,12 +278,14 @@ function dressRoom(a: Area): void {
 	// The todo planner over the station strip (office/props.ts draws its sticky notes): whoever posts
 	// a note stands clear of the desks. The room's sign takes the first window's place.
 	a.wall.push({ kind: "planner", rect: { x: x + 18, y: wy - 2, w: 132, h: 84 } });
+	// Signs and whiteboards hang high, their foot above the heads of the leads at the back row of
+	// desks (a lead's head reaches ~36 px above the floor line): text never hides behind a head.
 	let at = x + 168;
 	const items: WallItem["kind"][] = ["sign", "whiteboard", "window", "window"];
 	for (const kind of items) {
 		const ww = kind === "whiteboard" ? 150 : 116;
 		if (at + ww > x + w - (a.band === "bottom" ? 90 : 18)) break;
-		const rect = kind === "whiteboard" ? { x: at, y: wy - 2, w: ww, h: 84 } : kind === "sign" ? { x: at, y: wy + 4, w: ww, h: 62 } : { x: at, y: wy + 4, w: ww, h: 74 };
+		const rect = kind === "whiteboard" ? { x: at, y: y + SIGN_TOP - 4, w: ww, h: SIGN_FOOT - SIGN_TOP + 4 } : kind === "sign" ? { x: at, y: y + SIGN_TOP, w: ww, h: SIGN_FOOT - SIGN_TOP } : { x: at, y: wy + 4, w: ww, h: 74 };
 		a.wall.push({ kind, rect, slot: kind === "whiteboard" ? `${key}:board` : kind === "sign" ? `${key}:sign` : undefined });
 		at += ww + 26;
 	}
@@ -290,8 +297,8 @@ function dressRoom(a: Area): void {
 function meeting(a: Area): void {
 	const { x, w } = a.rect;
 	const f = a.floorY;
-	a.wall.push({ kind: "sign", rect: { x: x + 16, y: a.rect.y + 16, w: 128, h: 62 }, slot: "meeting:sign" });
-	a.wall.push({ kind: "whiteboard", rect: { x: x + 160, y: a.rect.y + 12, w: 160, h: 86 }, slot: "meeting:board" });
+	a.wall.push({ kind: "sign", rect: { x: x + 16, y: a.rect.y + SIGN_TOP, w: 128, h: SIGN_FOOT - SIGN_TOP }, slot: "meeting:sign" });
+	a.wall.push({ kind: "whiteboard", rect: { x: x + 160, y: a.rect.y + SIGN_TOP - 4, w: 160, h: SIGN_FOOT - SIGN_TOP + 4 }, slot: "meeting:board" });
 	a.fixtures.push(fixture("chair", x + 130, f + 92), fixture("chair", x + 210, f + 92), fixture("table", x + w / 2, f + 150));
 	a.fixtures.push(fixture("plant", x + w - 28, f + 270));
 	a.spots.seat = [slot(x + 130, f + 104), slot(x + 210, f + 104, -1), slot(x + 62, f + 200), slot(x + w - 62, f + 200, -1)];
@@ -300,7 +307,7 @@ function meeting(a: Area): void {
 function lobby(a: Area): void {
 	const { x, w } = a.rect;
 	const f = a.floorY;
-	a.wall.push({ kind: "frame", rect: { x: x + 14, y: a.rect.y + 12, w: 140, h: 88 }, slot: "lobby:frame" });
+	a.wall.push({ kind: "frame", rect: { x: x + 14, y: a.rect.y + SIGN_TOP - 4, w: 140, h: SIGN_FOOT - SIGN_TOP + 4 }, slot: "lobby:frame" });
 	a.wall.push({ kind: "door", rect: { x: x + 172, y: a.rect.y + 14, w: 64, h: WALL - 14 } });
 	a.fixtures.push(fixture("pod", x + w / 2, f + 140), fixture("sofa", x + 100, f + 270), fixture("plant", x + w - 28, f + 260));
 	// In the pod's window: drawn over the pod, so deeper than its base.
@@ -321,7 +328,7 @@ function yours(a: Area): void {
 	const { x, w } = a.rect;
 	const f = a.floorY;
 	a.wall.push({ kind: "door", rect: { x: x + 16, y: a.rect.y + 14, w: 60, h: WALL - 14 } });
-	a.wall.push({ kind: "sign", rect: { x: x + 90, y: a.rect.y + 14, w: 116, h: 62 }, slot: "yours:serving" });
+	a.wall.push({ kind: "sign", rect: { x: x + 90, y: a.rect.y + SIGN_TOP, w: 116, h: SIGN_FOOT - SIGN_TOP }, slot: "yours:serving" });
 	a.wall.push({ kind: "you", rect: { x: x + 218, y: a.rect.y + 14, w: 64, h: WALL - 14 } });
 	a.spots.line = Array.from({ length: YOURS_LINE }, (_, k) =>
 		k < 5 ? slot(x + 160 - 30 * k, f + 52 + 34 * k) : slot(x + 66 + 34 * (k - 5), f + 232 + 30 * (k - 5)),
@@ -337,7 +344,7 @@ function kitchen(a: Area): void {
 	const { x } = a.rect;
 	const f = a.floorY;
 	a.wall.push({ kind: "door", rect: { x: x + 376, y: a.rect.y + 14, w: 64, h: WALL - 14 } });
-	a.wall.push({ kind: "sign", rect: { x: x + 196, y: a.rect.y + 12, w: 160, h: 66 }, slot: "kitchen:sign" });
+	a.wall.push({ kind: "sign", rect: { x: x + 196, y: a.rect.y + SIGN_TOP, w: 160, h: SIGN_FOOT - SIGN_TOP }, slot: "kitchen:sign" });
 	a.fixtures.push(fixture("fridge", x + 70, f + 50), fixture("counter", x + 200, f + 56), fixture("cooler", x + 320, f + 56));
 	a.fixtures.push(fixture("sofa", x + 110, f + 270), fixture("plant", x + 430, f + 274));
 	a.spots.queue = [0, 1, 2, 3, 4].map((i) => slot(x + 214 + i * 40, f + 100 + i * 30, -1));

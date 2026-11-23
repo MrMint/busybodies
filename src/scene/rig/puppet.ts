@@ -7,11 +7,13 @@ import { Container, Sprite } from "pixi.js";
 import type { Atlas } from "./atlas";
 import { CHANNELS, type ChannelName, type Frame, REST, type TimedFrame, channels, diff } from "./frame";
 import { FEEL, Spring, SpringSet } from "./motion";
-import { frameAt, unit } from "./player";
+import { type Passes, frameAt, passBeat, unit } from "./player";
 import { POSE, type Pose, duration } from "./poses";
 import { COSTUMES, type Role } from "./roles";
 import { ANCHORS as A, ACCENTS, PAPER_PALETTE } from "./theme";
-import { CHEEKS } from "./vocab";
+import { CHEEKS, LOOKS } from "./vocab";
+import { type LifeBeat, STILL, lifeAt } from "./life";
+import { type Aim, SIDE_EYES, WORK_LOOKS } from "./gaze";
 
 const RAD = Math.PI / 180;
 const MS_PER_TICK = 1000 / 60;
@@ -62,6 +64,8 @@ export interface PuppetState {
 	settled: boolean;
 	/** The current frame's parts that differ from rest. */
 	params: Record<string, string>;
+	/** The variant pass playing (`Pose.beats`), by name; "" for the pose's own frames. */
+	beat: string;
 }
 
 type ArmParts = { root: Container; upper: Sprite; fore: Container; foreSprite: Sprite; hand: Container; handSprite: Sprite; held: Sprite };
@@ -90,10 +94,25 @@ export class Puppet extends Container {
 	#offset = 0;
 	#tempo = 1;
 	#index = -1;
+	/** Which pass is showing: 0 the pose's own frames, k its k-th beat. */
+	#beatPass = 0;
+	/** The pose's variant passes and their picker, when it has any (lead parts of loops only). */
+	#passes?: Passes<TimedFrame>;
 	#holding = true;
 	#frame: Frame = REST;
 	#legsUp = false;
 	#played?: { pose: Pose; opts: PlayOptions };
+	/** Life (src/scene/rig/life.ts): blinks and glances on top of the pose, while the app is on
+	 * screen. Its own clock, so a pose change doesn't restart it. */
+	#life = false;
+	#lifeMs = 0;
+	#beat: LifeBeat = STILL;
+	/** Where something else asked the face to look (a teammate walking past), in rig units on top
+	 * of the pose's own look; it wins over a glance. */
+	#gaze?: readonly [number, number];
+	/** Where the director pointed the face (gaze.ts): a look in rig units that replaces the pose's
+	 * own, except on frames whose eyes are on the work. It wins over a glance and over `gaze`. */
+	#aim?: Aim;
 
 	// Parts, back to front.
 	#shadow: Sprite;
@@ -243,7 +262,13 @@ export class Puppet extends Container {
 		// two-hander's parts must stay in step with each other, so they start together.
 		this.#offset = p.play === "loop" && !p.partner && opts.at !== "end" ? Math.floor(unit(this.id, p.name) * duration(frames)) : 0;
 		this.#tempo = opts.tempo ?? 1;
+		// A looping pose may break its rhythm now and then with a variant pass (Pose.beats).
+		const beats = as === "lead" && !p.partner && p.play === "loop" ? p.beats : undefined;
+		this.#passes = beats
+			? { sets: beats.passes.map((b) => b.frames), pick: (pass) => passBeat(this.id, p.name, pass, beats.passes.length, beats.share) }
+			: undefined;
 		this.#index = -1;
+		this.#beatPass = 0;
 		this.#advance(0);
 		if (opts.snap || opts.at === "end") this.snap();
 		this.#apply();
@@ -262,6 +287,7 @@ export class Puppet extends Container {
 	/** Replay the current pose from its start, settled in place: the inspector's freeze() uses this
 	 * so step(n) after it gives the same frames however long the page ran before. */
 	rewind(): void {
+		this.#lifeMs = 0;
 		if (this.#played) this.play(this.#played.pose, { ...this.#played.opts, snap: true });
 		else this.snap();
 	}
@@ -270,6 +296,8 @@ export class Puppet extends Container {
 	showFrame(frame: Frame): void {
 		this.#pose = POSE.rest!;
 		this.#frames = [{ ...frame, ms: 1 }];
+		this.#passes = undefined;
+		this.#beatPass = 0;
 		this.#loops = 1;
 		this.#ms = 1;
 		this.#index = 0;
@@ -299,10 +327,46 @@ export class Puppet extends Container {
 		return !this.#holding || !this.settled;
 	}
 
+	/** Life on: the puppet keeps blinking and glancing even when its pose holds still. */
+	get alive(): boolean {
+		return this.#life;
+	}
+
+	set life(on: boolean) {
+		if (on === this.#life) return;
+		this.#life = on;
+		if (!on) this.#setBeat(STILL);
+	}
+
+	/** Look somewhere (rig units added to the pose's look, in the puppet's own facing), or stop. */
+	gaze(at: readonly [number, number] | undefined): void {
+		const same = at === this.#gaze || (at && this.#gaze && at[0] === this.#gaze[0] && at[1] === this.#gaze[1]);
+		if (same) return;
+		this.#gaze = at;
+		this.#setBeat(this.#lifeBeat());
+	}
+
+	/** Look at something the director chose (gaze.ts `aimAt`), or stop. */
+	aim(at: Aim | undefined): void {
+		const was = this.#aim;
+		if (at === was || (at && was && at.x === was.x && at.y === was.y && at.side === was.side)) return;
+		this.#aim = at;
+		this.#beatFrame();
+	}
+
+	/** The aim in force on this frame, if any (a frame with eyes on the work ignores it). */
+	get aimed(): Aim | undefined {
+		return this.#aim && !WORK_LOOKS.has(this.#frame.look) ? this.#aim : undefined;
+	}
+
 	/** Advance by `dt` ticks (1 = 1/60 s, as Pixi's ticker counts). */
 	tick(dt: number): void {
-		if (!this.animating) return;
 		const ms = dt * MS_PER_TICK;
+		if (this.#life) {
+			this.#lifeMs += ms;
+			this.#setBeat(this.#lifeBeat());
+		}
+		if (!this.animating) return;
 		this.#advance(ms * this.#tempo);
 		this.#springs.step(ms / 1000);
 		for (const p of Object.values(this.#pop)) p.step(ms / 1000);
@@ -319,6 +383,7 @@ export class Puppet extends Container {
 			holding: this.#holding,
 			settled: this.settled,
 			params: diff(this.#frame),
+			beat: this.#beatPass > 0 ? (this.#pose.beats?.passes[this.#beatPass - 1]?.name ?? "") : "",
 		};
 	}
 
@@ -335,11 +400,14 @@ export class Puppet extends Container {
 	#advance(ms: number): void {
 		if (this.#holding && this.#index >= 0 && ms > 0) return;
 		this.#ms += ms;
-		const at = frameAt(this.#frames, this.#ms + this.#offset, this.#loops);
+		const at = frameAt(this.#frames, this.#ms + this.#offset, this.#loops, this.#passes);
 		this.#holding = at.holding;
-		if (at.index !== this.#index) {
+		const pass = at.beat ?? 0;
+		if (at.index !== this.#index || pass !== this.#beatPass) {
 			this.#index = at.index;
-			this.#setFrame(this.#frames[at.index]!);
+			this.#beatPass = pass;
+			const set = pass > 0 ? this.#passes!.sets[pass - 1]! : this.#frames;
+			this.#setFrame(set[at.index]!);
 		}
 	}
 
@@ -357,6 +425,7 @@ export class Puppet extends Container {
 			this.#mouth.texture = a.get(`mouth/${f.mouth}`);
 			this.#kick(this.#pop.face, Puppet.FACE_KICK);
 		}
+		this.#beatFrame();
 		const tint = CHEEKS[f.cheeks][1];
 		this.#cheekL.tint = tint;
 		this.#cheekR.tint = tint;
@@ -390,6 +459,46 @@ export class Puppet extends Container {
 		// Binoculars cover the eyes, and the reviewer's glasses would sit on top of them.
 		if (this.#costumeWear) this.#costumeWear.visible = !this.#wear.visible;
 		this.#swap(this.#fx, f.fx && `fx/${f.fx}`, prev.fx !== f.fx, this.#pop.fx, 0.7);
+	}
+
+	#lifeBeat(): LifeBeat {
+		const beat = this.#life ? lifeAt(this.id, this.#lifeMs, this.#frame.eyes) : STILL;
+		return this.#gaze ? { ...beat, lookX: this.#gaze[0], lookY: this.#gaze[1] } : beat;
+	}
+
+	/** Put life's beat on: re-aim the face's look springs, and shut or open the eyes. */
+	#setBeat(beat: LifeBeat): void {
+		const was = this.#beat;
+		if (beat.blink === was.blink && beat.lookX === was.lookX && beat.lookY === was.lookY) return;
+		this.#beat = beat;
+		this.#beatFrame();
+	}
+
+	/** The current frame's eyes and look, with life's beat and the director's aim on top. No pop: a
+	 * blink just happens. */
+	#beatFrame(): void {
+		const f = this.#frame;
+		const aim = this.aimed;
+		const eyes = this.#beat.blink ? "closed" : aim?.side && SIDE_EYES.has(f.eyes) ? "side" : f.eyes;
+		const tex = this.#atlas.get(`eye/${eyes}`);
+		if (this.#eyeL.texture !== tex) {
+			this.#eyeL.texture = tex;
+			this.#eyeR.texture = tex;
+		}
+		// Side-eye looks the same way with both eyes (right as drawn, both mirrored for an aim to the
+		// left); everything else mirrors the right eye.
+		const side = eyes === "side";
+		const sx = side && aim && aim.x < 0 ? -1 : 1;
+		this.#eyeL.scale.x = side ? sx : 1;
+		this.#eyeR.scale.x = side ? sx : -1;
+		if (aim) {
+			this.#springs.springs.lookX.target = aim.x;
+			this.#springs.springs.lookY.target = aim.y;
+			return;
+		}
+		const [x, y] = LOOKS[f.look];
+		this.#springs.springs.lookX.target = x + this.#beat.lookX;
+		this.#springs.springs.lookY.target = y + this.#beat.lookY;
 	}
 
 	/** Swap a sprite's texture (or hide it). Something arriving from nothing pops in; one thing

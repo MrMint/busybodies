@@ -59,8 +59,8 @@ const THEMES = ["office", "factory"] as const;
 for (const theme of THEMES)
 describe(`frame budgets (${theme})`, () => {
 	const t = `&theme=${theme}`;
-	test("an idle office requests no animation frames and renders nothing", async () => {
-		const page = await open(`demo=idle${t}`);
+	test("an idle office in calm mode requests no animation frames and renders nothing", async () => {
+		const page = await open(`demo=idle&calm${t}`);
 		const c = await measure(page);
 		expect(c.tickerRunning).toBe(false);
 		expect(c.animationFrames).toBe(0);
@@ -105,8 +105,8 @@ describe(`frame budgets (${theme})`, () => {
 		await page.close();
 	}, T);
 
-	test("the loop stops once everyone goes idle", async () => {
-		const page = await open(`demo${t}`);
+	test("in calm mode the loop stops once everyone goes idle", async () => {
+		const page = await open(`demo&calm${t}`);
 		await page.evaluate(() => {
 			const b = window.__busybodies!;
 			const s = structuredClone(b.snapshot()!);
@@ -126,6 +126,36 @@ describe(`frame budgets (${theme})`, () => {
 		const c = await measure(page);
 		expect(c.tickerRunning).toBe(false);
 		expect(c.animationFrames).toBe(0);
+		await page.close();
+	}, T);
+});
+
+describe("life and the off-screen freeze", () => {
+	test("a visible idle office lives (blinks, glances) at no more than 20 fps", async () => {
+		const page = await open("demo=idle&settle=600000");
+		const c = await measure(page, 2000);
+		expect(c.life).toBe(true);
+		expect(c.tickerRunning).toBe(true);
+		expect(c.maxFPS).toBe(20);
+		expect(c.renders).toBeGreaterThan(0);
+		expect(c.renders).toBeLessThanOrEqual(44); // 20 fps over 2 s, plus slack for timer edges
+		await page.close();
+	}, T);
+
+	test("off screen, even a busy office draws nothing; back on screen it carries on", async () => {
+		const page = await open("demo");
+		await page.evaluate(() => window.__busybodies!.setVisible(false));
+		const hidden = await measure(page, 1500);
+		expect(hidden.visible).toBe(false);
+		expect(hidden.life).toBe(false);
+		expect(hidden.tickerRunning).toBe(false);
+		expect(hidden.renders).toBe(0);
+		await page.evaluate(() => window.__busybodies!.setVisible(true));
+		const back = await measure(page, 1000);
+		expect(back.visible).toBe(true);
+		expect(back.life).toBe(true);
+		expect(back.tickerRunning).toBe(true);
+		expect(back.renders).toBeGreaterThan(0);
 		await page.close();
 	}, T);
 });
@@ -161,7 +191,7 @@ describe(`draw calls (${theme}, ${demo})`, () => {
 
 describe("camera", () => {
 	test("a move runs the ticker at 60 fps only while moving, then the idle office goes quiet", async () => {
-		const page = await open("demo=idle");
+		const page = await open("demo=idle&calm");
 		const during = await page.evaluate(() => {
 			const b = window.__busybodies!;
 			b.goTo({ kind: "room", id: "room:lanternfish" });
@@ -220,8 +250,8 @@ describe("camera", () => {
 });
 
 describe("the app around the office", () => {
-	test("an empty office is never blank: a night watch naps, a sign explains, and it costs no frames", async () => {
-		const page = await open("demo=empty");
+	test("an empty office is never blank: a night watch naps, a sign explains, and calm it costs no frames", async () => {
+		const page = await open("demo=empty&calm");
 		const keys = await page.evaluate(() => window.__busybodies!.entities().map((e) => e.key));
 		expect(keys).toEqual(["night-watch"]);
 		const card = page.locator(".bb-card");
@@ -255,9 +285,9 @@ describe("the app around the office", () => {
 		await page.close();
 	}, T);
 
-	test("compact mode: a slim draggable strip over a transparent office, still idle at zero frames", async () => {
+	test("compact mode: a slim draggable strip over a transparent office, calm and idle at zero frames", async () => {
 		const page = await browser.newPage({ viewport: { width: 440, height: 300 } });
-		await page.goto(`http://localhost:${server.port}/?inspect&demo=idle&compact`);
+		await page.goto(`http://localhost:${server.port}/?inspect&demo=idle&compact&calm`);
 		await page.waitForFunction(() => window.__busybodies?.ready === true, undefined, { timeout: 15_000 });
 		const hud = await page.evaluate(() => {
 			const bar = document.getElementById("hud")!;

@@ -11,6 +11,7 @@ import type { Rush } from "./rush";
 import type { StationKind } from "./stations";
 import type { Trip } from "./trips";
 import type { Work } from "./work";
+import type { LookAt } from "../rig/gaze";
 
 export type { Cue, Walk };
 
@@ -71,6 +72,13 @@ export interface Actor {
 	stride?: number;
 	/** An acted pose a deliberate character holds back a beat (beats.ts). */
 	pending?: Pending;
+	/** Plan-alive stream A (social.ts). Who a glance is for: the teammate whose test went red, who
+	 * finished, or the lead come to look over its shoulder. */
+	reactTo?: string;
+	/** The return to the screen it last noticed (the view's `back`), so one return is one look up. */
+	noticed?: number;
+	/** What it looks at while it stands there (the cue's `lookAt`). */
+	lookAt?: LookAt;
 }
 
 /** A brick on its way to the build: one crew builder walks it over, sets it down, walks back. */

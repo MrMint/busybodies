@@ -905,3 +905,195 @@ The tray's Theme menu saves the choice to `settings.json` in the app's data fold
 `src/bun/settings.ts`) and switches both windows over RPC without a reload: a new rig atlas, the
 office redrawn, signs the voice wrote kept. New windows open with `?theme=<saved>`, so the query
 parameter stays the one entry point.
+
+## 2026-11-22: lived in, wave 1 (off-screen freeze, life, calm mode)
+
+Decided with the owner (recorded in `docs/plan-alive.md`): the frame budget's job is to cost
+nothing when nobody is looking, not to keep a watched office still. **A hidden office makes zero
+frames; a visible quiet office may live at up to 20 fps.** "Hidden" is WebKit's page visibility,
+which covers a minimized window, one closed to the menu bar, another Space, a window fully covered
+by others, and a locked screen (`src/mainview/visibility.ts`). Headless Chrome is always visible,
+so the inspector's `setVisible()` fakes it for tests.
+
+**Life** is an overlay on whatever pose plays: blinks (one in each ~4.6 s window, one in five a
+double, 130 ms shut, only for open eyes) and glances (in about half of the 7.3 s windows, held 0.9
+to 2.6 s, a few rig units). Both are pure functions of the character's id and its own life clock
+(`src/scene/rig/life.ts`), and the clock moves only with ticks, so `freeze()`/`step(n)` give the
+same frames on every load and `rewind()` restarts it. Life touches only the eye textures and the
+look springs, never the body. `Puppet.gaze([x, y])` is the seam for directed looks: it replaces a
+glance while set.
+
+**Frame rates:** a camera move 60, acting (poses, walks, pulses, bricks, arms) 30, life alone 20
+(`Office.acting` vs `Office.animating`). **Calm mode** (`?calm`, or the system's reduce-motion
+setting) turns life off, and then a quiet office makes no frames, as before. The e2e tests that
+hold "an idle office is silent" run in calm mode; new ones hold life at ≤ 20 fps and a hidden busy
+office at zero renders.
+
+Measure before the next release: `tools/profile.sh` idle with and without `?calm`, on a quiet
+machine.
+
+## 2026-11-22: lived in, wave 2, stream A (gaze and the social layer)
+
+**The director points faces; the character does the geometry.** A cue now carries `lookAt`: another
+actor's key, a world point, or the viewer. The character turns it into the face's slide in rig
+units, from the direction between its eyes and the target's face in its own facing (`rig/gaze.ts`).
+The vertical part counts for half (the floor is seen at an angle: lower on screen is nearer, not
+below), the slide is clamped to the poses' own range (±5.5 sideways, 4.5 up, 5 down), and past 70%
+of the side range the eyes go `side`. The aim replaces the pose's look and wins over life's glances;
+a frame looking `downR` or `down` keeps its eyes on the work. The cast find each other through the
+factory's map of characters by key, so a look follows a walker. The look isn't part of the cue's
+key, so changing it never restarts a pose. While a walk starts, turns or plants (stream B), the
+walk's own look wins.
+
+**Who looks at whom** (`director/social.ts`, pure): a red test (or a teammate finishing) makes the
+crew look at that teammate, rippling from the nearest (180 ms more per 60 px, capped at 1.5 s); the
+foreman's round goes both ways; waiting leads watch the YOU door (not while ringing the bell); a
+hand-off's taker looks up 1.5 s out and raises a hand (`handReady`) 520 ms before contact; pairs in a
+two-hander or a celebration look at each other.
+
+**Staging.** Crew beyond the spaced pairs stand in a loose arc in front of the desk facing the lead
+(rows of six at a 34 px pitch, each row shifted half a place, the ends bent back 14 px); a spot
+squarely behind another (within 16 × 24 px) moves to the nearest clear place, and a spot depends
+only on the ones before it, so `crew:i` keeps its meaning. Finished crew in the kitchen's coffee
+line pair up facing each other; only facing changes, so nobody walks for it.
+
+**They notice you.** The director takes the viewer as an input (`View.back`). Back on screen after
+45 s or more (not calm), idle leads and finished crew look up at you over three 260 ms slots, one
+waves, and leads in your office's queue hold their tickets up; each return is noticed once per
+actor. New poses: `lookUp`, `wave`, `ticketHigh`, `handReady`.
+
+## 2026-11-22: lived in, wave 2, stream B (motion grammar)
+
+**A walk has a start, a stride and a stop, inside its own ms.** For its first moment (200 ms, never
+more than a fifth of the walk) the walker stays put, turns to face where it is going and looks
+there; then the distance eases in over 150 ms, cruises, and eases out over 250 ms, arriving exactly
+when `walk.ms` says, so bricks, folders and envelopes timed on arrival still land. Corners are
+rounded by up to 18 px, inside the corner. The easing and rounding live in `director/paths.ts`
+(`progress`, `pointAt`, `along`), so the director's `here()`, the dodges and the rig agree on where
+everyone is; dodges sample the real paths, so the 26 px clearance is measured on the walk as drawn.
+
+**Turns go through the front.** A change of direction is a 120 ms turn: the face comes round to the
+front, the body flips at the midpoint, the face goes on to the new side, at path corners and when
+arriving at a slot that faces the other way. On arrival the walker plants for a beat looking ahead.
+
+**Loops break their own rhythm.** A looping pose may carry `beats`, variant passes exactly as long
+as a pass, picked by `passBeat(id, pose, pass)` for a fifth to a third of passes, never the first
+and never twice running (FNV-1a barely moves its top bits for a counting pass number, so the pick
+runs through a finaliser). The typist stops to read with its chin on a hand, the builder checks its
+work, the queuer rises to size up the one ahead.
+
+**Idle habits live while life is on.** With life on, an idle character's habit rotates every one to
+two minutes and plays again every 20 to 30 s, every change on a 5 s grid so a room of idlers wakes
+the director together. Calm keeps the old rule (one habit, once, every ten minutes). The app
+re-directs when life switches, so the change shows at once.
+
+**Traits are acting, not latency.** Opus's pause is `consider` (eyes up, chin on a hand), sonnet's a
+small `nod`, each exactly as long as the pause; haiku overlaps, its acted poses counting as over
+160 ms early. Fable still just holds.
+
+**Waiting gets worse.** At your office a lead goes from polite (`ticketPolite`) to tapping and
+looking at the door after 45 s, to a sigh and a word with the one behind after two minutes (only
+with someone behind), to a slump with the ticket drooping after five; each stage is a booked wake.
+
+## 2026-11-22: lived in, wave 2, stream D (the office goes full office)
+
+Decided with the owner: the construction gear is the factory's. The office's rig is its own theme,
+`officeTheme()` in `rig/office.ts`, built on the paper rig and repainting parts by name as the
+factory's does, so every pose plays unchanged; the factory still builds on the paper rig and keeps
+the hammer, nails, sawhorse and bricks. Costumes are per theme through the part slots (`hat/*`,
+`front/*`, `wear/*`).
+
+Each office role reads at room zoom by hair or headwear: the boss's pompadour, headset and loud tie
+(still the project's accent); builders' spiky hair, a pencil behind the ear and a tie flung over the
+shoulder; the intern scout's ponytail and lanyard; the explorer's shades pushed up on gelled hair,
+fleece vest and laser pointer; the reviewer's skewered bun, cardigan and glasses on a chain; the
+verifier's green visor, pocket protector and sleeve garter (`arm/upper/verifier`); the designer's
+beret, round glasses and black turtleneck (the one body repaint).
+
+The work is paperwork on the same points: a giant stapler on a sheaf squashed and stapled a strike
+at a time, on an in-tray stand; a crank pencil sharpener turned a third a stroke (a hole punch
+doesn't turn, so it went in the banker's box); reams and binders for bricks; a green-bar printout
+for the blueprint; a laser pointer for the torch. Tests hold every repaint within 6 rig units of the
+paper part, so the solved reaches still land. The set: fluorescent panels, a motivational poster in
+any bare stretch of back wall, a whiteboard flowchart, a cubicle wall with a family photo at each
+desk's end, a ficus, a water cooler with paper cones, a mug wall in the kitchen, a recycling bin
+for the skip, and a crew tower of reams and binders with a sticky-note flag; all baked, so the
+draw-call budget is unchanged. Left: pose titles in poses.ts still speak of hammers and bricks.
+
+## 2026-11-22: lived in, wave 2, stream E (compact becomes a live camera)
+
+**Compact cuts between rooms instead of showing the whole office.** At 440 × 300 the whole office
+made each character about 6 px; compact now frames one room at a time (about 22 px a character). A
+pure shot picker (`director/shots.ts`) takes the director's events as news in a room, each room's
+heat, whether anyone waits, a pinned room and the current shot, and returns a stop, a reason and a
+hold. Priorities: waiting on you 100, red test 70, PR 60, rush 50, compaction 40, buried in-tray 30,
+copier feud 20. News holds its room 20 s; between news the camera rests on your office while anyone
+waits, else the busiest room, else the whole office.
+
+**Hysteresis:** no cut within 5 s of the last; during a hold only news 15 or more points weightier
+cuts away; news in the room on screen extends the hold without a cut; each room's news shows once;
+a resting camera moves only after its own 20 s, to a room 1.5 times busier. The camera moves only on
+a cut (650 ms at 60 fps); the hold's end is one more wake for the app's timer, so between cuts it
+costs no frames. Off screen it collects news and never cuts; back on screen it cuts to the most
+important thing. A strip of room tiles (DOM, 24 px) under the picture shows each room's state;
+clicking one pins the camera there. The full office follows only with `?follow`.
+
+## 2026-11-22: lived in, wave 2, stream F (sound, opt-in)
+
+Sound is off by default. The tray's **Sound** and **Calm office** are checked items saved in
+`settings.json` (only a literal `true` counts), reaching a new window as `&sound` / `&calm` and
+later changes as the RPC message `settings`. Calm from settings ORs with reduced motion, and it
+silences sound as well as stopping life. Earcons are synthesised in WebAudio from code (no samples,
+nothing to license), vary only by a hash of the event id, and come from what the director already
+says: a wait starting (a bell), a new fail (two notes down), a compaction (a paper rustle), a new PR
+(a chime), a test trip that ends green (a stamp), a copier feud (a grind and a clunk). The first
+world is a baseline, so opening onto a room that is already waiting doesn't ring. One of a kind per
+4 s, 600 ms apart, at most 4 per 10 s, and the bell wins a tie. Pan follows the room's x on screen,
+×1.6 zoomed into the room and ×0.5 in another. A quiet room tone per theme (office hum and keyboard
+patter; factory drone and belt clack) runs from a timer, not animation frames, and only while live.
+The AudioContext is made only once sound is on and the window visible, and suspends when hidden,
+calm or off. Only the full office window plays sound. The tray menu is pure data (`bun/menu.ts`).
+Left to check by ear in the app: levels, mix, and whether a tray toggle can start audio in
+WKWebView before a click in the window.
+
+## 2026-11-22: lived in, wave 2, stream C (light, material and labels)
+
+**Light is baked, never animated.** Five phases from the local hour (morning 6–10, noon 10–15, late
+afternoon 15–18, dusk 18–20, night; `office/daylight.ts`). `?hour=` pins one; otherwise a timer
+re-lights the office as each phase starts. The light layer (`office/light.ts`) is a light map at 1/6
+world resolution, multiplied over floor, furniture and cast: each area's ambient light for the
+phase, vacant rooms and empty desks a shade darker, desk lamps (a pool appears when a session
+starts), overhead light (round pools in the office, fluorescent strips per row in the factory).
+Neighbouring rooms dim at a room or desk stop, so the focused room reads as a stage. Halos after
+dark and sunlight patches under the windows are a few additive sprites where they fall. The map is
+re-made only when its signature changes (phase, focus, layout, busy desks, occupied areas). A rush
+room's flicker is the only moving light, on the life clock at the acting rate, only while life is
+on. The pulse ring stays above the light so a waiting room shows at night. A theme supplies only
+values (`SceneLight`), so the painters are untouched.
+
+**The room's paper pass is baked with the room.** Floor material, a rug or work zone, the walls' sun
+shadows, the view out of each window (sky bands, a skyline laid out by world x so neighbouring
+windows agree, the sun in the east window in the morning and the west late in the day, the moon at
+night), a hand-cut wobble on the shell, hash-generated grain and the room's painted name all go into
+the room's cached texture; a room re-bakes on a phase change. Clouds are pane-sized sprites on the
+life clock. Furniture casts stacked two-offset shadows in a layer under the depth layer. The lawn is
+the renderer's background; the yard is baked sprites (many small vector shapes measured ~30% of a
+software-rendered frame), with a little parallax on tree tops, so they move only with the camera.
+
+**Fewer labels.** Floating room tabs cost 18 of the 29 WebGL draws in a busy frame. Room names are
+painted in the hallway at each room's threshold (a vinyl decal with an arrow; a stencil in the
+factory), and the room camera frames the threshold. Counts show as one pill for the focused room, at
+room and desk stops; desk name cards only there too. Signs, whiteboards and frames hang between
+`SIGN_TOP` and `SIGN_FOOT` (12 to 64 px down the back wall), clear of a back-row lead's head
+(tested). A busy frame is now 13–17 draws in the office and 6–12 in the factory, at any hour.
+
+## 2026-11-22: lived in, wave 2 merged
+
+The six streams merged here in the order A, B, F, E, D, C, then main (#19, the settings cog). Where
+they met: the walk's own looks (setting off, a turn, the plant) win over the director's `lookAt`
+while they last; the director takes one options object (`{ life, view }`); coming back on screen
+re-directs (life changes how habits run, the cast notices you, the compact camera starts over); the
+settings sheet gained Sound and Calm office beside Theme, saved and synced with the tray through a
+new `setToggles` RPC request. Every stream's e2e run was under a load average of 40 to 370 from the
+others, where the unchanged base failed the same way; the suite was rerun here once the machine was
+quiet.

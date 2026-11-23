@@ -141,7 +141,18 @@ describe("a busy crew", () => {
 		red[0]!.commands = { failStreak: 1, repeats: 1, failed: 1, testsFailed: 1, last: { kind: "test", exitCode: 1, at: T0 + SEC } };
 		const d = s.step(snap(T0 + SEC, [release(red)]));
 		expect(d.world.actors["a:rel:b0"]!.pose).toBe("thumb");
-		for (const i of [1, 2, 3, 4, 5]) expect(d.world.actors[`a:rel:b${i}`]!.pose).toBe("glance");
+		// The look ripples out from the nearest (social.ts): each one glances now, or has it booked.
+		for (const i of [1, 2, 3, 4, 5]) {
+			const a = d.world.actors[`a:rel:b${i}`]!;
+			expect(a.pose === "glance" || a.pending?.pose === "glance").toBe(true);
+			expect(a.reactTo).toBe("a:rel:b0");
+		}
+		expect([1, 2, 3, 4, 5].some((i) => d.world.actors[`a:rel:b${i}`]!.pose === "glance")).toBe(true);
+		const last = Math.max(...[1, 2, 3, 4, 5].map((i) => d.world.actors[`a:rel:b${i}`]!.pending?.at ?? 0));
+		if (last > 0) {
+			const all = s.step(snap(T0 + SEC, [release(red)]), last);
+			for (const i of [1, 2, 3, 4, 5]) expect(all.world.actors[`a:rel:b${i}`]!).toMatchObject({ pose: "glance", lookAt: "a:rel:b0" });
+		}
 		expect(d.world.builds.rel!.pieces).toBe(before - 1);
 		expect(d.world.builds.rel!.fellAt).toBe(T0 + SEC);
 		expect(d.events).toContainEqual({ type: "build", session: "rel", at: T0 + SEC, pieces: before - 1, change: "fall" });
@@ -154,7 +165,9 @@ describe("a busy crew", () => {
 		const done = structuredClone(crew);
 		done[5]!.status = "finished";
 		const d = s.step(snap(T0 + SEC, [release(done)]));
-		expect(d.world.actors["a:rel:b0"]!.pose).toBe("glance");
+		const b0 = d.world.actors["a:rel:b0"]!;
+		expect(b0.pose === "glance" || b0.pending?.pose === "glance").toBe(true);
+		expect(b0.reactTo).toBe("a:rel:b5");
 		expect(d.world.actors["a:rel:b5"]!.pose).toBe("done");
 	});
 });

@@ -13,10 +13,11 @@ import type { Mood } from "../office/slot";
 import type { Area, Slot, World as Floor } from "../office/world";
 import { buildSlot, crewSlot, crewSpot, crewSpots, useFor } from "../office/world";
 import { choosePose, hash } from "../rig/player";
-import { HABITS, POSE, duration } from "../rig/poses";
+import { POSE, duration } from "../rig/poses";
 import { type Role, roleFor } from "../rig/roles";
 import type { Activity, Agent, Commands, RunningTool, Session, Snapshot } from "../../watcher/model";
-import { beat, flourishAfter } from "./beats";
+import { beat, flourishAfter, overlapOf } from "./beats";
+import { habitAt } from "./habits";
 import { dodges } from "./dodge";
 import { atYourDoor, errandPlace, errandUnderWay, newErrands, ongoingErrands, pauseOf, queueUp } from "./errands";
 import { HANDOFF, type HandOff, MAIL, type Mail, handOffSlot, pickTaker } from "./handoff";
@@ -29,8 +30,11 @@ import { STATION_FOR, STATION_POSE, type StationKind } from "./stations";
 import { TRIP, type Trip, type Want, planTrips, tripPlace } from "./trips";
 import type { Actor, Build, Cue, Run, Seen, World, WorldEvent } from "./types";
 import { WORK, WORK_POSE, type Work, type WorkKind, isEdit, nextWork, tempo, tempoWake, workKind } from "./work";
+import { faceFront, inCrowd } from "../office/world";
+import { HANDOFF_LOOK, NOTICE, NOTICE_POSES, type View, freshReturn, handOffWakes, looksFor, noticeDelay, pairUp, readyAt, rippleDelay, waverOf } from "./social";
 
 export { runCooldown };
+export type { View };
 
 const MIN = 60_000;
 
@@ -292,7 +296,7 @@ interface Choice {
 }
 
 /** The standing pose for a character's mood and running state, when nothing acted is playing. */
-function standing(s: Spec, now: number, count: Record<string, number>, work?: Work): Choice {
+function standing(s: Spec, now: number, count: Record<string, number>, work?: Work, life = false): Choice {
 	if (s.mood === "stalled") return { pose: "stalled", as: "lead", acted: false };
 	if (s.mood === "done") return { pose: "done", as: "lead", acted: false };
 	if (s.seen.waiting !== undefined) return { pose: choosePose("waiting", s.key, s.rig, count.waiting ?? 0).name, as: "lead", acted: false, trigger: "waiting" };
@@ -306,9 +310,10 @@ function standing(s: Spec, now: number, count: Record<string, number>, work?: Wo
 		const byTool = s.kind === "crew" && work ? WORK_POSE[s.rig]?.[work.kind] : undefined;
 		return { pose: byTool ?? choosePose("busy", s.key, s.rig).name, as: "lead", acted: false };
 	}
-	// Idle: one of the seven habits, from the id, moving on to the next every few minutes.
-	const turn = Math.max(0, Math.floor((now - s.since) / (RULES.habitRotateMin * MIN)));
-	return { pose: HABITS[(hash(s.key) + turn) % HABITS.length]!.name, as: "lead", acted: false };
+	// Idle: one of the seven habits, from the id (habits.ts): with life on, rotating every minute or
+	// two and played again every half minute or so; calm, moving on every ten minutes.
+	const h = habitAt(s.key, s.since, now, life);
+	return { pose: h.pose, as: "lead", acted: false, ...(h.since !== undefined ? { since: h.since } : {}) };
 }
 
 /** A new signal since last time, worth an acted pose. */
@@ -325,7 +330,18 @@ function acted(s: Spec, was: Seen | undefined, now: number): Choice | undefined 
 
 // --- The director -----------------------------------------------------------------------------
 
-export function direct(prev: World | undefined, snap: Snapshot, now: number, floor: Floor): Direction {
+/** What the director is told besides the snapshot. */
+export interface DirectOptions {
+	/** Life on: the window is on screen and the office isn't calm, so idle habits rotate and loop
+	 * gently (habits.ts). Off (the default) is calm mode: one habit played once, every ten minutes. */
+	life?: boolean;
+	/** What the director knows about the viewer (social.ts): when the window came back on screen. */
+	view?: View;
+}
+
+export function direct(prev: World | undefined, snap: Snapshot, now: number, floor: Floor, opts: DirectOptions = {}): Direction {
+	const life = opts.life ?? false;
+	const view = opts.view;
 	const before = prev?.actors ?? {};
 	const first = prev === undefined;
 	const list = specs(snap);
@@ -376,7 +392,8 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 		const live = was && !was.gone ? was : undefined;
 		const want = s.busy ? workKind(s.running, s.activity) : undefined;
 		const work = s.busy ? nextWork(live?.work, want, now) : undefined;
-		const continuing = live && live.acted && now < live.poseSince + poseMs(live.pose, live.as) ? live : undefined;
+		// A quick model's acted pose is over a touch early: the next one overlaps its end (beats.ts).
+		const continuing = live && live.acted && now < live.poseSince + poseMs(live.pose, live.as) - overlapOf(traitFor(s), live.pose) ? live : undefined;
 		pre.set(s.key, { want, work, news: acted(s, was?.seen, now), continuing, follow: followUp(s, live, continuing) ?? flourishAfter(live, continuing, traitFor(s)) });
 	}
 
@@ -502,6 +519,33 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 	for (const key of errands.keys()) if (errandUnderWay(errands.get(key), now)) visits.delete(key);
 	for (const [key, v] of visits) places.set(key, v);
 
+	// Staging (social.ts): a crowd's rear members turn to the one in front; finished crew in the
+	// kitchen's coffee line pair up facing each other. Spot names stay; only facing changes.
+	stage(list, places, floor);
+
+	// The news ripples: each glancer looks up at the nearest one it is about, the nearest glancer
+	// first (social.ts).
+	const ripple = rippleFor(list, startled, places, before, now);
+
+	// Back on screen after a while away: idle characters look up at you, one waves (social.ts).
+	const back = first ? undefined : freshReturn(view, now);
+	const lookers: string[] = [];
+	if (back !== undefined) {
+		for (const s of list) {
+			const live = before[s.key];
+			if (!live || live.gone !== undefined || live.noticed === back || (live.walk && now < live.walk.since + live.walk.ms)) continue;
+			if ((s.kind === "lead" && s.mood === "idle" && s.seen.waiting === undefined) || (s.kind === "crew" && s.mood === "done" && places.has(s.key))) lookers.push(s.key);
+		}
+	}
+	const waver = back !== undefined ? waverOf(lookers, back) : undefined;
+	/** Two-handers and celebrations: each looks at the other. */
+	const pairs = new Map<string, string>();
+	const pair = (a: string, b: string) => {
+		pairs.set(a, b);
+		pairs.set(b, a);
+	};
+	for (const [hire, boss] of hiredBy) pair(hire, boss);
+
 	// A PR with a teammate near: the lead celebrates with the first busy crew member at its desk.
 	const celebrating = new Map<string, string>();
 
@@ -515,13 +559,14 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 
 		let choice: Choice;
 		if (work && want && want !== work.kind) wakes.push(work.since + WORK.holdMs);
-		let st = standing(s, now, count, work);
+		let st = standing(s, now, count, work, life);
 		// Buried in the in-tray: past 95% of the context window, a busy lead at its desk (metrics.ts).
 		if (s.kind === "lead" && s.busy && !st.trigger && place.spot === "desk" && st.pose !== "grumpy" && st.pose !== "thinking" && trayFor(s.session.context)?.buried) st = { pose: "buried", as: "lead", acted: false };
 		if (visits.has(s.key) && st.pose !== "grumpy") st = { pose: "inspect", as: "lead", acted: false };
 		if (trip) st = atStation(st, trip);
 		// One wait keeps one pose: the rare roll happens once, when the wait starts.
 		if (st.trigger === "waiting" && was && !was.gone && was.seen.waiting === s.seen.waiting) st = { ...st, pose: was.pose };
+		const round = roundFor(s, actors, before, places, trip, continuing, now, wakes);
 		if (s.mood === "stalled" || s.mood === "done" || st.trigger === "waiting") choice = st;
 		else if (hiredBy.has(s.key)) choice = { pose: "handover", as: "partner", acted: true, trigger: "hired" };
 		else if (handing.has(s.key)) choice = { pose: "handover", as: "lead", acted: true, trigger: "hire" };
@@ -529,10 +574,13 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 		else if (celebratesMail(mail[s.session.id], s.key, now)) choice = { pose: "celebrate", as: "partner", acted: true, trigger: "pr", since: mail[s.session.id]!.back! };
 		else if (Object.hasOwn(handoffs, s.key)) choice = { pose: HANDOFF.pose, as: "lead", acted: true, trigger: "handoff", since: handoffs[s.key]!.since };
 		else if (takers.has(s.key) && takingAt(handoffs, s.key, now) !== undefined) choice = { pose: HANDOFF.pose, as: "partner", acted: true, trigger: "handoff", since: takingAt(handoffs, s.key, now)! };
+		// The folder's nearly here: a hand goes up for it (social.ts).
+		else if (takers.has(s.key) && readyAt(handoffs, s.key, now) !== undefined) choice = { pose: HANDOFF_LOOK.pose, as: "lead", acted: true, trigger: "ready", since: readyAt(handoffs, s.key, now)! };
 		else if (news?.trigger === "pr") {
 			const mate = list.find((m) => m.session.id === s.session.id && m.kind === "crew" && m.mood === "busy" && places.get(m.key)?.spot.startsWith("crew:") && !celebrating.has(m.key) && !hiredBy.has(m.key));
 			if (s.kind === "lead" && mate) {
 				celebrating.set(mate.key, s.key);
+				pair(mate.key, s.key);
 				choice = { pose: "celebrate", as: "lead", acted: true, trigger: "pr" };
 			} else choice = news;
 		} else if (celebrating.has(s.key)) choice = { pose: "celebrate", as: "partner", acted: true, trigger: "pr" };
@@ -540,6 +588,8 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 		else if (news) choice = news;
 		// A red stamp, then the thumb (or the failed-test pose), still at the stamp desk.
 		else if (follow) choice = { pose: follow, as: "lead", acted: true };
+		// The foreman's round, both ways: the one it came to see looks up at it (social.ts).
+		else if (round !== undefined) choice = { pose: "glance", as: "lead", acted: true, trigger: "round", since: round.at };
 		else if (!continuing && s.kind === "crew" && s.mood === "busy" && [...(startled.get(s.session.id) ?? [])].some((k) => k !== s.key))
 			choice = { pose: "glance", as: "lead", acted: true, trigger: "glance" };
 		else if (continuing) choice = { pose: continuing.pose, as: continuing.as, acted: true };
@@ -548,25 +598,55 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 		// Metrics' acting: at your door with a ticket (the first one in rings the bell), on an errand,
 		// or, for a deliberate model, a beat before an acted pose (errands.ts, beats.ts).
 		const live = was && !was.gone ? was : undefined;
+		// A look up at you plays through, even for the finished crew (whose standing pose is `done`).
+		if (continuing && NOTICE_POSES.has(continuing.pose) && continuing.pose !== NOTICE.ticket) choice = { pose: continuing.pose, as: continuing.as, acted: true };
+		let noticed = live?.noticed;
 		const q = queue.places.get(s.key);
+		const trait = traitFor(s);
 		if (q) {
 			const t = queue.tickets[s.key]!;
-			const door = atYourDoor(t, q.k, live, q.spot, continuing, now);
+			// The wait gets worse the longer it goes on; a word with the one behind needs someone there.
+			const behind = [...queue.places.values()].some((o) => o.k === q.k + 1);
+			const door = atYourDoor(t, q.k, live, q.spot, continuing, now, behind);
+			if (door.next !== undefined) wakes.push(door.next);
 			// The rare waiting variant (a "please" paddle) holds that instead of a ticket.
 			const rare = !door.acted && st.trigger === "waiting" && (POSE[st.pose]?.rarity ?? 1) < 1;
 			choice = rare ? st : { pose: door.pose, as: "lead", acted: door.acted, ...(door.rang !== undefined ? { trigger: "bell" } : {}) };
 			if (door.rang !== undefined) queue.tickets[s.key] = { ...t, rang: door.rang };
+			// Back on screen: the ticket goes up for you (social.ts).
+			const there = !!live && live.spot === q.spot && !(live.walk && now < live.walk.since + live.walk.ms);
+			if (!rare && !door.acted && back !== undefined && noticed !== back && there) {
+				choice = { pose: NOTICE.ticket, as: "lead", acted: true, trigger: "notice", since: now };
+				noticed = back;
+			} else if (!rare && !door.acted && continuing?.pose === NOTICE.ticket) choice = { pose: NOTICE.ticket, as: "lead", acted: true, since: continuing.poseSince };
 		}
 		const errand = errands.get(s.key);
 		const doing = errandUnderWay(errand, now) ? errand : undefined;
 		if (doing) choice = { pose: doing.pose, as: "lead", acted: true, ...(doing.since === now ? { trigger: doing.kind } : {}) };
+		// About to set off on an errand, a deliberate model takes its beat first, visibly.
+		else if (errand && now < errand.since && trait.beat && live && !choice.acted) choice = { pose: trait.beat, as: "lead", acted: false };
 		let pending: Actor["pending"];
-		if (!q && !doing) ({ choice, pending } = beat(choice, live, continuing, pauseOf(s), now, wakes));
+		// Held back a beat by social.ts: the news's ripple, or a look up at you.
+		let held: { pose: string; delay: number; trigger: string } | undefined;
+		if (!q && !doing && back !== undefined && lookers.includes(s.key)) {
+			const pose = waver === s.key ? NOTICE.wave : NOTICE.look;
+			held = { pose, delay: noticeDelay(s.key, back, waver === s.key), trigger: "notice" };
+			noticed = back;
+		} else if (!q && !doing && choice.trigger === "glance" && (ripple.get(s.key)?.delay ?? 0) > 0) held = { pose: "glance", delay: ripple.get(s.key)!.delay, trigger: "glance" };
+		if (held && held.delay <= 0) choice = { pose: held.pose, as: "lead", acted: true, trigger: held.trigger };
+		else if (held && live) {
+			pending = { pose: held.pose, as: "lead", trigger: held.trigger, at: now + held.delay };
+			wakes.push(pending.at);
+			choice = { pose: live.pose, as: live.as, acted: false };
+		} else if (!q && !doing) ({ choice, pending } = beat(choice, live, continuing, trait, now, wakes));
+		const glancing = choice.pose === "glance" || pending?.pose === "glance";
+		const reactTo = !glancing ? undefined : choice.trigger === "round" ? round?.lead : (ripple.get(s.key)?.to ?? live?.reactTo);
+		const m = mail[s.session.id];
+		if (s.kind === "lead" && m?.mate && m.back !== undefined && now >= m.back) pair(m.key, m.mate);
 
 		// A brick run: a builder with a new edit walks it to the build, sets it down, walks back.
 		// How fast it walks, from how hot its work is (and its model's stride).
 		const lastAt = Math.max(s.activity?.at ?? -Infinity, s.agent?.lastWriteAt ?? -Infinity);
-		const trait = traitFor(s);
 		const gait = gaitOf(s, place.area);
 		const run = doing ? undefined : brickRun(s, was, place, choice, runs, prev?.builds[s.session.id], visits, byKey, floor, now, gait.speed, rushing.has(s.session.id) ? RUSH.runShare : 1);
 		if (run) {
@@ -679,6 +759,8 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 			...(q || (doing && s.kind === "lead") ? { homeArea: floor.desks.get(s.session.id)?.areaId } : {}),
 			...(trait.walk !== 1 ? { stride: trait.walk } : {}),
 			...(pending ? { pending } : {}),
+			...(reactTo ? { reactTo } : {}),
+			...(noticed !== undefined ? { noticed } : {}),
 		};
 		if (s.mood === "busy" && !choice.acted) {
 			const w = tempoWake(lastAt, now);
@@ -686,8 +768,8 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 		}
 
 		// When this picture changes on its own.
-		if (choice.acted) wakes.push(poseSince + poseMs(choice.pose, choice.as));
-		if (s.mood === "idle") wakes.push(s.since + (Math.floor((now - s.since) / (RULES.habitRotateMin * MIN)) + 1) * RULES.habitRotateMin * MIN);
+		if (choice.acted) wakes.push(poseSince + poseMs(choice.pose, choice.as) - overlapOf(trait, choice.pose));
+		if (s.mood === "idle") wakes.push(habitAt(s.key, s.since, now, life).wake);
 		if (s.busy && s.running) {
 			for (const m of [RULES.thinkingMin, RULES.longBuildMin]) if (now < s.running.since + m * MIN) wakes.push(s.running.since + m * MIN);
 		}
@@ -732,6 +814,18 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 		events.push({ type: "dodge", key, at: now, from: d.from });
 		wakes.push(now + d.walk.ms);
 	}
+
+	// Who looks at whom while they stand there (social.ts); the cue carries it to the character.
+	const looks = looksFor(actors, { now, floor, handoffs, pairs });
+	for (const a of Object.values(actors)) {
+		const l = looks.get(a.key);
+		if (l !== undefined) actors[a.key] = { ...a, lookAt: l };
+		else if (a.lookAt !== undefined) {
+			const { lookAt: _, ...rest } = a;
+			actors[a.key] = rest;
+		}
+	}
+	for (const h of Object.values(handoffs)) for (const t of handOffWakes(h)) if (t > now) wakes.push(t);
 
 	const builds = buildsFor(list, prev?.builds ?? {}, failed, runs, now, events, wakes);
 	const sessions = new Map(list.filter((s) => s.kind === "lead").map((s) => [s.session.id, s.session]));
@@ -1185,5 +1279,84 @@ export function cueFor(a: Actor, now: number): Cue {
 		...(a.tempo !== 1 ? { tempo: a.tempo } : {}),
 		...(walk && a.walkPose ? { walkPose: a.walkPose } : {}),
 		...(walk && (a.pace || a.stride) ? { walkTempo: Math.round((a.pace ? PACE.speed[a.pace] : 1) * (a.stride ?? 1) * 100) / 100 } : {}),
+		...(a.lookAt !== undefined ? { lookAt: a.lookAt } : {}),
 	};
+}
+
+// --- The social layer's director side (plan-alive stream A; the rules are in social.ts) -----------
+
+/**
+ * Staging: crew in a desk's crowd (past the spaced spots) whose spot stands just behind another's
+ * turn to face it (office/world.ts `faceFront`); finished crew in the kitchen's coffee line pair up
+ * facing each other (`pairUp`). Only facing changes, so nobody walks for it.
+ */
+function stage(list: Spec[], places: Map<string, Place>, floor: Floor): void {
+	const byDesk = new Map<string, string[]>();
+	for (const s of list) {
+		const p = places.get(s.key);
+		if (s.kind !== "crew" || !p?.spot.startsWith("crew:")) continue;
+		byDesk.set(s.session.id, [...(byDesk.get(s.session.id) ?? []), s.key]);
+	}
+	for (const [id, keys] of byDesk) {
+		const desk = floor.desks.get(id);
+		if (!desk || keys.length < 2) continue;
+		const spots = crewSpots(floor, desk);
+		const turned = faceFront(keys.map((k) => ({ slot: places.get(k)!.slot, turn: inCrowd(spots, Number(places.get(k)!.spot.slice(5))) })));
+		keys.forEach((k, i) => {
+			const p = places.get(k)!;
+			if (turned[i] !== p.slot) places.set(k, { ...p, slot: turned[i]! });
+		});
+	}
+	pairUp(places, floor.areas.find((a) => a.kind === "kitchen"));
+}
+
+/** For each crew member startled by news (a red test, a teammate finishing): who it looks at (the
+ * nearest one the news is about) and how long after the nearest glancer it looks up. */
+function rippleFor(list: Spec[], startled: Map<string, Set<string>>, places: Map<string, Place>, before: Record<string, Actor>, now: number): Map<string, { to: string; delay: number }> {
+	const out = new Map<string, { to: string; delay: number }>();
+	for (const [session, news] of startled) {
+		const from = [...news].map((k) => ({ key: k, at: before[k] ? here(before[k]!, now) : places.get(k)?.slot })).filter((n): n is { key: string; at: Point } => !!n.at);
+		if (!from.length) continue;
+		const near: { key: string; to: string; d: number }[] = [];
+		for (const s of list) {
+			if (s.session.id !== session || s.kind !== "crew" || s.mood !== "busy" || news.has(s.key)) continue;
+			const p = places.get(s.key)?.slot;
+			if (!p) continue;
+			let best = from[0]!;
+			let d = Infinity;
+			for (const n of from) {
+				const dn = Math.hypot(n.at.x - p.x, n.at.y - p.y);
+				if (dn < d) {
+					d = dn;
+					best = n;
+				}
+			}
+			near.push({ key: s.key, to: best.key, d });
+		}
+		const nearest = Math.min(...near.map((n) => n.d));
+		for (const n of near) out.set(n.key, { to: n.to, delay: rippleDelay(n.d, nearest) });
+	}
+	return out;
+}
+
+/**
+ * The foreman's round, the crew's side: when its lead gets to it (`visit:` or `dash:` its key), a
+ * busy crew member at its spot looks up at it, once, from the moment the lead arrives. Leads are
+ * directed before their crew, so this direction's lead is already in `actors`.
+ */
+function roundFor(s: Spec, actors: Record<string, Actor>, before: Record<string, Actor>, places: Map<string, Place>, trip: Trip | undefined, continuing: Actor | undefined, now: number, wakes: number[]): { lead: string; at: number } | undefined {
+	if (s.kind !== "crew" || s.mood !== "busy" || trip || !places.get(s.key)?.spot.startsWith("crew:")) return undefined;
+	const lead = `s:${s.session.id}`;
+	const a = actors[lead];
+	if (!a || a.spot.slice(a.spot.indexOf(":") + 1) !== s.key || !/^(visit|dash):/.test(a.spot)) return undefined;
+	if (a.walk && now < a.walk.since + a.walk.ms) {
+		wakes.push(a.walk.since + a.walk.ms);
+		return undefined;
+	}
+	// It arrived at the end of last time's walk; already looking up, it carries on.
+	const w = before[lead]?.walk;
+	const at = continuing?.pose === "glance" && continuing.reactTo === lead ? continuing.poseSince : w && before[lead]!.spot === a.spot && w.since + w.ms <= now ? w.since + w.ms : undefined;
+	if (at === undefined || now >= at + poseMs("glance", "lead")) return undefined;
+	if (continuing && continuing.poseSince !== at) return undefined;
+	return { lead, at };
 }

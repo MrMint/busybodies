@@ -12,7 +12,19 @@ export interface Bridge {
 	showOffice(): void;
 	openProjectPage(): void;
 	setTheme(id: ThemeId): void;
+	setToggles(change: Toggles): void;
 }
+
+/** The settings sheet's switches, as the tray has them too. */
+export interface Toggles {
+	sound?: boolean;
+	calm?: boolean;
+}
+
+const SWITCHES: { key: keyof Toggles; name: string; note: string }[] = [
+	{ key: "sound", name: "Sound", note: "Little sounds for real events: a bell when someone waits on you, a chime for a PR." },
+	{ key: "calm", name: "Calm office", note: "No blinking or fidgeting: a quiet office keeps perfectly still." },
+];
 
 /** What each theme is called in the settings sheet. */
 const THEME_NAMES: Record<ThemeId, { name: string; note: string }> = {
@@ -53,6 +65,8 @@ html:has(body.compact),body.compact{background:transparent}
  border-radius:12px;padding:8px 12px 10px;cursor:pointer;box-shadow:2px 3px 0 #1b2140}
 #bb-settings .choice b{display:block;font-size:16px;font-weight:800}
 #bb-settings .choice[aria-checked="true"]{background:#1b2140;color:#fff}
+#bb-settings .switches{margin-top:2px}
+#bb-settings h3.office-label{margin-top:14px}
 #bb-settings .row{display:flex;justify-content:flex-end;margin-top:16px}
 #bb-settings .close{font:700 14px ui-rounded,system-ui,sans-serif;color:#fff;background:#1b2140;border:3px solid #1b2140;border-radius:999px;
  padding:5px 14px;cursor:pointer;box-shadow:2px 3px 0 #1b2140}
@@ -69,6 +83,8 @@ export function installShell(opts: {
 	status?: Partial<AppStatus>;
 	/** The theme showing now, and how to switch it in this window. */
 	theme: { current(): ThemeId; set(id: ThemeId): void };
+	/** Sound and calm office now, and how to switch them in this window. */
+	toggles: { current(): Required<Toggles>; set(change: Toggles): void };
 }) {
 	const style = document.createElement("style");
 	style.textContent = CSS;
@@ -120,6 +136,7 @@ project's GitHub Releases. No analytics, no accounts.</p>
 	settings.setAttribute("aria-label", "Settings");
 	settings.innerHTML = `<div class="sheet"><h2>Settings</h2>
 <h3 id="bb-theme-label">Theme</h3><div class="choices" role="radiogroup" aria-labelledby="bb-theme-label"></div>
+<h3 class="office-label">Office</h3><div class="switches choices"></div>
 <div class="row"><button class="close">Done</button></div></div>`;
 	const choices = settings.querySelector(".choices")!;
 	for (const id of THEME_IDS) {
@@ -138,6 +155,28 @@ project's GitHub Releases. No analytics, no accounts.</p>
 		};
 		choices.appendChild(b);
 	}
+	const switches = settings.querySelector(".switches")!;
+	for (const sw of SWITCHES) {
+		const b = document.createElement("button");
+		b.className = "choice";
+		b.dataset.toggle = sw.key;
+		b.setAttribute("role", "switch");
+		b.innerHTML = "<b></b><span></span>";
+		b.querySelector("b")!.textContent = sw.name;
+		b.querySelector("span")!.textContent = sw.note;
+		b.onclick = () => {
+			const change = { [sw.key]: !opts.toggles.current()[sw.key] };
+			// This window switches at once; the app saves it, updates the tray and tells the other window.
+			opts.toggles.set(change);
+			if (opts.live) opts.bridge.setToggles(change);
+			markToggles();
+		};
+		switches.appendChild(b);
+	}
+	const markToggles = () => {
+		const now = opts.toggles.current();
+		for (const b of switches.querySelectorAll<HTMLElement>(".choice")) b.setAttribute("aria-checked", String(now[b.dataset.toggle as keyof Toggles]));
+	};
 	const markTheme = () => {
 		for (const b of choices.querySelectorAll<HTMLElement>(".choice")) b.setAttribute("aria-checked", String(b.dataset.theme === opts.theme.current()));
 	};
@@ -189,11 +228,14 @@ Start a coding session there, or point <code>BUSYBODIES_AGENT_HOME</code> at the
 		/** Show the settings sheet (the cog). */
 		settings() {
 			markTheme();
+			markToggles();
 			settings.hidden = false;
-			settings.querySelector<HTMLElement>('[aria-checked="true"]')?.focus();
+			settings.querySelector<HTMLElement>('[role="radio"][aria-checked="true"]')?.focus();
 		},
 		/** The theme changed from elsewhere (the tray menu): keep the sheet's mark right. */
 		themeChanged: () => markTheme(),
+		/** Sound or calm changed elsewhere (the tray): show it. */
+		togglesChanged: () => markToggles(),
 		/** Each snapshot: show or hide the empty-state sign. */
 		update(snapshot: Snapshot) {
 			const n = flat(snapshot.sessions).length;

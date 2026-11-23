@@ -30,6 +30,8 @@ export type BusybodiesRPC = {
 			openProjectPage: { params: undefined; response: boolean };
 			/** Pick the scene theme (from the settings cog): saved, and both windows switch. */
 			setTheme: { params: { id: string }; response: boolean };
+			/** Sound and calm office (from the settings cog): saved, the tray updates, both windows hear. */
+			setToggles: { params: { sound?: boolean; calm?: boolean }; response: boolean };
 		};
 		messages: {};
 	}>;
@@ -43,6 +45,8 @@ export type BusybodiesRPC = {
 			about: undefined;
 			/** Switch the scene theme (from the tray's Theme menu or the settings cog): `office` or `factory`. */
 			theme: { id: string };
+			/** The tray's Sound and Calm office toggles, as saved. Only the full office window plays sound. */
+			settings: { sound: boolean; calm: boolean };
 		};
 	}>;
 };

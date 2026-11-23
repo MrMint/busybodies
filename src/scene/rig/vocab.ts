@@ -157,6 +157,8 @@ export const ARMS = {
 	catch: [183, -133, 0],
 	/** A ticket (or a sheet) held up under the chin to check it. */
 	check: [-26, -112, 0],
+	/** A ticket held low and let droop: the wrist gives up (the waiting slump). */
+	droop: [18, 8, 55],
 	/** The bell on your desk: the flat palm raised over the plunger, and down on it. */
 	poise: [194, -69, 0],
 	ring: [189, -104, 0],

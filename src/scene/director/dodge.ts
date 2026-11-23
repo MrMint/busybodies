@@ -6,7 +6,7 @@
 //   closest(a, b)        -> how near two walks come, and when
 //   sidestep(walk, at, away, side) -> the walk with a short detour around the point it reaches at `at`
 //   dodges(walkers, now) -> the new paths, by key, and who each one dodged
-import { type Point, along, pathLength } from "./paths";
+import { type Point, along, pathLength, progress } from "./paths";
 
 export const DODGE = {
 	/** Two walkers' feet nearer than this at the same moment would pass through each other. */
@@ -72,7 +72,8 @@ function pointAt(path: Point[], d: number): { p: Point; dir: Point; i: number } 
  */
 export function sidestep(w: TimedWalk, at: number, away: Point, side: number = DODGE.side, flip = false, span: number = DODGE.span): TimedWalk | undefined {
 	const len = pathLength(w.path);
-	const d = (Math.min(Math.max(at - w.since, 0), w.ms) / Math.max(1, w.ms)) * len;
+	// How far along it is then: walks ease in and out (paths.ts progress), so not a straight share.
+	const d = progress(at - w.since, w.ms) * len;
 	const half = span / 2;
 	if (d < half || d > len - half) return undefined;
 	const mid = pointAt(w.path, d);

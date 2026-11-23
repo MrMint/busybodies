@@ -8,17 +8,18 @@
 //   mugPile     a mug per cup of coffee, stacked
 //   testLamp    a little lamp on the desk's right end, red or green from the last test
 //   drawers     a filing cabinet beside the desk, a drawer per ~10 files, the full ones bulging
-//   skip        a skip in front of it that fills with the removed lines
+//   skip        a recycling bin in front of it that fills with the removed lines, balled up
 //   planner     the room's wall planner: sticky notes in TO DO, DOING and DONE, a colour per session
 //   shredder, tickets, bell: furniture bodies (the shredder's slot and pile are the rig's)
 import { Container, Graphics } from "pixi.js";
 import type { Lamp, PlannerRow, Tray } from "../director/metrics";
-import { GREEN, INK, RED, SHADOW, SUN, batched, hash, label, line, signboard, wob } from "../office/paper";
+import { GREEN, INK, PAPER_SIGNS, RED, SHADOW, SUN, type SignStyle, batched, hash, label, line, signboard, text, wob } from "../office/paper";
+import { rotRect } from "../rig/theme";
 import { PROPS } from "../office/propspots";
 import type { Who } from "../office/slot";
 import type { Area, Rect } from "../office/world";
 import { crewBuild } from "./build";
-import type { FurnitureKind, SceneTheme } from "./types";
+import type { FurnitureKind, SceneLight, SceneTheme } from "./types";
 import { OFFICE_WORDS, type SignText } from "./words";
 
 export const LAWN = 0xbfe8c6;
@@ -97,19 +98,177 @@ function door(g: Graphics, { x, y, w, h }: Rect): void {
 }
 
 
-/** A room: its shell in its colours, then its wall items (the planner has its own layer). */
+/** A room: its shell in its colours, the fluorescent panels, then its wall items (the planner has
+ * its own layer), and a motivational poster in any stretch of bare wall wide enough for one. */
 function room(g: Graphics, c: Container, a: Area, sign: (slot: string) => SignText | undefined): void {
 	const [wall, floor] =
 		a.kind === "project" ? ROOM_COLOURS[a.hue % ROOM_COLOURS.length]! : COMMON_COLOURS[a.kind as keyof typeof COMMON_COLOURS];
 	roomShell(g, a.rect, a.floorY, wall, floor, a.kind === "kitchen");
+	fluorescents(g, a.rect);
 	const seed = hash(a.id);
 	for (const [i, w] of a.wall.entries()) {
 		if (w.kind === "window") windowPane(g, w.rect, seed + i);
 		else if (w.kind === "door") door(g, w.rect);
 		else if (w.kind === "you") c.addChild(yourDoor(g, w.rect));
-		else if (w.kind !== "planner") c.addChild(signboard(w.kind, w.rect, w.slot ? sign(w.slot) : undefined, seed + i));
+		else if (w.kind !== "planner") c.addChild(signboard(w.kind, w.rect, w.slot ? sign(w.slot) : undefined, seed + i, OFFICE_SIGNS));
+	}
+	if (a.kind === "kitchen") c.addChild(mugWall(g, a));
+	for (const [k, r] of posterSpots(a).entries()) c.addChild(poster(g, r, seed + k * 7));
+}
+
+// --- Set dressing: the office goes full office --------------------------------------------------
+
+/** Fluorescent ceiling panels along the top of the back wall: a tube in a white housing every
+ * so often, with a cold glow under it. */
+function fluorescents(g: Graphics, { x, y, w }: Rect): void {
+	const n = Math.max(1, Math.round(w / 190));
+	const step = w / n;
+	for (let i = 0; i < n; i++) {
+		const cx = x + step * (i + 0.5);
+		g.rect(cx - 34, y + 9, 68, 5).fill({ color: 0xeaf6ff, alpha: 0.55 });
+		g.roundRect(cx - 38, y + 3, 76, 7, 3).fill(0xf7fbff).stroke({ width: 2, color: INK });
+		g.roundRect(cx - 33, y + 5, 66, 3, 1.5).fill(0xdff4ff);
 	}
 }
+
+/** The kitchen's mug wall, between the fridge and the sign, just over the coffee machine: a shelf
+ * of novelty mugs under the banner that explains them. Small: it reads zoomed in, and is quiet at
+ * office zoom. */
+function mugWall(g: Graphics, a: Area): Container {
+	const x = a.rect.x + 114;
+	const y = a.rect.y + 14;
+	const w = 78;
+	const mugs = [0xffffff, 0xffd0e4, SUN, 0x9be3ff, 0xa5e6c9];
+	const sy = y + 25;
+	for (let k = 0; k < mugs.length; k++) {
+		const mx = x + 4 + k * 15;
+		g.roundRect(mx, sy - 10, 9, 10, 2).fill(mugs[k]!).stroke({ width: 1.4, color: INK });
+		g.moveTo(mx + 9, sy - 8).arc(mx + 9, sy - 5.5, 2.5, -Math.PI / 2, Math.PI / 2).stroke({ width: 1.2, color: INK });
+		if (k % 2 === 0) g.rect(mx + 2, sy - 6.5, 5, 1.6).fill({ color: INK, alpha: 0.5 });
+	}
+	g.roundRect(x, sy, w, 3.6, 1.5).fill(0xd9a066).stroke({ width: 1.5, color: INK });
+	g.roundRect(x, y - 1, w, 13, 3).fill(0xffffff).stroke({ width: 1.5, color: INK });
+	const t = text("you don't have to be busy\nto work here", 4.6, { fontWeight: "800", align: "center", lineHeight: 5.2 });
+	if (t.width > w - 4) t.scale.set((w - 4) / t.width);
+	t.anchor.set(0.5, 0);
+	t.position.set(x + w / 2, y + 0.6);
+	return t;
+}
+
+/** Bare stretches of back wall, between the wall items and the room's ends: a poster's place in
+ * each one wide enough (the layout decides what hangs where; this only fills what it left). */
+function posterSpots(a: Area): Rect[] {
+	const { x, y, w } = a.rect;
+	const taken = a.wall.map((it) => [it.rect.x, it.rect.x + it.rect.w] as const).sort((p, q) => p[0] - q[0]);
+	// The kitchen's mug wall and the fridge in front of the wall are taken too.
+	if (a.kind === "kitchen") taken.push([x, x + 196]);
+	taken.sort((p, q) => p[0] - q[0]);
+	const spots: Rect[] = [];
+	let from = x + 18;
+	const pw = 54;
+	const ph = 70;
+	for (const [l, r] of [...taken, [x + w - 18, x + w - 18] as const]) {
+		const gap = l - from;
+		if (gap >= pw + 28) spots.push({ x: Math.round(from + (gap - pw) / 2), y: y + 20, w: pw, h: ph });
+		from = Math.max(from, r);
+	}
+	return spots;
+}
+
+/** Motivational posters: a big word over a dramatic picture, and a line that undercuts it. */
+const POSTERS: [string, string, "peak" | "rowers" | "eagle" | "sunrise" | "dominoes"][] = [
+	["SYNERGY", "nobody knows what it means, together", "rowers"],
+	["TEAMWORK", "blame is a shared resource", "dominoes"],
+	["EXCELLENCE", "good enough, but framed", "peak"],
+	["ALIGNMENT", "let's circle back on that", "sunrise"],
+	["VISION", "same thing, new font", "eagle"],
+	["HUSTLE", "reply-all with confidence", "peak"],
+	["PERSEVERANCE", "the build will finish. eventually.", "sunrise"],
+	["LEADERSHIP", "it's a meeting about meetings", "eagle"],
+];
+
+/** A motivational poster in `r`: black mat, the picture, the word, the small print. */
+function poster(g: Graphics, r: Rect, seed: number): Container {
+	const [word, small, pic] = POSTERS[seed % POSTERS.length]!;
+	const { x, y, w, h } = r;
+	g.rect(x + 3, y + 4, w, h).fill(SHADOW);
+	g.rect(x, y, w, h).fill(0x1d1f2e).stroke({ width: 2.5, color: INK });
+	const px = x + 5;
+	const py = y + 5;
+	const pw = w - 10;
+	const ph = h * 0.56;
+	const sky = pic === "sunrise" ? 0xffb36b : pic === "eagle" ? 0x8fc8ff : 0x6f8fd8;
+	g.rect(px, py, pw, ph).fill(sky);
+	const ground = py + ph;
+	switch (pic) {
+		case "peak":
+			g.poly([px, ground, px + pw * 0.45, py + 6, px + pw * 0.7, ground - ph * 0.45, px + pw, ground]).fill(0x46536f);
+			g.poly([px + pw * 0.38, py + 12, px + pw * 0.45, py + 6, px + pw * 0.52, py + 12]).fill(0xffffff);
+			break;
+		case "rowers":
+			g.rect(px, ground - ph * 0.3, pw, ph * 0.3).fill(0x3d7dff);
+			g.roundRect(px + 6, ground - ph * 0.36, pw - 12, 3, 1.5).fill(INK);
+			for (let k = 0; k < 4; k++) g.circle(px + 11 + k * ((pw - 22) / 3), ground - ph * 0.42, 2).fill(INK);
+			break;
+		case "eagle":
+			g.poly([px + pw / 2, py + ph * 0.55, px + 4, py + ph * 0.3, px + pw / 2 - 3, py + ph * 0.45, px + pw - 4, py + ph * 0.3]).fill(0x2b2340);
+			break;
+		case "sunrise":
+			g.moveTo(px + pw / 2 - ph * 0.38, ground).arc(px + pw / 2, ground, ph * 0.38, Math.PI, 0).closePath().fill(SUN);
+			g.rect(px, ground - 3, pw, 3).fill(0x2b2340);
+			break;
+		case "dominoes":
+			for (let k = 0; k < 5; k++) g.poly(rotRect(px + 7 + k * 8, ground - 8, 4, 14, k === 4 ? 0.9 : k * 0.12)).fill(0xffffff).stroke({ width: 1, color: INK });
+			break;
+	}
+	g.rect(px, py, pw, ph).stroke({ width: 1, color: 0xffffff, alpha: 0.5 });
+	const c = new Container();
+	const big = text(word, 8, { fontWeight: "900", fill: 0xffffff, letterSpacing: 0.6 });
+	if (big.width > w - 8) big.scale.set((w - 8) / big.width);
+	big.anchor.set(0.5, 0);
+	big.position.set(x + w / 2, ground + 3);
+	const sub = text(small, 4.2, { fontWeight: "700", fill: 0xc5cbe0, wordWrap: true, wordWrapWidth: w - 8, align: "center", lineHeight: 5 });
+	sub.anchor.set(0.5, 0);
+	sub.position.set(x + w / 2, ground + 14);
+	c.addChild(big, sub);
+	return c;
+}
+
+/** The office's signs: the paper ones, with a whiteboard of arrows (a flowchart nobody can
+ * follow, in the corner the text leaves) and the lobby's frame dressed as a motivational poster. */
+const OFFICE_SIGNS: SignStyle = {
+	...PAPER_SIGNS,
+	dress: (g, kind, x, y, w, h) => {
+		if (kind === "whiteboard") {
+			const bx = x + w - 62;
+			const by = y + h - 30;
+			const box = (cx: number, cy: number, col: number) => g.roundRect(cx - 7, cy - 4.5, 14, 9, 2).stroke({ width: 1.4, color: col, alpha: 0.8 });
+			box(bx + 8, by + 6, 0x3d7dff);
+			box(bx + 34, by + 6, GREEN);
+			box(bx + 21, by + 21, RED);
+			const arrow = (pts: number[], col: number) => {
+				g.moveTo(pts[0]!, pts[1]!);
+				for (let i = 2; i < pts.length; i += 2) g.lineTo(pts[i]!, pts[i + 1]!);
+				g.stroke({ width: 1.3, color: col, alpha: 0.8 });
+				const n = pts.length;
+				const [ax, ay, bx2, by2] = [pts[n - 4]!, pts[n - 3]!, pts[n - 2]!, pts[n - 1]!];
+				const a = Math.atan2(by2 - ay, bx2 - ax);
+				g.moveTo(bx2 + Math.cos(a + 2.6) * 3.4, by2 + Math.sin(a + 2.6) * 3.4).lineTo(bx2, by2).lineTo(bx2 + Math.cos(a - 2.6) * 3.4, by2 + Math.sin(a - 2.6) * 3.4).stroke({ width: 1.3, color: col, alpha: 0.8 });
+			};
+			arrow([bx + 15, by + 6, bx + 27, by + 6], INK);
+			arrow([bx + 34, by + 11, bx + 34, by + 21, bx + 28, by + 21], INK);
+			arrow([bx + 14, by + 21, bx + 8, by + 21, bx + 8, by + 11], RED);
+			// And one that goes nowhere at all, circled.
+			arrow([bx + 44, by + 21, bx + 52, by + 14, bx + 50, by + 6], 0x8c5cff);
+			g.ellipse(bx + 50, by + 3, 5, 3.4).stroke({ width: 1.2, color: 0x8c5cff, alpha: 0.8 });
+		}
+		if (kind === "frame") {
+			// A gilt edge and a mountain at the foot of the frame: motivational, whatever it says.
+			g.roundRect(x + 4, y + 4, w - 8, h - 8, 6).stroke({ width: 2, color: 0xf2bd3c });
+			g.poly([x + 10, y + h - 9, x + w * 0.32, y + h - 30, x + w * 0.48, y + h - 18, x + w * 0.66, y + h - 36, x + w - 10, y + h - 9]).fill({ color: 0x46536f, alpha: 0.22 });
+		}
+	},
+};
 
 // --- Desk props ---------------------------------------------------------------------------------
 
@@ -208,21 +367,31 @@ function drawers(n: number, full: number): Graphics {
 	return g;
 }
 
-/** A skip on the floor in front of the cabinet, filled 0 to 5 loads with removed lines. */
+/** The recycling bin on the floor in front of the cabinet (the slot is `skip`), filled 0 to 5 loads
+ * with balled-up removed lines. */
 function skip(load: number): Graphics {
 	const g = batched();
 	const { x, y, w, h } = PROPS.skip;
 	if (load > 0) {
-		// Rubble: crumpled lines heaped over the rim as the loads go in.
+		// Balled-up paper, heaped over the rim as the loads go in.
 		const heap = Math.min(5, load);
 		for (let i = 0; i < heap * 2; i++) {
-			const bx = x + 3 + ((i * 7) % (w - 8));
-			const by = y - h + 2 - Math.floor(i / 2) * 2.2 + (i % 2);
-			g.roundRect(bx, by, 6, 4, 2).fill(i % 2 ? 0xf1f3fa : 0xc5cbe0).stroke({ width: 1, color: INK });
+			const bx = x + 6 + ((i * 7) % (w - 10));
+			const by = y - h + 1 - Math.floor(i / 2) * 2.2 + (i % 2);
+			g.circle(bx, by, 3).fill(i % 3 ? 0xffffff : 0xf1f3fa).stroke({ width: 1, color: INK });
 		}
 	}
-	g.poly([x, y - h, x + w, y - h, x + w - 4, y, x + 4, y]).fill(SUN).stroke(line(2));
-	g.moveTo(x + 6, y - h / 2).lineTo(x + w - 6, y - h / 2).stroke({ width: 1.5, color: INK, alpha: 0.4 });
+	g.poly([x + 2, y - h, x + w - 2, y - h, x + w - 5, y, x + 5, y]).fill(0x3d7dff).stroke(line(2));
+	g.roundRect(x, y - h - 2, w, 3.4, 1.5).fill(0x2f63d0).stroke({ width: 1.5, color: INK });
+	// The three chasing arrows, in white.
+	const cx = x + w / 2;
+	const cy = y - h / 2 + 0.5;
+	for (let k = 0; k < 3; k++) {
+		const a = -Math.PI / 2 + (k * Math.PI * 2) / 3;
+		const b = a + 1.6;
+		g.moveTo(cx + Math.cos(a) * 3.4, cy + Math.sin(a) * 3.4).lineTo(cx + Math.cos(b) * 3.4, cy + Math.sin(b) * 3.4).stroke({ width: 1.2, color: 0xffffff });
+		g.circle(cx + Math.cos(b) * 3.4, cy + Math.sin(b) * 3.4, 0.9).fill(0xffffff);
+	}
 	return g;
 }
 
@@ -293,6 +462,7 @@ function drawFurniture(kind: FurnitureKind): Graphics {
 	const g = new Graphics();
 	switch (kind) {
 		case "desk":
+			cubicleWall(g);
 			desk(g, 0xe9bd80, 0xf7dcb0);
 			break;
 		case "table":
@@ -312,9 +482,7 @@ function drawFurniture(kind: FurnitureKind): Graphics {
 			g.roundRect(-25, -62, 50, 62, 14).fill(0x5a6596).stroke(line(4));
 			break;
 		case "plant":
-			g.ellipse(-12, -50, 13, 24).fill(GREEN).stroke(line(4));
-			g.ellipse(12, -56, 13, 28).fill(GREEN).stroke(line(4));
-			g.moveTo(-17, -30).lineTo(17, -30).lineTo(14, 0).lineTo(-14, 0).closePath().fill(0xe07a4f).stroke(line(4));
+			ficus(g);
 			break;
 		case "lamp":
 			g.rect(-2.5, -96, 5, 96).fill(INK);
@@ -322,9 +490,7 @@ function drawFurniture(kind: FurnitureKind): Graphics {
 			g.circle(0, -104, 16).fill(GREEN).stroke(line(4));
 			break;
 		case "cooler":
-			g.roundRect(-21, -66, 42, 66, 6).fill(0xffffff).stroke(line(4));
-			g.circle(-4, -52, 4).fill(RED);
-			g.roundRect(-17, -108, 34, 44, 12).fill(0x9be3ff).stroke(line(4));
+			waterCooler(g);
 			break;
 		case "fridge":
 			g.rect(-38, -144, 84, 150).fill(SHADOW);
@@ -366,6 +532,62 @@ function drawFurniture(kind: FurnitureKind): Graphics {
 			station(g, kind);
 	}
 	return g;
+}
+
+/** The cubicle wall at the desk's right end: a fabric partition with an aluminium cap, a family
+ * photo and a postcard pinned to it, and a sticky note. Behind the desk's drawers and lamp. */
+function cubicleWall(g: Graphics): void {
+	const x = 90;
+	g.rect(x + 4, -116 + 5, 16, 80).fill(SHADOW);
+	g.roundRect(x, -116, 16, 80, 2).fill(0x9aa7c7).stroke(line(3));
+	for (let y = -108; y < -40; y += 6) g.moveTo(x + 3, y).lineTo(x + 13, y + 1);
+	g.stroke({ width: 1, color: 0x8794b6 });
+	g.roundRect(x - 1, -119, 18, 5, 2).fill(0xdfe4ef).stroke({ width: 2, color: INK });
+	// The family photo: two grown-ups and a small one, under a pin.
+	g.rect(x + 2.5, -106, 11, 9).fill(0xffffff).stroke({ width: 1.2, color: INK });
+	g.rect(x + 3.5, -105, 9, 7).fill(0xbfe6ff);
+	for (const [cx, r] of [[5.6, 1.4], [8, 1], [10.4, 1.4]] as const) g.circle(x + cx, -101.5, r).fill(INK);
+	g.circle(x + 8, -106.5, 1).fill(RED);
+	// A postcard of a beach, askew, and a sticky note.
+	g.poly(rotRect(x + 8, -88, 11, 8, 0.15)).fill(0xffe9b0).stroke({ width: 1.1, color: INK });
+	g.rect(x + 3, -76, 9, 9).fill(SUN).stroke({ width: 1, color: INK });
+}
+
+/** The office ficus: a slim trunk, a crown of small leaves, a terracotta pot. */
+function ficus(g: Graphics): void {
+	g.moveTo(-17, -30).lineTo(17, -30).lineTo(14, 0).lineTo(-14, 0).closePath().fill(0xe07a4f).stroke(line(4));
+	g.moveTo(0, -30).bezierCurveTo(-4, -50, 6, -60, 0, -84).stroke({ width: 4, color: 0x8a5a3c, cap: "round" });
+	g.moveTo(0, -60).lineTo(10, -70).stroke({ width: 2.6, color: 0x8a5a3c, cap: "round" });
+	const leaves: [number, number, number][] = [
+		[-14, -86, -0.6], [-4, -96, 0.2], [8, -92, 0.7], [16, -80, 1.1], [-18, -72, -1], [-8, -78, -0.3],
+		[4, -80, 0.4], [12, -68, 0.9], [-12, -62, -0.8], [0, -70, 0], [-2, -104, 0.1], [12, -100, 0.6], [-14, -98, -0.5],
+	];
+	leaves.forEach(([lx, ly, a], i) => {
+		const pts: number[] = [];
+		for (let k = 0; k < 10; k++) {
+			const t = (k / 10) * Math.PI * 2;
+			// A leaf: round at the stalk, pointed at the tip.
+			const r = 7.5 * (1 - 0.35 * Math.max(0, -Math.sin(t)));
+			const px = Math.cos(t) * 4.6;
+			const py = Math.sin(t) * r;
+			pts.push(lx + px * Math.cos(a) - py * Math.sin(a), ly + px * Math.sin(a) + py * Math.cos(a));
+		}
+		g.poly(pts).fill(i % 3 ? 0x2fb36b : 0x47c97f).stroke({ width: 2.2, color: INK, join: "round" });
+	});
+}
+
+/** The water cooler: the big blue bottle, the taps, and a paper-cone dispenser on its side. */
+function waterCooler(g: Graphics): void {
+	g.roundRect(-21, -66, 42, 66, 6).fill(0xffffff).stroke(line(4));
+	g.circle(-8, -52, 3.6).fill(RED).stroke({ width: 1.5, color: INK });
+	g.circle(6, -52, 3.6).fill(0x3d7dff).stroke({ width: 1.5, color: INK });
+	g.roundRect(-12, -40, 24, 4, 2).fill(0xc5cbe0);
+	g.roundRect(-17, -108, 34, 44, 12).fill(0x9be3ff).stroke(line(4));
+	g.roundRect(-11, -102, 8, 28, 4).fill({ color: 0xffffff, alpha: 0.5 });
+	// The cone dispenser: a tube on the cooler's side, cones peeking out of the bottom.
+	g.roundRect(22, -84, 9, 34, 3).fill(0xdfe4ef).stroke(line(3));
+	g.poly([22.5, -50, 30.5, -50, 26.5, -40]).fill(0xffffff).stroke({ width: 1.6, color: INK, join: "round" });
+	g.poly([22.5, -52, 30.5, -52, 26.5, -43]).stroke({ width: 1.2, color: INK, alpha: 0.5 });
 }
 
 // Stations: shared equipment along a project room's left wall (world.ts STRIP). The office draws
@@ -484,18 +706,66 @@ function drawPropFurniture(g: Graphics, kind: "shredder" | "tickets" | "bell"): 
 
 // --- The crew build -------------------------------------------------------------------------------
 
-/** Brick colours for crew builds: the kraft the builders carry (the rig's brick), in a few
- * shades so the courses read as bricks. */
-const BLOCKS = [0xe9bd80, 0xdca56a, 0xf0c994, 0xe3b074, 0xeec088];
+/** The crew build in the office: a teetering stack of reams of copy paper and ring binders (the
+ * reams the builders carry), and a sticky-note flag on a pencil once the PR is up. */
+const SPINES = [0x3d7dff, 0xff6b6b, 0x2fcf83, 0x8c5cff];
+const BANDS = [0x3d7dff, 0xff8a1f, 0x2fcf83];
 
-const BRICKS = {
+const BINDERS = {
 	piece: (g: Graphics, x: number, y: number, w: number, h: number, k: number) => {
-		g.roundRect(x, y, w, h, 2).fill(BLOCKS[k % BLOCKS.length]!).stroke({ width: 1.5, color: INK });
+		// `k` steps by 3 a piece (build.ts), so the piece's own number is k / 3.
+		const n = Math.floor(k / 3);
+		const kind = (n + Math.floor(n / 3)) % 3;
+		if (kind === 1) {
+			// A binder on its side, spine out: a label window and a finger hole.
+			g.roundRect(x, y, w, h, 1.5).fill(SPINES[n % SPINES.length]!).stroke({ width: 1.5, color: INK });
+			g.rect(x + 2, y + 2, w * 0.5, h - 5).fill(0xffffff);
+			g.circle(x + w - 3, y + h / 2, 1.2).fill(0xffffff);
+		} else {
+			// A ream in its wrapper, a coloured band round the middle.
+			g.roundRect(x, y, w, h, 1.5).fill(0xffffff).stroke({ width: 1.5, color: INK });
+			g.rect(x + 0.8, y + h * 0.36, w - 1.6, h * 0.3).fill(BANDS[(n + kind) % BANDS.length]!);
+		}
 	},
 	flag: (f: Graphics, top: { x: number; y: number }) => {
-		f.moveTo(top.x, top.y).lineTo(top.x, top.y - 22).stroke({ width: 2.5, color: INK });
-		f.moveTo(top.x, top.y - 22).lineTo(top.x + 15, top.y - 16).lineTo(top.x, top.y - 10).closePath().fill(0xff6b6b).stroke({ width: 1.5, color: INK });
+		f.moveTo(top.x, top.y).lineTo(top.x, top.y - 22).stroke({ width: 3.4, color: INK });
+		f.moveTo(top.x, top.y - 1).lineTo(top.x, top.y - 21).stroke({ width: 1.6, color: 0xffc93c });
+		f.circle(top.x, top.y - 23, 1.8).fill(0xff9eb1).stroke({ width: 1, color: INK });
+		f.rect(top.x, top.y - 21, 13, 11).fill(SUN).stroke({ width: 1.5, color: INK });
+		f.moveTo(top.x + 3, top.y - 17).lineTo(top.x + 5, top.y - 14).lineTo(top.x + 10, top.y - 19).stroke({ width: 1.4, color: GREEN });
 	},
+};
+
+/** The office's light (office/light.ts): warm desk lamps and round ceiling pools, a city skyline,
+ * the lawn with trees; night after design/boards/PaperNight. */
+export const OFFICE_LIGHT: SceneLight = {
+	ambient: { morning: 0xe9e6f5, noon: 0xffffff, afternoon: 0xfbeedb, dusk: 0xb4a9c9, night: 0x464f80 },
+	hall: { morning: 0xeeecf7, noon: 0xffffff, afternoon: 0xfdf2e2, dusk: 0xc6bdd6, night: 0x8b92bd },
+	outside: { morning: 0xf2f0ff, noon: 0xffffff, afternoon: 0xffeed6, dusk: 0xa9a0c8, night: 0x35406e },
+	lamp: 0xfff1d2,
+	glow: 0xffc867,
+	overhead: "pools",
+	vacant: 0.72,
+	sun: 0xfff0c4,
+	sky: {
+		morning: [0xbfe1ff, 0xffe3c8],
+		noon: [0x8fd0ff, 0xd3f0ff],
+		afternoon: [0xa8cdf2, 0xffcf8f],
+		dusk: [0x564a8e, 0xff9a78],
+		night: [0x141a36, 0x29356a],
+	},
+	skyline: {
+		morning: [0xc4d0e6, 0x9cb0d0],
+		noon: [0xc6d6ea, 0x9fb7d8],
+		afternoon: [0xd9bfae, 0xb4978f],
+		dusk: [0x6d5a8f, 0x463a6a],
+		night: [0x2a3360, 0x1d2548],
+	},
+	window: { inset: 5, panes: 2, transom: false, bar: 5 },
+	floors: { project: "carpet", vacant: "carpet", meeting: "carpet", lobby: "planks", yours: "planks" },
+	cluster: "rug",
+	decal: { size: 34, colour: INK, stencil: false },
+	yard: "trees",
 };
 
 export const OFFICE_THEME: SceneTheme = {
@@ -508,7 +778,8 @@ export const OFFICE_THEME: SceneTheme = {
 	furniture: drawFurniture,
 	desk: { tray: inTray, mugs: mugPile, lamp: testLamp, drawers, skip },
 	planner: (r, rows) => plannerOf(r, rows),
-	crewBuild: (b, seed) => crewBuild(b, seed, BRICKS),
+	crewBuild: (b, seed) => crewBuild(b, seed, BINDERS),
 	nightWatch: NIGHT_WATCH,
 	arms: false,
+	light: OFFICE_LIGHT,
 };

@@ -4,6 +4,7 @@
 // by implementing the same Character and passing its factory to the Office.
 import type { Container } from "pixi.js";
 import type { Slot } from "./world";
+import type { LookAt } from "../rig/gaze";
 
 export type { Slot };
 
@@ -41,6 +42,13 @@ export interface Character {
 	/** Optional: true while walking. The office lets each walker keep its own depth (walks run at
 	 * the ambient 30 fps). */
 	readonly moving?: boolean;
+	/** Optional: life on or off (blinks and glances while the app is on screen; src/scene/rig/life.ts). */
+	life?: boolean;
+	/** Optional: true while life keeps it moving with nothing else to play. */
+	readonly alive?: boolean;
+	/** Optional: true when what it plays is ambient (an idle or finished character's habit, not a
+	 * walk): the office draws that at the life rate, not the acting rate. */
+	readonly ambient?: boolean;
 	/** Optional: back to the start of its pose, settled (the inspector's freeze, so step(n) is the
 	 * same however long the page ran first). */
 	rewind?(): void;
@@ -89,4 +97,9 @@ export interface Cue {
 	/** How fast the walk's steps run, matching its pace (a jog 1.3, a run 1.65; pace.ts). The walk's
 	 * `ms` already covers the ground at that pace. */
 	walkTempo?: number;
+	/** What to look at while the pose plays (rig/gaze.ts): another character's key, a world point
+	 * (the YOU door), or `{ viewer: true }`, out of the screen. The character turns it into a look
+	 * against its own facing; a frame with eyes on the work wins. Changing it alone doesn't restart
+	 * the pose. */
+	lookAt?: LookAt;
 }

@@ -106,9 +106,16 @@ function closeUp(): { only?: string[]; zoom: number; part: [number, number] } {
 	return { ...(only?.length ? { only } : {}), zoom: Math.max(1, Math.min(4, Number(q?.get("zoom")) || 1)), part };
 }
 
+/** Every pose, each followed by its variant passes (Pose.beats) as rows of their own: same name
+ * (so the same stand and facing), titled for the beat. */
+const SHEET_POSES: Pose[] = POSES.flatMap((p) => [
+	p,
+	...(p.beats?.passes ?? []).map((b): Pose => ({ ...p, title: `${p.title}: a beat, "${b.name}"`, frames: b.frames, beats: undefined, lines: [] })),
+]);
+
 export function buildPoseSheet(atlas: Atlas): { sheet: Container; width: number; height: number; puppets: Puppet[] } {
 	const { only, zoom, part } = closeUp();
-	const shown = POSES.filter((p) => p.name !== "rest" && (!only || only.includes(p.name)));
+	const shown = SHEET_POSES.filter((p) => p.name !== "rest" && (!only || only.includes(p.name)));
 	const per = Math.ceil(shown.length / part[1]);
 	const mine = new Set(shown.slice(part[0] * per, (part[0] + 1) * per));
 	const head = part[0] === 0;
@@ -124,7 +131,7 @@ export function buildPoseSheet(atlas: Atlas): { sheet: Container; width: number;
 
 	let y = head ? 24 : 0;
 	if (head) {
-		const title = label(`Busybodies · mochi pose sheet${atlas.theme.name === "paper" ? "" : ` · ${atlas.theme.name}`}`, 30, "800");
+		const title = label(`Busybodies · mochi pose sheet${atlas.theme.name === "paper" || atlas.theme.name === "office" ? "" : ` · ${atlas.theme.name}`}`, 30, "800");
 		title.position.set(24, y);
 		sheet.addChild(title);
 		y += 46;
@@ -170,7 +177,7 @@ export function buildPoseSheet(atlas: Atlas): { sheet: Container; width: number;
 	);
 
 	let widest = LABEL + 12 * CELL;
-	for (const pose of POSES) {
+	for (const pose of SHEET_POSES) {
 		if (!mine.has(pose)) continue;
 		const duet = !!pose.partner;
 		const working = pose.frames.some((f) => f.props.work);

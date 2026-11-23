@@ -8,7 +8,7 @@ import type { AppStatus, BusybodiesRPC } from "../shared/rpc";
 import type { Snapshot } from "../watcher/model";
 import { Watcher } from "../watcher/watch";
 import { compactFrame } from "./compact";
-import { readSettings, settingsFile, writeSettings } from "./settings";
+import { type Settings, readSettings, settingsFile, settingsQuery, writeSettings } from "./settings";
 import { installTray } from "./tray";
 import { startUpdates } from "./updates";
 
@@ -38,10 +38,13 @@ const baseUrl = await mainViewUrl();
 const extra = process.env.BUSYBODIES_SCENE_QUERY ?? "";
 /** The tray's choices, saved in the app's data folder (settings.ts). */
 const SETTINGS = settingsFile(Utils.paths.userData);
-let theme: ThemeId = readSettings(SETTINGS).theme;
-// A window opens in the saved theme (as ?theme=); one already open switches over RPC.
+const saved = readSettings(SETTINGS);
+let theme: ThemeId = saved.theme;
+let sound = saved.sound;
+let calm = saved.calm;
+// A window opens with the saved choices (as ?theme=, &sound, &calm); one already open switches over RPC.
 const urlFor = (compact: boolean) => {
-	const q = [compact ? "compact" : "", `theme=${theme}`, extra].filter(Boolean).join("&");
+	const q = [compact ? "compact" : "", ...settingsQuery({ theme, sound, calm }), extra].filter(Boolean).join("&");
 	return q ? `${baseUrl}?${q}` : baseUrl;
 };
 
@@ -69,6 +72,7 @@ function makeRpc() {
 				showOffice: () => (showOffice(), true),
 				openProjectPage: () => Utils.openExternal(PROJECT_URL),
 				setTheme: ({ id }) => (setTheme(themeId(id)), true),
+				setToggles: (change) => (setToggles({ sound: change.sound, calm: change.calm }), true),
 			},
 		},
 	});
@@ -134,17 +138,31 @@ function showOffice(): void {
 	office.window.activate();
 }
 
+function save(change: Partial<Settings>): void {
+	try {
+		writeSettings(SETTINGS, change);
+	} catch (e) {
+		console.warn(`[busybodies] couldn't save settings: ${e}`);
+	}
+}
+
 /** Pick the theme: saved, and both windows switch (without a reload). */
 function setTheme(id: ThemeId): void {
 	if (id === theme) return;
 	theme = id;
-	try {
-		writeSettings(SETTINGS, { theme });
-	} catch (e) {
-		console.warn(`[busybodies] couldn't save settings: ${e}`);
-	}
+	save({ theme });
 	office?.rpc.send.theme({ id });
 	compact?.rpc.send.theme({ id });
+	tray.refresh();
+}
+
+/** Sound and calm office: saved, and both windows hear (only the office window plays sound). */
+function setToggles(change: { sound?: boolean; calm?: boolean }): void {
+	sound = change.sound ?? sound;
+	calm = change.calm ?? calm;
+	save({ sound, calm });
+	office?.rpc.send.settings({ sound, calm });
+	compact?.rpc.send.settings({ sound, calm });
 	tray.refresh();
 }
 
@@ -154,8 +172,10 @@ function about(): void {
 }
 
 const tray = installTray({
-	status: () => ({ snapshot: watcher.snapshot, compact: compactOn, theme }),
+	status: () => ({ snapshot: watcher.snapshot, compact: compactOn, theme, sound, calm }),
 	setTheme,
+	toggleSound: () => setToggles({ sound: !sound }),
+	toggleCalm: () => setToggles({ calm: !calm }),
 	showOffice,
 	toggleCompact: () => setCompact(!compactOn),
 	about,

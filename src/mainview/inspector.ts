@@ -9,6 +9,9 @@ import type { Office } from "../scene/office/office";
 import type { SignText } from "../scene/office/paper";
 import type { Snapshot } from "../watcher/model";
 import type { ThemeId } from "../scene/theme/id";
+import type { Visibility } from "./visibility";
+import type { SoundState } from "./sound";
+import type { Camerawork, ShotReport } from "./shots";
 
 export interface Inspector {
 	/** True once the first snapshot has been drawn. */
@@ -20,7 +23,9 @@ export interface Inspector {
 	 * rig its role, pose, frame (of frames) and the frame's non-rest params. */
 	entities(): ReturnType<Office["entities"]>;
 	/** Frame accounting since load (or since resetCounters). */
-	counters(): { renders: number; animationFrames: number; tickerRunning: boolean; maxFPS: number };
+	counters(): { renders: number; animationFrames: number; tickerRunning: boolean; maxFPS: number; visible: boolean; life: boolean };
+	/** Pretend the window went off screen (false) or came back (true); undefined: what WebKit says. */
+	setVisible(visible: boolean | undefined): void;
 	resetCounters(): void;
 	/** Stop the clock: the ticker halts and nothing animates until unfreeze(). Every character
 	 * rewinds to the start of its pose, so step(n) from here is the same on every load. */
@@ -52,6 +57,21 @@ export interface Inspector {
 	arms(): Office["arms"];
 	/** Crew-build pieces moving now (or waiting on an arm). */
 	bricks(): Office["bricks"];
+	/** Sound: on or off, the AudioContext's state, the last earcons scheduled (undefined in the
+	 * compact window, which never plays sound). Set by main.ts. */
+	sound(): SoundState | undefined;
+	/** The tray's Sound and Calm office toggles, as the app sends them over RPC. Set by main.ts. */
+	setToggles(change: { sound?: boolean; calm?: boolean }): void;
+	/** The following camera (compact, or ?follow): its stop, why, until when, pinned, cuts made,
+	 * and the room tiles. Undefined when the camera doesn't follow. */
+	shot(): ShotReport | undefined;
+	/** Pin the following camera on a room (as its tile does); undefined unpins. */
+	pin(area?: string): void;
+	/** The light: the time-of-day phase and its hour (forced by ?hour= or the clock's), the room in
+	 * focus, lamps and overhead lights on, glow, how often it re-baked, rooms in rush, clouds. */
+	light(): Office["light"];
+	/** Force the hour (0 to 23) as ?hour= does, or undefined to follow the clock. */
+	setHour(hour: number | undefined): void;
 }
 
 /** The world without Maps, for JSON. */
@@ -86,11 +106,13 @@ declare global {
 export function installInspector(
 	app: Application,
 	office: Office,
-	scene: { show(s: Snapshot): void; frozen: boolean; redraw(): void; current?: Snapshot; stopDemo?: () => void },
+	scene: { show(s: Snapshot): void; direct?(): void; frozen: boolean; redraw(): void; current?: Snapshot; stopDemo?: () => void },
 	director?: Director,
 	voice?: { voice: Voice; now(): number },
 	themes?: { current(): ThemeId; set(id: ThemeId): void },
-): Inspector {
+	visibility?: Visibility,
+): Inspector & { shots(c: Camerawork): void } {
+	let shots: Camerawork | undefined;
 	const log: WorldEvent[] = [];
 	director?.on((events) => {
 		log.push(...events);
@@ -124,7 +146,8 @@ export function installInspector(
 		},
 		snapshot: () => scene.current,
 		entities: () => office.entities(),
-		counters: () => ({ renders, animationFrames, tickerRunning: app.ticker.started, maxFPS: app.ticker.maxFPS }),
+		counters: () => ({ renders, animationFrames, tickerRunning: app.ticker.started, maxFPS: app.ticker.maxFPS, visible: visibility?.visible ?? true, life: office.life }),
+		setVisible: (v) => visibility?.force(v),
 		resetCounters: () => {
 			renders = 0;
 			animationFrames = 0;
@@ -162,7 +185,19 @@ export function installInspector(
 		setTheme: (id) => themes?.set(id),
 		arms: () => office.arms,
 		bricks: () => office.bricks,
+		sound: () => undefined,
+		setToggles: () => {},
+		shot: () => shots?.report(),
+		pin: (area) => {
+			shots?.pin(area);
+			scene.direct?.();
+		},
+		light: () => office.light,
+		setHour: (hour) => {
+			office.setHour(hour);
+			scene.redraw();
+		},
 	};
 	window.__busybodies = inspector;
-	return inspector;
+	return Object.assign(inspector, { shots: (c: Camerawork) => void (shots = c) });
 }

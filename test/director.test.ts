@@ -188,7 +188,7 @@ describe("waiting on you", () => {
 		const s = stage();
 		s.step(snap(T0, [session("a", "teapot")]));
 		const d = s.step(snap(T0 + 1000, [session("a", "teapot", { state: "idle", waiting: { reason: "permission", since: T0 + 900, source: "hook" } })]));
-		expect(["ticketWait", "waitingPlease"]).toContain(actor(d.world, "s:a").pose);
+		expect(["ticketPolite", "waitingPlease"]).toContain(actor(d.world, "s:a").pose);
 		expect(actor(d.world, "s:a").spot).toBe("yours:line:0");
 		expect(d.events.filter((e) => e.type === "waiting")).toEqual([{ type: "waiting", key: "s:a", at: T0 + 1000, state: "start", area: "room:teapot" }]);
 		const still = s.step(snap(T0 + 5000, [session("a", "teapot", { state: "idle", waiting: { reason: "permission", since: T0 + 900, source: "hook" } })]));
