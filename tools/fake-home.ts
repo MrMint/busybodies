@@ -1,10 +1,11 @@
 // A synthetic agent home: invented sessions and agents that make tool calls at a steady rate.
 // Point the app or the watcher at it to measure or develop against a known, repeatable load.
-//   bun tools/fake-home.ts [--dir D] [--sessions 8] [--agents 4] [--busy 0.5] [--rate 5] [--noise 0] [--for 0]
+//   bun tools/fake-home.ts [--dir D] [--sessions 8] [--agents 4] [--busy 0.5] [--rate 5] [--noise 0] [--churn 0] [--for 0]
 //   BUSYBODIES_AGENT_HOME=D BUSYBODIES_DESKTOP_INDEX= hutch electrobun dev
 // --busy is the fraction of sessions marked busy; --rate is tool calls per second across all of
 // them; --noise is writes per second to a project with no live session (the watcher should ignore
-// them); --for stops after that many seconds (0 runs until Ctrl-C). Every session points at this
+// them); --churn ends the oldest session and starts a new one (new id, new agents) every that many
+// seconds, so a soak sees characters come and go; --for stops after that many seconds (0 runs until Ctrl-C). Every session points at this
 // process's pid, so they all "die" together when it exits. The folder is removed on exit.
 import { appendFile, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -20,6 +21,7 @@ const { values: o } = parseArgs({
 		busy: { type: "string", default: "0.5" },
 		rate: { type: "string", default: "5" },
 		noise: { type: "string", default: "0" },
+		churn: { type: "string", default: "0" },
 		for: { type: "string", default: "0" },
 	},
 });
@@ -70,40 +72,58 @@ const toolLine = (model = pick(MODELS)) => {
 
 const logs: string[] = [];
 const modelOf = new Map<string, string>();
-for (let i = 0; i < nSessions; i++) {
+/** Each live session's registry file and the logs it writes to, oldest first. */
+const live: { registry: string; logs: string[] }[] = [];
+await mkdir(join(home, "sessions"), { recursive: true });
+async function addSession(i: number, busy: boolean): Promise<void> {
 	const project = PROJECTS[i % PROJECTS.length]!;
 	const cwd = `/Users/you/code/${project}`;
 	const id = `fake-session-${i}`;
 	const dir = join(home, "projects", projectSlug(cwd));
 	await mkdir(join(dir, id, "subagents"), { recursive: true });
-	await mkdir(join(home, "sessions"), { recursive: true });
-	const busy = i < busyCount;
+	const registry = join(home, "sessions", `${process.pid}-${i}.json`);
+	const own: string[] = [];
+	const transcript = join(dir, `${id}.jsonl`);
+	const model = MODELS[i % MODELS.length]!;
+	await writeFile(transcript, toolLine(model));
+	modelOf.set(transcript, model);
+	if (busy) own.push(transcript);
+	for (let a = 0; a < (busy ? nAgents : 0); a++) {
+		const base = join(dir, id, "subagents", `agent-fake${i}x${a}`);
+		await writeFile(`${base}.meta.json`, JSON.stringify({ agentType: pick(ROLES), description: `Invented job ${a + 1}`, spawnDepth: 1 }));
+		await writeFile(`${base}.jsonl`, toolLine(model));
+		modelOf.set(`${base}.jsonl`, model);
+		own.push(`${base}.jsonl`);
+	}
+	// The registry last, the way a real session appears: its transcript is there when it is seen.
 	await writeFile(
-		join(home, "sessions", `${process.pid}-${i}.json`),
+		registry,
 		JSON.stringify({
 			pid: process.pid,
 			sessionId: id,
 			cwd,
-			startedAt: Date.now() - i * 60_000,
+			startedAt: Date.now() - (i < nSessions ? i * 60_000 : 0),
 			entrypoint: "cli",
 			name: `${project}: invented task ${i + 1}`,
 			status: busy ? "busy" : "idle",
 			statusUpdatedAt: Date.now(),
 		}),
 	);
-	const transcript = join(dir, `${id}.jsonl`);
-	const model = MODELS[i % MODELS.length]!;
-	await writeFile(transcript, toolLine(model));
-	modelOf.set(transcript, model);
-	if (busy) logs.push(transcript);
-	for (let a = 0; a < (busy ? nAgents : 0); a++) {
-		const base = join(dir, id, "subagents", `agent-fake${i}x${a}`);
-		await writeFile(`${base}.meta.json`, JSON.stringify({ agentType: pick(ROLES), description: `Invented job ${a + 1}`, spawnDepth: 1 }));
-		await writeFile(`${base}.jsonl`, toolLine(model));
-		modelOf.set(`${base}.jsonl`, model);
-		logs.push(`${base}.jsonl`);
+	logs.push(...own);
+	live.push({ registry, logs: own });
+}
+/** The oldest session ends: its registry file goes, and nothing writes to its logs again. */
+async function endSession(): Promise<void> {
+	const gone = live.shift();
+	if (!gone) return;
+	await rm(gone.registry, { force: true });
+	for (const l of gone.logs) {
+		const at = logs.indexOf(l);
+		if (at >= 0) logs.splice(at, 1);
+		modelOf.delete(l);
 	}
 }
+for (let i = 0; i < nSessions; i++) await addSession(i, i < busyCount);
 
 console.log(`fake agent home: ${home}`);
 console.log(`${nSessions} sessions (${busyCount} busy, ${nAgents} agents each), ${rate} tool calls/s`);
@@ -112,11 +132,19 @@ const noise = Number(o.noise);
 const noiseLog = join(home, "projects", projectSlug("/Users/you/code/attic"), "fake-dead-session.jsonl");
 if (noise > 0) await mkdir(join(noiseLog, ".."), { recursive: true });
 const noiseTimer = noise > 0 ? setInterval(() => void appendFile(noiseLog, toolLine()), 1000 / noise) : undefined;
-const timer = rate > 0 && logs.length > 0 ? setInterval(() => {
+const timer = rate > 0 ? setInterval(() => {
+	if (logs.length === 0) return;
 	const log = pick(logs);
 	void appendFile(log, toolLine(modelOf.get(log)));
 }, 1000 / rate) : undefined;
+let next = nSessions;
+const churn = Number(o.churn);
+const churnTimer = churn > 0 ? setInterval(() => {
+	// Alternate busy and idle newcomers, so agents are hired and let go too.
+	void endSession().then(() => addSession(next, next++ % 2 === 0));
+}, churn * 1000) : undefined;
 const stop = async () => {
+	clearInterval(churnTimer);
 	clearInterval(timer);
 	clearInterval(noiseTimer);
 	if (!o.dir) await rm(home, { recursive: true, force: true });
