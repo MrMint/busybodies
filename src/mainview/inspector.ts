@@ -12,6 +12,7 @@ import type { ThemeId } from "../scene/theme/id";
 import type { Visibility } from "./visibility";
 import type { SoundState } from "./sound";
 import type { SpeechState } from "./speech";
+import type { WorkSoundState } from "./worksound";
 import type { Camerawork, ShotReport } from "./shots";
 import type { Story } from "../scene/director/story";
 import type { RoomDecor } from "../scene/office/decor";
@@ -69,6 +70,8 @@ export interface Inspector {
 	sound(): SoundState | undefined;
 	/** Voiced lines (mainview/speech.ts): the manifest, the room loop, the last lines spoken. Set by main.ts. */
 	speech(): SpeechState | undefined;
+	/** Work sounds (mainview/worksound.ts): running, its level, who's making a sound, hits so far. Set by main.ts. */
+	work(): WorkSoundState | undefined;
 	/** The tray's Sound and Calm office toggles, as the app sends them over RPC. Set by main.ts. */
 	setToggles(change: { sound?: boolean; calm?: boolean }): void;
 	/** The following camera (compact, or ?follow): its stop, why, until when, pinned, cuts made,
@@ -206,6 +209,7 @@ export function installInspector(
 		bricks: () => office.bricks,
 		sound: () => undefined,
 		speech: () => undefined,
+		work: () => undefined,
 		setToggles: () => {},
 		shot: () => shots?.report(),
 		pin: (area) => {

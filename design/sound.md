@@ -33,6 +33,7 @@ music or a call, or sounds like people talking in the room.
 | Layer | What | When | How loud |
 |---|---|---|---|
 | Room | The theme's bed: hum and typing, the belt's clack, the oven and the shop door (sound.ts), or a recorded loop (tools/ambience.ts) | Always, while live | Lowest; dips under a voice in front |
+| Work | The main body: every busy character's work in its theme's palette (office: key taps, page flips, a card riffle, the stapler, a rubber stamp, a phone burble, a sheaf dropped, the shredder; the factory's rivets, press and gauge; the bakery's whisk, jar lids, oven door and spoon). On a soft pulse (16ths, 96 bpm calm to 120 in a rush), pitched ones in the key, at most 3 a step (4 zoomed), the room in view first and clear, the rest through the wall, taking turns (mainview/worksound.ts) | Whenever anyone works; more and quicker the busier it is | The loudest layer after the earcons |
 | Crowd | A distant murmur of the office at work: a few talkers chatting on and off from the syllable banks, muffled and mostly room; more talkers and shorter pauses the busier it is | Always, in the babble modes; fades in and out over seconds | Under everything but the room; dips under a key beat |
 | Murmur | Babble for the ordinary said bubbles of the room the camera is zoomed into (zoomed out, the crowd stands in) | A few every 10 s at most, one whole phrase each | Well under the front, never on top of each other |
 | Earcons | The bell, chime, stamp, two-note red, rustle, grind | On their events, rate-limited | Clear, short |
@@ -54,6 +55,11 @@ plain or "small" deliveries). Babble still felt closer to a crowd of mochis than
 - **The synthesised babble** (the first cut) stays as the fallback: lines with nothing recorded, a
   clip that won't decode.
 
+**Work is the body; voices are seasoning (owner, 2026-11-23).** The office should mostly sound
+like the work happening, getting busier and more hectic as more agents run in parallel; voices
+are a small part of it. So key beats sit at about half a clip's level and the crowd well under the
+work.
+
 **Background, not foreground (owner, 2026-11-23).** It should feel like a background hum of
 everyone working: intentional, never cut off, never on top of you. So a phrase is always whole
 (stopped at a word, the last syllable trailing off over about 120 ms), key beats sit in the crowd
@@ -65,7 +71,7 @@ rather than over it, and individual babble comes only from the room you're looki
 to 35) and a panel to switch, live:
 
 - **mode**: synth babble, syllables, + reactions, + full lines (`?voice=` sets the first)
-- **murmur** on or off (zoomed room only), and the front, murmur and **crowd** levels
+- **murmur** on or off (zoomed room only), and the front, murmur, **work** and **crowd** levels
 - **smooth syllables**, **shape voices** and **room**: before and after for the blend pass
 - **pitch** on top of the theme's
 - **key beat now**, and a log of what played and how

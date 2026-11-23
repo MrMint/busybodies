@@ -619,7 +619,7 @@ export class Sound {
 
 // --- Synthesis -------------------------------------------------------------------------------------
 
-interface Kit {
+export interface Kit {
 	ctx: BaseAudioContext;
 	out: AudioNode;
 	/** The shared second of white noise. */
@@ -630,7 +630,7 @@ interface Kit {
 	noise(at: number, dur: number, filter: BiquadFilterType, freq: number, q: number, peak: number, offset?: number, dest?: AudioNode): GainNode;
 }
 
-function kit(ctx: BaseAudioContext, out: AudioNode, buffer: AudioBuffer): Kit {
+export function kit(ctx: BaseAudioContext, out: AudioNode, buffer: AudioBuffer): Kit {
 	return {
 		ctx,
 		out,

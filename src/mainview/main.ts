@@ -14,6 +14,7 @@ import { installInspector } from "./inspector";
 import { watchVisibility } from "./visibility";
 import { Sound } from "./sound";
 import { Speech } from "./speech";
+import { WorkSound } from "./worksound";
 import { voiceMode } from "../scene/sass/voiced";
 import { type Bridge, installShell } from "./shell";
 import { placeholders } from "./placeholder";
@@ -139,6 +140,7 @@ function blank(): void {
 		office.life = visible && !calm();
 		sound?.update();
 		speech?.update();
+		work?.update();
 		if (!visible) {
 			hiddenAt = performance.now();
 			app.ticker.stop();
@@ -157,6 +159,7 @@ function blank(): void {
 		office.life = visibility.visible && !calm();
 		sound?.update();
 		speech?.update();
+		work?.update();
 		// Life on or off changes how idle habits run: direct again, not just redraw.
 		if (scene.current) scene.direct();
 		else scene.redraw();
@@ -175,7 +178,11 @@ function blank(): void {
 				stop: () => office.stop,
 				width: () => app.screen.width,
 			});
-	director.on((events, world) => sound?.hear(events, world));
+	director.on((events, world) => {
+		sound?.hear(events, world);
+		// Sound's context starts running a moment after it is made: the work layer joins it then.
+		work?.update();
+	});
 	// Voiced lines (src/mainview/speech.ts): clips that shipped, babble for the rest, on key beats
 	// only, through Sound's context; ?voice= picks how characters sound (sass/voiced.ts
 	// `VOICE_MODES`). ?voicebase=<url/> reads the clips from elsewhere and
@@ -197,12 +204,27 @@ function blank(): void {
 				mode: voiceMode(params.get("voice")),
 			})
 		: undefined;
+	// Work sounds (src/mainview/worksound.ts): every busy character's work, the main body of the
+	// office's sound, through Sound's context like the voices. While the sound design is being
+	// decided (design/sound.md) they play only with ?work, ?lab or a ?voice= other than the synth.
+	const work = sound && (params.has("work") || params.has("lab") || voiceMode(params.get("voice")) !== "synth")
+		? new WorkSound({
+				sound,
+				world: () => director.world,
+				theme: () => theme,
+				floor: () => office.layoutData,
+				view: () => office.view,
+				stop: () => office.stop,
+				width: () => app.screen.width,
+			})
+		: undefined;
 	// The sound lab (mainview/lab.ts, design/sound.md): its own timeline of bubbles and a panel to
 	// switch how characters sound, live. Only with ?lab; loaded on demand.
 	if (speech && params.has("lab"))
 		void import("./lab").then(({ startLab }) =>
 			startLab({
 				speech,
+				work,
 				theme: () => theme,
 				cast: () => Object.values(director.world?.actors ?? {}).filter((a) => !a.gone).map((a) => a.key),
 				say: (key, text) => office.say(key, text, "said"),
@@ -216,6 +238,7 @@ function blank(): void {
 		if (change.sound !== undefined) sound?.setEnabled(change.sound);
 		else sound?.update();
 		speech?.update();
+		work?.update();
 		// Life on or off changes how idle habits run: direct again, not just redraw.
 		if (scene.current) scene.direct();
 		else scene.redraw();
@@ -303,13 +326,14 @@ function blank(): void {
 		if (!compact) app.renderer.background.color = sceneTheme(id).lawn;
 		sound?.themeChanged();
 		speech?.update();
+		work?.update();
 		direct();
 		scene.redraw();
 	};
 	const show = scene.show;
 	const redraw = scene.redraw;
 	const inspector = import.meta.env.DEV || params.has("inspect") ? installInspector(app, office, scene, director, voice && { voice, now: () => director.now }, { current: () => theme, set: setTheme }, visibility) : undefined;
-	if (inspector) Object.assign(inspector, { sound: () => sound?.state(), speech: () => speech?.state(), setToggles });
+	if (inspector) Object.assign(inspector, { sound: () => sound?.state(), speech: () => speech?.state(), work: () => work?.state(), setToggles });
 	// The diary (src/shared/diary.ts): counts and kinds only, from the Bun process (or, in a demo,
 	// kept here from the demo's snapshots). The walls and the lobby board read it (office/decor.ts).
 	const setDiary = (d: unknown) => {

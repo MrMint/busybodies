@@ -11,9 +11,11 @@ import { VOICE_MODES, type VoiceMode } from "../scene/sass/voiced";
 import type { ThemeId } from "../scene/theme/id";
 import { hashId, seq } from "./sound";
 import type { Speech } from "./speech";
+import type { WorkSound } from "./worksound";
 
 export interface LabHost {
 	speech: Speech;
+	work?: WorkSound;
 	theme(): ThemeId;
 	/** The characters on the floor now, by key (`s:` for a lead). */
 	cast(): string[];
@@ -71,6 +73,7 @@ export function startLab(host: LabHost): () => void {
 		<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b style="font-size:13px">Sound lab</b><span data-live></span></div>
 		<div data-modes style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:8px">${VOICE_MODES.map((m) => `<button data-mode="${m}" style="font:inherit;padding:4px;border-radius:6px;border:1px solid #555;background:#2a2623;color:inherit;cursor:pointer">${LABELS[m]}</button>`).join("")}</div>
 		<label style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-murmur ${mix.murmur ? "checked" : ""}> murmur bubbles in the zoomed room</label>
+		<label style="display:flex;gap:6px;align-items:center">work <input type="range" data-work min="0" max="2" step="0.05" value="1" style="flex:1"></label>
 		<label style="display:flex;gap:6px;align-items:center">crowd <input type="range" data-crowd min="0" max="2" step="0.05" value="${mix.crowd}" style="flex:1"></label>
 		<label style="display:flex;gap:6px;align-items:center" title="Off: the first cut (each syllable at its own pitch, uneven gaps)"><input type="checkbox" data-smooth ${mix.smooth ? "checked" : ""}> smooth syllables (one tune, joined)</label>
 		<label style="display:flex;gap:6px;align-items:center" title="Off: voices straight to the master, no room, no wall"><input type="checkbox" data-shape ${mix.shape ? "checked" : ""}> shape voices (bus, wall)</label>
@@ -104,6 +107,7 @@ export function startLab(host: LabHost): () => void {
 		paint();
 	});
 	q<HTMLInputElement>("[data-murmur]").onchange = (e) => host.speech.setMix({ murmur: (e.target as HTMLInputElement).checked });
+	q<HTMLInputElement>("[data-work]").oninput = (e) => host.work?.setLevel(Number((e.target as HTMLInputElement).value));
 	q<HTMLInputElement>("[data-crowd]").oninput = (e) => host.speech.setMix({ crowd: Number((e.target as HTMLInputElement).value) });
 	q<HTMLInputElement>("[data-smooth]").onchange = (e) => host.speech.setMix({ smooth: (e.target as HTMLInputElement).checked });
 	q<HTMLInputElement>("[data-shape]").onchange = (e) => host.speech.setMix({ shape: (e.target as HTMLInputElement).checked });

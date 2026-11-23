@@ -112,17 +112,17 @@ const BABBLE_GAIN = 0.22;
 /** Syllable babble in front: a little under a clip, as it's busier. */
 const GRAIN_GAIN = 0.8;
 /** The murmur, against the front. */
-const UNDER_GAIN = 0.35;
+const UNDER_GAIN = 0.28;
 /** The murmur is one short phrase: at most this many syllables. */
 const MURMUR_SYLLABLES = 8;
-/** Key beats sit in the crowd, not on top of it. */
-const FRONT_LEVEL = 0.7;
+/** Key beats sit in the crowd and the work, not on top of them (design/sound.md: voices are a small part). */
+const FRONT_LEVEL = 0.55;
 /**
  * The crowd: a soft, distant murmur of the office at work, from the same syllable banks. Up to
  * `CROWD_TALKERS` talkers chat on and off (more of them the busier it is), each phrase panned
  * somewhere on the floor, all of it muffled and sent to the room.
  */
-const CROWD_GAIN = 0.16;
+const CROWD_GAIN = 0.09;
 const CROWD_TALKERS = 6;
 const CROWD_SEND = 0.8;
 /** A syllable's rounded edges: in, and out (they overlap within a word, so it's a little longer). */
