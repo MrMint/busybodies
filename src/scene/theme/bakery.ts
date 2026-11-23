@@ -1,37 +1,75 @@
-// The Line: the same floor plan, cast and director, in a restaurant kitchen (plan-alive wave 3,
-// stream H). Project rooms are stations on the line (white subway tile under a steel extraction
-// hood, red quarry tiles underfoot); the hallway is the line itself, a rubber mat down the
-// middle; the meeting room is the pass, where everything is tasted before it goes out; the
-// kitchen is staff meal, with the walk-in's door; your office is the chef's table, where
-// "Service!" waits on you. The planner is the ticket rail, the in-tray the mise tray, the crew
-// build a layer cake. Stations are kitchen kit under the same slots, drawn as bodies only, their
-// tops at the rig's working point (the rig draws what the hands work there: the press's lid, the
-// lowboy's drawer, the tasting bowls, the pass). Still cut paper: flat shapes and the same ink.
+// The bakery: the same floor plan, cast and director, in a patisserie gone completely over the top
+// (plan-alive wave 4, stream K). Project rooms are baking rooms: candy-stripe wallpaper in the room's
+// own pastel (so rooms still tell apart), a scalloped awning along the top with fairy lights under it,
+// cream wainscot, and a checkerboard floor tinted with the room's colour. The hallway is a pastry
+// conveyor: croissants, donuts, macarons and éclairs ride it on the life clock, and a finished PR's
+// cake box rides it down to the pick-up hatch at its end. The meeting room is the tasting table (a
+// cake turning on its stand), the lobby the shop front (a giant cupcake to nap in, sprinkles drifting
+// down round it), your office the pick-up counter ("Order up!" in chasing marquee bulbs), the kitchen
+// the café (a big espresso machine steaming, a cake cabinet stacked to the ceiling, macaron poufs).
+// The planner is the order board, the in-tray a stand of macarons, the crew build a tiered cake.
+//
+// Stations are bakery kit under the same slots, drawn as bodies only, their tops at the rig's working
+// point (the rig draws what the hands work there): the reference drawer is a pastry case, search a
+// shelf of candy jars, build a deck oven (its window glows: office/ambient.ts `ovens`), test the cake
+// tester's stand, web the order phone, the outbox the pick-up shelf of boxes, the shredder the crumb
+// bin. Still cut paper: flat shapes and the same ink, so the cast reads the same as in the office.
 import { Container, Graphics } from "pixi.js";
 import type { Lamp, PlannerRow, Tray } from "../director/metrics";
 import { GREEN, INK, RED, SHADOW, type SignStyle, batched, hash, label, line, signboard, wob } from "../office/paper";
 import { PROPS } from "../office/propspots";
+import type { SceneStaging } from "../office/staging";
 import type { Area, Rect } from "../office/world";
 import { crewBuild } from "./build";
-import { COMMON_COLOURS, NIGHT_WATCH, ROOM_COLOURS } from "./office";
-import type { FurnitureKind, SceneLight, SceneTheme } from "./types";
+import { NIGHT_WATCH, ROOM_COLOURS } from "./office";
+import type { FurnitureKind, SceneLight, SceneTheme, StagePainters } from "./types";
 import { BAKERY_WORDS, type SignText } from "./words";
 
-const TILE = 0xf7f6f0;
-const QUARRY = 0xc8664a;
-const STEEL = 0xc3cadb;
-const STEEL_LIGHT = 0xe1e5ee;
-const STEEL_DARK = 0x6f7891;
-const WOOD = 0xd9a066;
-const BOARD = 0xe8c48e;
+// --- Paint ------------------------------------------------------------------------------------
+
+const CREAM = 0xfff6e6;
+const IVORY = 0xfffaf0;
+const PINK = 0xff9ec4;
+const PINK_LIGHT = 0xffd3e4;
+const RASPBERRY = 0xe8507a;
+const MINT = 0x9fe3c8;
+const MINT_LIGHT = 0xd5f5e8;
+const LILAC = 0xcdb8ff;
+const LEMON = 0xfff08a;
+const BLUEBERRY = 0x6f86ec;
+const ORANGE = 0xffa34d;
+const CHOC = 0x7a4a33;
+const CHOC_DARK = 0x4f2e22;
+const CRUST = 0xe09a48;
+const CRUST_LIGHT = 0xf4c27a;
+const CRUST_DARK = 0xb06a2e;
+const DOUGH = 0xf0c48a;
+const CHERRY = 0xe8384f;
+const CHROME = 0xe3e8f0;
+const CHROME_DARK = 0x8d97a8;
+const BRASS = 0xe8b84a;
 const COPPER = 0xd9824a;
-const TOMATO = 0xff5a4a;
-const BASIL = 0x3fae5a;
-const CARROT = 0xff9a2e;
-const ONION = 0xf4ecd8;
+const BRICK = 0xc96a4f;
+const BRICK_DARK = 0x9c4b38;
+const WOOD = 0xd9a066;
+const WOOD_DARK = 0xa8703f;
+const MARBLE = 0xf7f4f0;
+const GLASS = 0xe6f6ff;
 const HEAT = 0xffb347;
-const TICKET = 0xfffdf4;
-const MAT = 0x3a3f4c;
+const CHALK = 0x34584a;
+
+/** Sprinkles, icings, macaron shells, boxes: the bakery's candy colours, in turn. */
+export const CANDY = [PINK, MINT, LEMON, LILAC, BLUEBERRY, ORANGE] as const;
+
+/** The common rooms' wall and stripe colours: the tasting table pink, the shop front butter, the
+ * pick-up counter mint, the café mocha, a vacant room in dust sheets. */
+const COMMON: Record<Exclude<Area["kind"], "project">, [number, number]> = {
+	meeting: [0xfff0f6, 0xffbdd6],
+	lobby: [0xfff8e1, 0xffe08a],
+	yours: [0xeafaf2, 0xa5e6c9],
+	kitchen: [0xf6ebe0, 0xd8b090],
+	vacant: [0xeef0f4, 0xd9dde6],
+};
 
 /** Mix two colours: `t` of the way from a to b. */
 function mix(a: number, b: number, t: number): number {
@@ -40,196 +78,444 @@ function mix(a: number, b: number, t: number): number {
 	return m(16) | m(8) | m(0);
 }
 
+const thin = (w: number) => ({ width: w, color: INK, join: "round" as const, cap: "round" as const });
+
+/** An ellipse as a polygon, turned by `a`: for things lying at an angle (baguettes, horns). */
+function oval(cx: number, cy: number, rx: number, ry: number, a = 0, n = 18): number[] {
+	const pts: number[] = [];
+	const c = Math.cos(a);
+	const s = Math.sin(a);
+	for (let k = 0; k < n; k++) {
+		const t = (k / n) * Math.PI * 2;
+		const x = Math.cos(t) * rx;
+		const y = Math.sin(t) * ry;
+		pts.push(cx + x * c - y * s, cy + x * s + y * c);
+	}
+	return pts;
+}
+
+// --- Baked goods: small painters, each with its base centre at (x, y), `s` its scale ------------
+
+export function croissant(g: Graphics, x: number, y: number, s = 1): void {
+	const lw = Math.max(0.8, 1.2 * s);
+	const seg = (dx: number, dy: number, rx: number, ry: number, a: number, col: number) =>
+		g.poly(oval(x + dx * s, y + dy * s, rx * s, ry * s, a)).fill(col).stroke(thin(lw));
+	seg(-9, -2.6, 3, 2, 0.6, CRUST_DARK);
+	seg(9, -2.6, 3, 2, -0.6, CRUST_DARK);
+	seg(-5.6, -4, 4.2, 3.6, 0.35, CRUST);
+	seg(5.6, -4, 4.2, 3.6, -0.35, CRUST);
+	seg(0, -5, 4.8, 4.6, 0, CRUST_LIGHT);
+	g.moveTo(x - 2 * s, y - 8 * s).quadraticCurveTo(x, y - 7 * s, x + 2 * s, y - 8 * s).stroke({ width: lw * 0.8, color: 0xffffff, alpha: 0.7 });
+}
+
+export function donut(g: Graphics, x: number, y: number, s = 1, icing = PINK, seed = 0): void {
+	const lw = Math.max(0.8, 1.2 * s);
+	g.ellipse(x, y - 4 * s, 8 * s, 4.4 * s).fill(DOUGH).stroke(thin(lw));
+	g.ellipse(x, y - 4.8 * s, 6.8 * s, 3.4 * s).fill(icing);
+	g.ellipse(x, y - 4.8 * s, 2.2 * s, 1.1 * s).fill(CRUST_DARK).stroke(thin(lw * 0.8));
+	for (let k = 0; k < 6; k++) {
+		const a = (k / 6) * Math.PI * 2 + seed;
+		const px = x + Math.cos(a) * 4.6 * s;
+		const py = y - 4.8 * s + Math.sin(a) * 2.2 * s;
+		g.rect(px - 0.9 * s, py - 0.4 * s, 1.8 * s, 0.9 * s).fill(CANDY[(k + seed) % CANDY.length] === icing ? 0xffffff : CANDY[(k + seed) % CANDY.length]!);
+	}
+}
+
+export function macaron(g: Graphics, x: number, y: number, s = 1, shell = PINK): void {
+	const lw = Math.max(0.8, 1.1 * s);
+	g.roundRect(x - 6 * s, y - 4 * s, 12 * s, 4 * s, 2 * s).fill(shell).stroke(thin(lw));
+	g.rect(x - 5.4 * s, y - 5.6 * s, 10.8 * s, 1.8 * s).fill(IVORY).stroke({ width: lw * 0.6, color: INK, alpha: 0.5 });
+	g.roundRect(x - 6 * s, y - 10.4 * s, 12 * s, 5 * s, 2.5 * s).fill(shell).stroke(thin(lw));
+	g.rect(x - 3.4 * s, y - 9.4 * s, 4 * s, 1 * s).fill({ color: 0xffffff, alpha: 0.55 });
+}
+
+export function eclair(g: Graphics, x: number, y: number, s = 1, glaze = CHOC): void {
+	const lw = Math.max(0.8, 1.2 * s);
+	g.roundRect(x - 10 * s, y - 6 * s, 20 * s, 6 * s, 3 * s).fill(CRUST_LIGHT).stroke(thin(lw));
+	g.roundRect(x - 9.4 * s, y - 6.8 * s, 18.8 * s, 3.4 * s, 1.7 * s).fill(glaze).stroke(thin(lw * 0.7));
+	g.moveTo(x - 7 * s, y - 5 * s);
+	for (let k = 0; k < 6; k++) g.lineTo(x + (-5 + k * 2.4) * s, y - (k % 2 ? 6 : 4.6) * s);
+	g.stroke({ width: lw * 0.7, color: 0xffffff, alpha: 0.85 });
+}
+
+export function cupcake(g: Graphics, x: number, y: number, s = 1, frost = PINK, wrap = MINT): void {
+	const lw = Math.max(0.8, 1.2 * s);
+	g.poly([x - 6 * s, y - 7 * s, x + 6 * s, y - 7 * s, x + 4.6 * s, y, x - 4.6 * s, y]).fill(wrap).stroke(thin(lw));
+	for (let k = -2; k <= 2; k++) g.moveTo(x + k * 2.2 * s, y - 6.6 * s).lineTo(x + k * 1.7 * s, y - 0.4 * s);
+	g.stroke({ width: lw * 0.6, color: INK, alpha: 0.35 });
+	g.ellipse(x, y - 8.6 * s, 7 * s, 3 * s).fill(frost).stroke(thin(lw));
+	g.ellipse(x, y - 11.2 * s, 5 * s, 2.6 * s).fill(frost).stroke(thin(lw));
+	g.ellipse(x, y - 13.4 * s, 3 * s, 2 * s).fill(frost).stroke(thin(lw));
+	g.circle(x + 0.6 * s, y - 16 * s, 1.9 * s).fill(CHERRY).stroke(thin(lw * 0.8));
+}
+
+export function loaf(g: Graphics, x: number, y: number, s = 1): void {
+	const lw = Math.max(0.8, 1.3 * s);
+	g.ellipse(x, y - 5 * s, 10 * s, 5.4 * s).fill(CRUST).stroke(thin(lw));
+	for (let k = -1; k <= 1; k++) g.moveTo(x + (k * 5 - 2) * s, y - 7.6 * s).lineTo(x + (k * 5 + 2) * s, y - 3.8 * s);
+	g.stroke({ width: lw * 0.9, color: CRUST_LIGHT });
+	g.ellipse(x - 3 * s, y - 8 * s, 3 * s, 1 * s).fill({ color: 0xffffff, alpha: 0.35 });
+}
+
+/** A baguette lying at angle `a`, centred at (x, y), `len` long. */
+export function baguette(g: Graphics, x: number, y: number, len: number, a: number, s = 1): void {
+	g.poly(oval(x, y, len / 2, 3.2 * s, a)).fill(CRUST).stroke(thin(1.3 * s));
+	const c = Math.cos(a);
+	const sn = Math.sin(a);
+	for (let k = -2; k <= 2; k++) {
+		const t = (k * len) / 6;
+		const px = x + t * c;
+		const py = y + t * sn;
+		g.moveTo(px - 2 * c + 1.4 * sn, py - 2 * sn - 1.4 * c).lineTo(px + 2 * c - 1.4 * sn, py + 2 * sn + 1.4 * c);
+	}
+	g.stroke({ width: 1.1 * s, color: CRUST_LIGHT });
+}
+
+export function painAuChocolat(g: Graphics, x: number, y: number, s = 1): void {
+	const lw = Math.max(0.8, 1.2 * s);
+	g.roundRect(x - 7 * s, y - 7 * s, 14 * s, 7 * s, 2.6 * s).fill(CRUST_LIGHT).stroke(thin(lw));
+	g.rect(x - 7 * s, y - 5 * s, 1.8 * s, 2 * s).rect(x + 5.2 * s, y - 5 * s, 1.8 * s, 2 * s).fill(CHOC_DARK);
+	g.moveTo(x - 4 * s, y - 6.2 * s).lineTo(x + 4 * s, y - 6.2 * s).stroke({ width: lw * 0.8, color: CRUST });
+}
+
+/** A layer cake, `w` wide and `h` tall, its base centre at (x, y): sponge and cream in courses, a
+ * frosted top, drips, a cherry or three. */
+export function layerCake(g: Graphics, x: number, y: number, w: number, h: number, frost = PINK, sponge = 0xffe0a0, seed = 0): void {
+	const lw = Math.max(1, w / 30);
+	g.roundRect(x - w / 2, y - h, w, h, 3).fill(sponge).stroke(thin(lw));
+	const courses = Math.max(2, Math.round(h / 8));
+	for (let k = 1; k < courses; k++) g.rect(x - w / 2 + 0.5, y - h + (k * h) / courses - 1, w - 1, 2);
+	g.fill({ color: k2(seed) ? CHOC : IVORY, alpha: 0.9 });
+	// The frosting: a cap with drips down the side.
+	g.roundRect(x - w / 2 - 1, y - h - 3, w + 2, 6, 3).fill(frost).stroke(thin(lw));
+	for (let k = 0; k < 5; k++) {
+		const dx = x - w / 2 + 2 + ((k + 0.5) * (w - 4)) / 5;
+		g.roundRect(dx - 1.4, y - h + 1, 2.8, 3 + ((seed + k * 3) % 4) * 1.2, 1.4);
+	}
+	g.fill(frost);
+	for (let k = 0; k < 3; k++) g.circle(x + (k - 1) * w * 0.28, y - h - 4, Math.max(1.4, w / 22));
+	g.fill(CHERRY);
+}
+const k2 = (seed: number) => seed % 3 === 1;
+
+/** A swirl lollipop on its stick: the candy's centre at (x, y), the stick down `stick` from it. */
+export function lollipop(g: Graphics, x: number, y: number, r: number, stick: number, a = PINK, b = 0xffffff): void {
+	g.rect(x - 1.2, y, 2.4, stick).fill(0xffffff).stroke(thin(1));
+	g.circle(x, y, r).fill(a).stroke(thin(Math.max(1.2, r / 7)));
+	g.moveTo(x, y);
+	for (let k = 1; k <= 40; k++) {
+		const t = (k / 40) * Math.PI * 5;
+		const rr = (k / 40) * r * 0.86;
+		g.lineTo(x + Math.cos(t) * rr, y + Math.sin(t) * rr);
+	}
+	g.stroke({ width: Math.max(1, r * 0.22), color: b, cap: "round", join: "round" });
+}
+
+/** A cup of coffee on its saucer, a heart in the foam: its base centre at (x, y). */
+export function cup(g: Graphics, x: number, y: number, s = 1, colour = 0xffffff): void {
+	const lw = Math.max(0.8, 1.2 * s);
+	g.ellipse(x, y - 1 * s, 8 * s, 2 * s).fill(colour).stroke(thin(lw));
+	g.poly([x - 5.5 * s, y - 8 * s, x + 5.5 * s, y - 8 * s, x + 4 * s, y - 1.6 * s, x - 4 * s, y - 1.6 * s]).fill(colour).stroke(thin(lw));
+	g.moveTo(x + 5 * s, y - 6.6 * s).arc(x + 6.4 * s, y - 5 * s, 2 * s, -Math.PI / 2, Math.PI / 2).stroke(thin(lw));
+	g.ellipse(x, y - 8 * s, 5.5 * s, 1.6 * s).fill(0xd9a46a).stroke(thin(lw * 0.8));
+	g.circle(x - 0.7 * s, y - 8.2 * s, 0.8 * s).circle(x + 0.7 * s, y - 8.2 * s, 0.8 * s).fill(0xfff6e6);
+}
+
+/** A glass candy jar, its base centre at (x, y), full of sweets. */
+function candyJar(g: Graphics, x: number, y: number, w: number, h: number, seed: number, lid = PINK): void {
+	g.roundRect(x - w / 2, y - h, w, h, w * 0.25).fill({ color: GLASS, alpha: 0.95 }).stroke(thin(1.6));
+	const r = Math.max(1.4, w / 9);
+	for (let row = 0; row < Math.floor((h - 6) / (r * 1.8)); row++)
+		for (let c = 0; c < Math.floor((w - 4) / (r * 2.1)); c++) {
+			const cx = x - w / 2 + 2.6 + r + c * r * 2.1 + (row % 2 ? r * 0.6 : 0);
+			const cy = y - 2.4 - r - row * r * 1.8;
+			if (cx > x + w / 2 - 2) continue;
+			g.circle(cx, cy, r).fill(CANDY[(seed + row * 3 + c) % CANDY.length]!);
+		}
+	g.rect(x - w / 2 + 2, y - h + 3, 2, h - 8).fill({ color: 0xffffff, alpha: 0.7 });
+	g.roundRect(x - w / 2 - 1, y - h - 4, w + 2, 5, 2).fill(lid).stroke(thin(1.4));
+	g.circle(x, y - h - 5, 1.8).fill(lid).stroke(thin(1));
+}
+
+/** A row of scallops, each `r` round, hanging from y between x0 and x1, in colours by turn. */
+function scallops(g: Graphics, x0: number, x1: number, y: number, r: number, colours: number[], ink = 2): void {
+	const n = Math.max(1, Math.round((x1 - x0) / (r * 2)));
+	const step = (x1 - x0) / n;
+	for (let i = 0; i < n; i++) {
+		const cx = x0 + step * (i + 0.5);
+		g.moveTo(cx - step / 2, y).arc(cx, y, step / 2, Math.PI, 0, true).closePath().fill(colours[i % colours.length]!).stroke(thin(ink));
+	}
+}
+
+/** A striped awning from x0 to x1, its rod at y, `h` deep, then its scalloped hem. */
+function awning(g: Graphics, x0: number, x1: number, y: number, h: number, a: number, b = 0xffffff, stripe = 14): void {
+	const n = Math.max(2, Math.round((x1 - x0) / stripe));
+	const sw = (x1 - x0) / n;
+	for (let i = 0; i < n; i++) g.rect(x0 + i * sw, y, sw, h).fill(i % 2 ? b : a);
+	g.rect(x0, y, x1 - x0, h).stroke(thin(1.8));
+	scallops(g, x0, x1, y + h, sw / 2, [a, b], 1.6);
+	g.roundRect(x0 - 3, y - 2.5, x1 - x0 + 6, 4, 2).fill(BRASS).stroke(thin(1.4));
+}
+
+/** Fairy lights strung along a dipping wire from x0 to x1. */
+function fairyLights(g: Graphics, x0: number, x1: number, y: number, seed: number): void {
+	const spans = Math.max(1, Math.round((x1 - x0) / 70));
+	const sw = (x1 - x0) / spans;
+	for (let i = 0; i < spans; i++) g.moveTo(x0 + i * sw, y).quadraticCurveTo(x0 + (i + 0.5) * sw, y + 9, x0 + (i + 1) * sw, y);
+	g.stroke({ width: 1.2, color: INK, alpha: 0.55 });
+	for (let i = 0; i < spans; i++)
+		for (let k = 1; k < 5; k++) {
+			const t = k / 5;
+			const bx = x0 + (i + t) * sw;
+			const by = y + 2 * 9 * t * (1 - t) + 2.4;
+			g.ellipse(bx, by, 1.8, 2.4).fill(CANDY[(seed + i * 4 + k) % CANDY.length]!).stroke({ width: 0.9, color: INK });
+		}
+}
+
 // --- Rooms ------------------------------------------------------------------------------------
 
-/** A station's shell: subway tile up the back wall (the room's colour as a band of tiles at
- * shoulder height, so stations still tell apart), a steel hood along the top with its grease
- * filters, quarry tiles underfoot with a drain, the side walls and the frame. */
-function shell(g: Graphics, a: Area, band: number, floor: number, hood = true): void {
+/** A room's shell: candy-stripe wallpaper in its colour, a cream wainscot with its dado rail, a
+ * checkerboard floor tinted with it, the side walls and the frame; the awning along the top. */
+function shell(g: Graphics, a: Area, wall: number, accent: number, vacant: boolean): void {
 	const { x, y, w, h } = a.rect;
 	const floorY = a.floorY;
-	g.roundRect(x, y, w, h, 10).fill(TILE);
-	// The tiles: offset courses of 24 by 12, the grout a faint line.
-	const tw = 24;
-	const th = 12;
-	for (let cy = y + 14; cy < floorY; cy += th) g.rect(x, cy, w, 1);
-	for (let cy = y + 14, j = 0; cy < floorY; cy += th, j++) for (let cx = x + (j % 2 ? tw / 2 : 0); cx < x + w; cx += tw) g.rect(cx, cy, 1, Math.min(th, floorY - cy));
-	g.fill({ color: INK, alpha: 0.07 });
-	// The room's colour: a band of tiles, two courses, a little above the counters.
-	const by = floorY - 62;
-	g.rect(x, by, w, th * 2).fill({ color: band, alpha: 0.85 });
-	g.rect(x, by, w, 1.5).rect(x, by + th * 2 - 1.5, w, 1.5).fill({ color: INK, alpha: 0.12 });
-	// Quarry tiles: big squares, the grout darker, a drain grate in the middle.
-	g.rect(x, floorY, w, y + h - floorY).fill(floor);
-	const s = 44;
-	for (let cy = floorY + s; cy < y + h; cy += s) g.rect(x, cy, w, 2);
-	for (let cx = x + s; cx < x + w; cx += s) g.rect(cx, floorY, 2, y + h - floorY);
-	g.fill({ color: INK, alpha: 0.1 });
-	const dx = x + w / 2;
-	const dy = floorY + (y + h - floorY) * 0.62;
-	g.roundRect(dx - 16, dy - 8, 32, 16, 3).fill(STEEL_DARK).stroke(line(2));
-	for (let k = -12; k <= 12; k += 4) g.rect(dx + k - 0.75, dy - 6, 1.5, 12);
-	g.fill({ color: INK, alpha: 0.5 });
-	// The cove where the wall meets the floor, then the line.
-	g.rect(x, floorY, w, 8).fill({ color: INK, alpha: 0.08 });
+	g.roundRect(x, y, w, h, 10).fill(wall);
+	// The wallpaper: wide stripes, a thin pinstripe between, little dots in the wide ones.
+	for (let cx = x + 6; cx < x + w; cx += 28) g.rect(cx, y, 13, floorY - y);
+	g.fill({ color: accent, alpha: vacant ? 0.25 : 0.55 });
+	for (let cx = x + 23.5; cx < x + w; cx += 28) g.rect(cx, y, 1.4, floorY - y);
+	g.fill({ color: 0xffffff, alpha: 0.8 });
+	for (let cx = x + 12.5, i = 0; cx < x + w; cx += 28, i++) for (let cy = y + 30 + (i % 2) * 11; cy < floorY - 40; cy += 22) g.circle(cx, cy, 1.6);
+	g.fill({ color: 0xffffff, alpha: 0.7 });
+	// The wainscot: cream panels under a dado rail in the room's colour.
+	const dado = floorY - 34;
+	g.rect(x, dado, w, 34).fill(vacant ? 0xf2f2f2 : CREAM);
+	for (let px = x + 8; px + 36 < x + w; px += 44) g.roundRect(px, dado + 8, 36, 20, 3);
+	g.stroke({ width: 1.4, color: INK, alpha: 0.13 });
+	g.rect(x, dado - 2, w, 6).fill(mix(accent, INK, 0.12)).stroke(thin(1.4));
+	// The floor: big checks in the room's colour and cream, a soft shine down the middle.
+	const s = 32;
+	const ca = mix(accent, IVORY, vacant ? 0.75 : 0.5);
+	const cb = mix(accent, IVORY, 0.88);
+	g.rect(x, floorY, w, y + h - floorY).fill(cb);
+	for (let j = 0, cy = floorY; cy < y + h; cy += s, j++) for (let i = 0, cx = x; cx < x + w; cx += s, i++) if ((i + j) % 2 === 0) g.rect(cx, cy, Math.min(s, x + w - cx), Math.min(s, y + h - cy));
+	g.fill(ca);
+	g.rect(x, floorY, w, 8).fill({ color: INK, alpha: 0.07 });
 	g.moveTo(x, floorY).lineTo(x + w, floorY).stroke(line(4));
-	if (hood) {
-		// The extraction hood: a steel canopy along the top, its filters in a row.
-		g.poly([x, y + 2, x + w, y + 2, x + w - 6, y + 26, x + 6, y + 26]).fill(STEEL).stroke(line(3));
-		for (let cx = x + 22; cx < x + w - 40; cx += 46) {
-			g.roundRect(cx, y + 9, 36, 12, 2).fill(STEEL_DARK);
-			for (let k = 4; k < 34; k += 4) g.rect(cx + k, y + 10, 1.4, 10);
-			g.fill({ color: 0xffffff, alpha: 0.35 });
-		}
-		g.rect(x + 8, y + 27, w - 16, 4).fill({ color: HEAT, alpha: 0.22 });
+	// The awning along the top, in the room's colour and white; a vacant room's is rolled up.
+	if (vacant) g.roundRect(x + 10, y + 3, w - 20, 7, 3.5).fill(0xd9dde6).stroke(thin(2));
+	else {
+		awning(g, x + 6, x + w - 6, y + 4, 11, mix(accent, RASPBERRY, 0.3), 0xffffff, 18);
+		fairyLights(g, x + 14, x + w - 14, y + 27, hash(a.id));
 	}
 	// Side walls: narrow strips with an inner edge, for a little depth.
 	const sideTop = y + 100;
-	g.rect(x, sideTop, 13, y + h - sideTop).fill(TILE).moveTo(x + 13, sideTop).lineTo(x + 13, y + h).stroke(line(4));
-	g.rect(x + w - 13, sideTop, 13, y + h - sideTop).fill(TILE).moveTo(x + w - 13, sideTop).lineTo(x + w - 13, y + h).stroke(line(4));
+	g.rect(x, sideTop, 13, y + h - sideTop).fill(wall).moveTo(x + 13, sideTop).lineTo(x + 13, y + h).stroke(line(4));
+	g.rect(x + w - 13, sideTop, 13, y + h - sideTop).fill(wall).moveTo(x + w - 13, sideTop).lineTo(x + w - 13, y + h).stroke(line(4));
 	g.roundRect(x + 2.5, y + 2.5, w - 5, h - 5, 10).stroke(line(5));
 }
 
-/** A window onto the alley: a steel frame, two panes, a herb box on the sill. */
-function kitchenWindow(g: Graphics, { x, y, w, h }: Rect, seed: number): void {
+/** A shop window: a white frame, a little awning over it, and a cake stand on its sill. */
+function shopWindow(g: Graphics, { x, y, w, h }: Rect, seed: number, accent: number): void {
+	g.roundRect(x - 3, y - 3, w + 6, h + 6, 6).fill(0xffffff).stroke(line(3));
 	g.roundRect(x, y, w, h, 4).fill(0xcfe6f2);
-	const glare = x + w * (0.12 + (seed % 4) * 0.1);
-	g.poly([glare, y + h - 6, glare + 16, y + 6, glare + 26, y + 6, glare + 10, y + h - 6]).fill({ color: 0xffffff, alpha: 0.6 });
-	g.rect(x + w / 2 - 2.5, y, 5, h).fill(STEEL_DARK);
-	g.roundRect(x + 2, y + 2, w - 4, h - 4, 3).stroke(line(4));
-	// The herb box.
-	g.roundRect(x - 4, y + h - 2, w + 8, 12, 3).fill(WOOD).stroke(line(2.5));
-	for (let i = 0; i < 6; i++) {
-		const cx = x + 8 + (i * (w - 16)) / 5;
-		g.circle(cx, y + h - 5, 5 + (i % 2)).fill(i % 3 === 1 ? 0x2f8f48 : BASIL);
-	}
-	g.circle(x + w * 0.38, y + h - 8, 2.4).circle(x + w * 0.7, y + h - 7, 2.2).fill(TOMATO);
+	g.rect(x + w / 2 - 2.5, y, 5, h).fill(0xffffff);
+	g.roundRect(x + 2, y + 2, w - 4, h - 4, 3).stroke(line(3));
+	awning(g, x - 6, x + w + 6, y - 9, 7, mix(accent, RASPBERRY, 0.35), 0xffffff, 12);
+	// The sill, and what stands on it (a cake on a stand, jars, a loaf), by the window's seed.
+	g.roundRect(x - 6, y + h - 1, w + 12, 8, 3).fill(0xffffff).stroke(thin(2));
+	const sill = y + h - 1;
+	g.rect(x + 22, sill - 7, 3, 7).fill(0xffffff).stroke(thin(1.2));
+	g.ellipse(x + 23.5, sill - 7.5, 13, 2.4).fill(0xffffff).stroke(thin(1.2));
+	layerCake(g, x + 23.5, sill - 9, 20, 14, CANDY[seed % CANDY.length]!, 0xffe0a0, seed);
+	candyJar(g, x + w - 18, sill, 12, 16, seed, CANDY[(seed + 2) % CANDY.length]!);
+	loaf(g, x + w / 2 + 12, sill, 0.8);
 }
 
-/** The swinging doors: a pair, each with its round window, a kick plate at the foot. */
-function swingDoors(g: Graphics, { x, y, w, h }: Rect): void {
-	g.rect(x - 4, y, w + 8, h).fill(STEEL_DARK).stroke(line(4));
-	const half = w / 2;
-	for (const k of [0, 1]) {
-		const dx = x + k * half;
-		g.roundRect(dx + 2, y + 6, half - 4, h - 6, 3).fill(0xe8d7b9).stroke(line(3));
-		g.circle(dx + half / 2, y + h * 0.36, Math.min(11, half / 2 - 6)).fill(0x2a3140).stroke(line(3));
-		g.roundRect(dx + 4, y + h - 18, half - 8, 14, 2).fill(STEEL).stroke(line(2));
-	}
+/** A glazed door out to the hallway: pastel, an arched window, a brass kick plate, an OPEN tag. */
+function shopDoor(g: Graphics, c: Container, { x, y, w, h }: Rect, accent: number): void {
+	g.rect(x - 5, y, w + 10, h).fill(0xffffff).stroke(line(4));
+	g.roundRect(x + 2, y + 6, w - 4, h - 6, 3).fill(mix(accent, RASPBERRY, 0.15)).stroke(line(3));
+	g.moveTo(x + 9, y + h * 0.55).lineTo(x + 9, y + 30).arc(x + w / 2, y + 30, w / 2 - 9, Math.PI, 0).lineTo(x + w - 9, y + h * 0.55).closePath().fill(0xcfe6f2).stroke(thin(2.5));
+	g.rect(x + w / 2 - 1.5, y + 14, 3, h * 0.55 - 14).fill(0xffffff);
+	g.roundRect(x + 6, y + h - 16, w - 12, 11, 2).fill(BRASS).stroke(thin(1.8));
+	g.circle(x + w - 12, y + h * 0.64, 3).fill(BRASS).stroke(thin(1.4));
+	// The tag on its string.
+	const tx = x + w / 2;
+	const ty = y + h * 0.36;
+	g.moveTo(tx - 8, ty).lineTo(tx, ty - 8).lineTo(tx + 8, ty).stroke({ width: 1.2, color: INK });
+	g.roundRect(tx - 15, ty, 30, 12, 3).fill(0xffffff).stroke(thin(1.6));
+	const t = label("OPEN", 7, "800", RASPBERRY);
+	t.position.set(tx - t.width / 2, ty + 2);
+	c.addChild(t);
 }
 
-/** The chef's door: plain white, a round window, and the plate. */
-function chefDoor(g: Graphics, { x, y, w, h }: Rect): Container {
-	g.roundRect(x, y + 4, w, h - 4, 4).fill(0xffffff).stroke(line(5));
-	g.circle(x + w / 2, y + 66, 12).fill(0x2a3140).stroke(line(3));
-	g.roundRect(x + w - 16, y + h * 0.6, 9, 4, 2).fill(STEEL_DARK).stroke({ width: 1.5, color: INK });
-	g.roundRect(x + 6, y + 20, w - 12, 20, 3).fill(INK);
+/** The door to your office, from the pick-up counter: mint, a round window with a cupcake on its
+ * glass, the plate. */
+function bakerDoor(g: Graphics, { x, y, w, h }: Rect): Container {
+	g.roundRect(x, y + 4, w, h - 4, 4).fill(MINT).stroke(line(5));
+	g.roundRect(x + 6, y + 44, w - 12, h - 56, 3).stroke({ width: 2, color: INK, alpha: 0.25 });
+	g.circle(x + w / 2, y + 70, 13).fill(0xcfe6f2).stroke(line(3));
+	cupcake(g, x + w / 2, y + 78, 0.8, PINK, LEMON);
+	g.roundRect(x + w - 16, y + h * 0.62, 9, 4, 2).fill(BRASS).stroke({ width: 1.5, color: INK });
+	g.roundRect(x + 6, y + 18, w - 12, 20, 3).fill(RASPBERRY).stroke(thin(2));
 	const t = label(BAKERY_WORDS.door, 10, "800", 0xffffff);
-	t.position.set(x + w / 2 - t.width / 2, y + 23);
+	t.position.set(x + w / 2 - t.width / 2, y + 21);
 	return t;
 }
 
 const SIGNS: SignStyle = {
-	sign: 0xffe08a,
-	signAlt: 0xffd0c4,
+	sign: 0xffe3ee,
+	signAlt: LEMON,
 	whiteboard: 0xffffff,
-	frame: 0xfff6e8,
+	frame: 0xfff8e8,
 	dress: (g, kind, x, y, w, h) => {
-		if (kind === "frame") {
-			// Tonight's special: a chalk-edged menu card, a fork and a knife at its foot.
-			g.roundRect(x + 4, y + 4, w - 8, h - 8, 4).stroke({ width: 1.6, color: COPPER });
-			const fx = x + w / 2;
-			const fy = y + h - 9;
-			g.moveTo(fx - 16, fy).lineTo(fx - 4, fy).moveTo(fx + 4, fy).lineTo(fx + 16, fy).stroke({ width: 1.6, color: INK, alpha: 0.5 });
+		if (kind === "whiteboard") {
+			// A menu board: a scalloped pink trim along its top.
+			scallops(g, x + 6, x + w - 6, y + 2, 5, [PINK_LIGHT, 0xffffff], 1.2);
+		} else if (kind === "frame") {
+			// A doily round the card: little lace holes all round its edge.
+			for (let px = x + 8; px < x + w - 4; px += 9) g.circle(px, y + 4, 1.6).circle(px, y + h - 4, 1.6);
+			for (let py = y + 12; py < y + h - 8; py += 9) g.circle(x + 4, py, 1.6).circle(x + w - 4, py, 1.6);
+			g.fill({ color: PINK, alpha: 0.8 });
+		} else {
+			// A sign: a sprinkle in each corner.
+			const d = (px: number, py: number, col: number, a: number) => g.poly(oval(px, py, 3, 1, a, 8)).fill(col);
+			d(x + 6, y + 5, PINK, 0.5);
+			d(x + w - 7, y + 5, MINT, -0.6);
+			d(x + w - 8, y + h - 5, BLUEBERRY, 0.3);
 		}
 	},
 };
 
 function room(g: Graphics, c: Container, a: Area, sign: (slot: string) => SignText | undefined): void {
-	const [officeWall, officeFloor] =
-		a.kind === "project" ? ROOM_COLOURS[a.hue % ROOM_COLOURS.length]! : COMMON_COLOURS[a.kind as keyof typeof COMMON_COLOURS];
-	// The room's own colour lives on in a band of tiles and, a little, in the floor.
-	const band = mix(officeFloor, officeWall, 0.5);
-	const floor = a.kind === "lobby" ? 0xd9b98a : mix(QUARRY, officeWall, a.kind === "project" ? 0.18 : 0.3);
-	shell(g, a, band, floor, a.kind !== "lobby");
+	const [wall, accent] = a.kind === "project" ? ROOM_COLOURS[a.hue % ROOM_COLOURS.length]! : COMMON[a.kind];
+	shell(g, a, wall, accent, a.kind === "vacant");
 	const seed = hash(a.id);
 	for (const [i, w] of a.wall.entries()) {
-		if (w.kind === "window") kitchenWindow(g, w.rect, seed + i);
-		else if (w.kind === "door") swingDoors(g, w.rect);
-		else if (w.kind === "you") c.addChild(chefDoor(g, w.rect));
+		if (w.kind === "window") shopWindow(g, w.rect, seed + i, accent);
+		else if (w.kind === "door") shopDoor(g, c, w.rect, accent);
+		else if (w.kind === "you") c.addChild(bakerDoor(g, w.rect));
 		else if (w.kind !== "planner") c.addChild(signboard(w.kind, w.rect, w.slot ? sign(w.slot) : undefined, seed + i, SIGNS));
+	}
+	const { x, w } = a.rect;
+	const f = a.floorY;
+	if (a.kind === "lobby" || a.kind === "meeting") {
+		// Bunting across the floor's back edge: the shop dressed for a party, every day.
+		const flags = Math.floor((w - 30) / 16);
+		g.moveTo(x + 14, f + 6).quadraticCurveTo(x + w / 2, f + 18, x + w - 14, f + 6).stroke({ width: 1.2, color: INK, alpha: 0.6 });
+		for (let i = 0; i < flags; i++) {
+			const t = (i + 0.5) / flags;
+			const fx = x + 14 + t * (w - 28);
+			const fy = f + 6 + 2 * 12 * t * (1 - t);
+			g.poly([fx - 6, fy, fx + 6, fy, fx, fy + 10]).fill(CANDY[(seed + i) % CANDY.length]!).stroke(thin(1.1));
+		}
+	}
+	if (a.kind === "kitchen") {
+		// The café's floor runner.
+		g.roundRect(x + 170, f + 140, 220, 34, 6).fill(mix(RASPBERRY, IVORY, 0.4)).stroke(thin(2));
+		for (let k = 0; k < 9; k++) g.circle(x + 186 + k * 23.5, f + 157, 4).fill(IVORY);
+	}
+	if (a.kind === "lobby") {
+		// The welcome mat, a heart on it, at the door.
+		const door = a.wall.find((d) => d.kind === "door")?.rect;
+		if (door) {
+			g.roundRect(door.x - 6, f + 10, door.w + 12, 18, 4).fill(RASPBERRY).stroke(thin(2));
+			const hx = door.x + door.w / 2;
+			g.circle(hx - 3, f + 17, 3.4).circle(hx + 3, f + 17, 3.4).fill(IVORY);
+			g.poly([hx - 6.2, f + 18, hx + 6.2, f + 18, hx, f + 25]).fill(IVORY);
+		}
+	}
+	if (a.kind === "yours") {
+		// Where to wait: a pink heart painted on the floor at each place in the queue.
+		for (const [i, p] of (a.spots.line ?? []).entries()) {
+			const hy = p.y + 3;
+			g.circle(p.x - 4, hy - 2, 4.4).circle(p.x + 4, hy - 2, 4.4).fill({ color: i === 0 ? RASPBERRY : PINK, alpha: 0.6 });
+			g.poly([p.x - 8.2, hy - 1, p.x + 8.2, hy - 1, p.x, hy + 8]).fill({ color: i === 0 ? RASPBERRY : PINK, alpha: 0.6 });
+		}
+	}
+	if (a.kind === "vacant") {
+		// Closed for icing: a dust sheet over a stack of chairs and an empty cake stand.
+		const cx = x + w / 2;
+		g.moveTo(cx - 60, f + 120).quadraticCurveTo(cx - 50, f + 50, cx - 10, f + 46).quadraticCurveTo(cx + 40, f + 40, cx + 56, f + 120).closePath().fill(0xf4f4f6).stroke(line(3));
+		g.moveTo(cx - 30, f + 70).quadraticCurveTo(cx - 20, f + 96, cx - 34, f + 116).moveTo(cx + 10, f + 60).quadraticCurveTo(cx + 22, f + 92, cx + 14, f + 116).stroke({ width: 1.6, color: INK, alpha: 0.25 });
 	}
 }
 
-/** The line: grey quarry tiles, and a black rubber mat down the middle with its drainage holes. */
+/** The pastry conveyor: pastel tiles, the belt down the middle in a candy-striped frame, a heart
+ * trim along each edge. Drawn in chunks, so every pattern keeps to world coordinates. */
 function hallway(g: Graphics, r: Rect): void {
-	g.rect(r.x, r.y, r.w, r.h).fill(0xd6d2ca);
-	for (let x = r.x + 40; x < r.x + r.w; x += 40) g.rect(x, r.y, 2, r.h);
-	g.fill({ color: INK, alpha: 0.07 });
+	g.rect(r.x, r.y, r.w, r.h).fill(0xfbeee6);
+	const t = 26;
+	const x0 = Math.floor(r.x / t) * t;
+	for (let x = x0; x < r.x + r.w; x += t) for (let y = r.y, j = 0; y < r.y + r.h; y += t, j++) if ((Math.round(x / t) + j) % 2 === 0) g.rect(Math.max(x, r.x), y, Math.min(t, r.x + r.w - Math.max(x, r.x)), Math.min(t, r.y + r.h - y));
+	g.fill({ color: PINK_LIGHT, alpha: 0.55 });
 	const mid = r.y + r.h / 2;
-	const mh = 34;
-	g.roundRect(r.x, mid - mh / 2, r.w, mh, 6).fill(MAT);
-	for (let x = r.x + 7; x < r.x + r.w; x += 12) for (let k = -1; k <= 1; k++) g.circle(x + (k % 2 ? 6 : 0), mid + k * 9, 2.2);
-	g.fill(0x22262f);
-	g.moveTo(r.x, mid - mh / 2).lineTo(r.x + r.w, mid - mh / 2).moveTo(r.x, mid + mh / 2).lineTo(r.x + r.w, mid + mh / 2).stroke(line(2.5));
+	const bh = 30;
+	// The frame: raspberry with white candy stripes, rivets, then the belt.
+	g.rect(r.x, mid - bh / 2 - 7, r.w, bh + 14).fill(RASPBERRY);
+	const sx0 = Math.floor(r.x / 18) * 18;
+	for (let x = sx0; x < r.x + r.w; x += 18) {
+		const a = Math.max(x, r.x);
+		const b = Math.min(x + 8, r.x + r.w);
+		if (b > a) g.rect(a, mid - bh / 2 - 7, b - a, 7).rect(a, mid + bh / 2, b - a, 7);
+	}
+	g.fill(0xffffff);
+	g.rect(r.x, mid - bh / 2, r.w, bh).fill(MINT_LIGHT);
+	const lx0 = Math.floor(r.x / 16) * 16;
+	for (let x = lx0 + 6; x < r.x + r.w; x += 16) if (x >= r.x) g.rect(x, mid - bh / 2, 1.6, bh);
+	g.fill({ color: MINT, alpha: 0.8 });
+	g.moveTo(r.x, mid - bh / 2 - 7).lineTo(r.x + r.w, mid - bh / 2 - 7).moveTo(r.x, mid + bh / 2 + 7).lineTo(r.x + r.w, mid + bh / 2 + 7).stroke(line(3));
+	g.moveTo(r.x, mid - bh / 2).lineTo(r.x + r.w, mid - bh / 2).moveTo(r.x, mid + bh / 2).lineTo(r.x + r.w, mid + bh / 2).stroke({ width: 1.6, color: INK, alpha: 0.6 });
 	g.moveTo(r.x, r.y + 2.5).lineTo(r.x + r.w, r.y + 2.5).moveTo(r.x, r.y + r.h - 2.5).lineTo(r.x + r.w, r.y + r.h - 2.5).stroke(line(5));
 }
 
 // --- Desk props ---------------------------------------------------------------------------------
 
-const PREP = [CARROT, BASIL, ONION, TOMATO, 0xf2c94c, 0xb07ae8];
-
-/** The mise tray: a hotel pan at the in-tray's spot, deli tubs of prep standing in it as the
- * context fills; a stack over the rim past 60%, tubs tipped off past 80%; empty while the lead has
- * it out. While the lead plays `buried` the rig draws the stack, so this draws nothing. */
-function miseTray(t: Tray, seed: string): Graphics {
+/** The macaron stand: a cake plate on a doily at the in-tray's spot, macarons stacking up in three
+ * columns as the context fills; a tower over the rim past 60%, macarons rolled off past 80%; empty
+ * while the lead has it out. While the lead plays `buried` the rig draws the stack, so this draws
+ * nothing. */
+function macaronStand(t: Tray, seed: string): Graphics {
 	const g = batched();
 	if (t.rig) return g;
 	const { x, y, w, sheet } = PROPS.tray;
 	const s = hash(seed);
 	const base = y - 4;
-	const level = Math.min(10, t.out ? 0 : t.sheets);
-	const tubH = Math.max(2, level * sheet);
+	const level = t.out ? 0 : Math.min(10, t.sheets);
 	const tw = (w - 2) / 3;
-	if (level > 0) {
-		for (let c = 0; c < 3; c++) {
-			const tx = x + 1 + c * tw;
-			g.rect(tx + 0.4, base - tubH, tw - 0.8, tubH).fill(0xf3f6fb).stroke({ width: 0.9, color: INK });
-			g.rect(tx + 1.2, base - tubH * 0.6, tw - 2.4, tubH * 0.6 - 0.6).fill(PREP[(s + c) % PREP.length]!);
-		}
-	}
+	const mh = Math.max(2.2, sheet * 1.9);
+	const sc = tw / 13;
+	const rows = Math.ceil(level / 2);
 	const heap = t.out ? 0 : Math.max(0, t.sheets - 10);
-	if (heap > 0) {
-		const lean = t.buried ? 3 : 0;
-		const rows = Math.ceil(heap / 3);
-		for (let r = 0; r < rows; r++) {
-			const hh = Math.min(3, heap - r * 3) * sheet * 1.6;
-			const yy = base - tubH - (r + 1) * 3 * sheet * 1.6;
-			for (let c = 0; c < 3; c++) {
-				const tx = x + 1 + c * tw + (lean * r) / rows + (r % 2 ? 1 : -1);
-				g.rect(tx + 0.4, yy + 3 * sheet * 1.6 - hh, tw - 0.8, hh).fill(0xf3f6fb).stroke({ width: 0.9, color: INK });
-				g.rect(tx + 1.2, yy + 3 * sheet * 1.6 - hh * 0.6, tw - 2.4, hh * 0.6 - 0.6).fill(PREP[(s + r * 3 + c + 1) % PREP.length]!);
-			}
+	const lean = t.buried ? 3 : 0;
+	const total = rows + Math.ceil(heap / 2);
+	for (let r = 0; r < total; r++) {
+		for (let c = 0; c < 3; c++) {
+			const over = r >= rows;
+			const mx = x + 1 + c * tw + tw / 2 + (over ? (lean * (r - rows + 1)) / 3 + (r % 2 ? 0.8 : -0.8) : 0);
+			const my = base - 1 - r * mh;
+			const k = s + r * 3 + c;
+			g.roundRect(mx - 6 * sc, my - mh * 0.45, 12 * sc, mh * 0.45, 1.2).roundRect(mx - 6 * sc, my - mh, 12 * sc, mh * 0.5, 1.2).fill(CANDY[k % CANDY.length]!).stroke({ width: 0.8, color: INK });
+			g.rect(mx - 5.2 * sc, my - mh * 0.52, 10.4 * sc, mh * 0.12).fill(IVORY);
 		}
 	}
-	// The hotel pan.
-	g.poly([x - 3, base - 6, x + w + 3, base - 6, x + w + 1, base, x - 1, base]).fill(STEEL).stroke(line(1.6));
-	g.moveTo(x - 1, base - 4).lineTo(x + w + 1, base - 4).stroke({ width: 0.9, color: 0xffffff });
-	// Tubs tipped off: onto the counter, then over the edge onto the floor.
+	// The plate and its doily.
+	g.ellipse(x + w / 2, base + 0.5, w / 2 + 4, 2.2).fill(0xffffff).stroke({ width: 1.2, color: INK });
+	for (let k = 0; k < 7; k++) g.circle(x - 2 + ((w + 4) * (k + 0.5)) / 7, base + 1.8, 1.1);
+	g.fill({ color: PINK, alpha: 0.9 });
+	// Rolled off: onto the bench, then over the edge onto the floor.
 	const off: [number, number][] = [
-		[x + w + 6, y - 3],
+		[x + w + 7, y - 3],
 		[x + w - 8, -30],
 		[x - 4, 10],
 	];
-	for (const [i, [ox, oy]] of off.slice(0, t.spill).entries()) {
-		g.roundRect(ox - 3 + wob(s, i) * 2, oy - 4, 7, 5, 1).fill(0xf3f6fb).stroke({ width: 1, color: INK });
-		g.circle(ox + 6, oy + 1, 1.6).fill(PREP[i % PREP.length]!).stroke({ width: 0.8, color: INK });
-	}
+	for (const [i, [ox, oy]] of off.slice(0, t.spill).entries()) macaron(g, ox + wob(s, i) * 2, oy, 0.45, CANDY[(s + i) % CANDY.length]!);
 	return g;
 }
 
-/** Quart deli cups of water on the counter, stacked three, two, one (a cook's mug). */
-function deliCups(n: number): Graphics {
+/** Cappuccinos on the bench, stacked three, two, one (a baker's mug). */
+function cappuccinos(n: number): Graphics {
 	const g = batched();
 	const { x, y, w, h } = PROPS.mugs;
 	const rows = [3, 2, 1];
@@ -238,311 +524,444 @@ function deliCups(n: number): Graphics {
 		for (let i = 0; i < rows[r]! && k < n; i++, k++) {
 			const mx = x + (i + r * 0.5) * (w + 1);
 			const my = y - (r + 1) * h;
-			g.poly([mx, my, mx + w, my, mx + w - 0.8, my + h, mx + 0.8, my + h]).fill({ color: 0xdff4ff, alpha: 0.9 }).stroke({ width: 1.1, color: INK, join: "round" });
-			g.rect(mx - 0.3, my - 0.6, w + 0.6, 1.4).fill(0xffffff);
-			g.rect(mx + 1.2, my + 2.2, w - 2.4, 1).fill(k % 2 ? TOMATO : 0x3d7dff);
+			g.poly([mx, my, mx + w, my, mx + w - 1, my + h - 1, mx + 1, my + h - 1]).fill(k % 3 === 1 ? PINK_LIGHT : 0xffffff).stroke({ width: 1, color: INK, join: "round" });
+			g.rect(mx - 0.8, my + h - 1.2, w + 1.6, 1.2).fill(0xffffff).stroke({ width: 0.7, color: INK });
+			g.ellipse(mx + w / 2, my + 0.4, w / 2 - 0.4, 1).fill(0xd9a46a);
 		}
 	}
 	return g;
 }
 
-/** The heat lamp's bulb on its stalk at the counter's end, glowing green or red from the last
- * tasting. */
-function heatBulb(lamp: Lamp): Graphics {
+/** A sugar-glass cloche lamp on the bench's end, glowing green or red from the last tasting. */
+function clocheLamp(lamp: Lamp): Graphics {
 	const { x, y } = PROPS.lamp;
 	const colour = lamp === "red" ? RED : GREEN;
 	const g = batched();
-	g.roundRect(x - 6, y + 9, 12, 4, 1.5).fill(STEEL_DARK).stroke({ width: 1.2, color: INK });
-	g.rect(x - 1.5, y - 2, 3, 12).fill(INK);
-	g.circle(x, y - 6, 11).fill({ color: colour, alpha: 0.25 });
-	g.moveTo(x - 8, y - 6).arc(x, y - 6, 8, Math.PI, 0).closePath().fill(STEEL).stroke(line(1.6));
-	g.circle(x, y - 4, 4.4).fill(colour).stroke({ width: 1.2, color: INK });
+	g.circle(x, y - 3, 13).fill({ color: colour, alpha: 0.22 });
+	g.ellipse(x, y + 11, 8, 2.4).fill(0xffffff).stroke({ width: 1.2, color: INK });
+	g.rect(x - 1.4, y + 4, 2.8, 7).fill(BRASS).stroke({ width: 1, color: INK });
+	g.moveTo(x - 8, y + 4).lineTo(x - 8, y - 4).arc(x, y - 4, 8, Math.PI, 0).lineTo(x + 8, y + 4).closePath().fill({ color: colour, alpha: 0.85 }).stroke(line(1.6));
+	g.rect(x - 5, y - 6, 2, 8).fill({ color: 0xffffff, alpha: 0.7 });
+	g.circle(x, y - 13.5, 2).fill(BRASS).stroke({ width: 1, color: INK });
 	return g;
 }
 
-/** A lowboy fridge under the counter's end: a drawer per ~10 files; the full ones won't shut. */
-function lowboy(n: number, full: number): Graphics {
+/** Cake boxes stacked by the bench's end: a box per ~10 files; the full ones won't shut, a pastry
+ * poking out under the lid. */
+function cakeBoxes(n: number, full: number): Graphics {
 	const g = batched();
 	const { x, w, h } = PROPS.drawers;
 	const top = -(n * h + 4);
 	g.rect(x + 3, top + 3, w, -top).fill(SHADOW);
-	g.roundRect(x, top, w, -top, 3).fill(STEEL).stroke(line(2));
 	for (let i = 0; i < n; i++) {
 		const dy = top + 2 + i * h;
 		const bulge = n - 1 - i < full;
-		const dx = bulge ? -4 : 0;
+		const dx = (i % 2 ? 1 : -1) * 1.2 + (bulge ? -3 : 0);
+		const colour = [PINK_LIGHT, MINT_LIGHT, 0xfff3c4][i % 3]!;
+		g.rect(x + dx, dy, w, h - 1).fill(colour).stroke(thin(1.4));
+		g.rect(x + dx + w / 2 - 1, dy, 2, h - 1).fill(RASPBERRY);
 		if (bulge) {
-			// A tub lid and a leek poking out.
-			g.rect(x + dx + 3, dy - 3, 7, 3).fill(0xffffff).stroke({ width: 1, color: INK });
-			g.rect(x + dx + 12, dy - 4, 3, 5).fill(BASIL).stroke({ width: 1, color: INK });
+			g.poly([x + dx - 1, dy, x + dx + w + 1, dy - 3, x + dx + w + 1, dy - 1, x + dx - 1, dy + 2]).fill(colour).stroke(thin(1.1));
+			croissant(g, x + dx + 6, dy + 1, 0.4);
 		}
-		g.roundRect(x + dx + 1, dy, w - 2, h - 2, 2).fill(STEEL_LIGHT).stroke(line(1.5));
-		g.roundRect(x + dx + 3, dy + 1.5, w - 6, 2, 1).fill(INK);
 	}
+	g.circle(x + w / 2 + 1, top + 1, 2).circle(x + w / 2 + 4, top + 0.5, 1.6).fill(RASPBERRY);
 	return g;
 }
 
-/** The scraps bucket by the station, filled 0 to 5 loads with peelings. */
-function scraps(load: number): Graphics {
+/** The crumb bin by the bench, filled 0 to 5 loads with eggshells and spent piping bags. */
+function crumbBin(load: number): Graphics {
 	const g = batched();
 	const { x, y, w, h } = PROPS.skip;
 	if (load > 0) {
 		const heap = Math.min(5, load);
 		for (let i = 0; i < heap * 2; i++) {
-			const bx = x + 3 + ((i * 7) % (w - 8));
-			const by = y - h + 2 - Math.floor(i / 2) * 2.2 + (i % 2);
-			g.poly([bx, by, bx + 6, by - 1, bx + 5, by + 2]).fill(i % 3 ? CARROT : 0xd9c06a).stroke({ width: 0.9, color: INK, join: "round" });
+			const bx = x + 4 + ((i * 7) % (w - 8));
+			const by = y - h + 1 - Math.floor(i / 2) * 2.2 + (i % 2);
+			if (i % 3 === 0) g.poly([bx, by, bx + 7, by - 2, bx + 2, by + 2]).fill(0xffffff).stroke({ width: 0.9, color: INK, join: "round" });
+			else g.moveTo(bx, by + 1).arc(bx + 3, by + 1, 3, Math.PI, 0).closePath().fill(0xfff4e0).stroke({ width: 0.9, color: INK });
 		}
 	}
-	g.poly([x, y - h, x + w, y - h, x + w - 4, y, x + 4, y]).fill(0x3f8f5f).stroke(line(2));
-	g.moveTo(x + 6, y - h / 2).lineTo(x + w - 6, y - h / 2).stroke({ width: 1.5, color: INK, alpha: 0.4 });
+	g.poly([x, y - h, x + w, y - h, x + w - 4, y, x + 4, y]).fill(PINK).stroke(line(2));
+	g.moveTo(x + 6, y - h / 2).lineTo(x + w - 6, y - h / 2).stroke({ width: 1.5, color: 0xffffff, alpha: 0.8 });
 	return g;
 }
 
 // --- Furniture --------------------------------------------------------------------------------
 
-/** A stainless prep counter: a steel top behind (a board on it), a front with its undershelf.
- * 150 wide. */
-function counter(g: Graphics, w = 150, board = true): void {
+/** The baker's bench: a marble top dusted with flour behind, a cream front with a scalloped valance
+ * and two cupboards below. 150 wide. */
+function bench(g: Graphics, w = 150, flour = true, front = CREAM): void {
 	g.rect(-w / 2 + 5, -44 + 6, w, 44).fill(SHADOW);
-	g.roundRect(-w / 2 - 12, -70, w + 24, 32, 3).fill(STEEL_LIGHT).stroke(line(4));
-	g.moveTo(-w / 2 - 10, -66).lineTo(w / 2 + 10, -66).stroke({ width: 1.5, color: 0xffffff });
-	if (board) g.roundRect(-w / 2 + 4, -62, 52, 14, 2).fill(BOARD).stroke({ width: 2, color: INK });
-	g.roundRect(-w / 2, -44, w, 44, 2).fill(STEEL).stroke(line(4));
-	g.rect(-w / 2 + 4, -18, w - 8, 3).fill(STEEL_DARK);
-	// Pans stacked on the undershelf.
-	for (let i = 0; i < 3; i++) g.roundRect(-w / 2 + 10 + i * 16, -14, 14, 5, 1.5).fill(STEEL_LIGHT).stroke({ width: 1.2, color: INK });
-	g.rect(-w / 2 + 2, -40, 3, 40).rect(w / 2 - 5, -40, 3, 40).fill(STEEL_DARK);
+	g.roundRect(-w / 2 - 12, -70, w + 24, 32, 4).fill(MARBLE).stroke(line(4));
+	g.moveTo(-w / 2 + 4, -62).quadraticCurveTo(-w / 2 + 40, -54, -w / 2 + 70, -64).moveTo(w / 2 - 50, -50).quadraticCurveTo(w / 2 - 30, -60, w / 2, -56);
+	g.stroke({ width: 1.2, color: CHROME_DARK, alpha: 0.35 });
+	if (flour) {
+		g.ellipse(w / 2 - 26, -55, 18, 4).fill({ color: 0xffffff, alpha: 0.9 });
+		for (let k = 0; k < 7; k++) g.circle(w / 2 - 44 + k * 6, -60 + (k % 3) * 3, 0.9);
+		g.fill({ color: 0xffffff, alpha: 0.9 });
+	}
+	g.roundRect(-w / 2, -44, w, 44, 3).fill(front).stroke(line(4));
+	scallops(g, -w / 2 + 2, w / 2 - 2, -44, 6, [PINK, PINK_LIGHT], 1.4);
+	g.roundRect(-w / 2 + 8, -30, w / 2 - 12, 24, 3).roundRect(4, -30, w / 2 - 12, 24, 3).stroke({ width: 2, color: INK, alpha: 0.3 });
+	g.circle(-6, -18, 2.4).circle(10, -18, 2.4).fill(BRASS).stroke(thin(1));
+	g.rect(-w / 2 + 3, -4, w - 6, 4).fill({ color: INK, alpha: 0.15 });
 }
 
 /** Station bodies: between ST_L (toward the wall) and ST_R (toward the user), tops at the point. */
 const ST_L = -24;
 const ST_R = 24;
 
+/** The deck oven's window, from the build station's base: office/ambient.ts glows over it. */
+export const OVEN_WINDOW = { x: ST_L + 5, y: -29, w: ST_R - ST_L - 10, h: 15 } as const;
+
 function furniture(kind: FurnitureKind): Graphics {
 	const g = new Graphics();
 	const w = ST_R - ST_L;
 	switch (kind) {
 		case "desk":
-			counter(g);
+			bench(g);
 			break;
 		case "table": {
-			// The pass: a long steel shelf under a gantry of heat lamps, the ticket spike on its end.
-			counter(g, 180, false);
-			g.rect(-86, -120, 4, 50).rect(82, -120, 4, 50).fill(STEEL_DARK);
-			g.roundRect(-92, -128, 184, 10, 3).fill(STEEL).stroke(line(3));
-			for (const lx of [-56, 0, 56]) {
-				g.poly([lx - 14, -118, lx + 14, -118, lx + 8, -110, lx - 8, -110]).fill(STEEL_DARK).stroke({ width: 2, color: INK });
-				g.rect(lx - 16, -108, 32, 30).fill({ color: HEAT, alpha: 0.18 });
+			// The tasting table: a gingham cloth over a long table, plates and forks, a croquembouche at
+			// one end and a teapot at the other, a cake stand in the middle (the cake on it turns:
+			// office/ambient.ts `cakeStand`).
+			g.rect(-90 + 5, -44 + 6, 180, 44).fill(SHADOW);
+			g.roundRect(-100, -70, 200, 32, 4).fill(0xffffff).stroke(line(4));
+			g.roundRect(-92, -44, 184, 40, 3).fill(0xffffff).stroke(line(4));
+			for (let x = -88; x < 88; x += 10) g.rect(x, -44, 5, 38);
+			for (let y = -40; y < -6; y += 10) g.rect(-92, y, 184, 5);
+			g.fill({ color: PINK, alpha: 0.45 });
+			scallops(g, -92, 92, -6, 6, [0xffffff], 2);
+			for (const px of [-62, 62]) g.ellipse(px, -55, 13, 3.6).fill(0xffffff).stroke(thin(1.6));
+			macaron(g, -62, -54, 0.6, MINT);
+			eclair(g, 62, -54, 0.6, PINK);
+			// The croquembouche: a cone of choux, spun sugar round it.
+			for (let row = 0; row < 6; row++) {
+				const n = 6 - row;
+				for (let i = 0; i < n; i++) g.circle(-88 + 8 + i * 7 - (n * 7) / 2 + 20, -64 - row * 6, 3.8);
 			}
-			// A plate waiting, and the spike with its tickets.
-			g.ellipse(-30, -72, 18, 4).fill(0xffffff).stroke({ width: 2, color: INK });
-			g.roundRect(-38, -80, 14, 6, 2).fill(0xf2a08f).stroke({ width: 1.5, color: INK });
-			g.rect(66, -96, 2, 26).fill(INK);
-			for (let k = 0; k < 3; k++) g.poly([60 + k, -86 + k * 5, 74 - k, -88 + k * 5, 74, -82 + k * 5, 60, -80 + k * 5]).fill(TICKET).stroke({ width: 1.2, color: INK, join: "round" });
+			g.fill(CRUST_LIGHT).stroke(thin(1.1));
+			g.moveTo(-82, -66).bezierCurveTo(-60, -80, -84, -92, -66, -102).stroke({ width: 1, color: BRASS });
+			g.circle(-68, -102, 2.2).fill(CHERRY).stroke(thin(1));
+			// The teapot.
+			g.ellipse(86, -66, 11, 9).fill(MINT).stroke(thin(2));
+			g.poly([95, -66, 104, -74, 104, -71, 97, -62]).fill(MINT).stroke(thin(1.6));
+			g.circle(86, -76, 2.6).fill(PINK).stroke(thin(1.2));
+			// The stand's pedestal (the cake is the ambient's).
+			g.rect(-3, -84, 6, 16).fill(0xffffff).stroke(thin(1.6));
+			g.ellipse(0, -68, 12, 3).fill(0xffffff).stroke(thin(1.6));
+			g.ellipse(0, -85, 24, 4.6).fill(0xffffff).stroke(thin(2));
 			break;
 		}
 		case "counter": {
-			// Staff meal's counter: a coffee urn and a tray of bread rolls.
-			counter(g, 130, false);
-			g.roundRect(-58, -118, 34, 46, 6).fill(STEEL).stroke(line(3));
-			g.roundRect(-62, -122, 42, 8, 3).fill(STEEL_DARK).stroke(line(2));
-			g.rect(-44, -80, 6, 6).fill(INK);
-			g.circle(-41, -100, 4).fill(GREEN).stroke({ width: 1.5, color: INK });
-			g.roundRect(-2, -76, 52, 6, 2).fill(STEEL_DARK).stroke(line(2));
-			for (let i = 0; i < 4; i++) g.ellipse(6 + i * 12, -80, 6, 4.4).fill(WOOD).stroke({ width: 1.6, color: INK });
+			// The café's counter: the espresso machine, a glass dome over a cake, cups and the tip jar.
+			// Its steam (office/ambient.ts `steam`) rises from (-36, -128).
+			bench(g, 130, false, mix(CHOC, CREAM, 0.7));
+			// The machine: a chrome body, a brass dome and its eagle-less crest, two groups, lights.
+			g.rect(-70, -78, 58, 6).fill(SHADOW);
+			g.roundRect(-68, -112, 64, 40, 6).fill(CHROME).stroke(line(3));
+			g.roundRect(-64, -108, 56, 10, 3).fill(RASPBERRY).stroke(thin(1.6));
+			for (let k = 0; k < 5; k++) g.circle(-58 + k * 11, -103, 1.8);
+			g.fill(0xffffff);
+			g.moveTo(-54, -112).quadraticCurveTo(-54, -128, -36, -127).quadraticCurveTo(-18, -128, -18, -112).closePath().fill(BRASS).stroke(line(2.5));
+			g.circle(-36, -128, 3).fill(BRASS).stroke(thin(1.4));
+			g.circle(-36, -88, 6).fill(0xffffff).stroke(thin(1.6));
+			g.moveTo(-36, -88).lineTo(-33, -91).stroke({ width: 1.2, color: RED });
+			for (const gx of [-56, -16]) {
+				g.roundRect(gx - 6, -80, 12, 5, 2).fill(CHROME_DARK).stroke(thin(1.4));
+				g.rect(gx - 1, -76, 2, 4).fill(INK);
+				g.rect(gx + 4, -80, 10, 2.6).fill(INK);
+			}
+			cup(g, -56, -70, 0.7, PINK_LIGHT);
+			cup(g, -16, -70, 0.7);
+			// The wand, and a jug of milk.
+			g.moveTo(-6, -96).lineTo(2, -80).stroke({ width: 2, color: CHROME_DARK, cap: "round" });
+			g.poly([0, -80, 8, -80, 7, -70, 1, -70]).fill(CHROME).stroke(thin(1.4));
+			// The cake under its glass dome.
+			g.ellipse(32, -72, 19, 4).fill(0xffffff).stroke(thin(1.6));
+			layerCake(g, 32, -74, 26, 16, LEMON, 0xffd9a0, 4);
+			g.moveTo(14, -73).lineTo(14, -90).arc(32, -90, 18, Math.PI, 0).lineTo(50, -73).fill({ color: GLASS, alpha: 0.35 }).stroke(thin(1.8));
+			g.circle(32, -110, 2.4).fill(BRASS).stroke(thin(1));
+			g.rect(18, -100, 2.4, 18).fill({ color: 0xffffff, alpha: 0.8 });
+			// The tip jar.
+			candyJar(g, 60, -66, 10, 12, 3, MINT);
 			break;
 		}
 		case "chair":
-			// An upturned milk crate, which is what cooks sit on.
-			g.rect(-18 + 4, -40 + 4, 40, 40).fill(SHADOW);
-			g.roundRect(-20, -40, 40, 40, 3).fill(0x3d6fd6).stroke(line(4));
-			for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) g.roundRect(-16 + c * 9, -34 + r * 11, 6, 7, 1.5).fill(0x2a4f9e);
+			// A bistro stool: a pink cushion on curly brass legs.
+			g.rect(-18 + 4, -40 + 4, 36, 40).fill(SHADOW);
+			g.moveTo(-12, 0).quadraticCurveTo(-16, -16, -8, -26).moveTo(12, 0).quadraticCurveTo(16, -16, 8, -26).moveTo(0, 0).lineTo(0, -26);
+			g.stroke({ width: 3, color: BRASS, cap: "round" });
+			g.moveTo(-10, -10).lineTo(10, -10).stroke({ width: 2, color: BRASS });
+			g.roundRect(-19, -40, 38, 14, 7).fill(PINK).stroke(line(3));
+			for (const bx of [-9, 0, 9]) g.circle(bx, -33, 1.4).fill(RASPBERRY);
 			break;
 		case "plant": {
-			// A sack of potatoes where the office keeps a plant.
-			g.rect(-15, -54 + 5, 34, 54).fill(SHADOW);
-			g.moveTo(-18, 0).lineTo(-20, -40).quadraticCurveTo(-16, -56, 0, -54).quadraticCurveTo(16, -56, 20, -40).lineTo(18, 0).closePath().fill(0xd8c29a).stroke(line(4));
-			g.moveTo(-12, -46).quadraticCurveTo(0, -52, 12, -46).stroke({ width: 2, color: INK });
-			for (const [px, py] of [[-6, -54], [4, -56], [-1, -59]] as const) g.ellipse(px, py, 6, 4.4).fill(0xb98a4c).stroke({ width: 1.6, color: INK });
-			g.rect(-11, -30, 22, 8).fill({ color: 0x8a5a33, alpha: 0.55 });
+			// A bucket of giant lollipops and a candy cane, where the office keeps a plant.
+			g.rect(-15, -40 + 5, 34, 40).fill(SHADOW);
+			g.moveTo(-8, -40).lineTo(-8, -108).stroke({ width: 5, color: 0xffffff, cap: "round" });
+			g.moveTo(-8, -108).arc(-1, -108, 7, Math.PI, 0).stroke({ width: 5, color: 0xffffff, cap: "round" });
+			for (let k = 0; k < 8; k++) g.moveTo(-10.5, -46 - k * 8).lineTo(-5.5, -51 - k * 8);
+			g.stroke({ width: 2.4, color: CHERRY });
+			lollipop(g, 8, -96, 15, 56, PINK);
+			lollipop(g, -10, -74, 11, 34, MINT, LEMON);
+			lollipop(g, 12, -62, 9, 22, LILAC);
+			g.poly([-17, -40, 17, -40, 13, 0, -13, 0]).fill(0xffffff).stroke(line(3.5));
+			for (let k = -12; k <= 12; k += 8) g.poly([k - 2.5, -40, k + 2.5, -40, k * 0.8 + 2, 0, k * 0.8 - 2, 0]);
+			g.fill({ color: PINK, alpha: 0.85 });
+			g.poly([-17, -40, 17, -40, 13, 0, -13, 0]).stroke(line(3.5));
+			g.roundRect(-19, -44, 38, 6, 3).fill(0xffffff).stroke(thin(2));
 			break;
 		}
 		case "lamp":
-			// A standing heat lamp on its pole.
-			g.rect(-2.5, -96, 5, 96).fill(STEEL_DARK);
+			// A candy-cane lamp post, its shade a cupcake liner.
+			g.rect(-2.5, -96, 5, 96).fill(0xffffff).stroke(thin(1.4));
+			for (let k = 0; k < 12; k++) g.poly([-2.5, -90 + k * 8, 2.5, -94 + k * 8, 2.5, -91 + k * 8, -2.5, -87 + k * 8]).fill(CHERRY);
 			g.roundRect(-14, -4, 28, 6, 3).fill(INK);
-			g.poly([-18, -100, 18, -100, 10, -88, -10, -88]).fill(STEEL).stroke(line(3));
+			g.poly([-16, -100, 16, -100, 10, -88, -10, -88]).fill(PINK).stroke(line(3));
 			g.circle(0, -86, 6).fill(HEAT).stroke({ width: 2, color: INK });
 			break;
 		case "cooler": {
-			// The ice machine: a squat steel bin, its scoop on a hook.
-			g.rect(-18, -70 + 5, 42, 70).fill(SHADOW);
-			g.roundRect(-21, -70, 42, 70, 4).fill(STEEL).stroke(line(4));
-			g.roundRect(-17, -64, 34, 20, 3).fill(STEEL_LIGHT).stroke({ width: 2, color: INK });
-			for (let i = 0; i < 4; i++) g.rect(-14 + i * 8, -60, 6, 2);
-			g.fill(INK);
-			g.roundRect(-17, -36, 34, 26, 3).fill(0xdff4ff).stroke({ width: 2, color: INK });
-			for (const [cx, cy] of [[-9, -20], [0, -26], [8, -18], [-3, -15]] as const) g.roundRect(cx - 3, cy - 3, 6, 6, 1.5).fill(0xffffff).stroke({ width: 1, color: INK });
+			// The pink lemonade dispenser on its stand: a glass jar with lemon slices, its tap.
+			g.rect(-18, -40 + 5, 42, 40).fill(SHADOW);
+			g.roundRect(-21, -40, 42, 40, 4).fill(0xffffff).stroke(line(4));
+			for (let x = -18; x < 20; x += 8) g.rect(x, -38, 4, 36);
+			g.fill({ color: MINT, alpha: 0.7 });
+			g.roundRect(-21, -40, 42, 40, 4).stroke(line(4));
+			g.roundRect(-17, -96, 34, 56, 8).fill({ color: GLASS, alpha: 0.95 }).stroke(line(3));
+			g.roundRect(-14, -82, 28, 39, 6).fill({ color: PINK, alpha: 0.75 });
+			for (const [lx, ly] of [[-6, -70], [6, -60], [-3, -52]] as const) {
+				g.circle(lx, ly, 5).fill(LEMON).stroke(thin(1.2));
+				for (let k = 0; k < 4; k++) g.moveTo(lx, ly).lineTo(lx + Math.cos((k * Math.PI) / 2) * 4, ly + Math.sin((k * Math.PI) / 2) * 4);
+				g.stroke({ width: 0.8, color: 0xffffff });
+			}
+			g.rect(-11, -92, 3, 46).fill({ color: 0xffffff, alpha: 0.7 });
+			g.roundRect(-19, -102, 38, 8, 3).fill(MINT).stroke(thin(2));
+			g.roundRect(9, -48, 10, 6, 2).fill(CHROME).stroke(thin(1.6));
+			cup(g, 13, -40, 0.7, PINK_LIGHT);
 			break;
 		}
 		case "fridge": {
-			// The walk-in's door: heavy steel, a big latch, strip curtain behind its window, the
-			// temperature on its dial.
-			g.rect(-38, -144, 84, 150).fill(SHADOW);
-			g.roundRect(-42, -150, 84, 150, 4).fill(STEEL).stroke(line(4));
-			g.roundRect(-36, -144, 72, 138, 3).stroke({ width: 2, color: STEEL_DARK });
-			g.roundRect(-24, -132, 48, 34, 3).fill(0xcfe6f2).stroke(line(3));
-			for (let k = -20; k < 24; k += 8) g.rect(k, -130, 5, 30);
-			g.fill({ color: 0xffffff, alpha: 0.5 });
-			g.roundRect(18, -86, 18, 34, 4).fill(STEEL_DARK).stroke(line(3));
-			g.roundRect(22, -76, 22, 8, 3).fill(STEEL_LIGHT).stroke(line(2));
-			g.circle(-22, -70, 9).fill(0xffffff).stroke(line(2.5));
-			g.moveTo(-22, -70).lineTo(-26, -75).stroke({ width: 1.6, color: 0x3d7dff });
-			g.rect(-30, -40, 24, 18).fill(0xffe08a).stroke(line(2));
-			g.rect(-26, -34, 16, 2).rect(-26, -29, 12, 2).fill(INK);
+			// The cake cabinet, stacked to the ceiling: a mint case, four glass shelves of cakes,
+			// cupcakes, donuts and a macaron tower, a scalloped crown on top.
+			g.rect(-38, -150, 84, 156).fill(SHADOW);
+			g.roundRect(-42, -150, 84, 150, 6).fill(MINT).stroke(line(4));
+			g.roundRect(-36, -140, 72, 118, 4).fill(GLASS).stroke(line(3));
+			const shelves = [-112, -84, -56];
+			for (const sy of shelves) g.rect(-36, sy, 72, 3).fill(0xffffff).stroke(thin(1.4));
+			// Top shelf: a tall cake.
+			layerCake(g, -14, -112, 30, 22, PINK, 0xffe0a0, 1);
+			macaron(g, 16, -112, 0.9, LILAC);
+			macaron(g, 16, -122, 0.9, LEMON);
+			// Cupcakes.
+			for (let k = 0; k < 4; k++) cupcake(g, -26 + k * 17, -84, 0.85, CANDY[k]!, CANDY[(k + 3) % 6]!);
+			// Donuts.
+			for (let k = 0; k < 4; k++) donut(g, -25 + k * 17, -56, 0.95, CANDY[(k + 2) % 6]!, k);
+			// Bottom: a macaron tower and éclairs.
+			for (let r = 0; r < 4; r++) for (let i = 0; i < 4 - r; i++) macaron(g, -22 + i * 9 + r * 4.5, -22 - r * 7, 0.6, CANDY[(i + r) % 6]!);
+			eclair(g, 18, -28, 0.75, PINK);
+			eclair(g, 18, -22, 0.75, CHOC);
+			g.rect(-30, -136, 3, 110).fill({ color: 0xffffff, alpha: 0.6 });
+			g.roundRect(-36, -18, 72, 12, 3).fill(0xffffff).stroke(thin(2));
+			g.roundRect(-10, -15, 20, 5, 2).fill(BRASS);
+			// The crown.
+			g.roundRect(-46, -158, 92, 10, 4).fill(0xffffff).stroke(thin(2.5));
+			scallops(g, -42, 42, -148, 6, [PINK, 0xffffff], 1.6);
+			g.circle(0, -162, 5).fill(CHERRY).stroke(thin(1.6));
 			break;
 		}
 		case "sofa": {
-			// A bench of flour sacks, slumped against each other.
+			// A row of giant macaron poufs: strawberry, pistachio, lemon.
 			for (const [i, sx] of [-50, 0, 50].entries()) {
-				g.moveTo(sx - 26, 0).lineTo(sx - 28, -46).quadraticCurveTo(sx - 20, -64 + i * 3, sx, -60).quadraticCurveTo(sx + 20, -64, sx + 27, -46).lineTo(sx + 25, 0).closePath().fill(0xf3ece0).stroke(line(4));
-				g.rect(sx - 18, -34, 36, 9).fill({ color: RED, alpha: 0.7 });
-				g.moveTo(sx - 10, -56).quadraticCurveTo(sx, -60, sx + 10, -56).stroke({ width: 2, color: INK });
+				const shell = [PINK, MINT, LEMON][i]!;
+				g.ellipse(sx + 4, -2, 26, 5).fill(SHADOW);
+				g.roundRect(sx - 25, -26, 50, 24, 12).fill(shell).stroke(line(3.5));
+				for (let k = -20; k <= 20; k += 5) g.circle(sx + k, -4, 2.2);
+				g.fill(mix(shell, INK, 0.12));
+				g.roundRect(sx - 23, -34, 46, 9, 4).fill(IVORY).stroke(thin(2));
+				g.roundRect(sx - 25, -58, 50, 26, 13).fill(shell).stroke(line(3.5));
+				g.ellipse(sx - 8, -50, 9, 3.4).fill({ color: 0xffffff, alpha: 0.5 });
 			}
 			break;
 		}
 		case "cabinet": {
-			// A speed rack: a tall steel frame of sheet pans, bread rising on two of them.
-			g.rect(-33, -104, 4, 104).rect(29, -104, 4, 104).fill(STEEL_DARK);
-			for (let i = 0; i < 8; i++) {
-				const y = -98 + i * 12;
-				g.rect(-31, y, 62, 3).fill(STEEL).stroke({ width: 1.2, color: INK });
-				if (i === 2 || i === 5) for (let k = 0; k < 4; k++) g.ellipse(-22 + k * 15, y - 3, 6, 3.4).fill(WOOD).stroke({ width: 1.2, color: INK });
+			// The bread rack: wooden shelves of loaves, a basket of baguettes on top.
+			g.rect(-33, -104, 4, 104).rect(29, -104, 4, 104).fill(WOOD_DARK);
+			for (let i = 0; i < 4; i++) {
+				const y = -96 + i * 26;
+				g.rect(-31, y, 62, 4).fill(WOOD).stroke({ width: 1.2, color: INK });
+				for (let k = 0; k < 3; k++) {
+					if (i % 2) loaf(g, -20 + k * 20, y, 0.85);
+					else croissant(g, -20 + k * 20, y, 0.9);
+				}
 			}
 			g.rect(-33, -104, 66, 104).stroke(line(3));
-			g.circle(-28, 2, 3).circle(28, 2, 3).fill(INK);
+			for (let k = 0; k < 4; k++) baguette(g, -10 + k * 7, -118, 34, -1.2 + k * 0.18);
+			g.poly([-24, -112, 24, -112, 20, -100, -20, -100]).fill(WOOD).stroke(thin(2));
 			break;
 		}
 		case "pod": {
-			// The host stand's giant stockpot (the napper shows in it, peeking over the rim).
-			g.rect(-70, -62 + 5, 140, 62).fill(SHADOW);
-			g.roundRect(-75, -62, 150, 62, 10).fill(STEEL).stroke(line(4));
-			g.roundRect(-80, -66, 160, 10, 4).fill(STEEL_LIGHT).stroke(line(3));
-			for (const s of [-1, 1]) g.roundRect(s > 0 ? 72 : -90, -54, 18, 8, 4).fill(STEEL_DARK).stroke(line(3));
-			g.circle(-36, -33, 21).fill(0x2a3140).stroke(line(3));
-			g.roundRect(8, -46, 52, 26, 4).fill(TICKET).stroke(line(2.5));
-			g.roundRect(14, -40, 30, 4, 2).fill(RED);
-			g.roundRect(14, -32, 22, 4, 2).fill(INK);
+			// The giant cupcake: a pleated liner with a round nook to nap in (the napper shows in it,
+			// over the nook), a mountain of frosting, sprinkles and a cherry the size of a head.
+			g.ellipse(4, 2, 84, 10).fill(SHADOW);
+			g.poly([-80, -62, 80, -62, 70, 0, -70, 0]).fill(MINT).stroke(line(4));
+			for (let k = -70; k <= 70; k += 14) g.poly([k - 4, -62, k + 4, -62, k * 0.875 + 3.5, 0, k * 0.875 - 3.5, 0]);
+			g.fill({ color: 0xffffff, alpha: 0.45 });
+			g.poly([-80, -62, 80, -62, 70, 0, -70, 0]).stroke(line(4));
+			g.circle(-36, -33, 22).fill(CHOC_DARK).stroke(line(3));
+			g.circle(-36, -33, 17).fill(CHOC);
+			// The frosting, piped in rings.
+			const rings: [number, number, number][] = [
+				[-70, 84, 14],
+				[-88, 70, 13],
+				[-104, 52, 12],
+				[-118, 34, 11],
+				[-130, 16, 9],
+			];
+			for (const [ry, rx, rr] of rings) g.roundRect(-rx, ry - rr, rx * 2, rr * 2, rr).fill(PINK).stroke(line(3));
+			for (const [ry, rx] of rings) g.ellipse(-rx * 0.4, ry - 4, rx * 0.3, 2.6).fill({ color: 0xffffff, alpha: 0.55 });
+			for (let k = 0; k < 26; k++) {
+				const ri = k % rings.length;
+				const [ry, rx] = rings[ri]!;
+				const px = -rx + 8 + ((k * 37) % Math.max(10, rx * 2 - 16));
+				g.poly(oval(px, ry + ((k * 13) % 9) - 4, 3.4, 1.2, (k * 0.7) % Math.PI, 8)).fill(CANDY[k % CANDY.length]!);
+			}
+			g.circle(4, -150, 12).fill(CHERRY).stroke(line(3));
+			g.ellipse(0, -154, 4, 2.6).fill({ color: 0xffffff, alpha: 0.6 });
+			g.moveTo(6, -161).quadraticCurveTo(10, -176, 22, -178).stroke({ width: 2.4, color: 0x3f8f5f, cap: "round" });
+			// A little sign: NAPS, on the liner.
+			g.roundRect(14, -46, 46, 20, 4).fill(0xffffff).stroke(thin(2));
+			g.roundRect(20, -40, 24, 4, 2).fill(RASPBERRY);
+			g.roundRect(20, -33, 16, 3, 1.5).fill(INK);
 			break;
 		}
 		case "screen-lit":
-			// The ticket printer's screen: green on black, a ticket curling out of it.
+			// The till's screen: a pink till, mint on dark, a receipt curling out.
 			g.rect(-6, -2, 12, 12).fill(INK);
-			g.roundRect(-31, -44, 62, 44, 4).fill(STEEL_DARK).stroke(line(4));
-			g.roundRect(-26, -39, 52, 34, 2).fill(0x1d2a22);
-			g.rect(-22, -34, 22, 4).rect(-22, -25, 30, 4).rect(-22, -16, 12, 3).fill(0x5dffa0);
-			g.poly([18, -44, 28, -44, 30, -58, 20, -56]).fill(TICKET).stroke({ width: 1.5, color: INK, join: "round" });
+			g.roundRect(-31, -44, 62, 44, 5).fill(PINK).stroke(line(4));
+			g.roundRect(-26, -39, 52, 34, 3).fill(0x2a2236);
+			g.rect(-22, -34, 22, 4).rect(-22, -25, 30, 4).rect(-22, -16, 12, 3).fill(MINT);
+			g.circle(16, -14, 3).fill(PINK);
+			g.poly([18, -44, 28, -44, 30, -58, 20, -56]).fill(0xffffff).stroke({ width: 1.5, color: INK, join: "round" });
 			break;
 		case "screen-off":
 			g.rect(-6, -2, 12, 12).fill(INK);
-			g.roundRect(-31, -44, 62, 44, 4).fill(STEEL_DARK).stroke(line(4));
-			g.roundRect(-26, -39, 52, 34, 2).fill(0x8d96a3);
+			g.roundRect(-31, -44, 62, 44, 5).fill(PINK).stroke(line(4));
+			g.roundRect(-26, -39, 52, 34, 3).fill(0x9a8fa0);
 			break;
 		case "files": {
-			// The lowboy (reference): a steel under-counter fridge, its top drawer at the point.
+			// The pastry case (reference): a cupboard under a glass case of croissants and pains au
+			// chocolat, its top at the point (the drawer the hands pull: the rig).
 			g.rect(ST_L + 4, -47 + 5, w, 47).fill(SHADOW);
-			g.roundRect(ST_L, -47, w, 47, 3).fill(STEEL).stroke(line(4));
-			g.rect(ST_L, -31, w, 3).rect(ST_L, -15, w, 3).fill(STEEL_DARK);
-			g.roundRect(-8, -24, 16, 3, 1.5).roundRect(-8, -8, 16, 3, 1.5).fill(0xffffff);
-			g.rect(ST_R - 12, -45, 9, 5).fill(0x9be3ff).stroke({ width: 1, color: INK });
+			g.roundRect(ST_L, -20, w, 20, 3).fill(PINK).stroke(line(3.5));
+			g.roundRect(ST_L + 6, -15, w - 12, 10, 2).stroke({ width: 1.6, color: INK, alpha: 0.35 });
+			g.roundRect(ST_L, -47, w, 28, 3).fill(GLASS).stroke(line(3.5));
+			g.rect(ST_L + 2, -33, w - 4, 2).fill(0xffffff);
+			croissant(g, ST_L + 13, -34, 0.75);
+			croissant(g, ST_R - 13, -34, 0.75);
+			painAuChocolat(g, ST_L + 13, -21, 0.75);
+			painAuChocolat(g, ST_R - 13, -21, 0.75);
+			g.rect(ST_L + 4, -45, 2.4, 22).fill({ color: 0xffffff, alpha: 0.7 });
+			g.roundRect(ST_L - 2, -49, w + 4, 5, 2).fill(0xffffff).stroke(thin(2));
 			break;
 		}
 		case "catalogue": {
-			// The spice shelf (search): a little rack of jars over a recipe tin on legs.
+			// The sweet shelf (search): candy jars in a row on a shelf on legs.
 			g.rect(ST_L + 4, -42 + 5, w, 42).fill(SHADOW);
-			g.rect(ST_L + 4, -10, 5, 10).rect(ST_R - 9, -10, 5, 10).fill(INK);
-			g.roundRect(ST_L, -42, w, 34, 3).fill(WOOD).stroke(line(4));
-			const caps = [TOMATO, 0xf2c94c, BASIL];
-			for (let r = 0; r < 2; r++)
-				for (let c = 0; c < 3; c++) {
-					const x = ST_L + 5 + c * 14;
-					const y = -38 + r * 14;
-					g.roundRect(x, y + 2, 10, 9, 2).fill(0xf7f1e3).stroke({ width: 1.6, color: INK });
-					g.roundRect(x - 0.5, y, 11, 3, 1).fill(caps[(r + c) % 3]!).stroke({ width: 1.2, color: INK });
-				}
+			g.rect(ST_L + 4, -10, 5, 10).rect(ST_R - 9, -10, 5, 10).fill(WOOD_DARK);
+			g.roundRect(ST_L, -12, w, 5, 2).fill(WOOD).stroke(thin(2.5));
+			candyJar(g, ST_L + 8, -12, 13, 22, 1, PINK);
+			candyJar(g, 0, -12, 13, 26, 3, MINT);
+			candyJar(g, ST_R - 8, -12, 13, 20, 5, LEMON);
+			g.roundRect(ST_L - 2, -44, w + 4, 6, 2).fill(WOOD).stroke(thin(2.5));
+			lollipop(g, ST_L + 5, -50, 5, 6, LILAC);
 			break;
 		}
 		case "copier": {
-			// The oven (build): a range body under the point, its door and knobs (the press and its
-			// lid, the oven door's window and the toasties: the rig, at the point).
+			// The deck oven (build): a brick body under the point, its glowing window full of loaves (the
+			// rig's lid works on top; the glow flickers: office/ambient.ts `ovens`).
 			g.rect(ST_L + 4, -40 + 5, w, 40).fill(SHADOW);
-			g.roundRect(ST_L, -40, w, 34, 3).fill(STEEL).stroke(line(4));
-			for (let k = 0; k < 4; k++) g.circle(ST_L + 8 + k * 11, -34, 2.6).fill(INK);
-			g.roundRect(ST_L + 4, -28, w - 8, 18, 2).fill(0x2a2430).stroke({ width: 2, color: INK });
-			g.rect(ST_L + 8, -24, w - 16, 3).fill({ color: HEAT, alpha: 0.6 });
-			g.roundRect(ST_L + 2, -7, w - 4, 7, 2).fill(STEEL_DARK);
+			g.roundRect(ST_L, -40, w, 40, 3).fill(BRICK).stroke(line(4));
+			for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) g.rect(ST_L + 2 + c * 12 + (r % 2 ? 6 : 0), -38 + r * 9, 1.2, 8);
+			for (let r = 1; r < 4; r++) g.rect(ST_L + 1, -40 + r * 9 + 2, w - 2, 1.2);
+			g.fill({ color: BRICK_DARK, alpha: 0.6 });
+			g.roundRect(OVEN_WINDOW.x - 2, OVEN_WINDOW.y - 2, OVEN_WINDOW.w + 4, OVEN_WINDOW.h + 4, 4).fill(COPPER).stroke(thin(2));
+			g.roundRect(OVEN_WINDOW.x, OVEN_WINDOW.y, OVEN_WINDOW.w, OVEN_WINDOW.h, 3).fill(0x5a2c1e);
+			loaf(g, -8, -16, 0.55);
+			loaf(g, 8, -16, 0.55);
+			g.rect(OVEN_WINDOW.x, OVEN_WINDOW.y + OVEN_WINDOW.h - 4, OVEN_WINDOW.w, 2).fill({ color: HEAT, alpha: 0.8 });
+			g.roundRect(ST_L + 8, -9, w - 16, 3, 1.5).fill(BRASS).stroke(thin(1));
+			g.roundRect(ST_L - 2, -42, w + 4, 5, 2).fill(COPPER).stroke(thin(2));
 			break;
 		}
 		case "stamps": {
-			// The tasting stand (test): a small steel table under the point, a tub of spoons on it.
+			// The tasting stand (test): a little pastel table under the point, a jar of cake testers.
 			g.rect(ST_L + 4, -38 + 5, w, 38).fill(SHADOW);
-			g.rect(ST_L + 4, -32, 5, 32).rect(ST_R - 9, -32, 5, 32).fill(STEEL_DARK);
-			g.rect(ST_L + 6, -14, w - 12, 3).fill(STEEL_DARK);
-			g.roundRect(ST_L + 1, -52, 10, 14, 2).fill(0xdff4ff).stroke({ width: 2, color: INK });
-			for (const x of [ST_L + 4, ST_L + 6, ST_L + 8.5]) g.rect(x, -58, 1.4, 10).fill(STEEL_DARK);
-			g.roundRect(ST_L - 2, -38, w + 4, 8, 2).fill(STEEL_LIGHT).stroke(line(4));
+			g.moveTo(ST_L + 6, 0).quadraticCurveTo(ST_L + 4, -18, ST_L + 8, -32).moveTo(ST_R - 6, 0).quadraticCurveTo(ST_R - 4, -18, ST_R - 8, -32);
+			g.stroke({ width: 3.4, color: BRASS, cap: "round" });
+			g.rect(ST_L + 8, -14, w - 16, 2.6).fill(BRASS);
+			g.roundRect(ST_L + 1, -54, 10, 15, 2).fill(GLASS).stroke({ width: 2, color: INK });
+			for (const x of [ST_L + 4, ST_L + 6, ST_L + 8.5]) g.rect(x, -60, 1.2, 12).fill(WOOD_DARK);
+			g.roundRect(ST_L - 2, -38, w + 4, 8, 3).fill(MINT).stroke(line(3.5));
+			scallops(g, ST_L, ST_R, -30, 4, [MINT_LIGHT], 1.2);
 			break;
 		}
 		case "phone": {
-			// The takeout line (web): a slim stand, the phone on its wall end, the order pad at the
-			// point (the handset and the pad: the rig).
+			// The order line (web): a slim stand, a pink telephone on its wall end, the order pad at
+			// the point (the handset and the pad: the rig).
 			g.rect(ST_L + 8, -38 + 5, w - 8, 38).fill(SHADOW);
-			g.roundRect(-5, -32, 10, 30, 3).fill(STEEL_DARK).stroke(line(3));
-			g.roundRect(ST_L + 2, -4, w - 4, 6, 3).fill(STEEL_DARK).stroke(line(3));
-			g.roundRect(ST_L - 2, -38, w + 4, 7, 3).fill(STEEL_LIGHT).stroke(line(4));
-			g.roundRect(ST_L + 1, -50, 22, 13, 5).fill(RED).stroke(line(3));
-			g.roundRect(ST_L + 5, -47, 14, 3, 1.5).fill(0xffd0c4);
+			g.roundRect(-5, -32, 10, 30, 3).fill(BRASS).stroke(line(3));
+			g.roundRect(ST_L + 2, -4, w - 4, 6, 3).fill(BRASS).stroke(line(3));
+			g.roundRect(ST_L - 2, -38, w + 4, 7, 3).fill(0xffffff).stroke(line(3.5));
+			g.roundRect(ST_L + 1, -50, 22, 13, 5).fill(PINK).stroke(line(3));
+			g.circle(ST_L + 12, -44, 3.4).fill(0xffffff).stroke(thin(1.2));
 			break;
 		}
 		case "outbox": {
-			// The pass's end (outbox): a steel shelf on legs under a heat lamp (the shelf's top and the
-			// plates: the rig).
+			// The pick-up shelf (outbox): a shelf on legs, cake boxes tied with ribbon on its lower
+			// tier, a striped canopy over it (the shelf's top and what goes on it: the rig).
 			g.rect(ST_L + 4, -36 + 5, w, 36).fill(SHADOW);
-			g.rect(ST_L + 2, -36, 4, 36).rect(ST_R - 6, -36, 4, 36).fill(STEEL_DARK);
-			g.rect(ST_L + 2, -12, w - 4, 3).fill(STEEL_DARK);
-			for (let i = 0; i < 4; i++) g.ellipse(0, -16 - i * 3, 16, 2.6).fill(0xffffff).stroke({ width: 1.2, color: INK });
-			g.rect(-2, -84, 4, 32).fill(STEEL_DARK);
-			g.poly([-16, -86, 16, -86, 10, -76, -10, -76]).fill(STEEL).stroke(line(2.5));
-			g.rect(-14, -74, 28, 30).fill({ color: HEAT, alpha: 0.18 });
+			g.rect(ST_L + 2, -36, 4, 36).rect(ST_R - 6, -36, 4, 36).fill(BRASS);
+			g.rect(ST_L + 2, -12, w - 4, 3).fill(BRASS);
+			for (const [i, bx] of [-12, 2].entries()) {
+				g.rect(ST_L + 16 + bx, -23, 15, 11).fill(i ? MINT_LIGHT : PINK_LIGHT).stroke(thin(1.4));
+				g.rect(ST_L + 22.5 + bx, -23, 2, 11).fill(RASPBERRY);
+			}
+			g.rect(-2, -84, 4, 34).fill(0xffffff).stroke(thin(1));
+			awning(g, -18, 18, -86, 6, PINK, 0xffffff, 6);
 			break;
 		}
 		case "shredder": {
-			// The scraps bin: a green bin with a swing lid, its top just under the working point (the
-			// slot and the pile: the rig).
+			// The crumb bin: a pink pedal bin with a swing lid, its top just under the working point (the
+			// slot and the pile: the rig). A cookie stencilled on its front.
 			g.rect(-14, -38 + 5, 32, 38).fill(SHADOW);
-			g.poly([-18, -38, 14, -38, 11, 0, -15, 0]).fill(0x3f8f5f).stroke(line(4));
-			g.rect(-14, -26, 22, 3).fill({ color: INK, alpha: 0.25 });
-			// A peel stencilled on its front.
-			g.poly([-9, -12, 3, -16, 1, -10]).fill({ color: 0xffffff, alpha: 0.7 });
+			g.poly([-18, -38, 14, -38, 11, 0, -15, 0]).fill(PINK).stroke(line(4));
+			g.rect(-14, -26, 22, 3).fill({ color: 0xffffff, alpha: 0.6 });
+			g.circle(-2, -13, 5).fill({ color: 0xffffff, alpha: 0.7 });
+			g.circle(-4, -14, 1).circle(0, -11, 1).fill(PINK);
+			g.roundRect(-12, 0, 8, 3, 1.5).fill(CHROME_DARK);
 			break;
 		}
 		case "tickets": {
-			// The ticket printer on its post, a ticket curling out (take a number).
+			// Take a number: a candy-cane post, a pink dispenser, a ticket curling out.
 			g.roundRect(-10, -4, 20, 4, 2).fill(INK);
-			g.rect(-2.5, -52, 5, 50).fill(INK);
-			g.roundRect(-15, -78, 30, 28, 4).fill(STEEL_LIGHT).stroke(line(3));
+			g.rect(-2.5, -52, 5, 50).fill(0xffffff).stroke(thin(1));
+			for (let k = 0; k < 6; k++) g.poly([-2.5, -46 + k * 8, 2.5, -50 + k * 8, 2.5, -47 + k * 8, -2.5, -43 + k * 8]).fill(CHERRY);
+			g.roundRect(-15, -78, 30, 28, 6).fill(PINK).stroke(line(3));
 			g.rect(-10, -72, 20, 4).fill(INK);
-			g.poly([-6, -68, 6, -68, 8, -50, -4, -52]).fill(TICKET).stroke({ width: 1.5, color: INK, join: "round" });
+			g.poly([-6, -68, 6, -68, 8, -50, -4, -52]).fill(0xffffff).stroke({ width: 1.5, color: INK, join: "round" });
 			g.rect(-3, -62, 6, 1.6).fill(RED);
 			break;
 		}
 		case "bell": {
-			// The pass's end by the chef's door, centred under the bell's plunger (rigpoints.ts), the
-			// service bell on it: the same bell the rig draws over while it rings.
+			// A little glass counter of cookies by your door, centred under the bell's plunger
+			// (rigpoints.ts), the service bell on it: the same bell the rig draws over while it rings.
 			g.rect(-14, -31 + 5, 32, 31).fill(SHADOW);
-			g.rect(-14, -27, 4, 27).rect(10, -27, 4, 27).fill(STEEL_DARK);
-			g.roundRect(-18, -31, 36, 7, 2).fill(STEEL_LIGHT).stroke(line(3));
+			g.roundRect(-18, -24, 36, 24, 3).fill(GLASS).stroke(line(3));
+			for (let k = 0; k < 3; k++) g.circle(-10 + k * 10, -8, 4).fill(DOUGH).stroke(thin(1));
+			for (let k = 0; k < 3; k++) g.circle(-11 + k * 10, -9, 0.9).circle(-9 + k * 10, -7, 0.9).fill(CHOC_DARK);
+			g.roundRect(-18, -31, 36, 7, 2).fill(0xffffff).stroke(line(3));
 			g.moveTo(-6, -31).arc(0, -31, 6, Math.PI, 0).closePath().fill(0xf2bd3c).stroke(line(2));
 			g.rect(-1, -41, 2, 4).fill(INK);
 			g.circle(0, -41.5, 1.8).fill(INK);
@@ -554,115 +973,242 @@ function furniture(kind: FurnitureKind): Graphics {
 
 // --- The crew build -------------------------------------------------------------------------------
 
-const SPONGES = [0xffd98a, 0xffcf7a, 0xf7c46c, 0xffdf9e];
+const SPONGES = [0xffe0a0, 0xffd38a, 0xf7c46c, 0xffe7b0];
+const ICINGS = [PINK, MINT, LEMON, LILAC];
 
-/** The crew's layer cake: sponge after sponge, cream between, and a pick with "ORDER UP" on top
- * once the PR is up. */
+/** The crew's tiered cake: sponge after sponge, a frosting band and a drip on each, and a candle with
+ * a cherry and a "fresh" flag on top once the PR is up. */
 const CAKE_BUILD = {
 	piece: (g: Graphics, x: number, y: number, w: number, h: number, k: number) => {
 		// `k` steps by 3 a piece (build.ts): every third piece is a chocolate layer.
 		const n = Math.floor(k / 3);
-		g.rect(x, y, w, h).fill(n % 3 === 1 ? 0x8a5a3c : SPONGES[k % SPONGES.length]!);
-		g.rect(x, y + h - 3, w, 2.4).fill(0xfff6e8);
-		g.circle(x + w * 0.3, y + h * 0.4, 0.9).circle(x + w * 0.7, y + h * 0.35, 0.9).fill(0xd9a043);
-		g.rect(x, y, w, h).stroke({ width: 1.5, color: INK });
+		g.rect(x, y, w, h).fill(n % 3 === 1 ? CHOC : SPONGES[k % SPONGES.length]!);
+		const icing = ICINGS[n % ICINGS.length]!;
+		g.rect(x, y, w, 2.6).fill(icing);
+		g.roundRect(x + 2 + (k % 3) * 2.5, y + 1, 2.2, 3.4 + (k % 2), 1.1).fill(icing);
+		g.rect(x, y + h - 2.4, w, 1.6).fill(IVORY);
+		g.circle(x + w * 0.7, y + h * 0.55, 0.8).fill(CANDY[k % CANDY.length]!);
+		g.rect(x, y, w, h).stroke({ width: 1.4, color: INK });
 	},
 	flag: (f: Graphics, top: { x: number; y: number }) => {
-		f.moveTo(top.x, top.y).lineTo(top.x, top.y - 22).stroke({ width: 2, color: INK });
-		f.circle(top.x, top.y - 2, 3.4).fill(0xe8506e).stroke({ width: 1.2, color: INK });
-		f.moveTo(top.x, top.y - 22).lineTo(top.x + 15, top.y - 18).lineTo(top.x + 15, top.y - 11).lineTo(top.x, top.y - 13).closePath().fill(GREEN).stroke({ width: 1.5, color: INK });
+		f.rect(top.x - 1.6, top.y - 14, 3.2, 14).fill(0xffffff).stroke({ width: 1.1, color: INK });
+		f.rect(top.x - 1.6, top.y - 10, 3.2, 2).rect(top.x - 1.6, top.y - 5, 3.2, 2).fill(PINK);
+		f.ellipse(top.x, top.y - 18, 2.4, 3.8).fill(HEAT).stroke({ width: 1, color: INK });
+		f.ellipse(top.x, top.y - 17.2, 1, 1.8).fill(0xfff3b0);
+		f.circle(top.x + 6, top.y - 2.6, 3.2).fill(CHERRY).stroke({ width: 1.2, color: INK });
+		f.moveTo(top.x - 5, top.y).lineTo(top.x - 5, top.y - 24).stroke({ width: 1.6, color: INK });
+		f.moveTo(top.x - 5, top.y - 24).lineTo(top.x - 20, top.y - 20).lineTo(top.x - 20, top.y - 13).lineTo(top.x - 5, top.y - 15).closePath().fill(PINK).stroke({ width: 1.4, color: INK });
+		f.circle(top.x - 12.5, top.y - 18.5, 1.6).fill(0xffffff);
 	},
 };
 
-/** The ticket rail: the planner as a steel rail along the top with three columns of tickets hung
- * from it, a ticket per todo, coloured by session at its top band. */
-const BANDS = [0xff5a4a, 0x3d7dff, 0x3fae5a, 0xff9a2e, 0xb07ae8, 0xe8506e];
+/** The order board: the planner as a chalkboard in a scalloped pink frame, three columns of order
+ * cards pegged on strings, a card per todo with its session's colour along the top; the boxed ones
+ * tied with a ribbon. */
+const BANDS = [0xff5a7a, 0x3d7dff, 0x2fbf83, 0xff9a2e, 0xb07ae8, 0xe8b84a];
 
-function ticketRail(r: Rect, rows: PlannerRow[]): Container {
+function orderBoard(r: Rect, rows: PlannerRow[]): Container {
 	const c = new Container();
 	const g = batched();
 	c.addChild(g);
-	g.roundRect(r.x, r.y, r.w, r.h, 6).fill(0xeef0f4).stroke(line(4));
+	g.roundRect(r.x - 2, r.y - 2, r.w + 4, r.h + 4, 8).fill(PINK).stroke(line(4));
+	g.roundRect(r.x + 4, r.y + 4, r.w - 8, r.h - 8, 4).fill(CHALK).stroke(thin(2));
+	scallops(g, r.x + 8, r.x + r.w - 8, r.y - 2, 5, [PINK, PINK_LIGHT], 1.3);
 	const colW = (r.w - 12) / 3;
 	const tw = 8;
-	const th = 11;
+	const th = 10;
 	const gap = 2;
-	const head = 15;
+	const head = 17;
 	const perRow = Math.max(1, Math.floor((colW - 2) / (tw + gap)));
-	const fit = perRow * Math.max(1, Math.floor((r.h - head - 6) / (th + gap + 2)));
+	const fit = perRow * Math.max(1, Math.floor((r.h - head - 8) / (th + gap + 2)));
 	for (let k = 0; k < 3; k++) {
 		const cx = r.x + 6 + k * colW;
-		const t = label(BAKERY_WORDS.columns[k]!, 6, "800");
-		t.position.set(cx + (colW - t.width) / 2, r.y + 4);
+		const t = label(BAKERY_WORDS.columns[k]!, 6, "800", 0xffffff);
+		t.position.set(cx + (colW - t.width) / 2, r.y + 6);
 		c.addChild(t);
+		if (k > 0) g.rect(cx - 0.5, r.y + 8, 1, r.h - 16).fill({ color: 0xffffff, alpha: 0.35 });
 		const notes = rows.flatMap((row) => Array.from({ length: [row.pending, row.active, row.done][k]! }, () => BANDS[hash(row.session) % BANDS.length]!));
 		const lines = Math.max(1, Math.ceil(Math.min(notes.length, fit) / perRow));
-		// A rail for each line of tickets.
+		// A string for each line of cards.
 		for (let l = 0; l < lines; l++) {
 			const ry = r.y + head + l * (th + gap + 2);
-			g.rect(cx + 1, ry - 1.5, colW - 4, 2.4).fill(STEEL_DARK);
+			g.moveTo(cx + 1, ry - 0.5).quadraticCurveTo(cx + colW / 2, ry + 1.5, cx + colW - 3, ry - 0.5).stroke({ width: 0.9, color: 0xffffff, alpha: 0.75 });
 		}
 		notes.slice(0, notes.length > fit ? fit - 1 : fit).forEach((band, i) => {
 			const nx = cx + 2 + (i % perRow) * (tw + gap);
 			const ny = r.y + head + Math.floor(i / perRow) * (th + gap + 2);
-			const tilt = k === 2 ? 0.8 : 0;
-			g.poly([nx, ny, nx + tw, ny, nx + tw + tilt, ny + th, nx + tilt, ny + th]).fill(TICKET).stroke({ width: 1, color: INK });
+			const tilt = k === 1 ? ((i % 3) - 1) * 0.7 : 0;
+			g.poly([nx, ny, nx + tw, ny, nx + tw + tilt, ny + th, nx + tilt, ny + th]).fill(0xfffdf4).stroke({ width: 0.9, color: INK });
 			g.rect(nx + 0.6, ny + 0.8, tw - 1.2, 2.2).fill(band);
-			if (k === 2) g.moveTo(nx + 1.6, ny + 7).lineTo(nx + tw - 1, ny + 5).stroke({ width: 1, color: RED });
+			g.rect(nx + tw / 2 - 0.8, ny - 1.6, 1.6, 3).fill(BRASS);
+			if (k === 2) {
+				g.rect(nx + tw / 2 - 0.7, ny + 3, 1.4, th - 3).fill(RASPBERRY);
+				g.circle(nx + tw / 2 - 1.4, ny + 6, 1.2).circle(nx + tw / 2 + 1.4, ny + 6, 1.2).fill(RASPBERRY);
+			}
 		});
 		if (notes.length > fit) {
-			const more = label(`+${notes.length - fit + 1}`, 6.5, "800");
-			more.position.set(cx + colW - more.width - 2, r.y + r.h - more.height - 3);
+			const more = label(`+${notes.length - fit + 1}`, 6.5, "800", 0xffffff);
+			more.position.set(cx + colW - more.width - 2, r.y + r.h - more.height - 5);
 			c.addChild(more);
 		}
 	}
 	return c;
 }
 
-/** The Line's light (office/light.ts): warm heat lamps in round pools, an alley out of the
- * windows at the back of a city block, the yard with its bins and pallets. */
+/** The bakery's light (office/light.ts): golden morning light, warm oven-orange halos after dark,
+ * round pools under its pendants, a pastel town out of the windows, trees on the street. */
 export const BAKERY_LIGHT: SceneLight = {
-	ambient: { morning: 0xeceaf2, noon: 0xffffff, afternoon: 0xfdeedb, dusk: 0xc2aec2, night: 0x5a5478 },
-	hall: { morning: 0xf0eef5, noon: 0xffffff, afternoon: 0xfdf2e2, dusk: 0xd0c2cc, night: 0x9a90a8 },
-	outside: { morning: 0xf2f0ff, noon: 0xffffff, afternoon: 0xffeed6, dusk: 0xa9a0c8, night: 0x35406e },
-	lamp: 0xffe2b8,
-	glow: 0xffa64d,
+	ambient: { morning: 0xfff0de, noon: 0xffffff, afternoon: 0xffefdc, dusk: 0xd6b4c4, night: 0x6c5a80 },
+	hall: { morning: 0xfff4e8, noon: 0xffffff, afternoon: 0xfff3e4, dusk: 0xe2c8d2, night: 0xa898b4 },
+	outside: { morning: 0xfff0f0, noon: 0xffffff, afternoon: 0xffeed6, dusk: 0xb4a0c8, night: 0x3a4070 },
+	lamp: 0xffe6c0,
+	glow: 0xffa040,
 	overhead: "pools",
-	vacant: 0.66,
+	vacant: 0.62,
 	sun: 0xfff0c4,
 	sky: {
-		morning: [0xbfe1ff, 0xffe3c8],
-		noon: [0x8fd0ff, 0xd3f0ff],
-		afternoon: [0xa8cdf2, 0xffcf8f],
-		dusk: [0x564a8e, 0xff9a78],
-		night: [0x141a36, 0x29356a],
+		morning: [0xc8e4ff, 0xffd8d0],
+		noon: [0x9ad6ff, 0xdff4ff],
+		afternoon: [0xb0d2f4, 0xffd09a],
+		dusk: [0x5e4a92, 0xff9a90],
+		night: [0x161a38, 0x2c3470],
 	},
 	skyline: {
-		morning: [0xcab8a8, 0xa58f80],
-		noon: [0xcdbcab, 0xa79280],
-		afternoon: [0xd9b39a, 0xb08a74],
-		dusk: [0x6d5a7f, 0x46385a],
-		night: [0x2a2c48, 0x1d1f36],
+		morning: [0xf2c6cc, 0xd9a3b0],
+		noon: [0xf4cfd0, 0xdcaab4],
+		afternoon: [0xf2c0aa, 0xd49c92],
+		dusk: [0x7a5a88, 0x52386c],
+		night: [0x2e2a4c, 0x201d38],
 	},
 	window: { inset: 4, panes: 2, transom: false, bar: 5 },
-	floors: { lobby: "planks" },
+	floors: {},
 	cluster: "rug",
-	decal: { size: 30, colour: INK, stencil: false },
-	yard: "yard",
+	decal: { size: 30, colour: 0x6b2f4f, stencil: false },
+	yard: "trees",
+};
+
+// --- Staging (office/staging.ts): the pastry conveyor, the pick-up hatch ---------------------
+
+/** A line's belt (should the bakery ever run its benches as lines): a mint belt in a candy frame. */
+function belt(g: Graphics, w: number): void {
+	g.rect(4, 2, w, 14).fill(SHADOW);
+	for (let x = 10; x < w; x += 120) g.rect(x, 6, 5, 10);
+	g.fill(BRASS);
+	g.rect(0, -8, w, 8).fill(MINT_LIGHT);
+	g.roundRect(-2, 0, w + 4, 8, 2).fill(RASPBERRY).stroke(line(2.5));
+	for (let x = 4; x < w; x += 12) g.rect(x, 2, 5, 4);
+	g.fill(0xffffff);
+	g.moveTo(0, -8).lineTo(w, -8).stroke({ width: 2, color: INK });
+}
+
+function slats(g: Graphics, w: number, pitch: number): void {
+	for (let x = -pitch; x < w; x += pitch) g.rect(x, -7, 2, 6);
+	g.fill({ color: MINT, alpha: 0.8 });
+}
+
+function rollers(g: Graphics, w: number, pitch: number): void {
+	const cap = pitch + 2;
+	for (const x of [-cap + 2, w - 2]) {
+		g.roundRect(x, -10, cap, 18, 4).fill(PINK_LIGHT).stroke(line(2.5));
+		g.circle(x + cap / 2, -1, 3).fill(RASPBERRY);
+	}
+}
+
+/** A pastry for each kind of work: a croissant (read), a donut (web), a macaron (search), an éclair
+ * (edit), a loaf (shell), a cupcake (test). About 14 px, its base at y = 0. */
+function pastry(g: Graphics, kind: string): void {
+	switch (kind) {
+		case "read":
+			croissant(g, 0, 0, 0.85);
+			break;
+		case "web":
+			donut(g, 0, 0, 0.85, PINK, 1);
+			break;
+		case "search":
+			macaron(g, 0, 0, 0.85, MINT);
+			break;
+		case "edit":
+			eclair(g, 0, 0, 0.7);
+			break;
+		case "test":
+			cupcake(g, 0, 0, 0.8, LILAC, LEMON);
+			break;
+		default:
+			loaf(g, 0, 0, 0.75);
+	}
+}
+
+/** The kinds of pastry riding the hallway's conveyor, in turn (office/ambient.ts `parade`). */
+export const PARADE = ["read", "web", "search", "edit", "test", "shell", "web", "read", "search"] as const;
+
+/** A kiosk round a bench on a line: two candy-cane posts and a striped canopy (a line bay only). */
+function kiosk(g: Graphics): void {
+	const l = -86;
+	const r = 30;
+	const top = -124;
+	const bottom = -66;
+	for (const px of [l, r]) {
+		g.rect(px, top, 7, bottom - top).fill(0xffffff).stroke(thin(2));
+		for (let y = top + 4; y < bottom; y += 9) g.poly([px, y + 4, px + 7, y, px + 7, y + 3, px, y + 7]).fill(CHERRY);
+	}
+	awning(g, l - 4, r + 11, top - 6, 8, PINK, 0xffffff, 12);
+}
+
+/** The pick-up hatch at the hallway's end: a pink booth, its hatch open on shelves of boxes, an
+ * awning over it and the belt running in under it. Its right edge at x = 0. */
+function hatch(g: Graphics, h: number): void {
+	const w = 56;
+	g.rect(-w, 6, w, h - 12).fill(PINK_LIGHT);
+	g.rect(-w + 6, 22, w - 12, h * 0.4).fill(0x5a3a44).stroke(thin(2));
+	for (let k = 0; k < 2; k++) {
+		const sy = 22 + (h * 0.4 * (k + 1)) / 2 - 2;
+		g.rect(-w + 6, sy, w - 12, 2).fill(0xffffff);
+		for (let i = 0; i < 3; i++) g.rect(-w + 9 + i * 13, sy - 8, 11, 8).fill([PINK, MINT_LIGHT, 0xfff3c4][(i + k) % 3]!).stroke(thin(1));
+	}
+	awning(g, -w - 4, 2, 9, 7, RASPBERRY, 0xffffff, 8);
+	g.rect(-w, h / 2 - 15, w, 30).fill({ color: 0x5a3a44, alpha: 0.85 });
+	g.rect(-w, 6, w, h - 12).stroke(line(3));
+	g.circle(-w / 2, h - 22, 5).fill(0xf2bd3c).stroke(thin(1.6));
+}
+
+/** A PR's cake box riding the hallway's belt: pink, tied with a ribbon and a bow, its base at y = 0. */
+function cakeBox(g: Graphics): void {
+	g.rect(-13, -18, 26, 18).fill(PINK_LIGHT).stroke(line(2.5));
+	g.rect(-14, -20, 28, 4).fill(0xffffff).stroke(thin(1.8));
+	g.rect(-1.5, -20, 3, 20).rect(-13, -10, 26, 3).fill(RASPBERRY);
+	g.ellipse(-4, -22, 4.4, 2.8).ellipse(4, -22, 4.4, 2.8).fill(RASPBERRY).stroke(thin(1.4));
+	g.circle(0, -22, 1.8).fill(RASPBERRY).stroke(thin(1.2));
+}
+
+export const BAKERY_STAGE: StagePainters = { belt, slats, rollers, part: pastry, booth: kiosk, dock: hatch, crate: cakeBox };
+
+/** The bakery bakes at its benches (desks), and the hallway is a pastry conveyor: pastries ride it
+ * all day, a finished PR's cake box rides it to the pick-up hatch. The café's espresso machine
+ * steams, the deck ovens' windows flicker, the marquee bulbs round "Order up!" chase, the tasting
+ * table's cake turns on its stand, sprinkles drift down round the giant cupcake. Idle, the bakers sip
+ * at the café's lemonade, put their feet up and nap face down on the bench (the rig's habits; the
+ * bakery's own, should the rig grow them, go first in this list). */
+export const BAKERY_STAGING: SceneStaging = {
+	bay: "desks",
+	hall: "conveyor",
+	ambient: ["steam", "ovens", "marquee", "cakeStand", "sprinkles", "parade"],
+	habits: ["waterCooler", "feetUp", "stretch", "scrolling", "faceDown", "chairSpin", "slowWalk"],
 };
 
 export const BAKERY_THEME: SceneTheme = {
 	id: "bakery",
 	words: BAKERY_WORDS,
-	lawn: 0xc9c2b4,
-	slab: 0x4a3f45,
+	lawn: 0xd7ecd4,
+	slab: 0x5a3a44,
 	room,
 	hallway,
 	furniture,
-	desk: { tray: miseTray, mugs: deliCups, lamp: heatBulb, drawers: lowboy, skip: scraps },
-	planner: ticketRail,
+	desk: { tray: macaronStand, mugs: cappuccinos, lamp: clocheLamp, drawers: cakeBoxes, skip: crumbBin },
+	planner: orderBoard,
 	crewBuild: (b, seed) => crewBuild(b, seed, CAKE_BUILD),
-	nightWatch: { ...NIGHT_WATCH, tint: "night-chef" },
+	nightWatch: { ...NIGHT_WATCH, tint: "night-baker" },
 	arms: false,
 	light: BAKERY_LIGHT,
+	staging: BAKERY_STAGING,
+	stage: BAKERY_STAGE,
 };

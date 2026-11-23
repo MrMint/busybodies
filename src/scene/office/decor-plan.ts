@@ -113,22 +113,22 @@ export const FACTORY_STORY: StoryWords = {
 
 export const BAKERY_STORY: StoryWords = {
 	headlines: "WHILE YOU WERE OUT",
-	ledger: "TONIGHT'S COVERS",
+	ledger: "TODAY'S BAKE",
 	lines: {
-		merged: (n) => `${s(n, "plate")} sent out`,
-		opened: (n) => `${s(n, "plate")} at the pass`,
-		redeemed: (n) => `${s(n, "dish", "dishes")} saved`,
-		sendoff: (n) => `${s(n, "long shift")} signed off`,
-		finished: (n) => `${s(n, "station")} cleaned down`,
+		merged: (n) => `${s(n, "order")} picked up`,
+		opened: (n) => `${s(n, "batch", "batches")} out of the oven`,
+		redeemed: (n) => `${s(n, "sunk cake")} rescued`,
+		sendoff: (n) => `${s(n, "long bake")} waved off`,
+		finished: (n) => `${s(n, "bench", "benches")} wiped down`,
 	},
 	ledgerLines: [
-		["sessions", (n) => s(n, "station")],
-		["prsOpened", (n) => s(n, "plate")],
-		["prsMerged", (n) => `${n} served`],
-		["testsRed", (n) => `${n} sent back`],
-		["redeemed", (n) => `${n} saved`],
+		["sessions", (n) => s(n, "batch", "batches")],
+		["prsOpened", (n) => s(n, "box", "boxes")],
+		["prsMerged", (n) => `${n} picked up`],
+		["testsRed", (n) => `${n} burnt`],
+		["redeemed", (n) => `${n} rescued`],
 	],
-	quiet: "No covers tonight.",
+	quiet: "The ovens stayed cold.",
 };
 
 /** The story's look in a theme: colours picked from the theme, and its words. */

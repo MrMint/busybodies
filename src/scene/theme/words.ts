@@ -54,16 +54,16 @@ export const FACTORY_WORDS: ThemeWords = {
 };
 
 export const BAKERY_WORDS: ThemeWords = {
-	areas: { meeting: "the pass", lobby: "host stand", yours: "chef's table", kitchen: "staff meal", vacant: "dark station" },
-	subs: { meeting: "tasting before it goes out", lobby: "seated and leaving", yours: "Service! waiting on you", kitchen: "idle, finished and off the clock", vacant: "closed for refit" },
+	areas: { meeting: "tasting table", lobby: "shop front", yours: "pick-up counter", kitchen: "the café", vacant: "closed for icing" },
+	subs: { meeting: "tasted before it's boxed", lobby: "in and out the door", yours: "Order up! waiting on you", kitchen: "idle, finished and on a coffee break", vacant: "back soon" },
 	signs: {
-		"meeting:sign": { title: "NOTHING LEAVES", body: "without a taste." },
-		"kitchen:sign": { title: "1 STAFF MEAL PER GREEN BUILD", body: "Finished? Clock yourself out." },
-		"lobby:frame": { title: "TONIGHT'S SPECIAL", body: "Whatever compiles." },
+		"meeting:sign": { title: "NO CRUMB UNTASTED", body: "Every batch. Every time." },
+		"kitchen:sign": { title: "1 ÉCLAIR PER GREEN BUILD", body: "Finished? Hang up your apron." },
+		"lobby:frame": { title: "TODAY'S SPECIAL", body: "Whatever rises." },
 	},
-	serving: (n) => ({ title: "SERVICE!", body: n === undefined ? "All quiet. Yet." : `No. ${n}` }),
-	columns: ["ORDERED", "FIRING", "SERVED"],
-	door: "CHEF",
+	serving: (n) => ({ title: "ORDER UP!", body: n === undefined ? "Nothing waiting. Yet." : `No. ${n}` }),
+	columns: ["ORDERED", "BAKING", "BOXED"],
+	door: "BAKER",
 };
 
 const WORDS: Record<ThemeId, ThemeWords> = { office: OFFICE_WORDS, factory: FACTORY_WORDS, bakery: BAKERY_WORDS };

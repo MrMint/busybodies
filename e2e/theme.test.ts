@@ -90,8 +90,8 @@ describe("themes", () => {
 		expect(k.theme).toBe("bakery");
 		expect(k.areas).toEqual(o.areas);
 		expect(k.cast).toEqual(o.cast);
-		expect(k.meeting).toBe("NOTHING LEAVES");
-		expect(k.serving).toBe("SERVICE!");
+		expect(k.meeting).toBe("NO CRUMB UNTASTED");
+		expect(k.serving).toBe("ORDER UP!");
 		expect(k.arms).toBe(0);
 		// Switched live from the factory and back to the office, without a reload.
 		await line.evaluate(() => ((window as unknown as { __loaded: boolean }).__loaded = true));
@@ -104,7 +104,7 @@ describe("themes", () => {
 			serving: window.__busybodies!.signs().find((s) => s.id === "yours:serving")?.text?.title,
 			sameDocument: (window as unknown as { __loaded?: boolean }).__loaded === true,
 		}));
-		expect(back).toEqual({ theme: "bakery", arms: 0, serving: "SERVICE!", sameDocument: true });
+		expect(back).toEqual({ theme: "bakery", arms: 0, serving: "ORDER UP!", sameDocument: true });
 		await office.close();
 		await line.close();
 	}, T);

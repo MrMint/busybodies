@@ -204,6 +204,20 @@ the light both lean on walls. What's left is under "After wave 3" below.
 - Rerun the full e2e suite and `tools/profile.sh` on a quiet machine: every wave 3 stream and the
   merge ran under a load average of 35 to 80, where Chrome times out.
 
+## Wave 4
+
+- **K: the bakery's world.** The Line became the bakery, repainted as a patisserie gone over the
+  top (`theme/bakery.ts`): candy-stripe wallpaper, scalloped awnings and fairy lights, checkerboard
+  floors in each room's own pastel; a pastry case, a sweet shelf, a deck oven, a tasting stand, an
+  order phone and a pick-up shelf under the stations' slots; a café with an espresso machine, a cake
+  cabinet and macaron poufs; a giant cupcake in the shop front to nap in. It stages desks and a
+  `conveyor` hall: pastries ride the hallway's belt (`parade`), a PR's cake box rides it to the
+  pick-up hatch. Its own ambient life (`office/ambient.ts`): oven windows flickering, marquee bulbs
+  chasing round "Order up!", a cake turning on the tasting table, sprinkles drifting round the
+  cupcake, steam off the espresso machine. Its words (`BAKERY_WORDS`, `BAKERY_STORY`) are orders,
+  batches and boxes. Its habits are the rig's for now: the bakery's own (sipping a cappuccino,
+  licking the frosting spoon, sneaking a macaron, napping on a flour sack) wait on rig poses.
+
 ## Risks
 
 - **CPU while visible.** Life at 20 fps on a full office is not free. Measure `tools/profile.sh` on

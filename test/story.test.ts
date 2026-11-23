@@ -241,9 +241,12 @@ describe("the walls remember", () => {
 		expect(style).toMatchObject({ ink: 1, mat: 3, gold: 4, mark: 1, pennants: [4, 5, 2, 8] });
 	});
 
-	test("every theme has story words of its own: the Line counts covers", () => {
+	test("every theme has story words of its own: the bakery counts its bake", () => {
 		expect(storyStyle({ id: "bakery", slab: 1, lawn: 2, light: { lamp: 3, glow: 4, sky: { noon: [5, 6], dusk: [7, 8] } } } as never).words).toBe(BAKERY_STORY);
 		expect(storyStyle({ id: "factory", slab: 1, lawn: 2, light: { lamp: 3, glow: 4, sky: { noon: [5, 6], dusk: [7, 8] } } } as never).words).toBe(FACTORY_STORY);
+		expect(BAKERY_STORY.lines.opened(2)).toBe("2 batches out of the oven");
+		expect(BAKERY_STORY.lines.merged(1)).toBe("1 order picked up");
+		expect(BAKERY_STORY.ledger).toBe("TODAY'S BAKE");
 	});
 });
 

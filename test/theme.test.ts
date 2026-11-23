@@ -33,10 +33,11 @@ describe("theme words", () => {
 		}
 		expect(FACTORY_WORDS.areas.kitchen).toBe("break room");
 		expect(FACTORY_WORDS.areas.yours).toBe("foreman's office");
-		// The Line: review at the pass, waiting on you is "Service!", the planner is the ticket rail.
-		expect(BAKERY_WORDS.areas.meeting).toBe("the pass");
-		expect(BAKERY_WORDS.serving(undefined).title).toBe("SERVICE!");
-		expect(BAKERY_WORDS.columns).toEqual(["ORDERED", "FIRING", "SERVED"]);
+		// The bakery: review at the tasting table, waiting on you is "Order up!", the planner the order board.
+		expect(BAKERY_WORDS.areas.meeting).toBe("tasting table");
+		expect(BAKERY_WORDS.areas.kitchen).toBe("the café");
+		expect(BAKERY_WORDS.serving(undefined).title).toBe("ORDER UP!");
+		expect(BAKERY_WORDS.columns).toEqual(["ORDERED", "BAKING", "BOXED"]);
 	});
 
 	test("the layout names areas with the office's words in any theme (the name is its identity)", () => {

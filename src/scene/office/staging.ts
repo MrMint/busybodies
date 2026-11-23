@@ -9,14 +9,15 @@
 //   hall   "corridor": a hallway to walk down (the office)
 //          "conveyor": the hallway's belt carries PR crates down to the dock at its end (the factory)
 //   ambient  what moves on its own on the life clock (office/ambient.ts): steam off the coffee, a
-//          ceiling fan, the printer's light; a beacon while a build runs, steam vents, weld sparks
+//          ceiling fan, the printer's light; a beacon while a build runs, steam vents, weld sparks;
+//          the bakery's oven glow, marquee bulbs, a turning cake, sprinkles, pastries on the belt
 //   habits the idle habits the theme's cast rotates through (rig/poses.ts names; director/habits.ts)
 //
 // A theme without a staging gets the office's behaviour (`stagingOf`), so a new theme only says
 // what it changes. Pixi-free: the layout, the director and tests read it.
 
 /** Things that move on their own, on the life clock (office/ambient.ts draws each). */
-export type AmbientKind = "steam" | "fan" | "printer" | "beacon" | "vents" | "sparks";
+export type AmbientKind = "steam" | "fan" | "printer" | "beacon" | "vents" | "sparks" | "ovens" | "marquee" | "cakeStand" | "sprinkles" | "parade";
 
 /** What the world carries (office/world.ts `World.staging`): the layout reads the bay and the hall,
  * the director the habits. */
