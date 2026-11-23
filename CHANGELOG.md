@@ -1,5 +1,17 @@
 # busybodies
 
+## 0.5.0
+
+### Minor Changes
+
+- d8be887: The cast notices each other and you: crew look at the teammate whose test went red (the nearest first), the lead and the one it checks on look at each other, waiting leads watch your door, a teammate looks up and raises a hand as a folder arrives, a big crew stands in a staggered arc facing its lead, finished agents pair up for coffee, and when you come back to the office after a while the idle ones look up at you and one waves.
+- d8be887: Walks now have a start, a turn and a stop: the cast looks where it is going before setting off, eases in and out, turns through the front and rounds corners. Long loops break their rhythm now and then (the typist stops to read, the builder checks the nail), idle habits keep a gentle rhythm while the office is on screen, opus considers and sonnet nods before acting, and a wait at your office gets visibly worse the longer you leave it.
+- d8be887: Sound, off until you turn it on in the menu bar: a desk bell when someone waits on you, a stamp for a green test, a sad two-note for a red one, a rustle for a compaction, a chime for a PR and the copier's grind on a long build, over a quiet room tone, all made in code. The menu also gets Calm office, which stills the idle cast and the sound.
+- d8be887: The office is never a still photo while you watch it: everyone blinks and glances around now and then. When the window is off screen (minimized, hidden, behind other windows, or the screen is locked) it draws nothing at all. Calm mode (the system's reduce-motion setting) keeps a quiet office perfectly still.
+- d8be887: Compact mode is a live camera: it cuts to the room where something just happened (someone waiting on you, a red test, a PR, a rush, a compaction, a buried in-tray, a feud with the copier), holds it about 20 seconds, and otherwise rests on the busiest room. A strip of room tiles under the picture shows which rooms are busy, rushed or waiting on you; click one to keep the camera there.
+- d8be887: The office theme goes full office: the cast dresses as an over-the-top corporate crew (a boss in a loud tie and headset, builders with their tie flung over a shoulder and a pencil behind the ear, an intern with a lanyard, a fleece-vested strategist with a laser pointer, a cardiganed reviewer with glasses on a chain, an accountant in a green visor, a designer in a black turtleneck), builders staple sheafs with a giant stapler and stack reams and binders instead of hammering nails and laying bricks, and the rooms get motivational posters, cubicle walls with family photos, ficus plants, fluorescent panels, a water cooler with paper cones and a mug wall. The factory keeps its construction gear.
+- d8be887: The office now has a time of day: morning light through the windows, flat noon, amber late afternoon, dusk and a lamp-lit night, with warm desk lamps that come on as sessions start, the room you zoom into lit like a stage, a flickering light in a room in a rush, windows that look out on a skyline with drifting clouds, a lawn and yard round the building, paper shadows and grain, and room names painted at each room's door instead of floating tabs.
+
 ## 0.4.0
 
 ### Minor Changes
