@@ -1631,6 +1631,12 @@ with `tools/shot-diff.ts`. The only difference is the top bar's "waiting on you"
 element on a CSS scale animation (`hud.ts`, `bb-wait`) that runs on the wall clock, outside the
 frozen scene: any two runs catch it at a different phase.
 
+**Checks under load.** At a load average of 50 to 80, `bun test e2e/` in SwiftShader timed out
+and lost its browser partway on this branch and on the commit before it alike (and a calm idle
+office counted a few renders on both). Run with Chrome on the GPU (`--use-angle=metal` in place of
+the SwiftShader flags, not committed), all 78 pass, the calm zero-frame budgets and the 30-draw
+cap included.
+
 **Tried and not taken.** A render group per puppet cut the crowd further (4.8 to 3.4 ms a frame)
 but adds a draw call per character and computes a puppet's vertices against its own transform on
 the GPU, which can move an antialiased edge by a level; with the alpha switches, a busy office
