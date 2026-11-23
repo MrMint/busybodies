@@ -31,6 +31,7 @@ import { INK } from "./paper";
 import { KITCHEN_WALL, ceilingPanels } from "./propspots";
 import { type AmbientKind, stagingOf } from "./staging";
 import { DOCK_W } from "./layout";
+import { setDepth } from "./depth";
 import { BELT, type Belt, type Fixture, type Rect, type World } from "./world";
 
 /** The belt's speed (world px per second of the life clock) and how fast the other things go. */
@@ -626,7 +627,7 @@ export class Ambient {
 					rosettes.forEach((g, k) => {
 						const a = a0 + (k / rosettes.length) * 2 * Math.PI;
 						g.position.set(Math.cos(a) * (cw / 2 - 4), -ch + Math.sin(a) * 3);
-						g.zIndex = Math.sin(a);
+						setDepth(g, Math.sin(a));
 					});
 					dots.forEach((g, k) => {
 						const a = a0 + (k / dots.length) * 2 * Math.PI;
@@ -729,6 +730,6 @@ function placeCrate(c: Crate): void {
 	c.view.visible = at.visible;
 	c.view.position.set(at.x, at.y);
 	c.view.scale.set(at.scale);
-	c.view.zIndex = at.y;
+	setDepth(c.view, at.y);
 	c.view.alpha = at.alpha;
 }
