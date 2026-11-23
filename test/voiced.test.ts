@@ -187,3 +187,59 @@ describe("auditions and Gemini 3.8 (tools/voice.ts)", async () => {
 		expect(estimate(items.map((i) => ({ ...i, model: "gemini-3.8-flash-tts" }))).usd).toBeLessThan(estimate(items.map((i) => ({ ...i, model: "gemini-3.1-flash-tts-preview" }))).usd);
 	});
 });
+
+describe("the sound lab's parts: syllables and the murmur", async () => {
+	const { segment, envelope, GRAIN_DEFAULTS } = await import("../tools/voice-grains");
+	const { MURMUR_LIMITS, grainPlan, voiceMode } = await import("../src/scene/sass/voiced");
+
+	test("cutting: voiced runs, long ones split at their dip, crumbs dropped, a little air kept", () => {
+		// 10 ms frames: 0.2 s quiet, 0.6 s voiced with a dip in the middle, 0.2 s quiet, a 30 ms blip.
+		const env = [...Array(20).fill(-80), ...Array(28).fill(-10), -25, -25, ...Array(30).fill(-10), ...Array(20).fill(-80), -10, -10, -10, ...Array(10).fill(-80)];
+		const g = segment(env);
+		expect(g.length).toBe(2);
+		expect(g[0]![0]).toBeCloseTo(0.2 - GRAIN_DEFAULTS.padSec, 3);
+		expect(g[1]![1]).toBeCloseTo(0.8 + GRAIN_DEFAULTS.padSec, 3);
+		for (const [a, b] of g) expect(b - a).toBeLessThanOrEqual(GRAIN_DEFAULTS.maxSec + 2 * GRAIN_DEFAULTS.padSec + 1e-9);
+		expect(segment([])).toEqual([]);
+		const tone = new Float32Array(2400).map((_, i) => Math.sin(i / 5) * 0.5);
+		expect(envelope(tone, 24_000).length).toBe(10);
+	});
+
+	const bank = [
+		{ file: "a.webm", at: [[0, 0.2], [0.25, 0.4], [0.5, 0.7]] as [number, number][] },
+		{ file: "b.webm", at: [[0.1, 0.3]] as [number, number][] },
+	];
+
+	test("a line becomes syllables: as many as its vowels, capped, never the same twice running, the same every time", () => {
+		const p = grainPlan("s:1", "I was resting my context.", bank);
+		expect(p.length).toBe(babbleOf("I was resting my context.").syllables);
+		expect(grainPlan("s:1", "I was resting my context.", bank)).toEqual(p);
+		expect(grainPlan("s:2", "I was resting my context.", bank)).not.toEqual(p);
+		for (let i = 1; i < p.length; i++) expect(`${p[i]!.file}${p[i]!.start}`).not.toBe(`${p[i - 1]!.file}${p[i - 1]!.start}`);
+		expect(grainPlan("s:1", "I was resting my context, and then some more, and more.", bank, 4).length).toBe(4);
+		expect(grainPlan("s:1", "Hello.", [])).toEqual([]);
+	});
+
+	test("the tune: a question ends up, a full stop ends down", () => {
+		const q = grainPlan("s:1", "Is this binder load-bearing?", bank);
+		const d = grainPlan("s:1", "Done before lunch. Taking lunch anyway.", bank);
+		expect(q.at(-1)!.cents).toBeGreaterThan(q[0]!.cents);
+		expect(d.at(-1)!.cents).toBeLessThan(d[0]!.cents);
+	});
+
+	test("the murmur takes the other said bubbles, more often than the front, never key beats", () => {
+		const m = new Mouth({ graceMs: 0, murmur: true });
+		m.live(0);
+		expect(m.choose([said("s:1", "No rush. Some rush.")], 1)).toBeUndefined();
+		expect(m.choose([said("s:1", "Pass the clamp.", "chatter")], 1)?.who).toBe("s:1");
+		expect(m.choose([said("s:2", "Left a bit.", "chatter")], 1 + MURMUR_LIMITS.gapMs - 1)).toBeUndefined();
+		expect(m.choose([said("s:2", "Left a bit.", "chatter")], 1 + MURMUR_LIMITS.gapMs)?.who).toBe("s:2");
+		expect(MURMUR_LIMITS.gapMs).toBeLessThan(L.gapMs);
+	});
+
+	test("?voice= picks a mode, and anything else is the synth", () => {
+		expect(voiceMode("syllables")).toBe("syllables");
+		expect(voiceMode("loud")).toBe("synth");
+		expect(voiceMode(null)).toBe("synth");
+	});
+});

@@ -14,6 +14,7 @@ import { installInspector } from "./inspector";
 import { watchVisibility } from "./visibility";
 import { Sound } from "./sound";
 import { Speech } from "./speech";
+import { voiceMode } from "../scene/sass/voiced";
 import { type Bridge, installShell } from "./shell";
 import { placeholders } from "./placeholder";
 import { Atlas, buildPoseSheet, rigCharacters, rigTheme } from "../scene/rig";
@@ -176,7 +177,8 @@ function blank(): void {
 			});
 	director.on((events, world) => sound?.hear(events, world));
 	// Voiced lines (src/mainview/speech.ts): clips that shipped, babble for the rest, on key beats
-	// only, through Sound's context. ?voicebase=<url/> reads the clips from elsewhere and
+	// only, through Sound's context; ?voice= picks how characters sound (sass/voiced.ts
+	// `VOICE_MODES`). ?voicebase=<url/> reads the clips from elsewhere and
 	// ?speechgrace=<ms> sets how long it stays quiet once live (tests).
 	const speech = sound
 		? new Speech({
@@ -192,8 +194,21 @@ function blank(): void {
 				},
 				base: params.get("voicebase") ?? "",
 				graceMs: params.has("speechgrace") ? Number(params.get("speechgrace")) : undefined,
+				mode: voiceMode(params.get("voice")),
 			})
 		: undefined;
+	// The sound lab (mainview/lab.ts, design/sound.md): its own timeline of bubbles and a panel to
+	// switch how characters sound, live. Only with ?lab; loaded on demand.
+	if (speech && params.has("lab"))
+		void import("./lab").then(({ startLab }) =>
+			startLab({
+				speech,
+				theme: () => theme,
+				cast: () => Object.values(director.world?.actors ?? {}).filter((a) => !a.gone).map((a) => a.key),
+				say: (key, text) => office.say(key, text, "said"),
+				live: () => !!sound?.bus(),
+			}),
+		);
 	/** The tray's Sound and Calm office toggles, live. */
 	const setToggles = (change: { sound?: boolean; calm?: boolean }) => {
 		if (change.calm !== undefined) calmOn = change.calm;

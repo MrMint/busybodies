@@ -31,7 +31,9 @@
 // None of it is written anywhere.
 import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync, copyFileSync, readdirSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
-import { VOICED, corpus, type VoiceLine, type VoiceManifest, voicesFor } from "../src/scene/sass/voiced";
+import { type GrainClip, type Take, VOICED, corpus, lineKey, type ThemeVoices, type VoiceLine, type VoiceManifest, voicesFor } from "../src/scene/sass/voiced";
+import type { TriggerKind } from "../src/scene/sass/types";
+import { sliceGrains } from "./voice-grains";
 import { hash } from "../src/scene/sass/types";
 import { THEME_IDS, type ThemeId } from "../src/scene/theme/id";
 import { CAST, type CastVoice, DELIVERIES, MOCHI_SPEAK, PREBUILT, REACTIONS, promptFor } from "./voice-cast";
@@ -532,6 +534,53 @@ async function cmdAudition(): Promise<void> {
 	console.log(`\nvoice: ${done} recorded, ${failed} failed. Next: bun tools/voice.ts listen, then open /audition`);
 }
 
+// --- the sound lab -------------------------------------------------------------------------------
+// The app with ?voicebase=http://127.0.0.1:4477/lab/ plays your kept audition takes as if they had
+// shipped: their full lines, their reactions, and syllable banks cut from their mochi-speak.
+// Nothing is copied into the app; design/sound.md says what the lab is for.
+
+/** Which audition line answers which beat in "reactions" mode: a wait asks, done celebrates, waking is surprised. */
+const REACTION_OF: Partial<Record<TriggerKind, number>> = { waiting: 3, finished: 4, woken: 5 };
+
+/** The lab's manifest from the kept takes (falling back to "maybe" when nothing is kept). */
+export async function labManifest(a: Auditions = loadAuditions()): Promise<VoiceManifest> {
+	const m: VoiceManifest = { version: 1, themes: {} };
+	for (const theme of THEME_IDS) {
+		const picks = Object.entries(a.picks[theme] ?? {});
+		const want = picks.some(([, v]) => v === "keep") ? "keep" : "maybe";
+		const kept = picks.filter(([, v]) => v === want).map(([k]) => k.split("|") as [string, string, string]);
+		if (!kept.length) continue;
+		const t: ThemeVoices = { voices: [], lines: {}, grains: {}, reactions: {}, ...(a.pitch[theme] ? { pitch: a.pitch[theme] } : {}) };
+		for (const [model, voice, delivery] of kept) {
+			const id = `${voice}-${delivery}`;
+			t.voices.push(id);
+			const take = (n: number): (Take & { text: string }) | undefined => {
+				const file = `audition/${theme}/${model}/${voice}-${delivery}-${n}.webm`;
+				const x = a.takes[file];
+				return x ? { voice: id, file, ms: x.ms, text: x.text } : undefined;
+			};
+			for (let n = 0; n < 3; n++) {
+				const x = take(n);
+				if (!x) continue;
+				const line = (t.lines[lineKey(x.text)] ??= { text: x.text, takes: [] });
+				line.takes.push({ voice: x.voice, file: x.file, ms: x.ms });
+			}
+			for (const [trigger, n] of Object.entries(REACTION_OF)) {
+				const x = take(n!);
+				if (x) (t.reactions![trigger as TriggerKind] ??= []).push({ voice: x.voice, file: x.file, ms: x.ms });
+			}
+			const bank: GrainClip[] = [];
+			for (const n of [6, 7, 8]) {
+				const x = take(n);
+				if (x) bank.push({ file: x.file, at: await sliceGrains(join(WORK, x.file)) });
+			}
+			if (bank.length) t.grains![id] = bank;
+		}
+		m.themes[theme] = t;
+	}
+	return m;
+}
+
 /** What you kept, by theme: the start of a new cast. */
 function cmdPicks(): void {
 	const a = loadAuditions();
@@ -561,6 +610,16 @@ function cmdListen(): void {
 		async fetch(req) {
 			const url = new URL(req.url);
 			if (url.pathname === "/") return new Response(page, { headers: { "content-type": "text/html; charset=utf-8" } });
+			// The sound lab: the app fetches these from another port, so they say anyone may.
+			if (url.pathname.startsWith("/lab/")) {
+				const cors = { "access-control-allow-origin": "*" };
+				if (url.pathname === "/lab/voice/manifest.json") return Response.json(await labManifest(), { headers: cors });
+				if (url.pathname === "/lab/ambience/sources.json") return Response.json([], { headers: cors });
+				const rel = decodeURIComponent(url.pathname.slice("/lab/voice/".length));
+				if (!url.pathname.startsWith("/lab/voice/") || rel.includes("..")) return new Response("no", { status: 400, headers: cors });
+				const f = Bun.file(join(WORK, rel));
+				return (await f.exists()) ? new Response(f, { headers: { ...cors, "content-type": "audio/webm" } }) : new Response("not found", { status: 404, headers: cors });
+			}
 			if (url.pathname === "/audition") return new Response(auditionPage, { headers: { "content-type": "text/html; charset=utf-8" } });
 			if (url.pathname === "/babble.js") return new Response(await babbleJs, { headers: { "content-type": "text/javascript" } });
 			if (url.pathname === "/auditions.json") {

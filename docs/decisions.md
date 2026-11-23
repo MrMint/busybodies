@@ -1808,3 +1808,23 @@ next 3 s over its head so it loops without a seam, and records its source and li
 (`LYRIA_OK`, the same carve-out); its request shape is the `:predict` one and is unverified until
 the first paid run, and since Lyria is a music model a CC0 recording is the better first try. The
 app plays a theme's loop under the synth's tone if one shipped; none has.
+
+## 2026-11-23: a sound brief and a sound lab, before choosing a voice
+
+**Decide how mochis sound in context, not in a grid.** The office auditions settled the timbre (14
+voices kept, all Gemini 3.8 "cartoon", pitched up about 6 semitones) but not the shape: babble felt
+closer to a crowd of mochis than words. `design/sound.md` is the brief (what sound is for, its four
+layers, the voice candidate, the open questions), and `?lab` is where the questions are answered: a
+timeline of chatter and key beats over the demo office, and a panel that switches the voice mode
+live. `?voice=` (sass/voiced.ts `VOICE_MODES`) picks synth babble (the default, unchanged),
+syllables, syllables with voiced reactions on key beats, or syllables with whole lines. In the
+three new modes the said bubbles that aren't key beats murmur quietly under the front (a second
+`Mouth` under `MURMUR_LIMITS`: 2.5 s apart, 15 s per character, 3 in 10 s).
+
+**Syllables come from recorded mochi-speak.** tools/voice-grains.ts cuts a clip into syllables by
+loudness (voiced runs within 30 dB of its peak, joined over 30 ms gaps, split at their quietest frame
+until each is under 0.35 s, a 15 ms margin kept); `grainPlan` strings them into a line's babble in the
+character's own voice, never the same syllable twice running, tuned like the synth babble; the app
+plays slices of the clips with 8 ms fades. The 14 kept voices' three mochi-speak takes give 272
+syllables. The lab reads them, and the kept takes' lines and reactions, from `tools/voice.ts listen`
+(`/lab/`, CORS open, on 127.0.0.1 only), so nothing is copied into the app until a mode is chosen.

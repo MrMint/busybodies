@@ -32,6 +32,7 @@ real scene; the app draws with PixiJS.
 | `boards/Paper*`, `Pixel*`, `Putty*` | Round 1's three styles. Cut paper won, then became mochi |
 | `boards/*.css`, `canvas.json` | The boards' styles and the design canvas's layout |
 | `generators/` | The Python that writes the boards (`gen2.py`, `office.py`, `r3.py`), and `shot.sh` for headless Chrome renders |
+| `sound.md` | The sound brief: what sound is for, its layers, the voice candidate, and the questions the sound lab (`?lab`) answers |
 | `renders/` | Stills of the main boards, for reading without a browser. They're frozen at the start of each animation |
 
 To regenerate: `python3 generators/gen2.py` writes `boards/` and a `preview/` folder (gitignored)

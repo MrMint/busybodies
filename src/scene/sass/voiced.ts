@@ -74,7 +74,32 @@ export interface ThemeVoices {
 	lines: Record<string, { text: string; takes: Take[] }>;
 	/** Semitones every clip in the theme is shifted by (the audition's pitch slider): a stock voice made small. */
 	pitch?: number;
+	/**
+	 * Syllable banks by voice id: recorded mochi-speak clips and the syllables cut from them
+	 * (`[start, end]` in seconds), that the app strings into babble in that voice.
+	 */
+	grains?: Record<string, GrainClip[]>;
+	/** Short voiced reactions by beat ("Hm?" for a wait, "Ta-da!" for done), in any voice of the pool. */
+	reactions?: Partial<Record<TriggerKind, Take[]>>;
 }
+
+/** A recorded clip of mochi-speak and the syllables in it. */
+export interface GrainClip {
+	file: string;
+	/** Each syllable's start and end, in seconds into the clip. */
+	at: [number, number][];
+}
+
+/**
+ * How characters sound (design/sound.md), switched with `?voice=` while we decide:
+ *   synth      a key beat plays its clip if one shipped, else the synthesised babble (the first cut)
+ *   syllables  every said bubble babbles from the theme's syllable banks; key beats in front, the rest murmured
+ *   reactions  as syllables, but a key beat says a short voiced reaction ("Ta-da!") when there is one
+ *   lines      as syllables, but a key beat speaks its whole line when it was recorded
+ */
+export const VOICE_MODES = ["synth", "syllables", "reactions", "lines"] as const;
+export type VoiceMode = (typeof VOICE_MODES)[number];
+export const voiceMode = (v: string | null | undefined): VoiceMode => ((VOICE_MODES as readonly string[]).includes(v ?? "") ? (v as VoiceMode) : "synth");
 
 /** `voice/manifest.json`: approved takes only (tools/voice.ts `ship` writes it). */
 export interface VoiceManifest {
@@ -124,6 +149,8 @@ export const babbleHz = (who: string): number => 170 + (hash(`babble:${who}`) % 
 
 // --- Turn taking --------------------------------------------------------------------------------
 
+export type SpeechLimits = { graceMs: number; gapMs: number; perWhoMs: number; perLineMs: number; windowMs: number; perWindow: number };
+
 export const SPEECH_LIMITS = {
 	/** Nothing is spoken until the room has been live this long: opening onto a waiting room is quiet. */
 	graceMs: 10_000,
@@ -137,6 +164,20 @@ export const SPEECH_LIMITS = {
 	windowMs: 60_000,
 	perWindow: 3,
 } as const;
+
+/**
+ * The murmur: ordinary said bubbles (chatter, reactions, the busy lines), babbled quietly under the
+ * key beats. More often than a key beat, never two on top of each other, and never the same
+ * character twice in a row.
+ */
+export const MURMUR_LIMITS: SpeechLimits = {
+	graceMs: SPEECH_LIMITS.graceMs,
+	gapMs: 2_500,
+	perWhoMs: 15_000,
+	perLineMs: 60_000,
+	windowMs: 10_000,
+	perWindow: 3,
+};
 
 /** A bubble that might be spoken: from the voice's `Say`. */
 export interface Heard {
@@ -158,11 +199,17 @@ export class Mouth {
 	#recent: number[] = [];
 	/** How often each line key was spoken, for round-robin takes. */
 	readonly turns = new Map<string, number>();
-	readonly #graceMs: number;
+	readonly #limits: SpeechLimits;
+	readonly #wants: (h: Heard) => boolean;
 
-	/** `graceMs` overrides the grace (`?speechgrace=0` in tests). */
-	constructor(o: { graceMs?: number } = {}) {
-		this.#graceMs = o.graceMs ?? SPEECH_LIMITS.graceMs;
+	/**
+	 * `graceMs` overrides the grace (`?speechgrace=0` in tests). `murmur` makes the quiet layer
+	 * instead: it takes the said bubbles that aren't key beats, under `MURMUR_LIMITS`.
+	 */
+	constructor(o: { graceMs?: number; murmur?: boolean } = {}) {
+		const base = o.murmur ? MURMUR_LIMITS : SPEECH_LIMITS;
+		this.#limits = { ...base, graceMs: o.graceMs ?? base.graceMs };
+		this.#wants = o.murmur ? (h) => h.kind === "said" && !VOICED.includes(h.trigger) : (h) => h.kind === "said" && VOICED.includes(h.trigger);
 	}
 
 	/** Live from `now` (sound on and on screen); `undefined` when not live. Restarts the grace. */
@@ -173,13 +220,13 @@ export class Mouth {
 
 	/** The one bubble to speak now, if any; it is booked against the cooldowns. */
 	choose(heard: readonly Heard[], now: number): Heard | undefined {
-		if (this.#since === undefined || now - this.#since < this.#graceMs) return undefined;
-		const L = SPEECH_LIMITS;
+		const L = this.#limits;
+		if (this.#since === undefined || now - this.#since < L.graceMs) return undefined;
 		this.#recent = this.#recent.filter((t) => now - t < L.windowMs);
 		if (this.#recent.length >= L.perWindow) return undefined;
 		if (this.#last !== undefined && now - this.#last < L.gapMs) return undefined;
 		const ok = heard
-			.filter((h) => h.kind === "said" && VOICED.includes(h.trigger))
+			.filter(this.#wants)
 			.filter((h) => now - (this.#who.get(h.who) ?? -Infinity) >= L.perWhoMs)
 			.filter((h) => now - (this.#line.get(lineKey(h.text)) ?? -Infinity) >= L.perLineMs)
 			.sort((a, b) => (RANK[a.trigger] ?? 9) - (RANK[b.trigger] ?? 9));
@@ -193,4 +240,53 @@ export class Mouth {
 		this.turns.set(key, (this.turns.get(key) ?? 0) + 1);
 		return h;
 	}
+}
+
+// --- Syllable babble ----------------------------------------------------------------------------
+
+/** One syllable to play: which clip, where in it, how far to shift it, and the pause after. */
+export interface GrainStep {
+	file: string;
+	start: number;
+	end: number;
+	/** Cents on top of the theme's pitch and the character's own. */
+	cents: number;
+	/** Seconds of quiet before the next syllable. */
+	gap: number;
+}
+
+/** A small deterministic sequence from a seed (xorshift), as sound.ts's `seq`. */
+function seq(seed: number): () => number {
+	let s = seed >>> 0 || 1;
+	return () => {
+		s ^= s << 13;
+		s ^= s >>> 17;
+		s ^= s << 5;
+		return (s >>> 0) / 0x100000000;
+	};
+}
+
+/**
+ * A line as syllables from a voice's bank: as many as the line has vowel groups (babbleOf), each a
+ * syllable picked from the key and the words (never the same one twice running), tuned like the
+ * synth babble: falling at a full stop, rising at "?", up at "!". `max` caps it (the murmur is short).
+ */
+export function grainPlan(who: string, text: string, bank: readonly GrainClip[], max = 14): GrainStep[] {
+	const pool = bank.flatMap((c) => c.at.map(([start, end]) => ({ file: c.file, start, end })));
+	if (!pool.length) return [];
+	const { syllables, tune } = babbleOf(text);
+	const n = Math.min(max, syllables);
+	const r = seq(hash(`grain|${who}|${text}`));
+	const out: GrainStep[] = [];
+	let last = -1;
+	for (let i = 0; i < n; i++) {
+		let k = Math.floor(r() * pool.length);
+		if (k === last && pool.length > 1) k = (k + 1) % pool.length;
+		last = k;
+		const x = n > 1 ? i / (n - 1) : 0;
+		const shape = tune === "rise" ? 500 * x * x - 100 : tune === "bright" ? 200 - 150 * x + (i === n - 1 ? 250 : 0) : 150 - 350 * x;
+		const g = pool[k]!;
+		out.push({ file: g.file, start: g.start, end: g.end, cents: Math.round(shape + (r() - 0.5) * 120), gap: 0.015 + r() * 0.05 + (r() < 0.12 ? 0.08 : 0) });
+	}
+	return out;
 }
