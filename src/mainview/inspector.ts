@@ -12,6 +12,9 @@ import type { ThemeId } from "../scene/theme/id";
 import type { Visibility } from "./visibility";
 import type { SoundState } from "./sound";
 import type { Camerawork, ShotReport } from "./shots";
+import type { Story } from "../scene/director/story";
+import type { RoomDecor } from "../scene/office/decor";
+import type { Diary } from "../shared/diary";
 
 export interface Inspector {
 	/** True once the first snapshot has been drawn. */
@@ -55,13 +58,18 @@ export interface Inspector {
 	setTheme(id: ThemeId): void;
 	/** The factory's robot arms: whether each moves, and its jobs. */
 	arms(): Office["arms"];
+	/** The theme's staging (office/staging.ts): its grammar, the belts and the conveyor, and what
+	 * moves on its own (ambient pieces by kind, parts on the belts, crates riding to the dock). */
+	staging(): Office["staging"];
 	/** Crew-build pieces moving now (or waiting on an arm). */
 	bricks(): Office["bricks"];
 	/** Sound: on or off, the AudioContext's state, the last earcons scheduled (undefined in the
 	 * compact window, which never plays sound). Set by main.ts. */
 	sound(): SoundState | undefined;
-	/** The tray's Sound and Calm office toggles, as the app sends them over RPC. Set by main.ts. */
-	setToggles(change: { sound?: boolean; calm?: boolean }): void;
+	/** The tray's Sound and Calm office toggles and its Look, as the app sends them over RPC. Set by main.ts. */
+	setToggles(change: { sound?: boolean; calm?: boolean; look?: string }): void;
+	/** The look (mainview/look.ts), and the pixel pass's texture size in its own pixels. Set by main.ts. */
+	look(): { look: string; pixel?: { width: number; height: number; resolution: number } };
 	/** The following camera (compact, or ?follow): its stop, why, until when, pinned, cuts made,
 	 * and the room tiles. Undefined when the camera doesn't follow. */
 	shot(): ShotReport | undefined;
@@ -72,6 +80,13 @@ export interface Inspector {
 	light(): Office["light"];
 	/** Force the hour (0 to 23) as ?hour= does, or undefined to follow the clock. */
 	setHour(hour: number | undefined): void;
+	/** Story and continuity: the director's story (replies, send-offs, its log and headlines), the
+	 * diary, and what the walls (decor per room) and the lobby's board show. Set by main.ts. */
+	story(): { world?: Story; diary?: Diary; decor: RoomDecor[]; board?: SignText } | undefined;
+	/** As if the window had been off screen for `ms` and just came back ("while you were out"). Set by main.ts. */
+	away(ms: number): void;
+	/** Replace the diary, as the Bun process would send it. Set by main.ts. */
+	setDiary(diary: Diary): void;
 }
 
 /** The world without Maps, for JSON. */
@@ -184,9 +199,11 @@ export function installInspector(
 		theme: () => themes?.current() ?? "office",
 		setTheme: (id) => themes?.set(id),
 		arms: () => office.arms,
+		staging: () => office.staging,
 		bricks: () => office.bricks,
 		sound: () => undefined,
 		setToggles: () => {},
+		look: () => ({ look: "plain" }),
 		shot: () => shots?.report(),
 		pin: (area) => {
 			shots?.pin(area);
@@ -197,6 +214,9 @@ export function installInspector(
 			office.setHour(hour);
 			scene.redraw();
 		},
+		story: () => undefined,
+		away: () => {},
+		setDiary: () => {},
 	};
 	window.__busybodies = inspector;
 	return Object.assign(inspector, { shots: (c: Camerawork) => void (shots = c) });

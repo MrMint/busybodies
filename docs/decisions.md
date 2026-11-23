@@ -1098,6 +1098,197 @@ new `setToggles` RPC request. Every stream's e2e run was under a load average of
 others, where the unchanged base failed the same way; the suite was rerun here once the machine was
 quiet.
 
+## 2026-11-22: lived in, wave 3, stream G (themes own their staging)
+
+**A theme stages the place, not just its paint.** `SceneTheme.staging` (appended, optional;
+`office/staging.ts`) is a small grammar over the one floor plan: `bay` ("desks" or "line"), `hall`
+("corridor" or "conveyor"), `ambient` (what moves on its own) and `habits` (the idle rotation). A
+theme without one gets `DEFAULT_STAGING`: the office's behaviour before this wave (desks, a
+corridor, nothing ambient, the rig's seven habits), so a new theme only says what it changes. The
+layout reads the bay and the hall and puts the result on the world (`World.staging`, `Area.belts`,
+`World.conveyor`); the director reads the habits from the same place. Staging never moves a room, a
+desk, a lead or a station (tested): only the crew's spots and what the floor adds, so every
+solved reach, prop spot and arm keeps working. What a staging adds is painted by the theme
+(`SceneTheme.stage`: belt, slats, rollers, part, booth, dock, crate) and placed by the office.
+
+**The factory's bays are lines.** A belt runs across each row that has a desk, the row's cells end
+to end, in front of the desks. The crew stand along it: three behind it facing downstream (the belt's
+front draws over their feet, so they work on it), then a pair in front facing each other across their
+work; past those, the free cells and the crowd as before. The foreman stands in a booth at its bench:
+posts, wired glass and a top rail framing the lead where it already stood (no slot moved), the rail
+no higher than the back wall's signs come down. Tool calls ride the belt as parts (a blueprint roll,
+a valve, a nut, a gear, a billet, a gauge for read, web, search, edit, shell, test), two per kind
+held at a desk on the line; only kinds the director holds (`Actor.work`, passed through `Placed.work`)
+show, so a single call never puts a part on the belt. Idle, the belts run empty. The hallway's belt
+is a conveyor: when a crew build is topped by a PR, a crate rides it from the bay to the dock at the
+hallway's right end (acting, at the acting rate, once; then gone).
+
+**Staged things are baked sprites.** A belt's slats and hazard stripes are far more vertices than
+Pixi batches as a Graphics, and an unbatched Graphics sorted between sprites in the depth layer
+split the batches: the busy factory went from ~10 WebGL draws to 70. Every staged or ambient
+drawing is now baked once per key into a shared texture (at 2x) and placed as a sprite; the busy
+factory is back to 6–12 draws.
+
+**Ambient life rides the life clock.** `office/ambient.ts` draws each piece once and moves only
+transforms and alpha from the office's life clock, every phase and period from a hash of an id. The
+office: steam off the coffee machine, a ceiling fan over a free corner of the kitchen (seen from
+below, so it turns like the floor is drawn), the copier's light blinking. The factory: a turning
+beacon on the press while a build runs in the bay, steam puffing from the aisle's floor vents, weld
+sparks off a line with parts on it. The belt's slats slide at 22 px/s. Calm or off screen nothing
+moves (the clock stops); `Office.animating` counts ambient life as life, so a living office stays at
+20 fps and only a riding crate counts as acting.
+
+**Per-theme habits, through the rotation.** `habitAt` takes the theme's set; the timing (grid,
+replays, turns, calm's ten minutes) is the same for any set. The factory's: sitting on an oil drum,
+cards on a pallet, kicking the vending machine, then four of the rig's. The three new poses use new
+rig parts (`bk-drum`, `hl-hand`, `w-pallet`/`palletSlap`, `w-vending`/`vendingRock`/`vendingDrop`,
+painted in the paper rig) and are played only by name (`rarity: 0`, no `habit` flag), so the office's
+seven and the idle trigger are untouched. The puppet's back prop is now by name, not only the chair.
+A foreman's habit plays in its booth, so the bench hides the pallet and most of the drum; the cards
+and the vending machine's top show. Moving idle foremen out of the booth for their habit is left for
+later (it is the director's placing).
+
+**Left for later.** Office ambient beyond the kitchen and the copier (a fan per room, the printer's
+light going amber while it prints); the conveyor's crates come from the bay's middle rather than
+following the arm's crate out of the bay; the factory's vents are in the hallway only.
+
+## 2026-11-22: lived in, wave 3, stream H (a third theme: the Line)
+
+`?theme=kitchen` ("The Line" in the tray's Theme menu and the settings sheet) proves the theme seam
+with a restaurant kitchen, on the office's floor plan (no staging of its own). It needed no change to
+`SceneTheme`, the layout, the director or the office: a scene theme (`theme/kitchen.ts`), a rig
+(`rig/kitchen.ts`), words, and registration. The places that picked a theme with
+`id === "factory" ? ... : ...` (`sceneTheme`, `rigTheme`, `wordsFor`) are now tables keyed by
+`ThemeId`, so the type checker names every place a fourth theme must fill.
+
+Project rooms are stations on the line: subway tile under a steel extraction hood, red quarry tiles
+with a drain, the room's colour as a band of tiles. The hallway is the line itself, a rubber mat
+down the middle. The meeting room is the pass (a shelf under heat lamps, a ticket spike), the
+kitchen is staff meal with the walk-in's door, the lobby the host stand (the night watch naps in a
+giant stockpot), your office the chef's table, where the sign says SERVICE!. The planner is the
+ticket rail (ORDERED, FIRING, SERVED), the in-tray the mise tray of deli tubs, the mugs quart deli
+cups, the test lamp a heat-lamp bulb, the drawers a lowboy, the skip the scraps bucket, the crew
+build a layer cake with an ORDER UP pick.
+
+The rig repaints by part name as the office's and the factory's do, so every pose plays unchanged.
+The cast is in chef whites (bodies), told apart by headwear: the lead a tall toque with a headset and
+the neckerchief (the project accent), builders red bandanas and butcher's stripes, scouts (runners) a
+backwards cap and a black waist apron with an order pad, explorers (foragers) a bucket hat with a
+sprig, reviewers a sous chef's toque with tasting spoons, verifiers a hairnet and a probe
+thermometer, designers (platers) a short black toque and a squeeze bottle. The work: a meat mallet
+pounding a cutlet flatter each strike on a butcher block, a pasta machine's crank, a layer cake for
+the brick stack, a blowtorch, the menu for the blueprint; at the stations a lowboy drawer of deli
+tubs, a sandwich press on an oven (a burnt toastie for the jam), tasting with a spoon and bowls that
+get a green or red pick, a takeout order pad, the pass for the outbox (the PR is a plate under a
+cloche), a scraps bin. The paper rig's brass service bell stays, and calls "service!". Tests hold
+every repaint within 6 rig units of the paper part (no exemptions) and the cutlet's top on each
+nail stroke. No ambient life of its own (stream G owns per-theme life). `docs/rig/pose-sheet-kitchen.png`
+is the sheet.
+
+Left: the sass voice still writes office lines on the Line's signs (OUT OF OFFICE, ONE CUP PER GREEN
+BUILD), the compact strip's tiles use the areas' office names in every theme, the copier poses still
+feed a paper sheet (the sheet parts are the paper rig's), sound uses the office's hum, and pose
+titles still speak of copiers and stamps.
+
+## 2026-11-22: lived in, wave 3, stream I (story and continuity)
+
+**A diary of counts and kinds, kept by the Bun process.** The office remembers through
+`diary.json`, next to `settings.json` in the app's data folder (`src/bun/diary.ts`), never in the
+repo. Per local day it holds counts (sessions, hires, PRs opened and merged, red test runs, red
+streaks fixed, sessions finished and long ones, compactions), the same by project, the regulars who
+came in, and marks that stop a restart counting the same thing twice. Nothing in it names anything:
+a project is `p` plus a 32-bit FNV hash of its name, a regular is that hash and one of the rig's
+seven costumes (never the agent tool's free-text agent type), a mark is a hash. `diaryOf` reads any
+input back through a whitelist (kinds, `YYYY-MM-DD` days, hash-shaped keys), so a hand-edited or
+torn file cannot carry text in. It keeps 21 days and at most 3000 marks a day (a busy day is a few
+kilobytes); writes are a temp file renamed over the old one, held back 5 s so a busy office writes
+it every few seconds at most, and flushed on exit. The pure part (`src/shared/diary.ts`) is shared:
+the webview gets the diary over RPC (a `diary` request on load, a `diary` message whenever it
+changes, sent just before the snapshot that changed it), and `?demo` keeps one in memory from its
+own invented snapshots with the same code.
+
+**Beats live in the director; decor lives on the walls.** The story's beats are pure, in
+`director/story.ts`, with their memory in `World.story` so a replay tells the same story; direct.ts
+calls in at a few marked places. A merged PR (the `prs[].state` the watcher already captured) sends
+the lead to the room's outbox for the reply: it reaches in (`mailDrop`), carries it back
+(`envelopeCarry`) and celebrates with a busy teammate, or waves to you alone. A red streak
+(`DIARY.reds` = 2 red runs in a row, per character) going green earns a `flourish`, and the crew
+look up at it through the same ripple a red test uses. A session that ran 90 minutes or more gets a
+send-off when it ends: up to five characters standing in its room (then the lobby and kitchen) wave,
+the nearest first, 260 ms apart, looking at it as it walks out. A PR or a test already in that state
+when the office first sees it is history, not news. All of these reuse existing poses, so the rig and
+its pose sheet are unchanged.
+
+**"While you were out" and the day's ledger share the lobby's frame.** The director logs its beats
+(12 hours, 200 entries). Coming back after a while away (the view now carries `since`, when the
+window went, beside `back`), the counts between the two go up on the lobby's frame for 90 s. At dusk
+and night the frame shows the day's ledger from the diary. Otherwise it keeps whatever it said; the
+office restores it when the story lets go.
+
+**Rooms collect decor through the week** (`office/decor.ts`, its own layer over the walls, redrawn
+only when it changes, never per frame): a framed PR per merge this week in the gaps between the
+back wall's items, a pennant per day the project came in over its planner, a gold star on its sign
+per red streak fixed. Colours come from the theme's slab, lamp, glow, sky and lawn, and the words
+from a table by theme id with the office's as the default, so a new theme draws it unchanged.
+
+**Regulars are keyed by project and costume.** `regularsOf` gives each character
+`<project key>:<role>:<n>` (n its place among the same costume in that project); `regularOf` picks a
+short name and maybe glasses from the key alone, and the puppet takes the key as its id, so its loop
+phases and variants are the regular's own day after day. The name shows on the lead's desk card and
+on crew task tags only once the diary has seen that regular on two days.
+
+**What is left.** The framed PR goes up when the diary hears of the merge, not when the lead gets
+back with the reply. Regulars have only glasses for an accessory; more would need new parts in
+every theme's rig painters. Send-off wavers interrupt busy work for one wave; a quieter office
+might skip the busy ones.
+
+## 2026-11-22: looks as render passes (wave 3, stream J)
+
+**A look is a render pass, not a second scene.** `?look=` (the settings cog's Look, the tray's Look
+menu, saved as `look` in settings.json; ids in `shared/look.ts`) picks plain, pixel or night.
+`mainview/look.ts` wraps `renderer.render`: when the stage renders to the screen in the pixel look,
+the office first renders into a `RenderTexture` at a quarter of the resolution (one look pixel is 4
+CSS px; 2 in the 440-wide compact window, where 4 left a mochi a handful of blocks), with
+`scaleMode: "nearest"` and no antialias, and a sprite of that texture is the only thing on the
+stage. The pass rides whatever render was going to happen (ticker frame, redraw, `step`), so it adds
+no frames: hidden and calm-idle stay at zero, and `e2e/look.test.ts` holds every budget under it.
+The office leaves the stage rather than being hidden, so the stage stays the event root (Pixi
+hit-tests `lastObjectRendered`) with its hit area and `pointertap`; the office's own hit testing is
+geometry (`office.hit`), so clicks, keys and camera moves work unchanged. Measured in headless
+Chrome on a frozen busy office at DPR 2: on the GPU a frame cost 3.0 ms plain and 3.0–3.4 ms pixel
+(noise); in SwiftShader the pixel frame was cheaper (113–152 ms against 284–345 ms), since the
+office fills a sixteenth of the pixels. The night look is `office.setHour(22)`, the light layer's
+night phase held; leaving it gives the hour back to `?hour=` or the clock.
+
+**Life draws at 10 fps, on a shared beat grid.** `tools/profile.sh idle --busy 0 --rate 0` with the
+window on screen: calm 0.4% Bun and 0.1% WebContent; life on 3.1% and 5.3%, and the same (3.1%,
+5.6%) on a full office (12 sessions, 8 agents), so life's cost is the frames, not the cast. Load
+average was 35 to 80 throughout (other projects), so the numbers are rough. Blink and glance
+onsets now snap to a 100 ms grid (`LIFE_GRID_MS` in `rig/life.ts`, still a pure function of id and
+time), and life alone runs at 1000 / 100 = 10 fps instead of 20: a blink (130 ms), the gap in a
+double blink (140 ms) and a pose beat (130 ms) each outlast a frame, so none is skipped (tested
+from any phase). An A/B of the two rates afterwards could not be read: the window was off screen
+for every run (all four under 1%), so the saving is expected (half the frames) but not measured.
+
+**Compact is 440 × 340.** A room is about square, so 40 px more height fills the shot with the room
+instead of hallway and lawn; the cuts read better in `tools/shoot.ts` (compact-cut*).
+
+## 2026-11-22: lived in, wave 3 merged
+
+Streams G, H, I and J merged into one branch in that order. Conflicts were all side-by-side
+additions: the office's layers (the story's decor under the shade, the ambient layer over it), the
+settings RPC (the Look rides `setToggles` and `settings`; the diary is its own request and message),
+and the tray menu tests. Two seams needed code: the Line got its own story words
+(`KITCHEN_STORY`: covers, plates at the pass, dishes saved), and `STORY_WORDS` is now keyed by
+`ThemeId`, so a fourth theme can't forget them. The pose sheets were regenerated after the merge,
+with G's habit poses, J's theme-neutral titles and H's kitchen sheet.
+
+**Life runs at 30 fps.** Stream J dropped it to 10 (its cost is frames, not characters, so the rate
+is what saves CPU). Compared side by side (`?lifefps=`), 10 looked bad and 20 still choppy next to
+acting, so life now runs at acting's 30. Visuals come first; a performance pass over the whole
+scene is deferred until the look settles. The 100 ms beat grid stays: it costs nothing and lets a
+lower rate show every blink when that pass comes.
+
 ## 2026-11-22: fit anyone's setup, not just ours
 
 The office was tuned to one harness: custom subagent types named `scout`, `reviewer`, `verifier`
@@ -1111,7 +1302,7 @@ costumes, their poses, the meeting room and the lines that name them never showe
 costumes (`Plan` designs, `claude-code-guide` scouts). A generic type says nothing, so the task its
 parent gave it decides: the first verb-like word that matches wins ("Find and fix" scouts, "Fix the
 failing test" builds). Both inputs are fixed for an agent's life, so its costume never changes. The
-director, the fallback placement and the sass all ask the same function, and the director hands its
+director, the fallback placement, the sass and the regulars (the diary and `regularsOf`) all ask the same function, and the director hands its
 choice to the character (`Who.look`), so the hat, the poses, the meeting room and the lines agree.
 Choosing by the tools an agent calls was considered: better evidence, but it arrives after the
 character is on stage, and swapping a costume mid-life is a rig change we haven't made.

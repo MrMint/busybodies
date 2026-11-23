@@ -7,12 +7,13 @@ import { join } from "node:path";
 import { readSettings, settingsFile, writeSettings } from "../src/bun/settings";
 import { ARM, ArmPlan, solve } from "../src/scene/theme/armplan";
 import { THEME_IDS, themeId } from "../src/scene/theme/id";
-import { FACTORY_WORDS, OFFICE_WORDS, wordsFor } from "../src/scene/theme/words";
+import { FACTORY_WORDS, KITCHEN_WORDS, OFFICE_WORDS, wordsFor } from "../src/scene/theme/words";
 import { FloorPlan } from "../src/scene/office/layout";
 
 describe("theme words", () => {
 	test("?theme= picks a known theme, anything else is the office", () => {
 		expect(themeId("factory")).toBe("factory");
+		expect(themeId("kitchen")).toBe("kitchen");
 		expect(themeId("office")).toBe("office");
 		expect(themeId("castle")).toBe("office");
 		expect(themeId(null)).toBe("office");
@@ -31,6 +32,10 @@ describe("theme words", () => {
 		}
 		expect(FACTORY_WORDS.areas.kitchen).toBe("break room");
 		expect(FACTORY_WORDS.areas.yours).toBe("foreman's office");
+		// The Line: review at the pass, waiting on you is "Service!", the planner is the ticket rail.
+		expect(KITCHEN_WORDS.areas.meeting).toBe("the pass");
+		expect(KITCHEN_WORDS.serving(undefined).title).toBe("SERVICE!");
+		expect(KITCHEN_WORDS.columns).toEqual(["ORDERED", "FIRING", "SERVED"]);
 	});
 
 	test("the layout names areas with the office's words in any theme (the name is its identity)", () => {

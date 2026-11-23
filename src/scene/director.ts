@@ -15,6 +15,9 @@ import { type Metrics, NO_METRICS } from "./director/metrics";
 import type { Actor, Build, World, WorldEvent } from "./director/types";
 import { roleFor } from "./rig/roles";
 import type { Snapshot } from "../watcher/model";
+import type { Diary } from "../shared/diary";
+import type { StoryView } from "./office/decor";
+import { regularsOf } from "./director/story";
 
 export { direct, RULES, here, cueFor } from "./director/direct";
 export { NOTICE, type View } from "./director/social";
@@ -47,6 +50,13 @@ export class Director {
 	/** What the director knows about the viewer: when the window last came back on screen after a
 	 * while away (main.ts sets it from page visibility; director/social.ts acts on it). */
 	view: View = {};
+	/** The office's diary (counts and kinds only: src/shared/diary.ts), from the Bun process, or
+	 * kept from the demo's snapshots. */
+	diary?: Diary;
+
+	/** The office's `story` option: the diary and the story's headlines, for the decor on the walls
+	 * and the lobby's board (office/decor.ts). */
+	story = (): StoryView => ({ diary: this.diary, headlines: this.#world?.story?.headlines, now: this.now });
 
 	/** The office's `cast` option: direct this snapshot and place everyone with a cue. */
 	cast = (snap: Snapshot, floor: Floor, opts: { life?: boolean } = {}): Placed[] => {
@@ -55,13 +65,16 @@ export class Director {
 		this.#world = d.world;
 		this.#last = d;
 		if (d.events.length) for (const fn of this.#listeners) fn(d.events, d.world);
+		// Regulars (director/story.ts): the same project and role, the same character every day.
+		const regulars = regularsOf(Object.values(d.world.actors), snap);
 		return Object.values(d.world.actors).map((a) => ({
-			who: { key: a.key, kind: a.kind, role: a.role, look: a.kind === "lead" ? "lead" : roleFor(a.role, a.task), mood: a.mood, size: a.size, tint: a.tint },
+			who: { key: a.key, kind: a.kind, role: a.role, look: a.kind === "lead" ? "lead" : roleFor(a.role, a.task), mood: a.mood, size: a.size, tint: a.tint, ...(regulars.has(a.key) ? { regular: regulars.get(a.key)! } : {}) },
 			slot: a.slot,
 			desk: a.session,
 			area: a.area,
 			cue: cueFor(a, now),
 			...(a.kind === "crew" && a.task ? { task: a.task } : {}),
+			...(a.work && a.mood === "busy" && !a.gone ? { work: a.work.kind } : {}),
 		}));
 	};
 

@@ -57,12 +57,12 @@ const STATES: State[] = [
 	{ name: "empty-office", demo: "empty", aim: { kind: "office" }, size: BOARD },
 	{ name: "no-agent-found", demo: "nohome", aim: { kind: "office" }, size: BOARD },
 	{ name: "about", demo: "", aim: { kind: "office" }, size: BOARD, query: "about" },
-	{ name: "compact-busy", demo: "", aim: { kind: "office" }, size: [440, 300], query: "compact" },
-	{ name: "compact-empty", demo: "empty", aim: { kind: "office" }, size: [440, 300], query: "compact" },
+	{ name: "compact-busy", demo: "", aim: { kind: "office" }, size: [440, 340], query: "compact" },
+	{ name: "compact-empty", demo: "empty", aim: { kind: "office" }, size: [440, 340], query: "compact" },
 	// Compact as a live camera: the room its first shot cuts to, with the room tiles under it.
-	{ name: "compact-cut", demo: "", aim: { kind: "shot" }, size: [440, 300], query: "compact" },
-	{ name: "compact-cut-release", demo: "release", aim: { kind: "shot" }, size: [440, 300], query: "compact" },
-	{ name: "compact-cut-waiting", demo: "day-2", aim: { kind: "shot" }, size: [440, 300], query: "compact", frames: 40 },
+	{ name: "compact-cut", demo: "", aim: { kind: "shot" }, size: [440, 340], query: "compact" },
+	{ name: "compact-cut-release", demo: "release", aim: { kind: "shot" }, size: [440, 340], query: "compact" },
+	{ name: "compact-cut-waiting", demo: "day-2", aim: { kind: "shot" }, size: [440, 340], query: "compact", frames: 40 },
 	// The living office (waves 1 and 2): stations, desk props, the crew build, your office.
 	{ name: "release-floor", demo: "release", aim: { kind: "office" }, size: BOARD },
 	{ name: "release-room", demo: "release", aim: { kind: "room", name: "lanternfish" }, size: BOARD },
@@ -78,7 +78,14 @@ const STATES: State[] = [
 	{ name: "room-lanternfish-night", demo: "", aim: { kind: "room", name: "lanternfish" }, size: BOARD, hour: 23 },
 	{ name: "room-lanternfish-morning", demo: "", aim: { kind: "room", name: "lanternfish" }, size: BOARD, hour: 8 },
 	{ name: "desk-ship-release-dusk", demo: "", aim: { kind: "desk", title: "Ship release 2.4" }, size: BOARD, hour: 19 },
-	{ name: "compact-busy-night", demo: "", aim: { kind: "office" }, size: [440, 300], query: "compact", hour: 23 },
+	{ name: "compact-busy-night", demo: "", aim: { kind: "office" }, size: [440, 340], query: "compact", hour: 23 },
+	// Looks as render passes (mainview/look.ts): pixel, and the held night.
+	{ name: "look-pixel-floor", demo: "", aim: { kind: "office" }, size: BOARD, query: "look=pixel" },
+	{ name: "look-pixel-room", demo: "", aim: { kind: "room", name: "lanternfish" }, size: BOARD, query: "look=pixel" },
+	{ name: "look-pixel-desk", demo: "", aim: { kind: "desk", title: "Ship release 2.4" }, size: BOARD, query: "look=pixel" },
+	{ name: "look-pixel-compact", demo: "", aim: { kind: "shot" }, size: [440, 340], query: "compact&look=pixel" },
+	{ name: "look-night-floor", demo: "", aim: { kind: "office" }, size: BOARD, query: "look=night" },
+	{ name: "look-night-room", demo: "", aim: { kind: "room", name: "lanternfish" }, size: BOARD, query: "look=night" },
 ];
 
 const ROOT = join(import.meta.dir, "..");

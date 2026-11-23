@@ -23,6 +23,8 @@ export interface Placed {
 	cue?: Cue;
 	/** What it is working on: shown under crew when the camera is on their desk. */
 	task?: string;
+	/** The kind of work it holds (director/work.ts), while busy: a line's belt carries its parts. */
+	work?: string;
 }
 
 export const LEAD_SIZE = 72;

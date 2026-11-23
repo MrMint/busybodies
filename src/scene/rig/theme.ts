@@ -525,6 +525,10 @@ export function paperTheme(p: Palette = PAPER_PALETTE): Theme {
 			line(g, [a + 3, 6, b - 3, 6], 1.1, 0xc99a5a);
 			g.rect(a + 4, -6, 6, 3).fill(0xffffff).stroke({ width: 0.9, color: ink });
 		},
+		hand: (g) => {
+			// A hand of cards, fanned out from the palm (the factory's card game on a pallet).
+			for (const [r, dx] of [[-0.42, -4], [0, 0], [0.42, 4]] as const) playingCard(g, dx + Math.sin(r) * 9, -8, 10, 15, r, dx === 0 ? 0xe8423a : ink);
+		},
 		folderTuck: (g) => {
 			// The folder pinched upright between the forearm and the body, its tab showing at the top.
 			g.roundRect(-8.5, -24, 4, 4, 1.2).fill(MANILA).stroke({ width: 1.2, color: ink });
@@ -597,6 +601,45 @@ export function paperTheme(p: Palette = PAPER_PALETTE): Theme {
 		const x = WORK.nailX;
 		if (top < WORK.benchTop - 3) g.rect(x - 1.7, top + 3, 3.4, WORK.benchTop - top - 3).fill(p.steel).stroke({ width: 1.2, color: ink });
 		g.roundRect(x - 5.5, top, 11, 3.4, 1.2).fill(p.steel).stroke({ width: 1.8, color: ink });
+	};
+	/** A pallet on the floor out front with a card game laid out on it; `slap` a card just played. */
+	const pallet = (g: Graphics, slap: boolean) => {
+		const l = WORK.benchL - 6;
+		const r = WORK.benchR + 6;
+		for (const x of [l + 2, (l + r) / 2 - 3, r - 8]) g.rect(x, -8, 6, 8);
+		g.fill(0xb88a4c);
+		g.roundRect(l, -12, r - l, 5, 1.5).fill(p.kraft).stroke({ width: W.fine, color: ink });
+		g.rect(l, -8, r - l, 8).stroke({ width: W.fine, color: ink });
+		for (const [x, rot] of [[l + 14, -0.2], [l + 30, 0.1]] as const) playingCard(g, x, -15, 8, 11, rot, ink);
+		if (slap) {
+			playingCard(g, r - 14, -15, 9, 12, 0, 0xe8423a);
+			line(g, [r - 24, -24, r - 20, -20], 1.6, ink);
+			line(g, [r - 4, -24, r - 8, -20], 1.6, ink);
+		}
+	};
+	/** The vending machine out front: rows of snacks behind glass, a coin slot, the drop tray;
+	 * `rock` it leans back from a kick; `drop` a snack has fallen into the tray. */
+	const vending = (c: Graphics, rock: number, drop: boolean) => {
+		const l = WORK.benchL - 4 + rock;
+		const w = 50;
+		c.roundRect(l, -104, w, 104, 4).fill(0xe8423a).stroke({ width: W.part, color: ink });
+		c.rect(l + 5, -96, 30, 70).fill(0xcfe6f2).stroke({ width: W.fine, color: ink });
+		for (let row = 0; row < 4; row++) for (let k = 0; k < 3; k++) c.roundRect(l + 8 + k * 9, -91 + row * 17, 6, 9, 1.5).fill([p.sun, p.go, 0xff8a1f][(row + k) % 3]!);
+		c.roundRect(l + 39, -90, 7, 12, 1.5).fill(p.steel).stroke({ width: 1.2, color: ink });
+		c.rect(l + 41, -86, 3, 6).fill(ink);
+		c.roundRect(l + 6, -20, 28, 10, 2).fill(ink);
+		if (drop) c.roundRect(l + 12, -19, 12, 7, 1.5).fill(p.sun).stroke({ width: 1.2, color: ink });
+		// Rocked by a kick: it shudders back, its near edge shaking.
+		if (rock) for (const y of [-80, -56, -32]) line(c, [l - 7, y, l - 3, y + 5], 1.6, ink);
+	};
+	/** A playing card centred at (x, y), `w` by `h`, turned `r`, with a pip in `pip`. */
+	const playingCard = (g: Graphics, x: number, y: number, w: number, h: number, r: number, pip: number) => {
+		const c = Math.cos(r);
+		const s = Math.sin(r);
+		const at = (dx: number, dy: number) => [x + dx * c - dy * s, y + dx * s + dy * c];
+		g.poly([...at(-w / 2, -h / 2), ...at(w / 2, -h / 2), ...at(w / 2, h / 2), ...at(-w / 2, h / 2)]).fill(0xffffff).stroke({ width: 1.3, color: ink, join: "round" });
+		const [px, py] = at(0, -h / 6);
+		g.circle(px!, py!, 1.6).fill(pip);
 	};
 	const work: Record<(typeof WORKS)[number], Painter> = {
 		nail1: (g) => (bench(g), nail(g, WORK.nailTop[0])),
@@ -686,6 +729,11 @@ export function paperTheme(p: Palette = PAPER_PALETTE): Theme {
 		},
 		jabbed: (g) => copier(g, { light: "red", pressed: true }),
 		kickSpit: (g) => copier(g, { light: "red", bang: true, jam: "corner" }),
+		pallet: (g) => pallet(g, false),
+		palletSlap: (g) => pallet(g, true),
+		vending: (g) => vending(g, 0, false),
+		vendingRock: (g) => vending(g, 3, false),
+		vendingDrop: (g) => vending(g, 0, true),
 	};
 	for (const w of WORKS) parts[`work/${w}`] = work[w];
 
@@ -1098,6 +1146,14 @@ export function paperTheme(p: Palette = PAPER_PALETTE): Theme {
 		g.roundRect(-72, -28, 144, 9, 3).fill(p.wood).stroke({ width: W.part, color: ink });
 		g.rect(-64, -19, 128, 23).fill(0xd8a868).stroke({ width: W.part, color: ink });
 		line(g, [-64, -10, 64, -10], 1.2, 0xb88a4c);
+	};
+	parts["prop/drum"] = (g) => {
+		// An oil drum to sit on: its rim at the seat, ribs round it, wider than the body so it shows.
+		g.roundRect(-44, -34, 88, 34, 6).fill(0x3d7dff).stroke({ width: W.part, color: ink });
+		line(g, [-44, -22, 44, -22], 2.2, ink);
+		line(g, [-44, -10, 44, -10], 2.2, ink);
+		g.ellipse(0, -34, 44, 6).fill(0x2f62c9).stroke({ width: W.part, color: ink });
+		g.rect(-30, -30, 8, 26).fill({ color: 0xffffff, alpha: 0.18 });
 	};
 	parts["prop/chair"] = (g) => {
 		g.roundRect(-40, -110, 80, 86, 14).fill(0x4a5072).stroke({ width: W.part, color: ink });

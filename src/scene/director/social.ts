@@ -22,6 +22,8 @@ import type { Actor } from "./types";
 export interface View {
 	/** When the window came back on screen after a while away (director time). */
 	back?: number;
+	/** When it went off screen before that (director time): "while you were out" (story.ts). */
+	since?: number;
 }
 
 export const RIPPLE = {

@@ -44,6 +44,50 @@ export const COSTUMES: Record<Role, Costume> = {
 	designer: { hat: "hat/designer", front: "front/scarf", scale: 1 },
 };
 
+/**
+ * Regulars (plan-alive wave 3, "story and continuity"): the same project and role come back as the
+ * same character, day after day. A regular's key is the diary's (a hash of the project, never its
+ * name), its costume and its place among the same costume in that project (`:0`, `:1`...), so it
+ * is the same on any machine and any day; everything about it is picked from that key: a short
+ * name, and an accessory worn on the face (or none). The puppet takes the key as its id, so its
+ * loop phases and rare variants are the regular's own too.
+ */
+export const REGULAR_NAMES = [
+	"Pip", "Bo", "Tam", "Dot", "Wren", "Ozzy", "Mo", "Juno", "Kit", "Lou", "Nell", "Rafe", "Sol", "Tilly",
+	"Vee", "Ziggy", "Bea", "Cal", "Fen", "Gus", "Hal", "Ivy", "Jem", "Lark", "Moss", "Nib", "Odo", "Plum",
+] as const;
+
+/** Accessories a regular may wear on the face: a slot name the atlas has in every theme. The
+ * reviewer's costume already wears glasses. */
+export const REGULAR_WEAR = [undefined, undefined, "wear/glasses"] as const;
+
+export interface Regular {
+	/** `<project key>:<role>:<n>`. */
+	key: string;
+	name: string;
+	wear?: string;
+}
+
+function fnv(s: string): number {
+	let h = 0x811c9dc5;
+	for (let i = 0; i < s.length; i++) {
+		h ^= s.charCodeAt(i);
+		h = Math.imul(h, 0x01000193) >>> 0;
+	}
+	return h >>> 0;
+}
+
+/** The regular with this key (`<project key>:<role>:<n>`): its name and accessory, from the key alone. */
+export function regularOf(key: string): Regular {
+	const role = key.split(":")[1] as Role | undefined;
+	const name = REGULAR_NAMES[fnv(`${key}|name`) % REGULAR_NAMES.length]!;
+	const wear = role && COSTUMES[role]?.wear ? undefined : REGULAR_WEAR[fnv(`${key}|wear`) % REGULAR_WEAR.length];
+	return { key, name, ...(wear ? { wear } : {}) };
+}
+
+/** The diary's regular (`<project key>:<role>`) a regular's key belongs to. */
+export const diaryRegular = (key: string): string => key.split(":").slice(0, 2).join(":");
+
 /** A costume from the agent type's name, tried in this order. The tool's own types land here too:
  * "Explore" explores, "Plan" designs, "claude-code-guide" scouts. */
 const BY_NAME: [Role, RegExp][] = [

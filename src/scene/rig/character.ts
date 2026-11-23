@@ -13,7 +13,7 @@ import type { Atlas } from "./atlas";
 import { choosePose, hash } from "./player";
 import { BEAT_MS } from "./poses";
 import { Puppet } from "./puppet";
-import { COSTUMES, roleFor } from "./roles";
+import { COSTUMES, type Regular, regularOf, roleFor } from "./roles";
 import { PUPPET_HEIGHT } from "./reach";
 import { ACCENTS } from "./theme";
 import { AT_VIEWER, type Aim, type LookAt, aimAt, eyesOf, isViewer } from "./gaze";
@@ -43,6 +43,7 @@ export const WALKING = {
 class RigCharacter implements Character {
 	readonly puppet: Puppet;
 	#who: Who;
+	#regular?: Regular;
 	/** The way it faces as drawn (the scale's sign). */
 	#facing: 1 | -1 = 1;
 	#slot?: Slot;
@@ -68,8 +69,11 @@ class RigCharacter implements Character {
 		this.#cast = cast;
 		cast.set(who.key, this);
 		const role = who.kind === "lead" ? "lead" : (who.look ?? roleFor(who.role));
-		// The office draws real desks, so the rig's own stays off.
-		this.puppet = new Puppet(atlas, { id: who.key, role, accent: ACCENTS[hash(who.tint) % ACCENTS.length], desk: false });
+		// The office draws real desks, so the rig's own stays off. A regular (rig/roles.ts) is the same
+		// puppet every day: its key is the puppet's id, and it wears its accessory.
+		const regular = who.regular ? regularOf(who.regular) : undefined;
+		this.puppet = new Puppet(atlas, { id: regular?.key ?? who.key, role, accent: ACCENTS[hash(who.tint) % ACCENTS.length], desk: false, ...(regular?.wear ? { wear: regular.wear } : {}) });
+		this.#regular = regular;
 		this.#size();
 		this.#act(who.mood, true);
 	}
@@ -221,6 +225,7 @@ class RigCharacter implements Character {
 		const w = this.#cue?.walk;
 		return {
 			mood: this.#who.mood,
+			...(this.#regular ? { regular: this.#regular.key, name: this.#regular.name, wear: this.#regular.wear ?? "" } : {}),
 			size: Math.round(this.#who.size),
 			lift: Math.round(this.puppet.lift * 100) / 100,
 			role: s.role,
