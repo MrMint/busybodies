@@ -22,6 +22,9 @@ export interface Who {
 	size: number;
 	/** A key to pick a colour from, so one project's leads match: the project, or the role. */
 	tint: string;
+	/** Optional: the regular it is (rig/roles.ts `regularOf`): the same face, accessory and name for
+	 * the same project and role, every day. */
+	regular?: string;
 }
 
 export interface Character {

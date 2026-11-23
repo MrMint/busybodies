@@ -37,6 +37,9 @@ export interface PuppetOptions {
 	accent?: number;
 	/** Draw the rig's own desk when a pose asks for one. The office turns this off at a real desk. */
 	desk?: boolean;
+	/** Something worn on the face besides the costume's (a regular's accessory, rig/roles.ts): an
+	 * atlas part like `wear/glasses`. */
+	wear?: string;
 }
 
 export interface PlayOptions {
@@ -183,7 +186,8 @@ export class Puppet extends Container {
 		this.#face.origin.set(0, A.eyeY + 6);
 		this.#wear = s("wear/binoc");
 		this.#wear.visible = false;
-		if (costume.wear) this.#costumeWear = s(costume.wear);
+		const worn = costume.wear ?? (opts.wear && atlas.has(opts.wear) ? opts.wear : undefined);
+		if (worn) this.#costumeWear = s(worn);
 		this.#hat = s(costume.hat);
 		if (opts.role === "lead") {
 			this.#cup = s("hat/lead-cup");

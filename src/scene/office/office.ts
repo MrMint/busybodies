@@ -34,6 +34,7 @@ import type { DeskProps, Metrics } from "../director/metrics";
 import { deskProps, plannerSig, propsSig } from "./props";
 import type { Character, CharacterFactory } from "./slot";
 import { type Area, BUILD, type Desk, type Rect, type World } from "./world";
+import { DecorLayer, type RoomDecor, type StoryView, boardText, regularNames, storyStyle } from "./decor";
 
 const BUILD_H = BUILD.brickH;
 import { OFFICE_THEME } from "../theme/office";
@@ -89,6 +90,9 @@ export interface OfficeOptions {
 	/** Draw the lawn and the yard round the building (default true; the compact window floats on
 	 * the desktop, so it has none). */
 	outside?: boolean;
+	/** Story and continuity (decor.ts): the diary and the director's headlines, for the decor on
+	 * the walls and the lobby's board. */
+	story?: () => StoryView;
 }
 
 /** A cloud crossing one pane of a window: where it starts, how fast it goes, how high it rides. */
@@ -160,6 +164,11 @@ export class Office extends Container {
 	/** The factory's robot arms, one per project bay (theme/arm.ts), over everything on the floor. */
 	#armLayer = new Container();
 	#arms = new Map<string, { arm: RobotArm; sig: string }>();
+	/** Story and continuity on the walls (decor.ts), and what the lobby's board said before the story took it. */
+	#decor = new DecorLayer();
+	#board?: { was: SignText | undefined; shows: SignText };
+	/** The regulars you'd recognise, by character key: their names on desk cards and task tags. */
+	#names = new Map<string, string>();
 
 	#textures = new Map<FurnitureKind, Texture>();
 	#anchors = new Map<FurnitureKind, { x: number; y: number }>();
@@ -203,7 +212,7 @@ export class Office extends Container {
 		this.#phase = phaseOf(this.#hour);
 		if (opts.outside !== false) this.#outside = new Outside(opts.renderer);
 		if (this.#outside) this.world.addChild(this.#outside);
-		this.world.addChild(this.#slab, this.#floor, this.#clouds, this.#walls, this.#shade, this.#ambientLayer, this.#depth, this.#armLayer, this.#light, this.#pulse, this.#tasks, this.#bubbles, this.#labels);
+		this.world.addChild(this.#slab, this.#floor, this.#clouds, this.#walls, this.#decor, this.#shade, this.#ambientLayer, this.#depth, this.#armLayer, this.#light, this.#pulse, this.#tasks, this.#bubbles, this.#labels);
 		this.#signs.set("yours:serving", this.#theme.words.serving(undefined));
 		if (opts.hour === undefined) this.#schedulePhase();
 		this.world.interactiveChildren = false;
@@ -537,6 +546,13 @@ export class Office extends Container {
 		this.#theme = theme;
 		if (characters) this.#opts.characters = characters;
 		const same = (a?: SignText, b?: SignText) => a?.title === b?.title && a?.body === b?.body;
+		// The story's board and decor are drawn again in the new theme's words and colours.
+		if (this.#board) {
+			if (this.#board.was) this.#signs.set("lobby:frame", this.#board.was);
+			else this.#signs.delete("lobby:frame");
+			this.#board = undefined;
+		}
+		this.#decor.clear();
 		for (const id of new Set([...Object.keys(old.words.signs), ...Object.keys(theme.words.signs)])) {
 			const now = this.#signs.get(id);
 			if (now && !same(now, old.words.signs[id])) continue;
@@ -629,6 +645,7 @@ export class Office extends Container {
 		// People first: the director runs in their cast, and the desks show its crew builds.
 		this.#drawPeople(world, snapshot);
 		this.#drawMetrics(world);
+		this.#drawStory(world);
 		this.#drawArms(world);
 		this.#drawFurniture(world, snapshot);
 		this.#drawAmbient(world, snapshot);
@@ -774,6 +791,35 @@ export class Office extends Container {
 		}
 	}
 
+	/** Story and continuity (decor.ts): the decor on the walls, and the lobby's board. The board takes
+	 * the story's text while it has some, and gets back what it said before when that ends. */
+	#drawStory(world: World): void {
+		const view = this.#opts.story?.();
+		this.#decor.update(world, this.#theme, view);
+		const text = boardText(view, storyStyle(this.#theme).words, this.#phase);
+		const id = "lobby:frame";
+		const now = this.#signs.get(id);
+		const same = (a?: SignText, b?: SignText) => a?.title === b?.title && a?.body === b?.body;
+		let next = now;
+		if (text) {
+			if (!this.#board || !same(now, this.#board.shows)) this.#board = { was: now, shows: text };
+			else this.#board.shows = text;
+			next = text;
+		} else if (this.#board) {
+			next = same(now, this.#board.shows) ? this.#board.was : now;
+			this.#board = undefined;
+		}
+		if (same(next, now)) return;
+		if (next) this.#signs.set(id, next);
+		else this.#signs.delete(id);
+		this.#drawFloor(world);
+	}
+
+	/** The story's decor and board, for the inspector. */
+	get story(): { decor: RoomDecor[]; board?: SignText } {
+		return { decor: this.#decor.info(this.#data, this.#opts.story?.()), board: this.#signs.get("lobby:frame") };
+	}
+
 	/** Small desk props (mugs, drawers, the skip) only show zoomed in: at office zoom they're clutter. */
 	#showDetails(): void {
 		const on = this.#stop.kind !== "office";
@@ -891,7 +937,7 @@ export class Office extends Container {
 			}
 			for (const d of a.desks) {
 				const s = sessions.get(d.id)!;
-				const card = deskCard(s);
+				const card = deskCard(s, this.#names.get(`s:${s.id}`));
 				const b = builds[d.id];
 				const bsig = b ? `${b.pieces}|${b.topped}|${b.fellAt ?? ""}|${b.addedAt ?? ""}` : "";
 				const p = metrics[d.id];
@@ -980,7 +1026,7 @@ export class Office extends Container {
 		screen.position.set(46, -64);
 		c.addChild(screen);
 		if (s) {
-			const [title, sub] = deskCard(s);
+			const [title, sub] = deskCard(s, this.#names.get(`s:${s.id}`));
 			const card = new Container();
 			const t = label(title, 13, "800");
 			clip(t, 128);
@@ -1076,6 +1122,7 @@ export class Office extends Container {
 	#drawPeople(world: World, snapshot: Snapshot): void {
 		const placed = this.#opts.cast ? this.#opts.cast(snapshot, world, { life: this.#life }) : this.#placement.place(snapshot, world);
 		this.#placed = placed;
+		this.#names = regularNames(placed.map((p) => p.who), this.#opts.story?.());
 		// An empty office is never a blank one: the night watch naps in the lobby's pod.
 		if (placed.length === 0) {
 			const nap = world.areas.find((a) => a.kind === "lobby")?.spots.nap?.[0];
@@ -1136,12 +1183,13 @@ export class Office extends Container {
 	#drawTasks(): void {
 		const stop = this.#stop;
 		const list = stop.kind === "desk" ? this.#placed.filter((p) => p.desk === stop.id && p.task && p.who.kind === "crew" && p.who.mood !== "done") : [];
-		const sig = list.map((p) => `${p.who.key}|${p.task}|${p.slot.x},${p.slot.y}`).join(";");
+		const sig = list.map((p) => `${p.who.key}|${this.#names.get(p.who.key) ?? ""}|${p.task}|${p.slot.x},${p.slot.y}`).join(";");
 		if (sig === this.#tasksSig) return;
 		this.#tasksSig = sig;
 		for (const c of this.#tasks.removeChildren()) c.destroy({ children: true });
 		for (const p of list) {
-			const t = pill(clipText(p.task!, 16), 6.5);
+			const name = this.#names.get(p.who.key);
+			const t = pill(name ? `${name} · ${clipText(p.task!, 13)}` : clipText(p.task!, 16), 6.5);
 			t.position.set(p.slot.x - t.width / 2, p.slot.y + 4);
 			this.#tasks.addChild(t);
 		}
@@ -1211,10 +1259,11 @@ function* walk(c: Container): Generator<Container> {
 const texts = (c: Container) => [...walk(c)].filter((x): x is Text => x instanceof Text);
 const baked = (c: Container) => [...walk(c)].filter((x): x is Baked => x instanceof Baked);
 
-/** A desk's name card: the session's title, and a line of facts. */
-function deskCard(s: Session): [string, string] {
+/** A desk's name card: the session's title, and a line of facts (first the lead's name, when it is
+ * a regular you'd recognise: decor.ts). */
+function deskCard(s: Session, name?: string): [string, string] {
 	const out = crewOf(s.agents).filter((a) => a.status === "running").length;
-	const facts = [s.state, s.branch ?? s.worktree, out ? `${out} out` : ""].filter(Boolean);
+	const facts = [name, s.state, s.branch ?? s.worktree, out ? `${out} out` : ""].filter(Boolean);
 	return [s.title || "untitled", facts.join(" · ")];
 }
 

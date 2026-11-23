@@ -12,6 +12,9 @@ import type { ThemeId } from "../scene/theme/id";
 import type { Visibility } from "./visibility";
 import type { SoundState } from "./sound";
 import type { Camerawork, ShotReport } from "./shots";
+import type { Story } from "../scene/director/story";
+import type { RoomDecor } from "../scene/office/decor";
+import type { Diary } from "../shared/diary";
 
 export interface Inspector {
 	/** True once the first snapshot has been drawn. */
@@ -75,6 +78,13 @@ export interface Inspector {
 	light(): Office["light"];
 	/** Force the hour (0 to 23) as ?hour= does, or undefined to follow the clock. */
 	setHour(hour: number | undefined): void;
+	/** Story and continuity: the director's story (replies, send-offs, its log and headlines), the
+	 * diary, and what the walls (decor per room) and the lobby's board show. Set by main.ts. */
+	story(): { world?: Story; diary?: Diary; decor: RoomDecor[]; board?: SignText } | undefined;
+	/** As if the window had been off screen for `ms` and just came back ("while you were out"). Set by main.ts. */
+	away(ms: number): void;
+	/** Replace the diary, as the Bun process would send it. Set by main.ts. */
+	setDiary(diary: Diary): void;
 }
 
 /** The world without Maps, for JSON. */
@@ -201,6 +211,9 @@ export function installInspector(
 			office.setHour(hour);
 			scene.redraw();
 		},
+		story: () => undefined,
+		away: () => {},
+		setDiary: () => {},
 	};
 	window.__busybodies = inspector;
 	return Object.assign(inspector, { shots: (c: Camerawork) => void (shots = c) });

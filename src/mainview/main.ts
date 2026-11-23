@@ -18,6 +18,7 @@ import { placeholders } from "./placeholder";
 import { Atlas, buildPoseSheet, rigCharacters, rigTheme } from "../scene/rig";
 import { Director, NOTICE, placeholderVoice } from "../scene/director";
 import { Voice } from "../scene/sass";
+import { type Diary, diaryOf, newMemory, noteSnapshot } from "../shared/diary";
 
 const params = new URLSearchParams(location.search);
 /** ?compact: the small floating window (transparent, always on top; src/bun/compact.ts). */
@@ -92,7 +93,7 @@ function blank(): void {
 	const charactersFor = (a: Atlas) => (params.has("placeholders") ? undefined : rigCharacters(a));
 	// The director decides who stands where and in which pose; the office draws it.
 	const director = new Director();
-	const office = new Office({ renderer: app.renderer, characters, wake: () => scene.redraw(), cast: director.cast, builds: director.builds, metrics: director.metrics, top: compact ? 40 : 64, theme: sceneTheme(theme), ...lightOptions(director) });
+	const office = new Office({ renderer: app.renderer, characters, wake: () => scene.redraw(), cast: director.cast, builds: director.builds, metrics: director.metrics, story: director.story, top: compact ? 40 : 64, theme: sceneTheme(theme), ...lightOptions(director) });
 	app.stage.addChild(office);
 	// The office's voice (src/scene/sass): bubbles and signs from what the sessions are doing.
 	// ?toolvoice keeps the director's placeholder (each busy lead says its tool). A live scene lets
@@ -141,7 +142,8 @@ function blank(): void {
 		camerawork?.back();
 		const away = hiddenAt === undefined ? 0 : performance.now() - hiddenAt;
 		hiddenAt = undefined;
-		if (away >= awayMs && !calm() && scene.current) director.view = { back: director.now };
+		// `since` is when it went, for the lobby board's "while you were out" (director/story.ts).
+		if (away >= awayMs && !calm() && scene.current) director.view = { back: director.now, since: director.now - away };
 		if (scene.current) scene.direct();
 		else scene.redraw();
 	});
@@ -265,6 +267,23 @@ function blank(): void {
 	const redraw = scene.redraw;
 	const inspector = import.meta.env.DEV || params.has("inspect") ? installInspector(app, office, scene, director, voice && { voice, now: () => director.now }, { current: () => theme, set: setTheme }, visibility) : undefined;
 	if (inspector) Object.assign(inspector, { sound: () => sound?.state(), setToggles });
+	// The diary (src/shared/diary.ts): counts and kinds only, from the Bun process (or, in a demo,
+	// kept here from the demo's snapshots). The walls and the lobby board read it (office/decor.ts).
+	const setDiary = (d: unknown) => {
+		director.diary = diaryOf(d);
+		if (scene.current) scene.direct();
+	};
+	if (inspector) {
+		Object.assign(inspector, {
+			story: () => ({ world: director.world?.story, diary: director.diary, ...office.story }),
+			// As if the window had been off screen for `ms` and just came back.
+			away: (ms: number) => {
+				director.view = { back: director.now, since: director.now - ms };
+				scene.direct();
+			},
+			setDiary,
+		});
+	}
 	let bridge: Bridge | undefined;
 	const shell = installShell({
 		bridge: { status: () => bridge!.status(), setCompact: (on) => bridge?.setCompact(on), showOffice: () => bridge?.showOffice(), openProjectPage: () => bridge?.openProjectPage(), setTheme: (id) => bridge?.setTheme(id), setToggles: (change) => bridge?.setToggles(change) },
@@ -313,21 +332,29 @@ function blank(): void {
 	});
 
 	if (params.has("demo")) {
-		const { demo, demoDay, releaseDay } = await import("./demo");
+		const { demo, demoDay, demoDiary, releaseDay, storyDay } = await import("./demo");
 		const name = params.get("demo");
 		// ?demo=day-N: the demo day's first N beats, played at once (for screenshots of a beat).
 		const beat = name?.match(/^day-(\d)$/);
 		const day = demo(beat ? null : name);
 		for (const [id, sign] of Object.entries(day.signs)) office.setSign(id, sign);
-		show(day.snapshot);
-		if (beat) for (const b of demoDay().slice(0, Number(beat[1]))) show(b.snapshot);
+		// ?demo=story keeps its own diary: an invented week before, today from its own snapshots.
+		// The other demos keep none, so their walls and boards look the same at any hour.
+		const memory = newMemory();
+		let diary: Diary | undefined = name === "story" ? demoDiary(day.snapshot) : undefined;
+		const showDemo = (s: Snapshot) => {
+			if (diary) director.diary = diary = noteSnapshot(diary, memory, s);
+			show(s);
+		};
+		showDemo(day.snapshot);
+		if (beat) for (const b of demoDay().slice(0, Number(beat[1]))) showDemo(b.snapshot);
 		// Plain ?demo plays the day through the director: arrivals, a review, a wait, departures.
-		// ?demo=release plays the release crew's beats. Frozen scenes (tests, screenshots) stay on
-		// their first moment.
-		const days = { "": demoDay, release: releaseDay } as Record<string, (() => { after: number; snapshot: Snapshot }[]) | undefined>;
+		// ?demo=release plays the release crew's beats, ?demo=story the story's. Frozen scenes
+		// (tests, screenshots) stay on their first moment.
+		const days = { "": demoDay, release: releaseDay, story: storyDay } as Record<string, (() => { after: number; snapshot: Snapshot }[]) | undefined>;
 		const play = days[name ?? ""];
 		if (play && !params.has("frozen")) {
-			const timers = play().map(({ after, snapshot }) => setTimeout(() => !scene.frozen && show(snapshot), after));
+			const timers = play().map(({ after, snapshot }) => setTimeout(() => !scene.frozen && showDemo(snapshot), after));
 			scene.stopDemo = () => timers.forEach(clearTimeout);
 		}
 		return;
@@ -343,7 +370,11 @@ function blank(): void {
 	}
 
 	const rpc = Electroview.defineRPC<BusybodiesRPC>({
-		handlers: { messages: { snapshot: show, about: () => shell.about(), theme: ({ id }) => (setTheme(themeId(id)), shell.themeChanged()), settings: (s) => (setToggles(s), shell.togglesChanged()) } },
+		handlers: { messages: { snapshot: show, about: () => shell.about(), theme: ({ id }) => (setTheme(themeId(id)), shell.themeChanged()), settings: (s) => (setToggles(s), shell.togglesChanged()),
+				// The snapshot that changed the diary comes right after it, and draws it.
+				diary: (d) => void (director.diary = diaryOf(d)),
+			},
+		},
 	});
 	new Electroview({ rpc });
 	bridge = {
@@ -355,6 +386,7 @@ function blank(): void {
 		setToggles: (change) => void rpc.request.setToggles(change),
 	};
 
-	const first = await rpc.request.snapshot();
+	const [first, kept] = await Promise.all([rpc.request.snapshot(), rpc.request.diary().catch(() => null)]);
+	if (kept) director.diary = diaryOf(kept);
 	if (first) show(first);
 })();

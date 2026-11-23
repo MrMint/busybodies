@@ -57,7 +57,7 @@ v7-era APIs that look right and silently draw the wrong thing. Update it only wi
 
 | Path | What |
 |---|---|
-| `src/bun/` | The Electrobun main process: the office and compact windows, the tray, updates |
+| `src/bun/` | The Electrobun main process: the office and compact windows, the tray, updates, the diary on disk (`diary.ts`; its counts-only model is `src/shared/diary.ts`) |
 | `src/watcher/` | Capture: reads the agent tool's files into a `Snapshot` (`model.ts` is the contract) |
 | `src/mainview/` | The webview's entry: app setup, the top bar, the inspector, demo days; on-screen visibility (`visibility.ts`), the compact camera (`shots.ts`), opt-in sound (`sound.ts`) |
 | `src/scene/office/` | The open-floor office: floor plan, camera, cut-paper drawing, the character slot interface; light and time of day (`daylight.ts`, `light.ts`), windows and the yard (`outlook.ts`, `outside.ts`), the paper pass (`material.ts`) |
