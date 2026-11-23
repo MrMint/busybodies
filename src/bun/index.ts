@@ -5,6 +5,7 @@ import { existsSync } from "node:fs";
 import { BrowserView, BrowserWindow, GlobalShortcut, Updater, Utils } from "electrobun/main";
 import { type ThemeId, themeId } from "../scene/theme/id";
 import type { AppStatus, BusybodiesRPC } from "../shared/rpc";
+import { type LookId, lookId } from "../shared/look";
 import type { Snapshot } from "../watcher/model";
 import { Watcher } from "../watcher/watch";
 import { compactFrame } from "./compact";
@@ -42,9 +43,10 @@ const saved = readSettings(SETTINGS);
 let theme: ThemeId = saved.theme;
 let sound = saved.sound;
 let calm = saved.calm;
-// A window opens with the saved choices (as ?theme=, &sound, &calm); one already open switches over RPC.
+let look: LookId = saved.look;
+// A window opens with the saved choices (as ?theme=, &sound, &calm, &look=); one already open switches over RPC.
 const urlFor = (compact: boolean) => {
-	const q = [compact ? "compact" : "", ...settingsQuery({ theme, sound, calm }), extra].filter(Boolean).join("&");
+	const q = [compact ? "compact" : "", ...settingsQuery({ theme, sound, calm, look }), extra].filter(Boolean).join("&");
 	return q ? `${baseUrl}?${q}` : baseUrl;
 };
 
@@ -72,7 +74,7 @@ function makeRpc() {
 				showOffice: () => (showOffice(), true),
 				openProjectPage: () => Utils.openExternal(PROJECT_URL),
 				setTheme: ({ id }) => (setTheme(themeId(id)), true),
-				setToggles: (change) => (setToggles({ sound: change.sound, calm: change.calm }), true),
+				setToggles: (change) => (setToggles({ sound: change.sound, calm: change.calm, look: change.look === undefined ? undefined : lookId(change.look) }), true),
 			},
 		},
 	});
@@ -156,13 +158,14 @@ function setTheme(id: ThemeId): void {
 	tray.refresh();
 }
 
-/** Sound and calm office: saved, and both windows hear (only the office window plays sound). */
-function setToggles(change: { sound?: boolean; calm?: boolean }): void {
+/** Sound, calm office and the look: saved, and both windows hear (only the office window plays sound). */
+function setToggles(change: { sound?: boolean; calm?: boolean; look?: LookId }): void {
 	sound = change.sound ?? sound;
 	calm = change.calm ?? calm;
-	save({ sound, calm });
-	office?.rpc.send.settings({ sound, calm });
-	compact?.rpc.send.settings({ sound, calm });
+	look = change.look ?? look;
+	save({ sound, calm, look });
+	office?.rpc.send.settings({ sound, calm, look });
+	compact?.rpc.send.settings({ sound, calm, look });
 	tray.refresh();
 }
 
@@ -172,8 +175,9 @@ function about(): void {
 }
 
 const tray = installTray({
-	status: () => ({ snapshot: watcher.snapshot, compact: compactOn, theme, sound, calm }),
+	status: () => ({ snapshot: watcher.snapshot, compact: compactOn, theme, sound, calm, look }),
 	setTheme,
+	setLook: (id) => setToggles({ look: id }),
 	toggleSound: () => setToggles({ sound: !sound }),
 	toggleCalm: () => setToggles({ calm: !calm }),
 	showOffice,

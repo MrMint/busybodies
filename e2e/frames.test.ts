@@ -131,14 +131,14 @@ describe(`frame budgets (${theme})`, () => {
 });
 
 describe("life and the off-screen freeze", () => {
-	test("a visible idle office lives (blinks, glances) at no more than 20 fps", async () => {
+	test("a visible idle office lives (blinks, glances) at no more than 10 fps, life's beat grid", async () => {
 		const page = await open("demo=idle&settle=600000");
 		const c = await measure(page, 2000);
 		expect(c.life).toBe(true);
 		expect(c.tickerRunning).toBe(true);
-		expect(c.maxFPS).toBe(20);
+		expect(c.maxFPS).toBe(10);
 		expect(c.renders).toBeGreaterThan(0);
-		expect(c.renders).toBeLessThanOrEqual(44); // 20 fps over 2 s, plus slack for timer edges
+		expect(c.renders).toBeLessThanOrEqual(24); // 10 fps over 2 s, plus slack for timer edges
 		await page.close();
 	}, T);
 
@@ -286,7 +286,7 @@ describe("the app around the office", () => {
 	}, T);
 
 	test("compact mode: a slim draggable strip over a transparent office, calm and idle at zero frames", async () => {
-		const page = await browser.newPage({ viewport: { width: 440, height: 300 } });
+		const page = await browser.newPage({ viewport: { width: 440, height: 340 } });
 		await page.goto(`http://localhost:${server.port}/?inspect&demo=idle&compact&calm`);
 		await page.waitForFunction(() => window.__busybodies?.ready === true, undefined, { timeout: 15_000 });
 		const hud = await page.evaluate(() => {

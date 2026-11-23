@@ -16,8 +16,11 @@ import { Sound } from "./sound";
 import { type Bridge, installShell } from "./shell";
 import { placeholders } from "./placeholder";
 import { Atlas, buildPoseSheet, rigCharacters, rigTheme } from "../scene/rig";
+import { LIFE_GRID_MS } from "../scene/rig/life";
 import { Director, NOTICE, placeholderVoice } from "../scene/director";
 import { Voice } from "../scene/sass";
+import { lookId } from "../shared/look";
+import { installLooks } from "./look";
 
 const params = new URLSearchParams(location.search);
 /** ?compact: the small floating window (transparent, always on top; src/bun/compact.ts). */
@@ -31,8 +34,9 @@ let theme: ThemeId = themeId(params.get("theme"));
 /** The office's light (src/scene/office/light.ts): ?hour=<0-23> pins the time of day (screenshots,
  * tests), the director's rush flickers a room's lights, and the compact window floats on the
  * desktop with no lawn round it. */
+const pinnedHour = params.get("hour") && Number.isFinite(Number(params.get("hour"))) ? Number(params.get("hour")) : undefined;
 const lightOptions = (director: Director) => ({
-	hour: params.get("hour") && Number.isFinite(Number(params.get("hour"))) ? Number(params.get("hour")) : undefined,
+	hour: pinnedHour,
 	rush: () => Object.keys(director.world?.rush ?? {}),
 	outside: !compact,
 });
@@ -108,10 +112,12 @@ function blank(): void {
 	// move must be smooth (the whole view slides), so it gets 60 for as long as it lasts. Walks stay
 	// at 30: a busy room has someone walking nearly all the time (trips, brick runs, rounds), and a
 	// walker moves a few pixels a frame, which reads fine at 30.
-	// Life alone (blinks, glances) gets less again: a blink is a couple of frames at 20.
+	// Life alone (blinks, glances, idle habits) gets less again: one frame per step of life's beat
+	// grid (rig/life.ts), 10 fps. Every blink starts on the grid and outlasts a step, and a pose beat
+	// (130 ms) outlasts one too, so nothing is skipped; at 20 the office cost twice the frames.
 	const AMBIENT_FPS = 30;
 	const MOVING_FPS = 60;
-	const LIFE_FPS = 20;
+	const LIFE_FPS = 1000 / LIFE_GRID_MS;
 	const fps = () => (office.moving ? MOVING_FPS : office.acting ? AMBIENT_FPS : LIFE_FPS);
 	app.ticker.maxFPS = AMBIENT_FPS;
 	app.ticker.add((t) => {
@@ -167,8 +173,9 @@ function blank(): void {
 				width: () => app.screen.width,
 			});
 	director.on((events, world) => sound?.hear(events, world));
-	/** The tray's Sound and Calm office toggles, live. */
-	const setToggles = (change: { sound?: boolean; calm?: boolean }) => {
+	/** The tray's Sound and Calm office toggles, and its Look, live. */
+	const setToggles = (change: { sound?: boolean; calm?: boolean; look?: string }) => {
+		if (change.look !== undefined) looks.set(lookId(change.look));
 		if (change.calm !== undefined) calmOn = change.calm;
 		office.life = visibility.visible && !calm();
 		if (change.sound !== undefined) sound?.setEnabled(change.sound);
@@ -263,15 +270,17 @@ function blank(): void {
 	};
 	const show = scene.show;
 	const redraw = scene.redraw;
+	// The look (mainview/look.ts): from ?look= (the saved Look), switched live over RPC.
+	const looks = installLooks(app, office, { look: lookId(params.get("look")), hour: pinnedHour, compact, redraw });
 	const inspector = import.meta.env.DEV || params.has("inspect") ? installInspector(app, office, scene, director, voice && { voice, now: () => director.now }, { current: () => theme, set: setTheme }, visibility) : undefined;
-	if (inspector) Object.assign(inspector, { sound: () => sound?.state(), setToggles });
+	if (inspector) Object.assign(inspector, { sound: () => sound?.state(), setToggles, look: () => looks.info() });
 	let bridge: Bridge | undefined;
 	const shell = installShell({
 		bridge: { status: () => bridge!.status(), setCompact: (on) => bridge?.setCompact(on), showOffice: () => bridge?.showOffice(), openProjectPage: () => bridge?.openProjectPage(), setTheme: (id) => bridge?.setTheme(id), setToggles: (change) => bridge?.setToggles(change) },
 		live: !params.has("demo") && !params.has("replay"),
 		compact,
 		theme: { current: () => theme, set: (id) => setTheme(id) },
-		toggles: { current: () => ({ sound: sound?.enabled ?? params.has("sound"), calm: calmOn }), set: (change) => setToggles(change) },
+		toggles: { current: () => ({ sound: sound?.enabled ?? params.has("sound"), calm: calmOn, look: looks.current }), set: (change) => setToggles(change) },
 		// ?demo=nohome: the "no coding agent found" state, without a real home folder.
 		status: params.get("demo") === "nohome" ? { homeFound: false, home: "~/.claude" } : undefined,
 	});

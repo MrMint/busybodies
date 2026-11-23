@@ -1097,3 +1097,34 @@ settings sheet gained Sound and Calm office beside Theme, saved and synced with 
 new `setToggles` RPC request. Every stream's e2e run was under a load average of 40 to 370 from the
 others, where the unchanged base failed the same way; the suite was rerun here once the machine was
 quiet.
+
+## 2026-11-22: looks as render passes (wave 3, stream J)
+
+**A look is a render pass, not a second scene.** `?look=` (the settings cog's Look, the tray's Look
+menu, saved as `look` in settings.json; ids in `shared/look.ts`) picks plain, pixel or night.
+`mainview/look.ts` wraps `renderer.render`: when the stage renders to the screen in the pixel look,
+the office first renders into a `RenderTexture` at a quarter of the resolution (one look pixel is 4
+CSS px; 2 in the 440-wide compact window, where 4 left a mochi a handful of blocks), with
+`scaleMode: "nearest"` and no antialias, and a sprite of that texture is the only thing on the
+stage. The pass rides whatever render was going to happen (ticker frame, redraw, `step`), so it adds
+no frames: hidden and calm-idle stay at zero, and `e2e/look.test.ts` holds every budget under it.
+The office leaves the stage rather than being hidden, so the stage stays the event root (Pixi
+hit-tests `lastObjectRendered`) with its hit area and `pointertap`; the office's own hit testing is
+geometry (`office.hit`), so clicks, keys and camera moves work unchanged. Measured in headless
+Chrome on a frozen busy office at DPR 2: on the GPU a frame cost 3.0 ms plain and 3.0–3.4 ms pixel
+(noise); in SwiftShader the pixel frame was cheaper (113–152 ms against 284–345 ms), since the
+office fills a sixteenth of the pixels. The night look is `office.setHour(22)`, the light layer's
+night phase held; leaving it gives the hour back to `?hour=` or the clock.
+
+**Life draws at 10 fps, on a shared beat grid.** `tools/profile.sh idle --busy 0 --rate 0` with the
+window on screen: calm 0.4% Bun and 0.1% WebContent; life on 3.1% and 5.3%, and the same (3.1%,
+5.6%) on a full office (12 sessions, 8 agents), so life's cost is the frames, not the cast. Load
+average was 35 to 80 throughout (other projects), so the numbers are rough. Blink and glance
+onsets now snap to a 100 ms grid (`LIFE_GRID_MS` in `rig/life.ts`, still a pure function of id and
+time), and life alone runs at 1000 / 100 = 10 fps instead of 20: a blink (130 ms), the gap in a
+double blink (140 ms) and a pose beat (130 ms) each outlast a frame, so none is skipped (tested
+from any phase). An A/B of the two rates afterwards could not be read: the window was off screen
+for every run (all four under 1%), so the saving is expected (half the frames) but not measured.
+
+**Compact is 440 × 340.** A room is about square, so 40 px more height fills the shot with the room
+instead of hallway and lawn; the cuts read better in `tools/shoot.ts` (compact-cut*).
