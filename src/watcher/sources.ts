@@ -37,6 +37,57 @@ export interface RegistryEntry {
 	statusUpdatedAt?: number;
 }
 
+// What JSON.parse gives back is whatever the file holds: a field may be missing, null, or a
+// different type after a format change. These keep only the fields with the type we expect, so
+// the snapshot code can trust its interfaces (a number for a cwd must never reach a string method).
+type Raw = Record<string, unknown>;
+const obj = (v: unknown): Raw | undefined => (v && typeof v === "object" && !Array.isArray(v) ? (v as Raw) : undefined);
+const str = (v: unknown) => (typeof v === "string" && v ? v : undefined);
+const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
+const bool = (v: unknown) => (typeof v === "boolean" ? v : undefined);
+function pick<T>(fields: { [K in keyof T]: (v: unknown) => T[K] | undefined }, raw: Raw): T {
+	const out: Record<string, unknown> = {};
+	for (const k in fields) {
+		const v = fields[k](raw[k]);
+		if (v !== undefined) out[k] = v;
+	}
+	return out as T;
+}
+
+/** A registry file's typed fields; undefined when it isn't a JSON object at all. */
+export function registryEntry(raw: unknown): RegistryEntry | undefined {
+	const r = obj(raw);
+	return r
+		? pick<RegistryEntry>(
+				{ pid: num, sessionId: str, cwd: str, startedAt: num, kind: str, entrypoint: str, hostSessionId: str, name: str, status: str, statusUpdatedAt: num },
+				r,
+			)
+		: undefined;
+}
+
+/** A subagent's meta file's typed fields. */
+export function agentMeta(raw: unknown): AgentMeta | undefined {
+	const r = obj(raw);
+	return r
+		? pick<AgentMeta>(
+				{ agentType: str, description: str, model: str, spawnDepth: num, parentAgentId: str, finished: bool, stoppedByUser: bool },
+				r,
+			)
+		: undefined;
+}
+
+/** A desktop index entry's typed fields (its PR list is checked item by item where it is read). */
+export function desktopEntry(raw: unknown): DesktopEntry | undefined {
+	const r = obj(raw);
+	if (!r) return undefined;
+	const from = str(obj(r.spawnedFrom)?.sessionId);
+	return {
+		...pick<Omit<DesktopEntry, "spawnedFrom" | "prs">>({ title: str, branch: str, isArchived: bool, forkedFromSessionId: str }, r),
+		...(from ? { spawnedFrom: { sessionId: from } } : {}),
+		...(Array.isArray(r.prs) ? { prs: r.prs as DesktopEntry["prs"] } : {}),
+	};
+}
+
 /** projects/<slug>/<session>/subagents/agent-<id>.meta.json */
 export interface AgentMeta {
 	agentType?: string;

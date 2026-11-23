@@ -1557,3 +1557,60 @@ nail where the picture hangs, a faint rubber mat with hazard edges where the rug
 two-door locker where the armchair stands (vents, a smiley magnet, a scuff, the right door ajar on
 a hi-vis sleeve, a yellow hard hat on a hook at its side), and a crate for a side table with a
 thermos and a lunch tin where the bookcase is. Baked into the room's Graphics like the boss's.
+
+## 2026-11-23: a clean way out, and long runs
+
+**One rule for closing: Busybodies lives in the menu bar.** Closing the office window keeps it
+running there, as S6 chose, but it used to leave a Dock icon that did nothing when clicked (no
+`reopen` handler) and no app menu, so ⌘Q and ⌘W did nothing either: from the Dock it looked stuck
+open. Now the Dock icon is there exactly while the office window is (`syncDock` in
+`src/bun/index.ts`; compact mode is a menu-bar widget too), clicking the Dock icon or opening the
+app again brings the office back, and an app menu gives About, Hide, Quit (⌘Q), Copy, Minimize and
+Close (⌘W). Electrobun installs no menu of its own, and a menu accelerator is a single key with ⌘
+implied (`"q"`, not `"CommandOrControl+Q"`). We kept "close hides" over "close quits" because the
+app is meant to run for days and the tray is its home; Quit is always one click or ⌘Q away.
+
+**Every quit takes one way out** (`src/bun/shutdown.ts`). The tray's Quit, ⌘Q, the Dock's Quit,
+logging out, SIGTERM and SIGINT all end in Electrobun's `quit()`, which emits `before-quit` and then
+has the native side exit the process. The steps run from that event, once, each on its own, so one
+that throws can't stop the rest: unregister the global shortcut, stop the watcher (every file
+watch, the debounce timer and the poll, and no listener hears a rebuild that finishes after), save
+the diary, stop the update timers (a download that finishes later never applies). The process's
+`exit` event runs them too, as a backstop. A unit test runs that lifecycle in a child process and
+fails if anything keeps it alive (it hangs for 5 s without `watcher.stop()`).
+
+**Measured on a built app** (a canary build launched with `open`, quit through AppKit the way the
+Dock and ⌘Q do, or with SIGTERM; times are from the quit until the Bun process, the launcher and the
+app's three WebKit processes are all gone): before the change, 0.48 s (AppKit) and 0.17 s (SIGTERM),
+and 0.44 s with sound playing; after, 0.49 s and 0.49 s, the shutdown steps taking 2–8 ms, and 0.29
+s at the end of the 34-minute soak below. So quitting never hung; what felt unclean was the window
+and the Dock. Not checked by machine: ⌘Q and ⌘W themselves (posting keys needs Accessibility
+access, which the test shell doesn't have) and the tray's Quit click; both call the same `quit()`.
+The AudioContext isn't closed separately: the webview's process is gone 0.4 s after the quit, sound
+or not. One Electrobun quirk: the first launch of a fresh build (the self-extractor) leaves the
+extractor's process waiting in its installer window after the app starts; it is upstream, not ours,
+and gone on later launches.
+
+**The watcher holds up to odd input.** A registry file whose `cwd` wasn't a string made every
+snapshot build throw, so one bad file froze the whole office until it changed. Registry, subagent
+meta and desktop index files now pass through typed pickers (`registryEntry`, `agentMeta`,
+`desktopEntry` in `sources.ts`) that keep only fields of the expected type, and one session that
+still fails to build is skipped for that round, not the snapshot. A test feeds wrong types, torn
+JSON, arrays, `null`, empty files, a stray `.txt`, unknown transcript records and a torn last line
+(the session still shows, with defaults), and 120 sessions at once (one build, well under 2 s). The
+watcher also used to lose its file watches for good when the agent home was removed and made again
+(only the 5 s poll noticed changes after that); now each poll re-watches a folder that appeared or
+whose inode changed, and a test removes the home and brings it back.
+
+**A 34-minute soak is flat.** `SOAK_APP=<canary .app> tools/soak.sh 35` (new: a built app, so a
+dev-build `pkill` elsewhere can't stop it, CPU time per sample, and a timed quit at the end) against
+`tools/fake-home.ts --sessions 8 --agents 4 --busy 0.5 --rate 5 --noise 20 --churn 20` (new:
+`--churn` ends the oldest session and starts a new one every 20 s, so about 100 sessions and 200
+agents came and went). Bun: 128.6 MB at the start, 105–110 MB through the first 20 minutes, 69.0 MB
+at the end; WebContent: 205 MB at the start, 123–183 MB while drawing, 61 MB once the window was
+covered (it stops drawing then). CPU averaged 6.2% of a core for Bun and 17.5% for WebContent, on a
+machine at load average ~58 from other work, so only the memory is a measurement. The scene soak
+(`tools/soak-scene.ts --minutes 35`, headless Chrome, run at the same time): heap 13.1 MB at the
+start, 20.3 MB at 5 minutes, 24.5 MB at the end (+4.1 MB after warm-up, flattening: 22.9 MB at 19.5
+minutes), textures flat at 76 after warm-up, characters 5, 9,739 renders. That drift is the same
+slow one S6 saw (+3.1 MB); still worth watching on a longer run.

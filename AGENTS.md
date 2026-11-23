@@ -58,7 +58,7 @@ v7-era APIs that look right and silently draw the wrong thing. Update it only wi
 
 | Path | What |
 |---|---|
-| `src/bun/` | The Electrobun main process: the office and compact windows, the tray, updates, the diary on disk (`diary.ts`; its counts-only model is `src/shared/diary.ts`) |
+| `src/bun/` | The Electrobun main process: the office and compact windows, the tray, the app menu, updates, the way out on quit (`shutdown.ts`), the diary on disk (`diary.ts`; its counts-only model is `src/shared/diary.ts`) |
 | `src/watcher/` | Capture: reads the agent tool's files into a `Snapshot` (`model.ts` is the contract) |
 | `src/mainview/` | The webview's entry: app setup, the top bar, the inspector, demo days; on-screen visibility (`visibility.ts`), the compact camera (`shots.ts`), opt-in sound (`sound.ts`), looks as render passes (`look.ts`) |
 | `src/scene/office/` | The open-floor office: floor plan, camera, cut-paper drawing, the character slot interface; light and time of day (`daylight.ts`, `light.ts`), windows and the yard (`outlook.ts`, `outside.ts`), the paper pass (`material.ts`); a theme's staging (`staging.ts`), ambient life (`ambient.ts`), the walls that remember (`decor.ts`) |
@@ -68,7 +68,7 @@ v7-era APIs that look right and silently draw the wrong thing. Update it only wi
 | `test/` | Unit tests (`bun test test/`). Fixtures are built in a temp folder from invented data |
 | `e2e/` | Scene tests in headless Chrome (`bun test e2e/`) |
 | `tools/watch-tree.ts` | Prints the live session/agent tree in a terminal |
-| `tools/fake-home.ts`, `tools/profile.sh` | Synthetic load, and CPU per process under it |
+| `tools/fake-home.ts`, `tools/profile.sh`, `tools/soak.sh` | Synthetic load (`--churn` for sessions coming and going), CPU per process under it, and memory over a long run (`SOAK_APP=` for a built app) |
 | `tools/shoot.ts`, `tools/shot-diff.ts` | Deterministic screenshots of named scene states (`--theme`), a contact sheet, and a pixel diff of two runs |
 | `tools/record-gif.ts`, `tools/tray-icons.ts` | The README's GIF from `?demo`, and the menu-bar faces |
 | `tools/pose-dump.ts`, `tools/pose-sheet.ts` | Every pose as text, and as one PNG (`docs/rig/pose-sheet.png`) |
