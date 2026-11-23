@@ -79,13 +79,6 @@ const STATES: State[] = [
 	{ name: "room-lanternfish-morning", demo: "", aim: { kind: "room", name: "lanternfish" }, size: BOARD, hour: 8 },
 	{ name: "desk-ship-release-dusk", demo: "", aim: { kind: "desk", title: "Ship release 2.4" }, size: BOARD, hour: 19 },
 	{ name: "compact-busy-night", demo: "", aim: { kind: "office" }, size: [440, 340], query: "compact", hour: 23 },
-	// Looks as render passes (mainview/look.ts): pixel, and the held night.
-	{ name: "look-pixel-floor", demo: "", aim: { kind: "office" }, size: BOARD, query: "look=pixel" },
-	{ name: "look-pixel-room", demo: "", aim: { kind: "room", name: "lanternfish" }, size: BOARD, query: "look=pixel" },
-	{ name: "look-pixel-desk", demo: "", aim: { kind: "desk", title: "Ship release 2.4" }, size: BOARD, query: "look=pixel" },
-	{ name: "look-pixel-compact", demo: "", aim: { kind: "shot" }, size: [440, 340], query: "compact&look=pixel" },
-	{ name: "look-night-floor", demo: "", aim: { kind: "office" }, size: BOARD, query: "look=night" },
-	{ name: "look-night-room", demo: "", aim: { kind: "room", name: "lanternfish" }, size: BOARD, query: "look=night" },
 ];
 
 const ROOT = join(import.meta.dir, "..");

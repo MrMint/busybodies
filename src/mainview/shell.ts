@@ -3,7 +3,6 @@
 // what it can. Fixtures: ?demo=empty (nobody's in), ?demo=nohome (no coding agent found), ?about.
 import type { AppStatus } from "../shared/rpc";
 import { THEME_IDS, type ThemeId } from "../scene/theme/id";
-import { LOOK_IDS, type LookId } from "../shared/look";
 import type { Session, Snapshot } from "../watcher/model";
 
 /** What the shell can ask of the Bun process. */
@@ -16,11 +15,10 @@ export interface Bridge {
 	setToggles(change: Toggles): void;
 }
 
-/** The settings sheet's switches and its Look, as the tray has them too. */
+/** The settings sheet's switches, as the tray has them too. */
 export interface Toggles {
 	sound?: boolean;
 	calm?: boolean;
-	look?: LookId;
 }
 
 const SWITCHES: { key: "sound" | "calm"; name: string; note: string }[] = [
@@ -33,13 +31,6 @@ const THEME_NAMES: Record<ThemeId, { name: string; note: string }> = {
 	office: { name: "Office", note: "Desks, copiers and a lot of paper." },
 	factory: { name: "Factory", note: "Hard hats, machines and robot arms." },
 	bakery: { name: "Bakery", note: "Croissants, cakes, coffee and far too much sugar." },
-};
-
-/** What each look is called in the settings sheet (mainview/look.ts). */
-const LOOK_NAMES: Record<LookId, { name: string; note: string }> = {
-	plain: { name: "Plain", note: "Cut paper, as drawn." },
-	pixel: { name: "Pixel", note: "Chunky pixels, like an old game." },
-	night: { name: "Night", note: "Always after hours: lamps on, moon up." },
 };
 
 const CSS = `
@@ -77,7 +68,6 @@ html:has(body.compact),body.compact{background:transparent}
 #bb-settings .choice[aria-checked="true"]{background:#1b2140;color:#fff}
 #bb-settings .switches{margin-top:2px}
 #bb-settings h3.office-label{margin-top:14px}
-#bb-settings .choices.looks{grid-template-columns:1fr 1fr 1fr}
 #bb-settings .row{display:flex;justify-content:flex-end;margin-top:16px}
 #bb-settings .close{font:700 14px ui-rounded,system-ui,sans-serif;color:#fff;background:#1b2140;border:3px solid #1b2140;border-radius:999px;
  padding:5px 14px;cursor:pointer;box-shadow:2px 3px 0 #1b2140}
@@ -148,7 +138,6 @@ project's GitHub Releases. No analytics, no accounts.</p>
 	settings.innerHTML = `<div class="sheet"><h2>Settings</h2>
 <h3 id="bb-theme-label">Theme</h3><div class="choices" role="radiogroup" aria-labelledby="bb-theme-label"></div>
 <h3 class="office-label">Office</h3><div class="switches choices"></div>
-<h3 class="office-label" id="bb-look-label">Look</h3><div class="looks choices" role="radiogroup" aria-labelledby="bb-look-label"></div>
 <div class="row"><button class="close">Done</button></div></div>`;
 	const choices = settings.querySelector(".choices")!;
 	for (const id of THEME_IDS) {
@@ -185,27 +174,9 @@ project's GitHub Releases. No analytics, no accounts.</p>
 		};
 		switches.appendChild(b);
 	}
-	const looks = settings.querySelector(".looks")!;
-	for (const id of LOOK_IDS) {
-		const b = document.createElement("button");
-		b.className = "choice";
-		b.dataset.look = id;
-		b.setAttribute("role", "radio");
-		b.innerHTML = "<b></b><span></span>";
-		b.querySelector("b")!.textContent = LOOK_NAMES[id].name;
-		b.querySelector("span")!.textContent = LOOK_NAMES[id].note;
-		b.onclick = () => {
-			// Like the switches: this window at once, then the app saves it and tells the other.
-			opts.toggles.set({ look: id });
-			if (opts.live) opts.bridge.setToggles({ look: id });
-			markToggles();
-		};
-		looks.appendChild(b);
-	}
 	const markToggles = () => {
 		const now = opts.toggles.current();
 		for (const b of switches.querySelectorAll<HTMLElement>(".choice")) b.setAttribute("aria-checked", String(now[b.dataset.toggle as "sound" | "calm"]));
-		for (const b of looks.querySelectorAll<HTMLElement>(".choice")) b.setAttribute("aria-checked", String(b.dataset.look === now.look));
 	};
 	const markTheme = () => {
 		for (const b of choices.querySelectorAll<HTMLElement>(".choice")) b.setAttribute("aria-checked", String(b.dataset.theme === opts.theme.current()));

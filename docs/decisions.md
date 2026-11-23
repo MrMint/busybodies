@@ -1277,6 +1277,8 @@ wall, so a chute reads better than sliding across the room.
 
 ## 2026-11-22: looks as render passes (wave 3, stream J)
 
+*Removed on 2026-11-23 (below): kept here as the record of how it worked.*
+
 **A look is a render pass, not a second scene.** `?look=` (the settings cog's Look, the tray's Look
 menu, saved as `look` in settings.json; ids in `shared/look.ts`) picks plain, pixel or night.
 `mainview/look.ts` wraps `renderer.render`: when the stage renders to the screen in the pixel look,
@@ -1557,6 +1559,22 @@ nail where the picture hangs, a faint rubber mat with hazard edges where the rug
 two-door locker where the armchair stands (vents, a smiley magnet, a scuff, the right door ajar on
 a hi-vis sleeve, a yellow hard hat on a hook at its side), and a crate for a side table with a
 thermos and a lunch tin where the bookcase is. Baked into the room's Graphics like the boss's.
+
+## 2026-11-23: the pixel and night looks are gone
+
+**One look: the scene as drawn.** The pixel and night looks (2026-11-22, above) weren't wanted: the
+settings sheet's Look, the tray's Look menu, `?look=`, `mainview/look.ts`, `shared/look.ts` and
+`e2e/look.test.ts` are removed. A `look` saved by an older version is dropped when settings.json is
+read (`bun/settings.ts`), so a saved "pixel" or "night" opens the default scene and leaves the file
+at the next save. The light layer keeps the real time of day, and `?hour=` still pins it. The
+round-1 `design/boards/Pixel*` boards stay: they record a dropped style, not this feature.
+
+**A patio's seed is a hash of where it is, never its coordinates.** The upper band's gaps lie above
+the hallway at negative y, so the bakery's `Math.round(r.x + r.y * 3)` went negative for a big one,
+`CANDY[seed % n]` was undefined, the chalkboard's stroke threw, and the office's draw ended before
+the cast: an empty bakery, or a real floor with a wide upper gap, showed nobody. Every palette pick
+from a seed must stay non-negative; `hash()` (office/paper.ts) is. `e2e/theme.test.ts` shows every
+theme's crew from an empty office, in the full and compact windows, with that gap on the floor.
 
 ## 2026-11-23: AI-generated audio (voiced lines and room loops)
 

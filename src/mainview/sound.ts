@@ -12,13 +12,15 @@
 // Every variation (pitch, a few ms of delay, the rustle's swells) comes from the event's id, never
 // Math.random. At most one earcon of a kind every few seconds, and a global cap, so a busy office
 // doesn't chatter. Each is panned by its room's x on screen, and louder while the camera is zoomed
-// into that room (quieter in another). Under them, a very low room tone per theme: the office hums
-// with a keyboard patter whose rate follows the heat; the factory drones with a belt's clatter; the
-// bakery has a warm oven hum, now and then the espresso machine's hiss of steam (more often when
+// into that room (quieter in another), a little louder or softer by its id, and never more than
+// two at once. Under them, a very low room tone per theme, filtered air that drifts (no hum): the
+// office has a keyboard patter whose rate follows the heat; the factory a belt's clatter; the
+// bakery the ovens' warm air, now and then the espresso machine's hiss of steam (more often when
 // it's busy) and, once in a while, the little bell over the shop door.
 //
 // The AudioContext is made only once sound is on and the window is on screen; it runs only while
-// visible, and suspends when hidden, in calm mode, or when sound is turned off. Only the full
+// visible, and suspends when hidden, in calm mode, or when sound is turned off. Every one of those
+// fades the master first (and back in after), so nothing clicks; a limiter keeps a pile-up clean. Only the full
 // office window plays sound (main.ts doesn't make one for compact), so nothing doubles.
 import type { World, WorldEvent } from "../scene/director";
 import type { Stop, View } from "../scene/office/camera";
@@ -58,10 +60,58 @@ export function hashId(id: string): number {
 	return h >>> 0;
 }
 
-/** An event's variation: a pitch factor within ±5%, a start delay of up to 40 ms, and a seed. */
-export function vary(id: string): { pitch: number; delay: number; seed: number } {
+/** Murmur3's finaliser: every bit of the hash stirred into every other. FNV's middle bits barely
+ * move when only an id's last characters do, which the pitch and delay get away with. */
+function mix(h: number): number {
+	h ^= h >>> 16;
+	h = Math.imul(h, 0x85ebca6b);
+	h ^= h >>> 13;
+	h = Math.imul(h, 0xc2b2ae35);
+	return (h ^ (h >>> 16)) >>> 0;
+}
+
+/**
+ * An event's variation: a pitch factor within ±5%, a start delay of up to 40 ms, a level within
+ * about ±1.5 dB, and a seed, all from the id's hash.
+ */
+export function vary(id: string): { pitch: number; delay: number; level: number; seed: number } {
 	const h = hashId(id);
-	return { pitch: 0.95 + ((h & 0xff) / 255) * 0.1, delay: (((h >>> 8) & 0xff) / 255) * 0.04, seed: h };
+	return {
+		pitch: 0.95 + ((h & 0xff) / 255) * 0.1,
+		delay: (((h >>> 8) & 0xff) / 255) * 0.04,
+		level: 0.84 + ((mix(h) & 0xff) / 255) * 0.32,
+		seed: h,
+	};
+}
+
+/** How long each earcon rings, in seconds: how long it holds one of the `MAX_VOICES`. */
+export const RING: Record<EarconKind, number> = { bell: 1.45, stamp: 0.25, red: 0.9, rustle: 0.7, chime: 1.3, grind: 1.35 };
+
+/** At most this many earcons sound at once. */
+export const MAX_VOICES = 2;
+
+/**
+ * The voice cap, in the AudioContext's seconds: room for `MAX_VOICES` earcons at a time. When it's
+ * full, a bell (a wait on you) takes the place of the voice that started first, which the caller
+ * fades out; anything else waits its turn (it's dropped).
+ */
+export class Voices<T = unknown> {
+	#playing: { until: number; handle: T }[] = [];
+
+	admit(kind: EarconKind, now: number, until: number, handle: T): { ok: boolean; steal?: T } {
+		this.#playing = this.#playing.filter((v) => v.until > now);
+		let steal: T | undefined;
+		if (this.#playing.length >= MAX_VOICES) {
+			if (kind !== "bell") return { ok: false };
+			steal = this.#playing.shift()!.handle;
+		}
+		this.#playing.push({ until, handle });
+		return steal === undefined ? { ok: true } : { ok: true, steal };
+	}
+
+	count(now: number): number {
+		return this.#playing.filter((v) => v.until > now).length;
+	}
 }
 
 /** A small deterministic sequence from a seed (for the rustle's swells and the patter's jitter). */
@@ -155,7 +205,7 @@ export function panFor(rect: { x: number; w: number } | undefined, view: View, w
 /** Louder zoomed into the earcon's room, quieter zoomed into another, as is in the whole office. */
 export function loudness(area: string | undefined, zoomed: string | undefined): number {
 	if (zoomed === undefined) return 1;
-	return area === zoomed ? 1.6 : 0.5;
+	return area === zoomed ? 1.4 : 0.55;
 }
 
 /** The area the camera is zoomed into, if any: a room stop, or the room of a desk stop. */
@@ -179,6 +229,7 @@ export interface Played {
 	/** When it was scheduled, in the AudioContext's seconds. */
 	at: number;
 	pan: number;
+	/** The room's loudness (`loudness`), before the id's level jitter. */
 	gain: number;
 }
 
@@ -194,6 +245,8 @@ export interface SoundState {
 	limited: number;
 	/** Cues heard while not live (off, hidden, calm, or the context not running yet). */
 	quiet: number;
+	/** Earcons still ringing now (at most `MAX_VOICES`). */
+	voices: number;
 	tone: { theme: ThemeId; heat: number; running: boolean };
 }
 
@@ -211,8 +264,63 @@ export interface SoundHost {
 	clock?(): number;
 }
 
-const MASTER = 0.5;
-/** The room tone's level while a character speaks. */
+/** The master level, under the limiter. */
+export const MASTER = 0.42;
+
+/** Fades, as `setTargetAtTime` time constants in seconds (about 5 of them to settle). */
+const FADE = {
+	/** The master, coming back on screen or sound turned on. */
+	in: 0.08,
+	/** The master, going off screen, calm or muted; the context suspends once it's silent. */
+	out: 0.03,
+	/** The room tone fading in, and out (a theme switch crossfades). */
+	toneIn: 1.5,
+	toneOut: 0.25,
+	/** A voice the cap took for a bell. */
+	steal: 0.03,
+} as const;
+
+/** How long after the master starts fading out the context suspends, in ms. */
+const SUSPEND_AFTER_MS = 200;
+
+/** Seconds of white noise from a fixed seed, shared by every noisy sound. Long enough that the
+ * room tone's loop doesn't flutter once a second. */
+const NOISE_SECONDS = 4;
+
+/** The shared noise. Its first second is the same as it always was, so earcons sound unchanged. */
+export function makeNoise(ctx: BaseAudioContext): AudioBuffer {
+	const buf = ctx.createBuffer(1, ctx.sampleRate * NOISE_SECONDS, ctx.sampleRate);
+	const data = buf.getChannelData(0);
+	const r = seq(0x5eed);
+	for (let i = 0; i < data.length; i++) data[i] = r() * 2 - 1;
+	return buf;
+}
+
+/**
+ * The master: a gain into a limiter into `dest`. The limiter is a safety net for many sounds at
+ * once; the levels below stay under its threshold on their own. Starts silent.
+ */
+export function masterChain(ctx: BaseAudioContext, dest: AudioNode = ctx.destination): GainNode {
+	const master = ctx.createGain();
+	master.gain.value = 0;
+	const limit = ctx.createDynamicsCompressor();
+	limit.threshold.value = -6;
+	limit.knee.value = 3;
+	limit.ratio.value = 20;
+	limit.attack.value = 0.002;
+	limit.release.value = 0.2;
+	master.connect(limit).connect(dest);
+	return master;
+}
+
+/** Ramp a level from wherever it is now, with no jump. Only `setTargetAtTime`s touch these levels,
+ * so cancelling the future never snaps one back to an older value. */
+function glide(param: AudioParam, to: number, now: number, tau: number): void {
+	param.cancelScheduledValues(now);
+	param.setTargetAtTime(to, now, tau);
+}
+
+/** The room tone's level while a character speaks (speech.ts). */
 const DUCK = 0.35;
 
 export class Sound {
@@ -223,12 +331,14 @@ export class Sound {
 	#noise?: AudioBuffer;
 	#ears = new Ears();
 	#gate = new Gate();
+	#voices = new Voices<GainNode>();
 	#last: Played[] = [];
 	#limited = 0;
 	#quiet = 0;
 	#heat = 0;
 	#tone?: { theme: ThemeId; nodes: AudioScheduledSourceNode[]; out: GainNode; timer: ReturnType<typeof setInterval>; next: number; n: number };
 	#unlock?: () => void;
+	#suspending?: ReturnType<typeof setTimeout>;
 
 	constructor(host: SoundHost) {
 		this.#host = host;
@@ -261,6 +371,11 @@ export class Sound {
 			if (!this.#ctx) this.#make();
 			const ctx = this.#ctx;
 			if (!ctx) return;
+			clearTimeout(this.#suspending);
+			this.#suspending = undefined;
+			// Fade the master up from wherever it is (silent after a suspend). While the context is
+			// still suspended its clock stands still, so the fade plays out once it runs.
+			glide(this.#master!.gain, MASTER, ctx.currentTime, FADE.in);
 			if (ctx.state !== "running") {
 				void ctx.resume().then(() => this.#syncTone(), () => {});
 				// WebKit may want a gesture first: the next click in the office counts as one.
@@ -274,7 +389,14 @@ export class Sound {
 			this.#syncTone();
 		} else {
 			this.#stopTone();
-			if (this.#ctx?.state === "running") void this.#ctx.suspend();
+			const ctx = this.#ctx;
+			if (ctx?.state !== "running" || this.#suspending) return;
+			// Fade everything out first (a suspend mid-ring would click), then suspend.
+			glide(this.#master!.gain, 0, ctx.currentTime, FADE.out);
+			this.#suspending = setTimeout(() => {
+				this.#suspending = undefined;
+				if (!this.#wanted && ctx.state === "running") void ctx.suspend();
+			}, SUSPEND_AFTER_MS);
 		}
 	}
 
@@ -314,6 +436,7 @@ export class Sound {
 			last: [...this.#last],
 			limited: this.#limited,
 			quiet: this.#quiet,
+			voices: this.#ctx ? this.#voices.count(this.#ctx.currentTime) : 0,
 			tone: { theme: this.#host.theme(), heat: this.#heat, running: !!this.#tone },
 		};
 	}
@@ -323,15 +446,8 @@ export class Sound {
 		if (!Ctor) return;
 		const ctx = new Ctor();
 		this.#ctx = ctx;
-		this.#master = ctx.createGain();
-		this.#master.gain.value = MASTER;
-		this.#master.connect(ctx.destination);
-		// One second of white noise from a fixed seed, shared by every noisy sound.
-		const buf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
-		const data = buf.getChannelData(0);
-		const r = seq(0x5eed);
-		for (let i = 0; i < data.length; i++) data[i] = r() * 2 - 1;
-		this.#noise = buf;
+		this.#master = masterChain(ctx);
+		this.#noise = makeNoise(ctx);
 		ctx.addEventListener("statechange", () => this.#syncTone());
 	}
 
@@ -352,7 +468,13 @@ export class Sound {
 		const v = vary(cue.id);
 		const at = ctx.currentTime + 0.02 + v.delay;
 		const out = ctx.createGain();
-		out.gain.value = gain;
+		const voice = this.#voices.admit(cue.kind, ctx.currentTime, at + RING[cue.kind], out);
+		if (!voice.ok) {
+			this.#limited++;
+			return;
+		}
+		if (voice.steal) glide(voice.steal.gain, 0, ctx.currentTime, FADE.steal);
+		out.gain.value = gain * v.level * LEVEL[cue.kind];
 		const panner = ctx.createStereoPanner();
 		panner.pan.value = pan;
 		out.connect(panner).connect(this.#master);
@@ -366,7 +488,7 @@ export class Sound {
 		if (this.#last.length > 12) this.#last.shift();
 	}
 
-	#kit(ctx: AudioContext, out: AudioNode): Kit {
+	#kit(ctx: BaseAudioContext, out: AudioNode): Kit {
 		return kit(ctx, out, this.#noise!);
 	}
 
@@ -381,10 +503,10 @@ export class Sound {
 		const out = ctx.createGain();
 		out.gain.value = 0;
 		// Fade in over a few seconds, so turning sound on (or coming back on screen) never thumps.
-		out.gain.setTargetAtTime(1, ctx.currentTime, 1.5);
+		out.gain.setTargetAtTime(1, ctx.currentTime, FADE.toneIn);
 		out.connect(this.#master!);
 		const k = kit(ctx, out, this.#noise!);
-		const nodes = theme === "factory" ? droneBed(ctx, out) : theme === "bakery" ? ovenBed(ctx, out, this.#noise!) : humBed(ctx, out);
+		const nodes = roomBed(theme, ctx, out, this.#noise!);
 		const tone = { theme, nodes, out, next: ctx.currentTime + 0.5, n: 0, quietUntil: 0, timer: undefined as unknown as ReturnType<typeof setInterval> };
 		// Look a quarter second ahead every 200 ms and lay down the patter (or clatter) for it.
 		tone.timer = setInterval(() => {
@@ -413,26 +535,32 @@ export class Sound {
 		this.#tone = tone;
 	}
 
+	/** Stop the room tone: its timer at once, its sound after a short fade (no click), then its nodes. */
 	#stopTone(): void {
 		const t = this.#tone;
 		if (!t) return;
-		clearInterval(t.timer);
-		for (const n of t.nodes) {
-			try {
-				n.stop();
-			} catch {
-				// Already stopped.
-			}
-		}
-		t.out.disconnect();
 		this.#tone = undefined;
+		clearInterval(t.timer);
+		const ctx = this.#ctx!;
+		glide(t.out.gain, 0, ctx.currentTime, FADE.toneOut);
+		// Wall-clock, so it lets go even if the context suspends mid-fade.
+		setTimeout(() => {
+			for (const n of t.nodes) {
+				try {
+					n.stop();
+				} catch {
+					// Already stopped.
+				}
+			}
+			t.out.disconnect();
+		}, FADE.toneOut * 6_000);
 	}
 }
 
 // --- Synthesis -------------------------------------------------------------------------------------
 
 interface Kit {
-	ctx: AudioContext;
+	ctx: BaseAudioContext;
 	out: AudioNode;
 	/** The shared second of white noise. */
 	buffer: AudioBuffer;
@@ -442,7 +570,7 @@ interface Kit {
 	noise(at: number, dur: number, filter: BiquadFilterType, freq: number, q: number, peak: number, offset?: number, dest?: AudioNode): GainNode;
 }
 
-function kit(ctx: AudioContext, out: AudioNode, buffer: AudioBuffer): Kit {
+function kit(ctx: BaseAudioContext, out: AudioNode, buffer: AudioBuffer): Kit {
 	return {
 		ctx,
 		out,
@@ -480,6 +608,13 @@ function kit(ctx: AudioContext, out: AudioNode, buffer: AudioBuffer): Kit {
 }
 
 type Earcon = (k: Kit, at: number, pitch: number, seed: number) => void;
+
+/**
+ * The mix: each earcon's level, set by rendering them offline and evening out their loudest tenth
+ * of a second. The bell (a wait on you) sits a little above the rest; the rustle's soft noise needs
+ * the most help.
+ */
+export const LEVEL: Record<EarconKind, number> = { bell: 0.64, stamp: 1.1, red: 0.87, rustle: 7, chime: 0.72, grind: 0.96 };
 
 const EARCONS: Record<EarconKind, Earcon> = {
 	// The desk bell: a bright strike with inharmonic partials (a small bell's 1 : 2.76 : 5.4), the
@@ -546,76 +681,77 @@ const EARCONS: Record<EarconKind, Earcon> = {
 	},
 };
 
-/** The office's bed: a faint mains hum (120 and 180 Hz) under a low-pass. */
-function humBed(ctx: AudioContext, out: AudioNode): AudioScheduledSourceNode[] {
-	const lp = ctx.createBiquadFilter();
-	lp.type = "lowpass";
-	lp.frequency.value = 400;
-	lp.connect(out);
-	return [
-		[120, 0.012],
-		[180, 0.005],
-	].map(([f, g]) => {
-		const o = ctx.createOscillator();
-		o.frequency.value = f!;
-		const gain = ctx.createGain();
-		gain.gain.value = g!;
-		o.connect(gain).connect(lp);
-		o.start();
-		return o;
-	});
+/**
+ * A room's bed: filtered noise, no tones. It used to be sine and saw hums (120 Hz in the office,
+ * 55 Hz in the factory), and a steady tone that low reads as mains hum on a laptop's speakers. Now
+ * it's air: two loops of the shared noise from different places, spread a little left and right,
+ * through a band that keeps it off the speakers' lowest notes and out of the earcons' highs. Its
+ * level and brightness drift on slow LFOs at rates that don't line up, so it never settles into a
+ * steady tone. Well under everything: about 60 dB below full scale.
+ */
+interface Bed {
+	/** The band: high-passed here, low-passed there (Hz). */
+	low: number;
+	high: number;
+	/** The level before the drift, and how far the drift swings it (a share of that level). */
+	level: number;
+	swing: number;
+	/** How far the low-pass wanders (Hz), and the drift's rates (Hz): level, level, brightness. */
+	wander: number;
+	rates: readonly [number, number, number];
 }
 
-/** The factory's bed: a low saw drone and its octave, well muffled. */
-function droneBed(ctx: AudioContext, out: AudioNode): AudioScheduledSourceNode[] {
-	const lp = ctx.createBiquadFilter();
-	lp.type = "lowpass";
-	lp.frequency.value = 180;
-	lp.connect(out);
-	return (
-		[
-			["sawtooth", 55, 0.02],
-			["sine", 110, 0.006],
-		] as const
-	).map(([type, f, g]) => {
-		const o = ctx.createOscillator();
-		o.type = type;
-		o.frequency.value = f;
-		const gain = ctx.createGain();
-		gain.gain.value = g;
-		o.connect(gain).connect(lp);
-		o.start();
-		return o;
-	});
-}
+const BEDS: Record<ThemeId, Bed> = {
+	// The office: the air handling, soft and even.
+	office: { low: 160, high: 900, level: 0.011, swing: 0.4, wander: 250, rates: [0.031, 0.077, 0.023] },
+	// The factory: a darker, rougher room, swelling a little more.
+	factory: { low: 140, high: 620, level: 0.013, swing: 0.4, wander: 180, rates: [0.043, 0.11, 0.029] },
+	// The bakery: the ovens' warm air, breathing slowly like a burner cycling.
+	bakery: { low: 150, high: 750, level: 0.011, swing: 0.45, wander: 200, rates: [0.08, 0.037, 0.019] },
+};
 
-/** The bakery's bed: the ovens' warm hum, a muffled rumble of air with a low element tone that
- * breathes very slowly, like a burner cycling. */
-function ovenBed(ctx: AudioContext, out: AudioNode, noise: AudioBuffer): AudioScheduledSourceNode[] {
+export function roomBed(theme: ThemeId, ctx: BaseAudioContext, out: AudioNode, noise: AudioBuffer): AudioScheduledSourceNode[] {
+	const bed = BEDS[theme] ?? BEDS.office;
+	const hp = ctx.createBiquadFilter();
+	hp.type = "highpass";
+	hp.frequency.value = bed.low;
+	hp.Q.value = 0.5;
 	const lp = ctx.createBiquadFilter();
 	lp.type = "lowpass";
-	lp.frequency.value = 240;
+	lp.frequency.value = bed.high;
 	lp.Q.value = 0.5;
-	lp.connect(out);
-	const air = ctx.createBufferSource();
-	air.buffer = noise;
-	air.loop = true;
-	const airGain = ctx.createGain();
-	airGain.gain.value = 0.018;
-	air.connect(airGain).connect(lp);
-	const hum = ctx.createOscillator();
-	hum.frequency.value = 68;
-	const humGain = ctx.createGain();
-	humGain.gain.value = 0.006;
-	// The breath: the hum's level swells and settles over about twelve seconds.
-	const lfo = ctx.createOscillator();
-	lfo.frequency.value = 0.08;
-	const depth = ctx.createGain();
-	depth.gain.value = 0.003;
-	lfo.connect(depth).connect(humGain.gain);
-	hum.connect(humGain).connect(lp);
-	for (const n of [air, hum, lfo]) n.start();
-	return [air, hum, lfo];
+	const level = ctx.createGain();
+	level.gain.value = bed.level;
+	hp.connect(lp).connect(level).connect(out);
+	const nodes: AudioScheduledSourceNode[] = [];
+	// Two loops of the noise, from places 1.7 s apart, a little left and right.
+	for (const [offset, pan] of [
+		[0, -0.5],
+		[1.7, 0.5],
+	] as const) {
+		const src = ctx.createBufferSource();
+		src.buffer = noise;
+		src.loop = true;
+		const p = ctx.createStereoPanner();
+		p.pan.value = pan;
+		src.connect(p).connect(hp);
+		src.start(ctx.currentTime, offset);
+		nodes.push(src);
+	}
+	// The drift: two slow LFOs on the level, one on the brightness.
+	const drift = (rate: number, depth: number, param: AudioParam) => {
+		const lfo = ctx.createOscillator();
+		lfo.frequency.value = rate;
+		const g = ctx.createGain();
+		g.gain.value = depth;
+		lfo.connect(g).connect(param);
+		lfo.start(ctx.currentTime);
+		nodes.push(lfo);
+	};
+	drift(bed.rates[0], (bed.level * bed.swing) / 2, level.gain);
+	drift(bed.rates[1], (bed.level * bed.swing) / 2, level.gain);
+	drift(bed.rates[2], bed.wander, lp.frequency);
+	return nodes;
 }
 
 /** The bakery's room tone looks ahead in quarter-second steps. */
