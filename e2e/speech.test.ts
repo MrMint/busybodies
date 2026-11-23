@@ -73,9 +73,10 @@ describe("speech", () => {
 		await page.waitForFunction(() => window.__busybodies!.speech()?.manifest === "ready", undefined, { timeout: 15_000 });
 		expect((await page.evaluate(() => window.__busybodies!.speech()!)).clips).toBe(4);
 		const key = await startWait(page);
+		expect(key).toBeDefined();
 		const s = await spoken(page);
 		const line = s.last.at(-1)!;
-		expect(line.who).toBe(key);
+		expect(line.who).toBe(key!);
 		expect(line.how).toBe("clip");
 		expect(line.file).toMatch(/^office\/[0-9a-f]{16}-o-[ab]\.webm$/);
 		expect(Math.abs(line.cents)).toBeLessThanOrEqual(120);
