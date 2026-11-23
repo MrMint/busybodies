@@ -143,7 +143,7 @@ export function noteSnapshot(diary: Diary, mem: DiaryMemory, snap: Snapshot, opt
 		const members: { id: string; commands?: Session["commands"] }[] = [{ id: s.id, commands: s.commands }];
 		for (const a of agentsOf(s.agents)) {
 			count("hires", p, `a|${s.id}|${a.id}`);
-			regular(p, roleFor(a.role));
+			regular(p, roleFor(a.role, a.task));
 			members.push({ id: `${s.id}/${a.id}`, commands: a.commands });
 		}
 		for (const m of members) {

@@ -91,6 +91,8 @@ export interface Trigger {
 	ongoing: boolean;
 	/** Narrows the lines: a line with a tag is only used for a trigger with the same tag. */
 	tag?: string;
+	/** How many of each costume the session's crew has, for lines that name one (`Line.needs`). */
+	crew?: Partial<Record<Role, number>>;
 	vars: LineVars;
 }
 

@@ -307,6 +307,18 @@ describe("the scheduler", () => {
 		expect(s2.step(NOW + 21_000, ZOOMED).says.map((b) => b.trigger)).toEqual(["testFailed"]);
 	});
 
+	test("a line that names scouts waits for a crew that has them", () => {
+		const texts = (crew: Trigger["crew"], kind: "bubble" | "sign" = "bubble", t: Partial<Trigger> = {}) =>
+			fitting(trig({ kind: "hiring", who: "a", role: "builder", magnitude: 3, crew, ...t }), kind).map((l) => l.text);
+		expect(texts({ builder: 3 })).not.toContain("A scout for my scout’s scout.");
+		expect(texts({ scout: 2, builder: 1 })).toContain("A scout for my scout’s scout.");
+		expect(texts({ builder: 3 }, "sign")).not.toContain("Caution: scouts running");
+		expect(texts({ scout: 1 }, "sign")).toContain("Caution: scouts running");
+		const pr = (crew: Trigger["crew"]) => fitting(trig({ kind: "prOpened", who: "a", tag: "crew", crew, vars: { n: 3, count: 1 } }), "bubble").map((l) => l.text);
+		expect(pr({ builder: 4 })).not.toContain("I would like to thank my scout. And my other scout.");
+		expect(pr({ scout: 2, builder: 2 })).toContain("I would like to thank my scout. And my other scout.");
+	});
+
 	test("never repeats a line for the same character within the hour", () => {
 		const s = new Scheduler({ gapMs: 0, cooldownMs: 0, anyoneRepeatMs: 0 });
 		const said: string[] = [];

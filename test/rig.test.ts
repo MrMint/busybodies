@@ -430,6 +430,33 @@ describe("variation", () => {
 		expect(roleFor(undefined)).toBe("builder");
 		expect(ROLES).toHaveLength(7);
 	});
+
+	test("the agent tool's own types get costumes too", () => {
+		expect(roleFor("Plan")).toBe("designer");
+		expect(roleFor("claude-code-guide")).toBe("scout");
+		expect(roleFor("code-reviewer")).toBe("reviewer");
+		expect(roleFor("test-runner")).toBe("verifier");
+		// A role's own name maps to itself, so a chosen costume survives another pass.
+		for (const r of ROLES) expect(roleFor(r)).toBe(r);
+	});
+
+	test("a generic type's task picks its costume, by the first thing it is asked to do", () => {
+		expect(roleFor("general-purpose", "Find where the timer is set")).toBe("scout");
+		expect(roleFor("general-purpose", "Research how sessions are stored")).toBe("scout");
+		expect(roleFor("general-purpose", "Review the diff for regressions")).toBe("reviewer");
+		expect(roleFor("general-purpose", "Run the tests and confirm they pass")).toBe("verifier");
+		expect(roleFor("general-purpose", "Design the settings screen")).toBe("designer");
+		expect(roleFor("general-purpose", "Implement drift correction")).toBe("builder");
+		expect(roleFor("general-purpose", "Find and fix the leak")).toBe("scout");
+		expect(roleFor("general-purpose", "Fix the failing test")).toBe("builder");
+		expect(roleFor("general-purpose", "Write tests for the parser")).toBe("builder");
+		expect(roleFor(undefined, "Explore the oven module")).toBe("explorer");
+		// Nothing to go on: a builder, as before.
+		expect(roleFor("general-purpose", "Kettle stuff")).toBe("builder");
+		expect(roleFor("general-purpose")).toBe("builder");
+		// A type that names its job wins over its task.
+		expect(roleFor("reviewer", "Fix the typo")).toBe("reviewer");
+	});
 });
 
 describe("atlas layout", () => {

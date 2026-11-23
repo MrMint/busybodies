@@ -68,7 +68,7 @@ class RigCharacter implements Character {
 		this.#who = who;
 		this.#cast = cast;
 		cast.set(who.key, this);
-		const role = who.kind === "lead" ? "lead" : roleFor(who.role);
+		const role = who.kind === "lead" ? "lead" : (who.look ?? roleFor(who.role));
 		// The office draws real desks, so the rig's own stays off. A regular (rig/roles.ts) is the same
 		// puppet every day: its key is the puppet's id, and it wears its accessory.
 		const regular = who.regular ? regularOf(who.regular) : undefined;

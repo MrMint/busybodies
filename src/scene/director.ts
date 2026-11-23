@@ -13,6 +13,7 @@ import type { World as Floor } from "./office/world";
 import { type Direction, type View, cueFor, direct, here } from "./director/direct";
 import { type Metrics, NO_METRICS } from "./director/metrics";
 import type { Actor, Build, World, WorldEvent } from "./director/types";
+import { roleFor } from "./rig/roles";
 import type { Snapshot } from "../watcher/model";
 import type { Diary } from "../shared/diary";
 import type { StoryView } from "./office/decor";
@@ -67,7 +68,7 @@ export class Director {
 		// Regulars (director/story.ts): the same project and role, the same character every day.
 		const regulars = regularsOf(Object.values(d.world.actors), snap);
 		return Object.values(d.world.actors).map((a) => ({
-			who: { key: a.key, kind: a.kind, role: a.role, mood: a.mood, size: a.size, tint: a.tint, ...(regulars.has(a.key) ? { regular: regulars.get(a.key)! } : {}) },
+			who: { key: a.key, kind: a.kind, role: a.role, look: a.kind === "lead" ? "lead" : roleFor(a.role, a.task), mood: a.mood, size: a.size, tint: a.tint, ...(regulars.has(a.key) ? { regular: regulars.get(a.key)! } : {}) },
 			slot: a.slot,
 			desk: a.session,
 			area: a.area,

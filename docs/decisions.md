@@ -1288,3 +1288,34 @@ is what saves CPU). Compared side by side (`?lifefps=`), 10 looked bad and 20 st
 acting, so life now runs at acting's 30. Visuals come first; a performance pass over the whole
 scene is deferred until the look settles. The 100 ms beat grid stays: it costs nothing and lets a
 lower rate show every blink when that pass comes.
+
+## 2026-11-22: fit anyone's setup, not just ours
+
+The office was tuned to one harness: custom subagent types named `scout`, `reviewer`, `verifier`
+and `designer`, the desktop app, and worktrees under `.claude/worktrees`. With the agent tool's own
+types (`general-purpose`, `Explore`, `Plan`) nearly the whole crew came out as builders, and four
+costumes, their poses, the meeting room and the lines that name them never showed. The rule now is
+**adapt to what people already do; ask them to configure nothing.**
+
+**A costume comes from the agent type, then from its task** (`roleFor(agentType, task)` in
+`rig/roles.ts`). A type that names its job wins, as before, and the tool's own types have
+costumes (`Plan` designs, `claude-code-guide` scouts). A generic type says nothing, so the task its
+parent gave it decides: the first verb-like word that matches wins ("Find and fix" scouts, "Fix the
+failing test" builds). Both inputs are fixed for an agent's life, so its costume never changes. The
+director, the fallback placement, the sass and the regulars (the diary and `regularsOf`) all ask the same function, and the director hands its
+choice to the character (`Who.look`), so the hat, the poses, the meeting room and the lines agree.
+Choosing by the tools an agent calls was considered: better evidence, but it arrives after the
+character is on stage, and swapping a costume mid-life is a rig change we haven't made.
+
+**Lines that name a costume need one** (`Line.needs`, `Trigger.crew`). "Caution: scouts running" and
+the other three scout lines only fit a crew with scouts in it; the board's wording is unchanged.
+
+**Git names the repository and the branch** (`src/watcher/git.ts`). For each live session the
+watcher reads `<cwd>/.git` (a folder, or a worktree's `gitdir:` file) and `HEAD`, through the
+`FileCache`, so it costs a stat or two per rebuild. A linked worktree in any layout joins its
+repository's room, bare repositories included; the branch shows without the desktop app (whose
+branch still wins when it has one). A detached HEAD has no branch; a folder with no `.git` of its
+own keeps the old behaviour. It only reads, like the rest of the watcher.
+
+`?demo=stock` is someone else's day: the tool's own subagent types, terminal sessions, branches from
+git. A director test checks that its crew still wears six costumes.

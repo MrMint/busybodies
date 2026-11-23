@@ -7,6 +7,7 @@
 //   cooler, the rest of the queue and the sofas. If all are taken, they wait by their desk.
 // Each agent keeps its crew spot while it stays, so a newcomer doesn't shuffle the others.
 import type { Agent, Session, Snapshot } from "../../watcher/model";
+import { roleFor } from "../rig/roles";
 import { seats } from "./layout";
 import type { Cue, Mood, Who } from "./slot";
 import { type Slot, type World, crewSlot } from "./world";
@@ -68,8 +69,9 @@ export class Placement {
 			for (const id of spots.keys()) if (!ids.has(id)) spots.delete(id);
 
 			for (const a of crew) {
-				const who: Who = { key: `a:${session.id}:${a.id}`, kind: "crew", role: a.role, mood: agentMood(a), size: crewSize(a.depth), tint: a.role };
-				const away = a.status === "running" && /review/i.test(a.role) ? free.meeting.shift() : a.status === "finished" || a.status === "stopped" ? free.out.shift() : undefined;
+				const look = roleFor(a.role, a.task);
+				const who: Who = { key: `a:${session.id}:${a.id}`, kind: "crew", role: a.role, look, mood: agentMood(a), size: crewSize(a.depth), tint: a.role };
+				const away = a.status === "running" && look === "reviewer" ? free.meeting.shift() : a.status === "finished" || a.status === "stopped" ? free.out.shift() : undefined;
 				if (away) {
 					spots.delete(a.id);
 					out.push({ who, slot: away.slot, desk: desk.id, area: away.area });

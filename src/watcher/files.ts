@@ -14,6 +14,11 @@ export class FileCache {
 		return this.#load(path, async () => JSON.parse(await readFile(path, "utf8")) as T);
 	}
 
+	/** A small file's text, or undefined when it is missing. */
+	async text(path: string): Promise<string | undefined> {
+		return this.#load(path, () => readFile(path, "utf8"));
+	}
+
 	/**
 	 * Reads ever larger tails of a file until `find` returns a value, and caches that value until
 	 * the file changes. Most answers sit in the last few KB, but one record can be megabytes.

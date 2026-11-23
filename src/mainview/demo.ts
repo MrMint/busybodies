@@ -13,6 +13,7 @@
 //   ?demo=story   story and continuity: a red streak goes green, a merged PR's reply is fetched from
 //                 the outbox, a long session is waved off; the rooms wear a week of decor from an
 //                 invented diary (`__busybodies.away(ms)` then shows "while you were out")
+//   ?demo=stock   someone else's setup: stock subagent types, terminal sessions, no desktop app
 //   ?demo=empty   nobody's in; ?demo=nohome: no coding agent found (add &compact for the small window)
 // The clock is fixed, so the same demo always draws the same frames.
 import type { SignText } from "../scene/office/paper";
@@ -293,6 +294,41 @@ export function releaseDay(): { after: number; snapshot: Snapshot }[] {
 	return steps;
 }
 
+/**
+ * Someone else's setup: the agent tool's own subagent types only (general-purpose, Explore, Plan),
+ * terminal sessions with no desktop app, so no titles from it, and branches from git. The crew's
+ * costumes come from what each one was asked to do.
+ */
+export function stock(): Snapshot {
+	n = 0;
+	const cli = (title: string, project: string, state: string, started: number, extra: Partial<Session> = {}) =>
+		session(title, project, state, started, { origin: "cli", ...extra });
+	return {
+		at: NOW,
+		sessions: [
+			cli("breadbox", "breadbox", "busy", 50, {
+				branch: "main",
+				agents: [
+					agent("general-purpose", "Find where the crust timer is set"),
+					agent("general-purpose", "Fix the timer rounding"),
+					agent("general-purpose", "Review the diff for regressions"),
+					agent("Explore", "Explore the oven module"),
+				],
+			}),
+			cli("breadbox", "breadbox", "busy", 20, {
+				worktree: "loaf-sizes",
+				branch: "loaf-sizes",
+				agents: [agent("Plan", "Plan the loaf size migration"), agent("general-purpose", "Run the tests and confirm they pass")],
+			}),
+			cli("orbit-kit", "orbit-kit", "busy", 35, {
+				branch: "fix/drift",
+				agents: [agent("general-purpose", "Implement drift correction"), agent("claude-code-guide", "Look up how hooks are configured", "finished")],
+			}),
+			cli("mossy-docs", "mossy-docs", "idle", 90, { branch: "main" }),
+		],
+	};
+}
+
 /** 200 characters: 40 sessions, each a lead and four crew in every role and state. The rig's load
  * test (e2e/rig.test.ts); `crowd-idle` is the same crowd after hours. */
 function crowd(): Snapshot {
@@ -477,6 +513,8 @@ export function demo(name: string | null): DemoDay {
 			return { snapshot: release(), signs: {} };
 		case "story":
 			return { snapshot: story(), signs: {} };
+		case "stock":
+			return { snapshot: stock(), signs: {} };
 		case "crowd-idle":
 			return { snapshot: asleep(crowd()), signs: {} };
 		// Nobody's in; and nobody's in because no coding agent was found (the shell says which).
