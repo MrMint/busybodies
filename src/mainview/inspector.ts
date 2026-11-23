@@ -11,6 +11,7 @@ import type { Snapshot } from "../watcher/model";
 import type { ThemeId } from "../scene/theme/id";
 import type { Visibility } from "./visibility";
 import type { SoundState } from "./sound";
+import type { SpeechState } from "./speech";
 import type { Camerawork, ShotReport } from "./shots";
 import type { Story } from "../scene/director/story";
 import type { RoomDecor } from "../scene/office/decor";
@@ -66,6 +67,8 @@ export interface Inspector {
 	/** Sound: on or off, the AudioContext's state, the last earcons scheduled (undefined in the
 	 * compact window, which never plays sound). Set by main.ts. */
 	sound(): SoundState | undefined;
+	/** Voiced lines (mainview/speech.ts): the manifest, the room loop, the last lines spoken. Set by main.ts. */
+	speech(): SpeechState | undefined;
 	/** The tray's Sound and Calm office toggles and its Look, as the app sends them over RPC. Set by main.ts. */
 	setToggles(change: { sound?: boolean; calm?: boolean; look?: string }): void;
 	/** The look (mainview/look.ts), and the pixel pass's texture size in its own pixels. Set by main.ts. */
@@ -202,6 +205,7 @@ export function installInspector(
 		staging: () => office.staging,
 		bricks: () => office.bricks,
 		sound: () => undefined,
+		speech: () => undefined,
 		setToggles: () => {},
 		look: () => ({ look: "plain" }),
 		shot: () => shots?.report(),

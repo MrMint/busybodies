@@ -24,6 +24,9 @@ export default {
 		copy: {
 			"dist/index.html": "views/mainview/index.html",
 			"dist/assets": "views/mainview/assets",
+			// Voiced lines and room loops (src/mainview/public/, tools/voice.ts, tools/ambience.ts).
+			"dist/voice": "views/mainview/voice",
+			"dist/ambience": "views/mainview/ambience",
 			"assets/tray": "views/tray",
 		},
 		watchIgnore: ["dist/**"],

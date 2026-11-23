@@ -1557,3 +1557,73 @@ nail where the picture hangs, a faint rubber mat with hazard edges where the rug
 two-door locker where the armchair stands (vents, a smiley magnet, a scuff, the right door ajar on
 a hi-vis sleeve, a yellow hard hat on a hook at its side), and a crate for a side table with a
 thermos and a lunch tin where the bookcase is. Baked into the room's Graphics like the boss's.
+
+## 2026-11-23: AI-generated audio (voiced lines and room loops)
+
+**Characters speak on key beats, from clips recorded ahead of time with Gemini TTS on Vertex AI;
+the app never calls a model.** `tools/voice.ts` runs only on the developer's machine, with its
+Application Default Credentials read at run time (nothing about the account is written to the
+repo). It collects every fixed said line of the theme's sass bank (`sass/voiced.ts` `corpus`),
+records the key beats (`VOICED`: a wait on you, the work done, back to work after a nap) in two
+voices each from a pool of seven per theme (`tools/voice-cast.ts`, each with a style prompt that
+fits the theme), and writes Opus in WebM, silence trimmed and levelled, to `voice-takes/`
+(gitignored). A take is keyed by a hash of the line's words and remembers a hash of what it was
+recorded with (model, voice, style prompt), so an unchanged line is never recorded twice and a
+changed style prompt re-records only that voice. A local listening page (`listen`) approves takes
+or marks them for redo; `ship` copies only approved takes into `src/mainview/public/voice/` with a
+manifest, and only those are committed. `--dry-run` sends nothing and needs no credentials;
+`--fake` writes placeholder hums made in code, so the whole loop can be tried for free; a paid run
+needs `--yes`. "Starting work" maps to `woken`: the bank has no line for a brand-new session.
+
+**The terms allow shipping the output, for the models we use, read 2026-11-23.** Google Cloud's
+Service Specific Terms, section 20 (Generative AI Services): "Generated Output is Customer Data",
+and Google asserts no ownership of new IP in it. Section 17 forbids using output to build a
+competing model, which we don't. The Additional Terms for Generative AI Preview Products forbid
+production use and disclosing output to a third party, but say those restrictions "do not apply to
+Gemini Enterprise Agent Platform (formerly Vertex AI)" for a listed set of Pre-GA models that
+includes Gemini 3.1 Flash TTS, Gemini 2.5 Flash-Lite TTS, Lyria 3 Clip and Lyria 3 Pro (last
+modified 2026-11-19). So the tool calls Vertex (`aiplatform.googleapis.com`), not the Cloud
+Text-to-Speech API, and refuses any model outside `TERMS_OK` (`gemini-3.1-flash-tts-preview`,
+`gemini-2.5-flash-lite-preview-tts`) unless told the terms were checked. Section 20(d) forbids
+using a Generative AI Service in an app "directed towards or likely to be accessed by" under-18s:
+the app doesn't use the service at all (only the dev tool does), and a desktop companion for
+coding agents isn't directed at children. The Generative AI Prohibited Use Policy forbids passing
+generated content off as human-made, so the README says the voices are AI-recorded. Only
+prebuilt voices are used: no cloning, no impressions of real people. Pre-GA models can change or
+go away without notice; the clips we ship don't.
+
+**No copyright is claimed in the clips.** Unedited model output has no US copyright protection
+(the same reason as the 2026-11-21 entry on AI images), so the MIT licence covers the code and
+the manifest, and the clips are shipped as they are. This is a narrow exception to "no raw
+AI-generated images": audio, by ear-approved take, never images. The words are ours (the line
+bank).
+
+**A line with a placeholder babbles, on device.** "Finished at {time}" can't be recorded once,
+so `speech.ts` makes babble in WebAudio: one triangle blip per syllable through two vowel
+formants, at the character's own pitch (170 to 300 Hz from its key), falling at a full stop,
+rising at "?", bright at "!". A key-beat line with no approved take yet babbles too, so the app
+speaks before any clip ships and still works if a clip can't be decoded.
+
+**Playback rides Sound's context, turn by turn.** `Speech` (mainview/speech.ts) plays through the
+synth's AudioContext and master (`Sound.bus()`), so on/off, calm, hidden and suspend are Sound's
+as before. `Mouth` (sass/voiced.ts) speaks at most one bubble per voice run: said, a key beat,
+past a 10 s grace once live (opening onto a waiting room is quiet, as the bell is), then 12 s
+between any two, 45 s per character, 5 min per line, and 3 a minute. A wait goes before done,
+done before back-to-work. The line starts 0.6 s after its bubble (after any bell). A character
+plays its own voice's take when the line has one (`ownVoice`: the pool by a hash of its key), else
+the line's takes in turn, detuned by up to ±120 cents from its key. The room tone dips to 0.35
+under each line (`Sound.duck`). Pan and loudness follow the character's room like an earcon.
+
+**Opus in WebM.** It is the smallest good speech codec, and WebKit has decoded WebM Opus since
+Safari 15 (macOS 12); Ogg Opus only arrived later, and our floor is macOS 14. A clip that won't
+decode falls back to babble. At 24 kbit/s mono a line is about 3 KB a second: every key beat in
+all three themes at two takes is 166 takes, about 520 s, about 1.6 MB (`record --dry-run` prints
+the estimate). The e2e test uses four 0.4 s synthesised tones (7 KB in all, `e2e/fixtures/voice`).
+
+**Room loops are optional and recorded with their source.** `tools/ambience.ts add` takes a CC0
+recording (Kenney, or Freesound filtered to CC0) or our own, cuts a 24 s piece, crossfades the
+next 3 s over its head so it loops without a seam, and records its source and licence in
+`ambience/sources.json`; it refuses any other licence. `lyria` asks Lyria on Vertex for one
+(`LYRIA_OK`, the same carve-out); its request shape is the `:predict` one and is unverified until
+the first paid run, and since Lyria is a music model a CC0 recording is the better first try. The
+app plays a theme's loop under the synth's tone if one shipped; none has.

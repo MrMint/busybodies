@@ -22,6 +22,12 @@ v7-era APIs that look right and silently draw the wrong thing. Update it only wi
   names as plain text labels are fine.
 - **Art licences:** CC0 or our own work only. No CC-BY-SA, GPL or LPC art, and no raw
   AI-generated images. See `docs/decisions.md`.
+- **Audio:** synthesised in code (`sound.ts`, the babble), CC0 or our own recordings, or voices
+  and loops from a model in `tools/voice.ts`'s `TERMS_OK` (or `tools/ambience.ts`'s `LYRIA_OK`),
+  recorded offline by `tools/voice.ts` and approved by ear on its listening page before they are
+  committed. The app never calls a model. Read the terms again before adding a model (see the
+  AI-generated audio entry in `docs/decisions.md`), and record every room loop's source and
+  licence in `ambience/sources.json` (`tools/ambience.ts` does).
 - **Render on demand.** The ticker runs only while something animates. **Off screen** (WebKit's page
   visibility: minimized, hidden, another Space, covered, locked) the scene draws nothing at all.
   On screen, a quiet office may keep **life** going (blinks, glances, rotating habits, ambient
@@ -67,6 +73,9 @@ v7-era APIs that look right and silently draw the wrong thing. Update it only wi
 | `src/scene/director.ts`, `src/scene/director/` | The director: snapshot to world (spots, poses, walks) and events; the sass seam (`say`, `sign`); the story beats (`director/story.ts`) |
 | `test/` | Unit tests (`bun test test/`). Fixtures are built in a temp folder from invented data |
 | `e2e/` | Scene tests in headless Chrome (`bun test e2e/`) |
+| `src/mainview/speech.ts`, `src/scene/sass/voiced.ts` | Voiced lines: which bubbles speak, cooldowns, take choice and pitch (`voiced.ts`); the sample player, babble and room loop beside the synth (`speech.ts`) |
+| `src/mainview/public/` | Files shipped as they are: approved voice takes and their manifest (`voice/`), room loops and their sources (`ambience/`) |
+| `tools/voice.ts`, `tools/ambience.ts` | Records voiced lines offline with Gemini TTS on Vertex (`--dry-run`, `--fake`), a listening page to approve takes, `ship`; seamless room loops from CC0 recordings or Lyria |
 | `tools/watch-tree.ts` | Prints the live session/agent tree in a terminal |
 | `tools/fake-home.ts`, `tools/profile.sh` | Synthetic load, and CPU per process under it |
 | `tools/shoot.ts`, `tools/shot-diff.ts` | Deterministic screenshots of named scene states (`--theme`), a contact sheet, and a pixel diff of two runs |
