@@ -1480,3 +1480,31 @@ wraparound shield with a bridge notch so the mouth stays clear.
 eye) were redrawn from the old round white eyes to the rig's: tall wide-set ink eyes with the glow
 and two highlights, cheeks out past the eyes, a small smile between them. When the rig's face
 changes, these follow.
+
+## 2026-11-23: the bakery wears the new look (wave 4)
+
+**The bakery's cast follows the costume rule.** Its bakers had been dressed for the old face: a
+jacket over the lower half of every body (through the cheeks), bib aprons and smocks over the
+belly, a bow and buttons at the lead's mouth, small round glasses across the big eyes, a sash near
+the explorer's mouth. Now the bodies are the paper rig's (the role colour is the tell), and each role
+wears one sweet idea on the dome and one small thing low on the belly (rig/bakery.ts's header):
+the head baker's tall toque and an accent bow, the bread baker's gingham bow with a baguette through
+it and a croissant brooch, the barista's flat cap with a cappuccino balanced on it and a bean pin,
+the candy-maker's striped cap and lollipop and a wrapped bonbon, the pâtissier's mushroom toque,
+gold half-moons (the office's size) and a macaron pin, the taster's cupcake hat and doughnut
+rosette, the decorator's tiered-cake headband and a piping bag. Belly pieces sit 3 below `frontY`.
+A regular's daisy, enamel pin and plaster (rig/accessories.ts) moved off the brow and cheek.
+
+**Its rooms follow the room pass.** The bench top's back edge is at DESK_TOP, so a lead's mouth
+and cheeks show over it; the till is drawn in the MONITOR slot at its size, a pink bezel round a
+slate face. The wall carries the project's colour (the candy stripes are white over it) and the
+checkerboard floor is a pale tint of it, with a rug a step deeper under the benches; the common
+rooms take pastel walls and pale floors the same way. The patio is a café terrace: bistro tables
+under striped umbrellas, a chalkboard A-frame, pots of giant lollipops.
+
+**Its words and habits are its own.** `BAKERY_WORDS.poses` names the baking (rolling pin, mixer,
+recipe, oven, tasting, order slips) where the office's words named paperwork; the shared lines that
+named the office's things got bakery wordings in `themed`, two of them matched to the bakery's own
+lines so the bank doesn't say them twice. The bakers' first idle habits are their own (rig/poses.ts,
+played by name, never by the idle trigger): a cappuccino, a sneaked macaron, a lick of the cake
+fork, a nap on a flour sack (the bakery repaints the drum as one).
