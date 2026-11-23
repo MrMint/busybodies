@@ -58,7 +58,7 @@ export const BAKERY_SASS: SassBank = {
 		daysSince: "Days since a soufflé fell: {n}",
 		failStreak: "Burnt batches: {n}. Smoke alarm: hoarse.",
 		prTally: "Trays out today: {count}. Humility: crumbs.",
-		greens: "One macaron per green build. Today: {n}.",
+		greens: "One éclair per green build. Today: {n}.",
 	},
 };
 

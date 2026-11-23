@@ -134,7 +134,7 @@ export const BAKERY_LINES: Line[] = [
 	L("coffeeQueue", "s", "Is this the queue for coffee or for the queue for coffee.", "anyone", "4+ at the machine", { min: 4 }),
 	L("coffeeQueue", "t", "I finished my bake just to stand here. Worth it.", "anyone", ""),
 	L("coffeeQueue", "s", "Who drew a heart in my latte. Who.", "anyone", "", { rare: true }),
-	L("coffeeQueue", "n", "One macaron per green build.", "room", "sign on the espresso machine", { place: "kitchen:sign" }),
+	L("coffeeQueue", "n", "One éclair per green build.", "room", "sign on the espresso machine", { place: "kitchen:sign" }),
 	// Reactions
 	L("reaction", "t", "Must be nice. Some of us are kneading.", "anyone", "side-eye at feet up", { tag: "slacker" }),
 	L("reaction", "s", "It is one cupcake.", "anyone", "eye roll at the sprinkles", { tag: "pr" }),

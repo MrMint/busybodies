@@ -97,7 +97,7 @@ describe("the counters in each theme", () => {
 	test("the office's, the factory's and the bakery's words", () => {
 		expect(run("office")).toEqual({ days: "Days since a test broke: 0", streak: "Fail streak: 3. New personal best.", pr: "PRs today: 1. Humility: 0.", greens: "One cup per green build. Today: 1." });
 		expect(run("factory")).toEqual({ days: "Days without incident: 0", streak: "Rejects this shift: 3. A record.", pr: "Crates out today: 1. Modesty: out of stock.", greens: "One snack per green build. Today: 1." });
-		expect(run("bakery")).toEqual({ days: "Days since a soufflé fell: 0", streak: "Burnt batches: 3. Smoke alarm: hoarse.", pr: "Trays out today: 1. Humility: crumbs.", greens: "One macaron per green build. Today: 1." });
+		expect(run("bakery")).toEqual({ days: "Days since a soufflé fell: 0", streak: "Burnt batches: 3. Smoke alarm: hoarse.", pr: "Trays out today: 1. Humility: crumbs.", greens: "One éclair per green build. Today: 1." });
 	});
 
 	test("the fridge note is the theme's", () => {
