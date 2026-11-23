@@ -142,7 +142,10 @@ export class Office extends Container {
 	/** The rooms' planners, over their back walls: redrawn when their notes change. */
 	#walls = new Container();
 	#planners = new Map<string, Item>();
-	#depth = new Container({ sortableChildren: true });
+	/** Its own render group: a walker passing a desk re-sorts this layer, and only this layer's
+	 * draw instructions are rebuilt, not the yard's, the shadows' and the rooms' (depth.ts). It sits
+	 * at the world's origin, so it draws with the world's own transform: the same pixels. */
+	#depth = new Container({ sortableChildren: true, isRenderGroup: true });
 	#bubbles = new Container();
 	#labels = new Container();
 	#tasks = new Container();
