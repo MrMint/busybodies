@@ -1272,3 +1272,17 @@ for every run (all four under 1%), so the saving is expected (half the frames) b
 
 **Compact is 440 × 340.** A room is about square, so 40 px more height fills the shot with the room
 instead of hallway and lawn; the cuts read better in `tools/shoot.ts` (compact-cut*).
+
+## 2026-11-22: lived in, wave 3 merged
+
+Streams G, H, I and J merged into one branch in that order. Conflicts were all side-by-side
+additions: the office's layers (the story's decor under the shade, the ambient layer over it), the
+settings RPC (the Look rides `setToggles` and `settings`; the diary is its own request and message),
+and the tray menu tests. Two seams needed code: the Line got its own story words
+(`KITCHEN_STORY`: covers, plates at the pass, dishes saved), and `STORY_WORDS` is now keyed by
+`ThemeId`, so a fourth theme can't forget them. The pose sheets were regenerated after the merge,
+with G's habit poses, J's theme-neutral titles and H's kitchen sheet.
+
+**Life runs at 10 fps** (from J): its cost was frames, not characters, so halving the rate is what
+saves CPU; blinks and glances start on a 100 ms grid so none is skipped. The tests hold a living
+office to 10 fps. Not yet seen live or profiled on a quiet machine (plan-alive, "After wave 3").

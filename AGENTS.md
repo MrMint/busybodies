@@ -24,8 +24,8 @@ v7-era APIs that look right and silently draw the wrong thing. Update it only wi
   AI-generated images. See `docs/decisions.md`.
 - **Render on demand.** The ticker runs only while something animates. **Off screen** (WebKit's page
   visibility: minimized, hidden, another Space, covered, locked) the scene draws nothing at all.
-  On screen, a quiet office may keep **life** going (blinks, glances, rotating habits) at up to
-  20 fps; acting runs at 30 and camera moves at 60. **Calm mode** (`?calm`, the Calm office
+  On screen, a quiet office may keep **life** going (blinks, glances, rotating habits, ambient
+  props) at up to 10 fps, on life's 100 ms beat grid (`rig/life.ts`); acting runs at 30 and camera moves at 60. **Calm mode** (`?calm`, the Calm office
   setting, or reduced motion) has no life, so a quiet calm office costs near-zero CPU. Anything new
   that moves on its own rides the life clock and stops when calm or hidden. Pixi's global tickers
   stay stopped: drive any `AnimatedSprite` from the app ticker. Check with
@@ -38,7 +38,7 @@ v7-era APIs that look right and silently draw the wrong thing. Update it only wi
 - **Check before you call it done:** `hutch pm exec -- tsc --noEmit` (Vite builds don't
   type-check), `bun test test/`, and for scene work `hutch pm exec -- vite build && bun test e2e/`.
   The e2e tests run the bundled scene in headless Chrome and hold the frame budgets: a hidden
-  office and an idle calm one make zero animation frames, a living idle one stays at 20 fps or
+  office and an idle calm one make zero animation frames, a living idle one stays at 10 fps or
   less, and a busy one renders at 30 fps or less.
 - **Add a changeset with any PR that changes the app:** `hutch pm exec -- changeset add --minor
   busybodies -m "..."` (`--patch` for a fix), written for the release notes. Docs-only and
@@ -59,11 +59,11 @@ v7-era APIs that look right and silently draw the wrong thing. Update it only wi
 |---|---|
 | `src/bun/` | The Electrobun main process: the office and compact windows, the tray, updates, the diary on disk (`diary.ts`; its counts-only model is `src/shared/diary.ts`) |
 | `src/watcher/` | Capture: reads the agent tool's files into a `Snapshot` (`model.ts` is the contract) |
-| `src/mainview/` | The webview's entry: app setup, the top bar, the inspector, demo days; on-screen visibility (`visibility.ts`), the compact camera (`shots.ts`), opt-in sound (`sound.ts`) |
-| `src/scene/office/` | The open-floor office: floor plan, camera, cut-paper drawing, the character slot interface; light and time of day (`daylight.ts`, `light.ts`), windows and the yard (`outlook.ts`, `outside.ts`), the paper pass (`material.ts`) |
-| `src/scene/theme/` | Scene themes (`?theme=`, the tray's Theme menu): the office's and the factory's look and words behind a `SceneTheme`, and the factory's robot arms |
-| `src/scene/rig/` | The mochi character rig: parts atlas, springs, frames, poses, and the office's character factory (`?sheet`, `?demo=crowd`); life (`life.ts`: blinks and glances), gaze (`gaze.ts`), and the office's corporate cast (`office.ts`) |
-| `src/scene/director.ts`, `src/scene/director/` | The director: snapshot to world (spots, poses, walks) and events; the sass seam (`say`, `sign`) |
+| `src/mainview/` | The webview's entry: app setup, the top bar, the inspector, demo days; on-screen visibility (`visibility.ts`), the compact camera (`shots.ts`), opt-in sound (`sound.ts`), looks as render passes (`look.ts`) |
+| `src/scene/office/` | The open-floor office: floor plan, camera, cut-paper drawing, the character slot interface; light and time of day (`daylight.ts`, `light.ts`), windows and the yard (`outlook.ts`, `outside.ts`), the paper pass (`material.ts`); a theme's staging (`staging.ts`), ambient life (`ambient.ts`), the walls that remember (`decor.ts`) |
+| `src/scene/theme/` | Scene themes (`?theme=`, the tray's Theme menu): the office's, the factory's and the Line's (`kitchen.ts`) look, words and staging behind a `SceneTheme`, and the factory's robot arms |
+| `src/scene/rig/` | The mochi character rig: parts atlas, springs, frames, poses, and the office's character factory (`?sheet`, `?demo=crowd`); life (`life.ts`: blinks and glances), gaze (`gaze.ts`), the office's corporate cast (`office.ts`) and the Line's kitchen brigade (`kitchen.ts`) |
+| `src/scene/director.ts`, `src/scene/director/` | The director: snapshot to world (spots, poses, walks) and events; the sass seam (`say`, `sign`); the story beats (`director/story.ts`) |
 | `test/` | Unit tests (`bun test test/`). Fixtures are built in a temp folder from invented data |
 | `e2e/` | Scene tests in headless Chrome (`bun test e2e/`) |
 | `tools/watch-tree.ts` | Prints the live session/agent tree in a terminal |
