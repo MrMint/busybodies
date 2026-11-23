@@ -70,9 +70,9 @@ describe("themes", () => {
 		await factory.close();
 	}, T);
 
-	test("?theme=kitchen: the Line, the same floor and cast in kitchen words, no arms", async () => {
+	test("?theme=bakery: the bakery, the same floor and cast in bakery words, no arms", async () => {
 		const office = await open("demo&frozen");
-		const line = await open("demo&frozen&theme=kitchen");
+		const line = await open("demo&frozen&theme=bakery");
 		const facts = (p: Page) =>
 			p.evaluate(() => {
 				const b = window.__busybodies!;
@@ -87,7 +87,7 @@ describe("themes", () => {
 			});
 		const o = await facts(office);
 		const k = await facts(line);
-		expect(k.theme).toBe("kitchen");
+		expect(k.theme).toBe("bakery");
 		expect(k.areas).toEqual(o.areas);
 		expect(k.cast).toEqual(o.cast);
 		expect(k.meeting).toBe("NOTHING LEAVES");
@@ -97,14 +97,14 @@ describe("themes", () => {
 		await line.evaluate(() => ((window as unknown as { __loaded: boolean }).__loaded = true));
 		await line.evaluate(() => window.__busybodies!.setTheme("factory"));
 		expect(await line.evaluate(() => [window.__busybodies!.theme(), window.__busybodies!.arms().length > 0])).toEqual(["factory", true]);
-		await line.evaluate(() => window.__busybodies!.setTheme("kitchen"));
+		await line.evaluate(() => window.__busybodies!.setTheme("bakery"));
 		const back = await line.evaluate(() => ({
 			theme: window.__busybodies!.theme(),
 			arms: window.__busybodies!.arms().length,
 			serving: window.__busybodies!.signs().find((s) => s.id === "yours:serving")?.text?.title,
 			sameDocument: (window as unknown as { __loaded?: boolean }).__loaded === true,
 		}));
-		expect(back).toEqual({ theme: "kitchen", arms: 0, serving: "SERVICE!", sameDocument: true });
+		expect(back).toEqual({ theme: "bakery", arms: 0, serving: "SERVICE!", sameDocument: true });
 		await office.close();
 		await line.close();
 	}, T);

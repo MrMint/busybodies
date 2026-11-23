@@ -62,9 +62,9 @@ describe("tray menu", () => {
 	});
 
 	test("the Theme menu lists every theme, the Line among them, the saved one checked", () => {
-		const theme = trayMenu({ ...status, theme: "kitchen" }, "CommandOrControl+Alt+B").find((m) => "label" in m && m.label === "Theme") as { submenu: { label: string; action: string; checked: boolean }[] };
-		expect(theme.submenu.map((m) => m.label)).toEqual(["Office", "Factory", "The Line"]);
-		expect(theme.submenu.find((m) => m.checked)?.action).toBe("theme:kitchen");
+		const theme = trayMenu({ ...status, theme: "bakery" }, "CommandOrControl+Alt+B").find((m) => "label" in m && m.label === "Theme") as { submenu: { label: string; action: string; checked: boolean }[] };
+		expect(theme.submenu.map((m) => m.label)).toEqual(["Office", "Factory", "Bakery"]);
+		expect(theme.submenu.find((m) => m.checked)?.action).toBe("theme:bakery");
 	});
 
 	test("the Look submenu lists every look and checks the saved one", () => {
@@ -81,7 +81,7 @@ describe("tray menu", () => {
 		expect(trayAction("sound")).toEqual({ kind: "sound" });
 		expect(trayAction("calm")).toEqual({ kind: "calm" });
 		expect(trayAction("theme:factory")).toEqual({ kind: "theme", id: "factory" });
-		expect(trayAction("theme:kitchen")).toEqual({ kind: "theme", id: "kitchen" });
+		expect(trayAction("theme:bakery")).toEqual({ kind: "theme", id: "bakery" });
 		expect(trayAction("theme:moon")).toBeUndefined();
 		expect(trayAction("look:pixel")).toEqual({ kind: "look", id: "pixel" });
 		expect(trayAction("look:sepia")).toBeUndefined();

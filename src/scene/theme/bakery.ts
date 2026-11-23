@@ -15,7 +15,7 @@ import type { Area, Rect } from "../office/world";
 import { crewBuild } from "./build";
 import { COMMON_COLOURS, NIGHT_WATCH, ROOM_COLOURS } from "./office";
 import type { FurnitureKind, SceneLight, SceneTheme } from "./types";
-import { KITCHEN_WORDS, type SignText } from "./words";
+import { BAKERY_WORDS, type SignText } from "./words";
 
 const TILE = 0xf7f6f0;
 const QUARRY = 0xc8664a;
@@ -124,7 +124,7 @@ function chefDoor(g: Graphics, { x, y, w, h }: Rect): Container {
 	g.circle(x + w / 2, y + 66, 12).fill(0x2a3140).stroke(line(3));
 	g.roundRect(x + w - 16, y + h * 0.6, 9, 4, 2).fill(STEEL_DARK).stroke({ width: 1.5, color: INK });
 	g.roundRect(x + 6, y + 20, w - 12, 20, 3).fill(INK);
-	const t = label(KITCHEN_WORDS.door, 10, "800", 0xffffff);
+	const t = label(BAKERY_WORDS.door, 10, "800", 0xffffff);
 	t.position.set(x + w / 2 - t.width / 2, y + 23);
 	return t;
 }
@@ -592,7 +592,7 @@ function ticketRail(r: Rect, rows: PlannerRow[]): Container {
 	const fit = perRow * Math.max(1, Math.floor((r.h - head - 6) / (th + gap + 2)));
 	for (let k = 0; k < 3; k++) {
 		const cx = r.x + 6 + k * colW;
-		const t = label(KITCHEN_WORDS.columns[k]!, 6, "800");
+		const t = label(BAKERY_WORDS.columns[k]!, 6, "800");
 		t.position.set(cx + (colW - t.width) / 2, r.y + 4);
 		c.addChild(t);
 		const notes = rows.flatMap((row) => Array.from({ length: [row.pending, row.active, row.done][k]! }, () => BANDS[hash(row.session) % BANDS.length]!));
@@ -621,7 +621,7 @@ function ticketRail(r: Rect, rows: PlannerRow[]): Container {
 
 /** The Line's light (office/light.ts): warm heat lamps in round pools, an alley out of the
  * windows at the back of a city block, the yard with its bins and pallets. */
-export const KITCHEN_LIGHT: SceneLight = {
+export const BAKERY_LIGHT: SceneLight = {
 	ambient: { morning: 0xeceaf2, noon: 0xffffff, afternoon: 0xfdeedb, dusk: 0xc2aec2, night: 0x5a5478 },
 	hall: { morning: 0xf0eef5, noon: 0xffffff, afternoon: 0xfdf2e2, dusk: 0xd0c2cc, night: 0x9a90a8 },
 	outside: { morning: 0xf2f0ff, noon: 0xffffff, afternoon: 0xffeed6, dusk: 0xa9a0c8, night: 0x35406e },
@@ -651,9 +651,9 @@ export const KITCHEN_LIGHT: SceneLight = {
 	yard: "yard",
 };
 
-export const KITCHEN_THEME: SceneTheme = {
-	id: "kitchen",
-	words: KITCHEN_WORDS,
+export const BAKERY_THEME: SceneTheme = {
+	id: "bakery",
+	words: BAKERY_WORDS,
 	lawn: 0xc9c2b4,
 	slab: 0x4a3f45,
 	room,
@@ -664,5 +664,5 @@ export const KITCHEN_THEME: SceneTheme = {
 	crewBuild: (b, seed) => crewBuild(b, seed, CAKE_BUILD),
 	nightWatch: { ...NIGHT_WATCH, tint: "night-chef" },
 	arms: false,
-	light: KITCHEN_LIGHT,
+	light: BAKERY_LIGHT,
 };

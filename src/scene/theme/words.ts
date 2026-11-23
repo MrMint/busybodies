@@ -53,7 +53,7 @@ export const FACTORY_WORDS: ThemeWords = {
 	door: "FOREMAN",
 };
 
-export const KITCHEN_WORDS: ThemeWords = {
+export const BAKERY_WORDS: ThemeWords = {
 	areas: { meeting: "the pass", lobby: "host stand", yours: "chef's table", kitchen: "staff meal", vacant: "dark station" },
 	subs: { meeting: "tasting before it goes out", lobby: "seated and leaving", yours: "Service! waiting on you", kitchen: "idle, finished and off the clock", vacant: "closed for refit" },
 	signs: {
@@ -66,6 +66,6 @@ export const KITCHEN_WORDS: ThemeWords = {
 	door: "CHEF",
 };
 
-const WORDS: Record<ThemeId, ThemeWords> = { office: OFFICE_WORDS, factory: FACTORY_WORDS, kitchen: KITCHEN_WORDS };
+const WORDS: Record<ThemeId, ThemeWords> = { office: OFFICE_WORDS, factory: FACTORY_WORDS, bakery: BAKERY_WORDS };
 
 export const wordsFor = (id: ThemeId): ThemeWords => WORDS[id] ?? OFFICE_WORDS;

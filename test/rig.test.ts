@@ -679,13 +679,13 @@ describe("themes", async () => {
 		});
 	});
 
-	describe("the Line (a restaurant kitchen)", async () => {
-		const { kitchenTheme, KITCHEN_REPAINTS } = await import("../src/scene/rig/kitchen");
+	describe("the bakery (still the Line's kit until wave 4 repaints it)", async () => {
+		const { bakeryTheme, BAKERY_REPAINTS } = await import("../src/scene/rig/bakery");
 		const { rigTheme } = await import("../src/scene/rig/themes");
 		const { THEME_IDS } = await import("../src/scene/theme/id");
-		const kitchen = kitchenTheme();
+		const kitchen = bakeryTheme();
 		const kitchenBox = measure(kitchen);
-		const repainted = new Set<string>(KITCHEN_REPAINTS);
+		const repainted = new Set<string>(BAKERY_REPAINTS);
 
 		test("every theme has its own rig, named for it", () => {
 			for (const id of THEME_IDS) expect(rigTheme(id).name).toBe(id);
@@ -693,7 +693,7 @@ describe("themes", async () => {
 
 		test("the kitchen repaints the costumes, the builder's work and the stations by name, and nothing else", () => {
 			for (const name of Object.keys(paper.parts)) expect(kitchen.parts[name], name).toBeDefined();
-			for (const name of KITCHEN_REPAINTS) {
+			for (const name of BAKERY_REPAINTS) {
 				expect(paper.parts[name], `${name} is a paper part`).toBeDefined();
 				expect(kitchen.parts[name], `${name} is repainted`).not.toBe(paper.parts[name]);
 			}
@@ -709,7 +709,7 @@ describe("themes", async () => {
 
 		test("a repainted prop or station part keeps its size and its working ends, so the solved reaches still land", () => {
 			for (const [name, b] of kitchenBox) expect(b.x1 - b.x0, name).toBeGreaterThan(0);
-			for (const name of KITCHEN_REPAINTS.filter((n) => /^(work|held|prop)\//.test(n))) {
+			for (const name of BAKERY_REPAINTS.filter((n) => /^(work|held|prop)\//.test(n))) {
 				const a = paperBox.get(name)!;
 				const b = kitchenBox.get(name)!;
 				for (const k of ["x0", "y0", "x1", "y1"] as const) expect(Math.abs(a[k] - b[k]), `${name} ${k}`).toBeLessThan(6);

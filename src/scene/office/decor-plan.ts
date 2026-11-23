@@ -111,7 +111,7 @@ export const FACTORY_STORY: StoryWords = {
 	quiet: "Nothing off the line.",
 };
 
-export const KITCHEN_STORY: StoryWords = {
+export const BAKERY_STORY: StoryWords = {
 	headlines: "WHILE YOU WERE OUT",
 	ledger: "TONIGHT'S COVERS",
 	lines: {
@@ -145,7 +145,7 @@ export interface StoryStyle {
 	pennants: number[];
 }
 
-const STORY_WORDS: Record<ThemeId, StoryWords> = { office: OFFICE_STORY, factory: FACTORY_STORY, kitchen: KITCHEN_STORY };
+const STORY_WORDS: Record<ThemeId, StoryWords> = { office: OFFICE_STORY, factory: FACTORY_STORY, bakery: BAKERY_STORY };
 
 /** The story's look for a theme: its own words if it has them, colours from its paint. */
 export function storyStyle(theme: Pick<SceneTheme, "id" | "slab" | "lawn" | "light">): StoryStyle {

@@ -35,7 +35,7 @@ import { ROLES } from "./roles";
 import { ANCHORS, type Painter, type Palette, PAPER_PALETTE, RED, type Theme, TRAY_FULL, W, burstAt, line, mochiPath, paperTheme, rotRect, sparkle, text } from "./theme";
 
 /** Kitchen colours, on top of the paper palette. */
-export const KITCHEN = {
+export const BAKERY = {
 	whites: 0xfbfbf6,
 	whitesShade: 0xe2e5ee,
 	button: 0x56628a,
@@ -66,7 +66,7 @@ export const KITCHEN = {
 /** The costumes, the builder's work and the station parts the kitchen repaints; everything else
  * (faces, hands, limbs, the receiver, the card tray, the bell, most effects) is the paper rig's, on
  * purpose. The tests hold this list. */
-export const KITCHEN_REPAINTS = [
+export const BAKERY_REPAINTS = [
 	...ROLES.map((r) => `body/${r}`),
 	"hat/lead", "hat/lead-cup", "hat/builder", "hat/scout", "hat/explorer", "hat/reviewer", "hat/verifier", "hat/designer",
 	"front/tie", "front/apron", "front/kerchief", "front/straps", "front/bowtie", "front/badge", "front/scarf",
@@ -96,7 +96,7 @@ const mix = (c: number, to: number, t: number) => {
 	return m(16) | m(8) | m(0);
 };
 
-export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
+export function bakeryTheme(p: Palette = PAPER_PALETTE): Theme {
 	const base = paperTheme(p);
 	const parts: Record<string, Painter> = { ...base.parts };
 	const ink = p.ink;
@@ -114,8 +114,8 @@ export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
 	for (let i = 0; i < outline.length; i += 2) if (outline[i + 1]! >= -21) lower.push(outline[i]!, outline[i + 1]!);
 	for (const role of ROLES) {
 		const col = p.role[role];
-		const jacket = role === "designer" ? KITCHEN.black : role === "scout" ? KITCHEN.blackShade : KITCHEN.whites;
-		const seam = role === "designer" || role === "scout" ? 0x6a6478 : KITCHEN.whitesShade;
+		const jacket = role === "designer" ? BAKERY.black : role === "scout" ? BAKERY.blackShade : BAKERY.whites;
+		const seam = role === "designer" || role === "scout" ? 0x6a6478 : BAKERY.whitesShade;
 		parts[`body/${role}`] = (g) => {
 			g.poly(outline).fill(col);
 			g.poly(lower).fill(jacket);
@@ -124,7 +124,7 @@ export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
 			line(g, [-bodyEdge(-21) + 1, -21, bodyEdge(-21) - 1, -21], 1.4, mix(seam, ink, 0.45));
 			if (role !== "scout") {
 				line(g, [6, -18, 3, -3], 1.1, mix(seam, ink, 0.3));
-				for (const x of [-11, 13]) for (const y of [-14, -8]) g.circle(x + (y + 14) * 0.1, y, 1.5).fill(role === "designer" ? 0xbfc4d6 : KITCHEN.button);
+				for (const x of [-11, 13]) for (const y of [-14, -8]) g.circle(x + (y + 14) * 0.1, y, 1.5).fill(role === "designer" ? 0xbfc4d6 : BAKERY.button);
 			}
 			g.ellipse(-19, -54, 12, 7).fill({ color: 0xffffff, alpha: 0.26 });
 			g.ellipse(0, -7, 38, 6).fill({ color: p.shadow, alpha: 0.06 });
@@ -133,7 +133,7 @@ export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
 	}
 
 	/** A toque: a band round the head and a puffed, pleated crown `tall` above it, `wide` across. */
-	const toque = (g: Graphics, tall: number, wide: number, fill: number = KITCHEN.whites, pleat: number = KITCHEN.whitesShade) => {
+	const toque = (g: Graphics, tall: number, wide: number, fill: number = BAKERY.whites, pleat: number = BAKERY.whitesShade) => {
 		const top = T - tall;
 		g.moveTo(-26, T + 1)
 			.lineTo(-wide / 2 + 3, top + 10)
@@ -172,13 +172,13 @@ export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
 	// butcher's striped apron with a side towel tucked in its string.
 	parts["hat/builder"] = (g) => {
 		const cap = [-34, T + 10, -30, T - 4, -14, T - 12, 0, T - 13, 14, T - 12, 30, T - 4, 34, T + 10];
-		g.poly([...cap, 30, T + 6, 0, T + 2, -30, T + 6]).fill(KITCHEN.bandana).stroke({ width: W.part, color: ink, join: "round" });
+		g.poly([...cap, 30, T + 6, 0, T + 2, -30, T + 6]).fill(BAKERY.bandana).stroke({ width: W.part, color: ink, join: "round" });
 		for (const [x, y] of [[-20, T - 4], [-6, T - 8], [8, T - 7], [22, T - 3], [-12, T + 1], [14, T + 1]] as const) g.circle(x, y, 1.6).fill(0xffffff);
 		line(g, [-32, T + 7, 0, T + 2, 32, T + 7], 1.4, 0xb92f2a);
 		// The knot and its tails, out behind on the right.
-		g.circle(34, T + 6, 4).fill(KITCHEN.bandana).stroke({ width: 1.6, color: ink });
-		g.poly([36, T + 4, 50, T - 2, 47, T + 6]).fill(KITCHEN.bandana).stroke({ width: 1.6, color: ink, join: "round" });
-		g.poly([36, T + 8, 49, T + 12, 43, T + 15]).fill(KITCHEN.bandana).stroke({ width: 1.6, color: ink, join: "round" });
+		g.circle(34, T + 6, 4).fill(BAKERY.bandana).stroke({ width: 1.6, color: ink });
+		g.poly([36, T + 4, 50, T - 2, 47, T + 6]).fill(BAKERY.bandana).stroke({ width: 1.6, color: ink, join: "round" });
+		g.poly([36, T + 8, 49, T + 12, 43, T + 15]).fill(BAKERY.bandana).stroke({ width: 1.6, color: ink, join: "round" });
 	};
 	parts["front/apron"] = (g) => {
 		const y0 = F - 3;
@@ -189,14 +189,14 @@ export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
 		const end = bodyEdge(y1) - 6;
 		for (let x = -30; x <= 30; x += 6) {
 			const ys = y0 + 1 + Math.max(0, (Math.abs(x) + 1.5 - 13) / (end - 13)) * (y1 - y0);
-			if (ys < y1 - 2) line(g, [x, ys, x, y1 - 1], 2.2, KITCHEN.stripe);
+			if (ys < y1 - 2) line(g, [x, ys, x, y1 - 1], 2.2, BAKERY.stripe);
 		}
 		g.poly(bib).stroke({ width: 1.8, color: ink, join: "round" });
 		line(g, [-13, y0, -24, -24], 1.4, ink);
 		line(g, [13, y0, 24, -24], 1.4, ink);
 		// The waist string, and the towel tucked into it, hanging on the right.
 		line(g, [-bodyEdge(F + 6) + 2, F + 6, bodyEdge(F + 6) - 2, F + 6], 1.6, ink);
-		g.roundRect(20, F + 4, 10, 14, 2).fill(KITCHEN.towel).stroke({ width: 1.5, color: ink });
+		g.roundRect(20, F + 4, 10, 14, 2).fill(BAKERY.towel).stroke({ width: 1.5, color: ink });
 		line(g, [21, F + 13, 29, F + 13], 1.2, RED);
 	};
 
@@ -211,7 +211,7 @@ export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
 	parts["front/kerchief"] = (g) => {
 		g.roundRect(-26, F + 2, 52, 14, 3).fill(0x1f1c28).stroke({ width: 1.8, color: ink });
 		g.roundRect(-20, F + 4, 15, 10, 1.5).fill(0x2c2836).stroke({ width: 1.2, color: 0x56506a });
-		g.roundRect(-18, F, 11, 9, 1).fill(KITCHEN.ticket).stroke({ width: 1.2, color: ink });
+		g.roundRect(-18, F, 11, 9, 1).fill(BAKERY.ticket).stroke({ width: 1.2, color: ink });
 		line(g, [-16, F + 3, -10, F + 3], 0.9, RED);
 		line(g, [-16, F + 5.5, -11, F + 5.5], 0.9, 0x9aa3bd);
 		g.roundRect(9, F - 3, 2.6, 11, 1).fill(0x3d7dff).stroke({ width: 0.9, color: ink });
@@ -227,8 +227,8 @@ export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
 		for (let k = 0; k < 5; k++) {
 			const y = T - 6 - k * 3.6;
 			const x = 11.5 + k * 2.1;
-			line(g, [x, y, x - 4, y - 2.4], 1.4, KITCHEN.basil);
-			line(g, [x, y, x + 3.4, y - 3], 1.4, KITCHEN.basil);
+			line(g, [x, y, x - 4, y - 2.4], 1.4, BAKERY.basil);
+			line(g, [x, y, x + 3.4, y - 3], 1.4, BAKERY.basil);
 		}
 	};
 	parts["front/straps"] = (g) => {
@@ -236,8 +236,8 @@ export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
 		line(g, [-32, -20, 18, F + 14], 2.8, 0xc99a6b);
 		for (let k = 0; k < 5; k++) line(g, [-27 + k * 9.6, -18 + k * 5.4, -25 + k * 9.6, -16 + k * 5.4], 1, 0x8a5a33);
 		// A mushroom in the breast pocket.
-		g.roundRect(14, F - 2, 12, 9, 1.5).fill(KITCHEN.whitesShade).stroke({ width: 1.2, color: ink });
-		g.rect(18.5, F - 6, 3, 5).fill(KITCHEN.onion).stroke({ width: 1, color: ink });
+		g.roundRect(14, F - 2, 12, 9, 1.5).fill(BAKERY.whitesShade).stroke({ width: 1.2, color: ink });
+		g.rect(18.5, F - 6, 3, 5).fill(BAKERY.onion).stroke({ width: 1, color: ink });
 		g.moveTo(14.5, F - 5).quadraticCurveTo(20, F - 14, 25.5, F - 5).closePath().fill(0xc8743c).stroke({ width: 1.3, color: ink });
 		g.circle(18, F - 8, 1).circle(22, F - 9, 0.9).fill(0xffffff);
 	};
@@ -246,11 +246,11 @@ export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
 	// in the breast pocket, and reading glasses on a chain for the ticket.
 	parts["hat/reviewer"] = (g) => toque(g, 20, 54);
 	parts["front/bowtie"] = (g) => {
-		g.roundRect(9, F - 1, 14, 10, 1.5).fill(KITCHEN.whitesShade).stroke({ width: 1.3, color: ink });
+		g.roundRect(9, F - 1, 14, 10, 1.5).fill(BAKERY.whitesShade).stroke({ width: 1.3, color: ink });
 		for (const [x, a] of [[12, -0.12], [18, 0.1]] as const) {
 			line(g, [x, F + 2, x + a * 40, F - 9], 1.8, ink);
-			line(g, [x, F + 2, x + a * 40, F - 9], 0.9, KITCHEN.steel);
-			g.ellipse(x + a * 44, F - 11, 2.4, 3.2).fill(KITCHEN.steel).stroke({ width: 1, color: ink });
+			line(g, [x, F + 2, x + a * 40, F - 9], 0.9, BAKERY.steel);
+			g.ellipse(x + a * 44, F - 11, 2.4, 3.2).fill(BAKERY.steel).stroke({ width: 1, color: ink });
 		}
 	};
 	parts["wear/glasses"] = (g) => {
@@ -274,7 +274,7 @@ export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
 		g.roundRect(-33, T + 4, 66, 4, 2).fill(0xffffff).stroke({ width: 1.4, color: ink });
 	};
 	parts["front/badge"] = (g) => {
-		g.roundRect(9, F - 1, 14, 10, 1.5).fill(KITCHEN.whitesShade).stroke({ width: 1.3, color: ink });
+		g.roundRect(9, F - 1, 14, 10, 1.5).fill(BAKERY.whitesShade).stroke({ width: 1.3, color: ink });
 		line(g, [16, F + 2, 16, F + 12], 1.4, ink);
 		g.circle(16, F - 4, 5).fill(0xffffff).stroke({ width: 1.5, color: ink });
 		g.arc(16, F - 4, 3.4, Math.PI * 1.1, Math.PI * 1.9).stroke({ width: 1.2, color: p.go });
@@ -283,15 +283,15 @@ export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
 
 	// Designers: the plater. A short black toque, and a squeeze bottle and plating tweezers in the
 	// pocket of the black jacket.
-	parts["hat/designer"] = (g) => toque(g, 14, 50, KITCHEN.black, 0x5a5468);
+	parts["hat/designer"] = (g) => toque(g, 14, 50, BAKERY.black, 0x5a5468);
 	parts["front/scarf"] = (g) => {
-		g.roundRect(8, F - 1, 16, 10, 1.5).fill(KITCHEN.blackShade).stroke({ width: 1.3, color: 0x6a6478 });
-		g.roundRect(10, F - 9, 6, 12, 2).fill(KITCHEN.tomato).stroke({ width: 1.2, color: ink });
+		g.roundRect(8, F - 1, 16, 10, 1.5).fill(BAKERY.blackShade).stroke({ width: 1.3, color: 0x6a6478 });
+		g.roundRect(10, F - 9, 6, 12, 2).fill(BAKERY.tomato).stroke({ width: 1.2, color: ink });
 		g.poly([11.6, F - 9, 14.4, F - 9, 13, F - 13]).fill(0xffffff).stroke({ width: 0.9, color: ink, join: "round" });
 		line(g, [19, F + 3, 20.6, F - 11], 1.6, ink);
 		line(g, [21.2, F + 3, 21.2, F - 11], 1.6, ink);
-		line(g, [19, F + 3, 20.6, F - 11], 0.7, KITCHEN.steel);
-		g.circle(-12, -12, 2).circle(-14, -6, 1.4).fill({ color: KITCHEN.tomato, alpha: 0.8 });
+		line(g, [19, F + 3, 20.6, F - 11], 0.7, BAKERY.steel);
+		g.circle(-12, -12, 2).circle(-14, -6, 1.4).fill({ color: BAKERY.tomato, alpha: 0.8 });
 	};
 
 	// Held tools -----------------------------------------------------------------------------------
@@ -300,53 +300,53 @@ export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
 	// striking side.
 	parts["held/hammer"] = (g) => {
 		line(g, [0, 6, 0, -20], 5, ink);
-		line(g, [0, 6, 0, -20], 3, KITCHEN.wood);
-		g.roundRect(-10, -28, 20, 9, 1.6).fill(KITCHEN.steel).stroke({ width: 2.2, color: ink });
-		for (let x = -8.5; x < 8; x += 3.4) g.poly([x, -28, x + 1.7, -29.6, x + 3.4, -28]).fill(KITCHEN.steel).stroke({ width: 0.8, color: ink, join: "round" });
+		line(g, [0, 6, 0, -20], 3, BAKERY.wood);
+		g.roundRect(-10, -28, 20, 9, 1.6).fill(BAKERY.steel).stroke({ width: 2.2, color: ink });
+		for (let x = -8.5; x < 8; x += 3.4) g.poly([x, -28, x + 1.7, -29.6, x + 3.4, -28]).fill(BAKERY.steel).stroke({ width: 0.8, color: ink, join: "round" });
 		line(g, [-7, -25.2, 7, -25.2], 1, 0xffffff);
 	};
 	// The pasta machine's crank: a wooden knob in the palm, the arm, and its hub on the machine.
 	parts["held/wrench"] = (g) => {
-		g.roundRect(-2.4, -24, 4.8, 22, 2).fill(KITCHEN.steel).stroke({ width: 1.8, color: ink });
+		g.roundRect(-2.4, -24, 4.8, 22, 2).fill(BAKERY.steel).stroke({ width: 1.8, color: ink });
 		g.circle(0, -24, 9.4).fill(0x8a94ad).stroke({ width: 1.8, color: ink });
 		g.circle(0, -24, 4.6).fill(0xdfe4ef).stroke({ width: 1.4, color: ink });
 		g.circle(0, -24, 1.6).fill(ink);
-		g.roundRect(-4.2, -4, 8.4, 9, 4).fill(KITCHEN.wood).stroke({ width: 1.8, color: ink });
+		g.roundRect(-4.2, -4, 8.4, 9, 4).fill(BAKERY.wood).stroke({ width: 1.8, color: ink });
 	};
 	// A bulb of garlic, held up to squint at (the wrong one).
 	parts["held/bolt"] = (g) => {
-		g.moveTo(-6, -6).bezierCurveTo(-8, -14, -2, -14, 0, -16).bezierCurveTo(2, -14, 8, -14, 6, -6).quadraticCurveTo(0, -1, -6, -6).closePath().fill(KITCHEN.onion).stroke({ width: 1.6, color: ink, join: "round" });
+		g.moveTo(-6, -6).bezierCurveTo(-8, -14, -2, -14, 0, -16).bezierCurveTo(2, -14, 8, -14, 6, -6).quadraticCurveTo(0, -1, -6, -6).closePath().fill(BAKERY.onion).stroke({ width: 1.6, color: ink, join: "round" });
 		line(g, [0, -15, 0, -6], 0.9, 0xc9bfa6);
 		line(g, [-3, -13, -3.4, -5], 0.8, 0xc9bfa6);
 		line(g, [3, -13, 3.4, -5], 0.8, 0xc9bfa6);
 	};
 	// A tomato (the right one, at last).
 	parts["held/gear"] = (g) => {
-		g.circle(0, -11, 8.6).fill(KITCHEN.tomato).stroke({ width: 1.8, color: ink });
-		g.star(0, -19, 5, 4.4, 1.8, 0).fill(KITCHEN.basil).stroke({ width: 1, color: ink, join: "round" });
+		g.circle(0, -11, 8.6).fill(BAKERY.tomato).stroke({ width: 1.8, color: ink });
+		g.star(0, -19, 5, 4.4, 1.8, 0).fill(BAKERY.basil).stroke({ width: 1, color: ink, join: "round" });
 		g.ellipse(-3.6, -13, 2.2, 1.4).fill({ color: 0xffffff, alpha: 0.6 });
 	};
 	/** A sponge layer with its cream filling, centred at (x, y). */
 	const sponge = (g: Graphics, x: number, y: number, w: number, h: number, k = 0) => {
-		g.roundRect(x - w / 2, y - h / 2, w, h, 2.4).fill(k % 2 ? 0xffcf7a : KITCHEN.sponge).stroke({ width: 2, color: ink });
-		g.rect(x - w / 2 + 1, y - h / 2 + h * 0.4, w - 2, h * 0.22).fill(KITCHEN.cream);
-		for (let i = 0; i < 4; i++) g.circle(x - w / 2 + 4 + i * ((w - 8) / 3), y - h / 2 + h * 0.5, 1.1).fill(KITCHEN.berry);
+		g.roundRect(x - w / 2, y - h / 2, w, h, 2.4).fill(k % 2 ? 0xffcf7a : BAKERY.sponge).stroke({ width: 2, color: ink });
+		g.rect(x - w / 2 + 1, y - h / 2 + h * 0.4, w - 2, h * 0.22).fill(BAKERY.cream);
+		for (let i = 0; i < 4; i++) g.circle(x - w / 2 + 4 + i * ((w - 8) / 3), y - h / 2 + h * 0.5, 1.1).fill(BAKERY.berry);
 		for (const [dx, dy] of [[-6, -4], [3, 5], [7, -3]] as const) g.circle(x + dx, y + dy, 0.8).fill(0xd9a043);
 	};
 	parts["held/brick"] = (g) => sponge(g, 0, -10, WORK.brickW, WORK.brickH);
 	// The blowtorch, for the crème brûlée: a canister in the hand, the nozzle up, a blue flame.
 	parts["held/torch"] = (g) => {
-		g.poly([-3, -18, 3, -18, 15, -44, -15, -44]).fill({ color: KITCHEN.flame, alpha: 0.18 });
-		g.moveTo(-1.5, -24).quadraticCurveTo(-6, -34, 0, -42).quadraticCurveTo(6, -34, 1.5, -24).closePath().fill({ color: KITCHEN.flame, alpha: 0.85 }).stroke({ width: 1.1, color: ink });
+		g.poly([-3, -18, 3, -18, 15, -44, -15, -44]).fill({ color: BAKERY.flame, alpha: 0.18 });
+		g.moveTo(-1.5, -24).quadraticCurveTo(-6, -34, 0, -42).quadraticCurveTo(6, -34, 1.5, -24).closePath().fill({ color: BAKERY.flame, alpha: 0.85 }).stroke({ width: 1.1, color: ink });
 		g.moveTo(-0.6, -25).quadraticCurveTo(-2.4, -31, 0, -35).quadraticCurveTo(2.4, -31, 0.6, -25).closePath().fill(0xdff4ff);
 		g.roundRect(-1.4, -24, 2.8, 5, 0.8).fill(0x8a94ad).stroke({ width: 1, color: ink });
-		g.roundRect(-3.5, -19, 7, 22, 2.4).fill(KITCHEN.tomato).stroke({ width: 2, color: ink });
+		g.roundRect(-3.5, -19, 7, 22, 2.4).fill(BAKERY.tomato).stroke({ width: 2, color: ink });
 		g.roundRect(-5, -21, 10, 5, 1.5).fill(ink);
 		g.rect(-3.5, -9, 7, 3).fill(0xffffff);
 	};
 	// The table plan on a clipboard: the dining room's tables, a red X at the one it's for.
 	parts["held/map"] = (g) => {
-		g.roundRect(-16, -26, 30, 21, 2).fill(KITCHEN.wood).stroke({ width: 2, color: ink, join: "round" });
+		g.roundRect(-16, -26, 30, 21, 2).fill(BAKERY.wood).stroke({ width: 2, color: ink, join: "round" });
 		g.rect(-13.5, -23.5, 25, 16).fill(0xffffff);
 		for (let r = 0; r < 2; r++) for (let c = 0; c < 4; c++) g.circle(-10 + c * 6, -19.5 + r * 7, 2).fill(0xbcd6ff);
 		line(g, [6, -14.5, 9, -11.5], 1.4, RED);
@@ -356,56 +356,56 @@ export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
 	// The pastry brush: a wooden handle, a steel ferrule, golden bristles wet with egg wash.
 	parts["held/brush"] = (g) => {
 		line(g, [0, 5, 0, -18], 4.4, ink);
-		line(g, [0, 5, 0, -18], 2.6, KITCHEN.wood);
-		g.rect(-2.6, -22, 5.2, 5).fill(KITCHEN.steel).stroke({ width: 1, color: ink });
+		line(g, [0, 5, 0, -18], 2.6, BAKERY.wood);
+		g.rect(-2.6, -22, 5.2, 5).fill(BAKERY.steel).stroke({ width: 1, color: ink });
 		g.moveTo(-3.2, -22).lineTo(-3.6, -30).quadraticCurveTo(0, -33, 3.6, -30).lineTo(3.2, -22).closePath().fill(0xf2c94c).stroke({ width: 1.4, color: ink });
 	};
 
 	// Tonight's menu (where the blueprint was): a card with the dishes in lines and a title. Turned,
 	// it hangs upside down.
 	const menu = (g: Graphics, flip: boolean) => {
-		g.roundRect(-29, -14, 58, 25, 1).fill(KITCHEN.cream).stroke({ width: W.part, color: ink });
+		g.roundRect(-29, -14, 58, 25, 1).fill(BAKERY.cream).stroke({ width: W.part, color: ink });
 		const k = flip ? -1 : 1;
 		const cy = -1;
 		const Y = (v: number) => cy + v * k;
-		g.rect(-14, Y(-7) - 1.6, 28, 3.2).fill(KITCHEN.bandana);
+		g.rect(-14, Y(-7) - 1.6, 28, 3.2).fill(BAKERY.bandana);
 		for (const [v, w] of [[-1.5, 36], [3, 28], [7.5, 32]] as const) {
 			line(g, [-w / 2, Y(v), w / 2 - 6, Y(v)], 1.1, ink);
-			line(g, [w / 2 - 3, Y(v), w / 2, Y(v)], 1.1, KITCHEN.basil);
+			line(g, [w / 2 - 3, Y(v), w / 2, Y(v)], 1.1, BAKERY.basil);
 		}
-		g.roundRect(-30, -17, 60, 6, 2).fill(KITCHEN.wood).stroke({ width: 2, color: ink });
+		g.roundRect(-30, -17, 60, 6, 2).fill(BAKERY.wood).stroke({ width: 2, color: ink });
 	};
 	parts["prop/plan"] = (g) => menu(g, false);
 	parts["prop/plan2"] = (g) => menu(g, true);
 	parts["prop/roll"] = (g) => {
-		g.roundRect(-31, -18, 62, 12, 6).fill(KITCHEN.cream).stroke({ width: W.part, color: ink });
-		g.rect(-12, -14, 24, 3).fill(KITCHEN.bandana);
-		g.ellipse(-31, -12, 3, 6).fill(KITCHEN.wood).stroke({ width: 1.6, color: ink });
-		g.ellipse(31, -12, 3, 6).fill(KITCHEN.wood).stroke({ width: 1.6, color: ink });
+		g.roundRect(-31, -18, 62, 12, 6).fill(BAKERY.cream).stroke({ width: W.part, color: ink });
+		g.rect(-12, -14, 24, 3).fill(BAKERY.bandana);
+		g.ellipse(-31, -12, 3, 6).fill(BAKERY.wood).stroke({ width: 1.6, color: ink });
+		g.ellipse(31, -12, 3, 6).fill(BAKERY.wood).stroke({ width: 1.6, color: ink });
 	};
 
 	/** A plate side on, `w` across, centred at (x, y), with something on it (`food`). */
 	const plate = (g: Graphics, x: number, y: number, w: number, a = 0, food = true) => {
 		if (food) {
-			g.poly(rotRect(x, y - 3, w * 0.5, 5, a)).fill(KITCHEN.meat).stroke({ width: 1.1, color: ink, join: "round" });
-			g.circle(x + w * 0.16 * Math.cos(a), y - 5 + w * 0.16 * Math.sin(a), 1.8).fill(KITCHEN.basil).stroke({ width: 0.8, color: ink });
+			g.poly(rotRect(x, y - 3, w * 0.5, 5, a)).fill(BAKERY.meat).stroke({ width: 1.1, color: ink, join: "round" });
+			g.circle(x + w * 0.16 * Math.cos(a), y - 5 + w * 0.16 * Math.sin(a), 1.8).fill(BAKERY.basil).stroke({ width: 0.8, color: ink });
 		}
-		g.poly(rotRect(x, y, w, 2.6, a)).fill(KITCHEN.plate).stroke({ width: W.fine, color: ink, join: "round" });
+		g.poly(rotRect(x, y, w, 2.6, a)).fill(BAKERY.plate).stroke({ width: W.fine, color: ink, join: "round" });
 	};
 	// A plated dish carried to the pass (where the outbox's envelope was).
 	parts["held/envelope"] = (g) => {
-		g.ellipse(0, -8, 11, 3).fill(KITCHEN.plate).stroke({ width: 1.6, color: ink });
-		g.roundRect(-5, -14, 10, 5, 2).fill(KITCHEN.meat).stroke({ width: 1.2, color: ink });
-		g.circle(4, -14, 2).fill(KITCHEN.basil).stroke({ width: 0.9, color: ink });
+		g.ellipse(0, -8, 11, 3).fill(BAKERY.plate).stroke({ width: 1.6, color: ink });
+		g.roundRect(-5, -14, 10, 5, 2).fill(BAKERY.meat).stroke({ width: 1.2, color: ink });
+		g.circle(4, -14, 2).fill(BAKERY.basil).stroke({ width: 0.9, color: ink });
 		g.ellipse(0, -8, 6, 1.4).stroke({ width: 0.8, color: 0xd5dbe6 });
 	};
 	// The PR: a plate under a silver cloche, held up in front, a ticket tucked under its rim.
 	parts["prop/bigEnvelope"] = (g) => {
-		g.ellipse(0, -4, 23, 3.4).fill(KITCHEN.plate).stroke({ width: W.part, color: ink });
+		g.ellipse(0, -4, 23, 3.4).fill(BAKERY.plate).stroke({ width: W.part, color: ink });
 		g.moveTo(-19, -5).bezierCurveTo(-19, -28, 19, -28, 19, -5).closePath().fill(0xdfe4ef).stroke({ width: W.part, color: ink });
 		g.moveTo(-12, -9).quadraticCurveTo(-11, -20, -3, -22).stroke({ width: 2, color: 0xffffff, cap: "round" });
-		g.circle(0, -23.5, 2.6).fill(KITCHEN.steel).stroke({ width: 1.4, color: ink });
-		g.poly(rotRect(15, -3, 9, 6, 0.2)).fill(KITCHEN.ticket).stroke({ width: 1, color: ink, join: "round" });
+		g.circle(0, -23.5, 2.6).fill(BAKERY.steel).stroke({ width: 1.4, color: ink });
+		g.poly(rotRect(15, -3, 9, 6, 0.2)).fill(BAKERY.ticket).stroke({ width: 1, color: ink, join: "round" });
 		line(g, [12.4, -3.6, 17.6, -2.4], 0.8, RED);
 	};
 
@@ -416,11 +416,11 @@ export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
 		const { benchL: l, benchR: r, benchTop: t } = WORK;
 		for (const [a, b] of [[l + 7, l + 3], [r - 7, r - 3]] as const) {
 			line(g, [a, t + 4, b, 0], 4, ink);
-			line(g, [a, t + 4, b, 0], 1.8, KITCHEN.steel);
+			line(g, [a, t + 4, b, 0], 1.8, BAKERY.steel);
 		}
 		line(g, [l + 5, t + 14, r - 5, t + 14], 3, ink);
-		line(g, [l + 5, t + 14, r - 5, t + 14], 1.2, KITCHEN.steel);
-		g.roundRect(l, t, r - l, 7, 1.5).fill(KITCHEN.board).stroke({ width: W.part, color: ink });
+		line(g, [l + 5, t + 14, r - 5, t + 14], 1.2, BAKERY.steel);
+		g.roundRect(l, t, r - l, 7, 1.5).fill(BAKERY.board).stroke({ width: W.part, color: ink });
 		for (let x = l + 6; x < r - 2; x += 6) line(g, [x, t + 1.6, x, t + 5.4], 0.8, 0xc99a6b);
 	};
 	/** The cutlet on the block, its top at `top`: pounded flatter and wider each strike. */
@@ -429,7 +429,7 @@ export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
 		const t = WORK.benchTop;
 		const h = t - top;
 		const w = 20 + strikes * 3;
-		g.moveTo(x - w / 2, t).quadraticCurveTo(x - w / 2 - 1, top, x - 2, top).quadraticCurveTo(x + w / 2 + 2, top - 0.5, x + w / 2, t).closePath().fill(KITCHEN.meat).stroke({ width: 1.4, color: ink, join: "round" });
+		g.moveTo(x - w / 2, t).quadraticCurveTo(x - w / 2 - 1, top, x - 2, top).quadraticCurveTo(x + w / 2 + 2, top - 0.5, x + w / 2, t).closePath().fill(BAKERY.meat).stroke({ width: 1.4, color: ink, join: "round" });
 		if (h > 4) line(g, [x - w / 4, t - h * 0.45, x + w / 5, t - h * 0.6], 1, 0xffd2c6);
 		for (let k = 0; k < strikes; k++) g.circle(x - 6 + k * 6, top + Math.min(2, h / 2), 0.8).fill(0xc96a5a);
 	};
@@ -443,14 +443,14 @@ export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
 		const t = WORK.benchTop;
 		const top = WORK.nailTop[2];
 		for (const s of [-1, 1] as const) {
-			g.moveTo(x + s * 2, t).lineTo(x + s * 13, t).quadraticCurveTo(x + s * 13, top, x + s * 4, top - 1).lineTo(x + s * 1, t - 1).closePath().fill(KITCHEN.meat).stroke({ width: 1.3, color: ink, join: "round" });
+			g.moveTo(x + s * 2, t).lineTo(x + s * 13, t).quadraticCurveTo(x + s * 13, top, x + s * 4, top - 1).lineTo(x + s * 1, t - 1).closePath().fill(BAKERY.meat).stroke({ width: 1.3, color: ink, join: "round" });
 		}
 		// A scrap flipped up off the tear.
-		g.poly([x - 1, top, x + 3, top - 9, x + 6, top - 8, x + 3, top]).fill(KITCHEN.meat).stroke({ width: 1.2, color: ink, join: "round" });
+		g.poly([x - 1, top, x + 3, top - 9, x + 6, top - 8, x + 3, top]).fill(BAKERY.meat).stroke({ width: 1.2, color: ink, join: "round" });
 		const mx = WORK.benchR + 3;
 		line(g, [mx, -2, mx + 22, -2.6], 4.4, ink);
-		line(g, [mx, -2, mx + 22, -2.6], 2.6, KITCHEN.wood);
-		g.roundRect(mx + 20, -8, 8, 9, 1.4).fill(KITCHEN.steel).stroke({ width: 1.6, color: ink });
+		line(g, [mx, -2, mx + 22, -2.6], 2.6, BAKERY.wood);
+		g.roundRect(mx + 20, -8, 8, 9, 1.4).fill(BAKERY.steel).stroke({ width: 1.6, color: ink });
 	};
 
 	// The pasta machine, where the machine was: the crank's hub on the nut, a third of a turn a step;
@@ -459,8 +459,8 @@ export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
 		const { x, y } = WORK.nut;
 		// The clamp down to the table edge.
 		line(g, [x + 4, y + 18, x + 4, y + 36], 5, ink);
-		line(g, [x + 4, y + 18, x + 4, y + 36], 2.6, KITCHEN.steel);
-		g.roundRect(x - 12, y + 34, 32, 4, 2).fill(KITCHEN.board).stroke({ width: 1.6, color: ink });
+		line(g, [x + 4, y + 18, x + 4, y + 36], 2.6, BAKERY.steel);
+		g.roundRect(x - 12, y + 34, 32, 4, 2).fill(BAKERY.board).stroke({ width: 1.6, color: ink });
 		// The sheet going in at the top, and out under the rollers.
 		g.poly([x + 9, y - 12, x + 15, y - 19, x + 20, y - 15, x + 15, y - 10]).fill(0xf7e2a1).stroke({ width: 1.2, color: ink, join: "round" });
 		g.roundRect(x - 12, y - 17, 32, 30, 5).fill(0xdfe4ef).stroke({ width: W.part, color: ink });
@@ -475,7 +475,7 @@ export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
 			const b = a + (k * Math.PI * 2) / 3;
 			line(g, [x + Math.cos(b) * 2.6, y + Math.sin(b) * 2.6, x + Math.cos(b) * 7, y + Math.sin(b) * 7], 1.4, 0xdfe4ef);
 		}
-		g.circle(x, y, 2.2).fill(KITCHEN.steelDark).stroke({ width: 1.2, color: ink });
+		g.circle(x, y, 2.2).fill(BAKERY.steelDark).stroke({ width: 1.2, color: ink });
 	};
 	parts["work/nut1"] = (g) => pastaMachine(g, 0);
 	parts["work/nut2"] = (g) => pastaMachine(g, 1);
@@ -484,15 +484,15 @@ export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
 	// A produce crate, where the parts crate was: leeks and carrots sticking out of a slatted box.
 	parts["work/crate"] = (g) => {
 		line(g, [64, -19, 60, -32], 4.4, ink);
-		line(g, [64, -19, 60, -32], 2.8, KITCHEN.basil);
+		line(g, [64, -19, 60, -32], 2.8, BAKERY.basil);
 		line(g, [70, -19, 72, -31], 5, ink);
 		line(g, [70, -19, 72, -31], 3.2, 0xeef5e0);
 		for (const x of [80, 86]) {
-			g.poly([x - 2.4, -19, x + 2.4, -19, x + 0.8, -30]).fill(KITCHEN.carrot).stroke({ width: 1.2, color: ink, join: "round" });
-			line(g, [x + 0.8, -30, x + 2, -32], 1.4, KITCHEN.basil);
+			g.poly([x - 2.4, -19, x + 2.4, -19, x + 0.8, -30]).fill(BAKERY.carrot).stroke({ width: 1.2, color: ink, join: "round" });
+			line(g, [x + 0.8, -30, x + 2, -32], 1.4, BAKERY.basil);
 		}
-		g.circle(76, -21, 4.4).fill(KITCHEN.tomato).stroke({ width: 1.3, color: ink });
-		g.roundRect(54, -21, 40, 21, 1.5).fill(KITCHEN.crust).stroke({ width: W.part, color: ink });
+		g.circle(76, -21, 4.4).fill(BAKERY.tomato).stroke({ width: 1.3, color: ink });
+		g.roundRect(54, -21, 40, 21, 1.5).fill(BAKERY.crust).stroke({ width: W.part, color: ink });
 		for (const y of [-14, -7]) line(g, [55, y, 93, y], 1.2, 0xa8713e);
 		g.rect(66, -18, 16, 6).fill(0xffffff).stroke({ width: 0.9, color: ink });
 	};
@@ -504,15 +504,15 @@ export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
 		g.save();
 		g.translateTransform(-px, -t).rotateTransform(tilt * 0.12).translateTransform(px, t);
 		const layer = (cx: number, cy: number, k: number) => {
-			g.roundRect(cx - 9, cy - 5.5, 18, 11, 2).fill(k % 2 ? 0xffcf7a : KITCHEN.sponge).stroke({ width: 2, color: ink });
-			g.rect(cx - 8, cy - 1, 16, 2.4).fill(KITCHEN.cream);
+			g.roundRect(cx - 9, cy - 5.5, 18, 11, 2).fill(k % 2 ? 0xffcf7a : BAKERY.sponge).stroke({ width: 2, color: ink });
+			g.rect(cx - 8, cy - 1, 16, 2.4).fill(BAKERY.cream);
 		};
 		layer(84, t - 5.5, 0);
 		layer(85, t - 16.5, 1);
 		layer(83, t - 27.5, 0);
 		// Cream on top, and a strawberry.
-		g.moveTo(74.5, t - 32).quadraticCurveTo(83, t - 36, 91.5, t - 32).stroke({ width: 2.6, color: KITCHEN.cream, cap: "round" });
-		g.circle(83, t - 34, 2.2).fill(KITCHEN.berry).stroke({ width: 1, color: ink });
+		g.moveTo(74.5, t - 32).quadraticCurveTo(83, t - 36, 91.5, t - 32).stroke({ width: 2.6, color: BAKERY.cream, cap: "round" });
+		g.circle(83, t - 34, 2.2).fill(BAKERY.berry).stroke({ width: 1, color: ink });
 		g.restore();
 	};
 	parts["work/stack"] = (g) => (block(g), layers(g, 0));
@@ -526,18 +526,18 @@ export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
 	// pulled out, it comes toward the viewer with its deli tubs standing in it (their lids are where
 	// the folder tabs were, walked by the fingertips), one gone in `gap`.
 	const lowboy = (g: Graphics, state: "shut" | "out" | "gap") => {
-		const rail = (y: number) => g.rect(S.x - 8, y, 36, 2).fill(KITCHEN.steelDark).stroke({ width: 1, color: ink });
+		const rail = (y: number) => g.rect(S.x - 8, y, 36, 2).fill(BAKERY.steelDark).stroke({ width: 1, color: ink });
 		if (state === "shut") {
 			rail(S.y - 8);
-			g.roundRect(S.x - 5, S.y - 6, 30, 13, 2).fill(KITCHEN.steel).stroke({ width: W.fine + 0.4, color: ink });
+			g.roundRect(S.x - 5, S.y - 6, 30, 13, 2).fill(BAKERY.steel).stroke({ width: W.fine + 0.4, color: ink });
 			g.rect(S.x + 15, S.y + 2, 7, 3).fill(0x9be3ff).stroke({ width: 0.9, color: ink });
 			g.roundRect(S.x - 1, S.y - 1.3, 20, 2.6, 1.3).fill(0xffffff).stroke({ width: 1.4, color: ink });
 			rail(S.y + 7);
 			return;
 		}
 		rail(S.y - 8);
-		g.rect(S.x - 6, S.y - 6, 32, 5).fill(KITCHEN.steelDark).stroke({ width: 1.2, color: ink });
-		const fills = [KITCHEN.carrot, KITCHEN.basil, KITCHEN.onion, KITCHEN.tomato, KITCHEN.basil, 0xf2c94c];
+		g.rect(S.x - 6, S.y - 6, 32, 5).fill(BAKERY.steelDark).stroke({ width: 1.2, color: ink });
+		const fills = [BAKERY.carrot, BAKERY.basil, BAKERY.onion, BAKERY.tomato, BAKERY.basil, 0xf2c94c];
 		fills.forEach((c, i) => {
 			const x = S.x - 3 + i * 5;
 			if (state === "gap" && i === 3) return;
@@ -545,7 +545,7 @@ export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
 			g.rect(x - 0.3, S.y - 11.4, 5, 1.6).fill(0xffffff).stroke({ width: 0.6, color: ink });
 		});
 		const o = AT.drawerOut;
-		g.poly([S.x - 7, S.y - 2, S.x + 27, S.y - 2, S.x + 27, S.y + 12, S.x - 7, S.y + 12]).fill(KITCHEN.steel).stroke({ width: W.fine + 0.4, color: ink, join: "round" });
+		g.poly([S.x - 7, S.y - 2, S.x + 27, S.y - 2, S.x + 27, S.y + 12, S.x - 7, S.y + 12]).fill(BAKERY.steel).stroke({ width: W.fine + 0.4, color: ink, join: "round" });
 		g.roundRect(S.x + o.x - 1, S.y + o.y + 2.2, 20, 2.6, 1.3).fill(0xffffff).stroke({ width: 1.4, color: ink });
 	};
 	parts["work/cabinet"] = (g) => lowboy(g, "shut");
@@ -566,12 +566,12 @@ export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
 	) => {
 		const lidLen = 30;
 		// The board on the far side, and the toasties on it.
-		g.poly([S.x + 36, S.y + 8, S.x + 52, S.y + 5, S.x + 52.5, S.y + 7.5, S.x + 36, S.y + 11]).fill(KITCHEN.board).stroke({ width: 1.6, color: ink, join: "round" });
+		g.poly([S.x + 36, S.y + 8, S.x + 52, S.y + 5, S.x + 52.5, S.y + 7.5, S.x + 36, S.y + 11]).fill(BAKERY.board).stroke({ width: 1.6, color: ink, join: "round" });
 		if (o.copies === 1) toastie(g, S.x + 37, S.y + 4.6);
 		if (o.copies === 2) for (let k = 0; k < 3; k++) toastie(g, S.x + 38 + k * 4.2, S.y + 5.6 - k * 1.6);
 		// The control plate: the dial and the thermostat light.
 		const b = at(AT.button);
-		g.roundRect(b.x - 4, b.y - 3, 15, 6, 1.5).fill(KITCHEN.steelDark).stroke({ width: 1.2, color: ink });
+		g.roundRect(b.x - 4, b.y - 3, 15, 6, 1.5).fill(BAKERY.steelDark).stroke({ width: 1.2, color: ink });
 		g.circle(b.x, b.y, 3).fill(0xffffff).stroke({ width: 0.9, color: ink });
 		line(g, [b.x, b.y, b.x + (o.pressed ? 1.6 : 0), b.y - (o.pressed ? 1.6 : 2.4)], 1.1, ink);
 		const bx = b.x + 7;
@@ -586,10 +586,10 @@ export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
 			g.rect(dl, dt, 24, 11).fill(0x2a2430).stroke({ width: 1.4, color: ink });
 			for (const x of [dl + 5, dl + 12, dl + 19]) line(g, [x - 2, dt + 8, x + 2, dt + 8], 1, RED);
 			const flap = [dl, dt + 11, dl + 24, dt + 11, dl + 27, dt + 17, dl - 3, dt + 17];
-			g.poly(flap).fill(KITCHEN.steel).stroke({ width: 1.6, color: ink, join: "round" });
+			g.poly(flap).fill(BAKERY.steel).stroke({ width: 1.6, color: ink, join: "round" });
 			line(g, [dl + 4, dt + 15.5, dl + 20, dt + 15.5], 1.4, ink);
 		} else {
-			g.roundRect(dl, dt, 24, 11, 1.5).fill({ color: KITCHEN.steel, alpha: 0.6 }).stroke({ width: 1.2, color: ink, alpha: 0.7 });
+			g.roundRect(dl, dt, 24, 11, 1.5).fill({ color: BAKERY.steel, alpha: 0.6 }).stroke({ width: 1.2, color: ink, alpha: 0.7 });
 			g.roundRect(dl + 4, dt + 3, 16, 6, 1).fill({ color: 0x2a2430, alpha: 0.7 });
 			g.rect(d.x - 1.5, d.y - 1, 3, 2).fill(ink);
 		}
@@ -613,7 +613,7 @@ export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
 		}
 		// The bottom plate under a raised lid, and the sandwich laid on it.
 		if (o.lid) {
-			g.rect(S.x, S.y - 1.5, lidLen - 2, 1.5).fill(KITCHEN.steelDark).stroke({ width: 1, color: ink });
+			g.rect(S.x, S.y - 1.5, lidLen - 2, 1.5).fill(BAKERY.steelDark).stroke({ width: 1, color: ink });
 			if (o.sheet) toastie(g, S.x + 8, S.y - 4.4);
 		}
 		// The lid, about its hinge at the far end, its ridges underneath.
@@ -659,7 +659,7 @@ export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
 	// into the sauce pan (the ink pad's place), then goes to the top bowl, which gets a pick in it,
 	// a green tick or a red cross, and is pushed along onto the tasted ones.
 	const spoon = (g: Graphics, grip: number) => {
-		g.rect(-1.4, -10, 2.8, 13).fill(KITCHEN.steel).stroke({ width: 1.1, color: ink });
+		g.rect(-1.4, -10, 2.8, 13).fill(BAKERY.steel).stroke({ width: 1.1, color: ink });
 		g.roundRect(-2.4, -10.4, 4.8, 6, 2).fill(grip).stroke({ width: 1.1, color: ink });
 		g.ellipse(0, 5.6, 6.4, 3).fill(0xdfe4ef).stroke({ width: W.fine, color: ink });
 		g.ellipse(0, 6.2, 4.2, 1.6).fill(0xd9824a);
@@ -679,7 +679,7 @@ export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
 	};
 	const tasting = (g: Graphics, verdict: number, m?: "ok" | "no", slid = false) => {
 		const bowl = (x: number, y: number, mk?: "ok" | "no") => {
-			g.moveTo(x - 8, y - 4.6).lineTo(x + 9, y - 4.6).quadraticCurveTo(x + 8, y + 1.4, x + 0.5, y + 1.4).quadraticCurveTo(x - 7, y + 1.4, x - 8, y - 4.6).closePath().fill(KITCHEN.plate).stroke({ width: 1.2, color: ink, join: "round" });
+			g.moveTo(x - 8, y - 4.6).lineTo(x + 9, y - 4.6).quadraticCurveTo(x + 8, y + 1.4, x + 0.5, y + 1.4).quadraticCurveTo(x - 7, y + 1.4, x - 8, y - 4.6).closePath().fill(BAKERY.plate).stroke({ width: 1.2, color: ink, join: "round" });
 			g.ellipse(x + 0.5, y - 4.6, 7.6, 1.4).fill(0xd9824a).stroke({ width: 0.8, color: ink });
 			if (mk) pick(g, x + 2, y - 4.6, mk);
 		};
@@ -692,7 +692,7 @@ export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
 		// The sauce pan: a little steel pan with a long handle toward the character and the verdict
 		// on a clip on its rim.
 		const i = at(AT.ink);
-		g.roundRect(i.x - 6, i.y - 2, 12, 5.5, 1.6).fill(KITCHEN.steel).stroke({ width: 1.6, color: ink });
+		g.roundRect(i.x - 6, i.y - 2, 12, 5.5, 1.6).fill(BAKERY.steel).stroke({ width: 1.6, color: ink });
 		g.roundRect(i.x - 5, i.y - 3, 10, 1.8, 0.8).fill(0xd9824a).stroke({ width: 1, color: ink });
 		line(g, [i.x - 6, i.y, i.x - 11, i.y + 1.6], 1.8, ink);
 		g.rect(i.x + 2, i.y + 0.1, 3, 1.6).fill(verdict);
@@ -729,7 +729,7 @@ export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
 		const page = (dy: number, fill: number) => g.poly([S.x - 8, S.y + 1 + dy, S.x + 14, S.y + 1 + dy, S.x + 16.5, S.y - 4 + dy, S.x - 5.5, S.y - 4 + dy]).fill(fill).stroke({ width: 1.3, color: ink, join: "round" });
 		page(1.4, 0x3a5a9a);
 		page(0, 0xe9f3ff);
-		line(g, [S.x - 5, S.y - 3, S.x + 15.6, S.y - 3], 1.2, KITCHEN.bandana);
+		line(g, [S.x - 5, S.y - 3, S.x + 15.6, S.y - 3], 1.2, BAKERY.bandana);
 		const bits = [[S.x - 4, S.x + 1], [S.x + 2, S.x + 7], [S.x + 8, S.x + 12]] as const;
 		for (let k = 0; k < Math.min(n, 3); k++) {
 			const [a, b] = bits[k]!;
@@ -758,10 +758,10 @@ export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
 	const pass = (g: Graphics, env: 0 | 1 | 2) => {
 		const t = at(AT.tray);
 		g.rect(t.x - 13, S.y - 7, 34, 6).fill({ color: 0xffb347, alpha: 0.2 });
-		g.rect(t.x - 13, S.y + 5, 34, 2).fill(KITCHEN.steelDark).stroke({ width: 1, color: ink });
-		for (const x of [t.x - 11, t.x + 17]) g.rect(x, S.y + 1.5, 2.4, 4).fill(KITCHEN.steelDark);
+		g.rect(t.x - 13, S.y + 5, 34, 2).fill(BAKERY.steelDark).stroke({ width: 1, color: ink });
+		for (const x of [t.x - 11, t.x + 17]) g.rect(x, S.y + 1.5, 2.4, 4).fill(BAKERY.steelDark);
 		if (env === 2) plate(g, t.x + 4, S.y - 2.6, 20);
-		g.roundRect(t.x - 13, S.y - 1, 34, 2.6, 1).fill(KITCHEN.steel).stroke({ width: W.fine, color: ink });
+		g.roundRect(t.x - 13, S.y - 1, 34, 2.6, 1).fill(BAKERY.steel).stroke({ width: W.fine, color: ink });
 		if (env === 1) {
 			plate(g, t.x + 4, S.y - 9, 20, -0.18);
 			for (const x of [t.x - 2, t.x + 10]) line(g, [x, S.y - 21, x, S.y - 17], 1.2, ink);
@@ -775,8 +775,8 @@ export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
 	// of peelings on a board; `crunch` while it's swallowing one.
 	const scrapsBin = (g: Graphics, n: number, crunch: boolean) => {
 		const pl = at(AT.pile);
-		g.rect(pl.x - 8, S.y - 0.4, 16, 1.6).fill(KITCHEN.board).stroke({ width: 0.7, color: ink });
-		for (let k = 0; k < n; k++) g.poly(rotRect(pl.x + (k % 2 ? 0.8 : -0.6), S.y - 1.2 * (k + 1), 13, 1.2, (k % 2 ? 0.05 : -0.05))).fill(k % 2 ? KITCHEN.carrot : 0xd9c06a).stroke({ width: 0.6, color: ink });
+		g.rect(pl.x - 8, S.y - 0.4, 16, 1.6).fill(BAKERY.board).stroke({ width: 0.7, color: ink });
+		for (let k = 0; k < n; k++) g.poly(rotRect(pl.x + (k % 2 ? 0.8 : -0.6), S.y - 1.2 * (k + 1), 13, 1.2, (k % 2 ? 0.05 : -0.05))).fill(k % 2 ? BAKERY.carrot : 0xd9c06a).stroke({ width: 0.6, color: ink });
 		const s = at(AT.slot);
 		g.roundRect(s.x - 13, s.y - 2, 26, 4, 1.6).fill(0x3f8f5f).stroke({ width: 1, color: ink });
 		g.roundRect(s.x - 9, s.y - 1.4, 18, 2.8, 1.2).fill(ink);
@@ -786,7 +786,7 @@ export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
 			for (const side of [-1, 1]) {
 				const x = s.x + side * 15;
 				line(g, [x, s.y - 3, x + side * 1.5, s.y - 1.5, x, s.y, x + side * 1.5, s.y + 1.5], 1.1, ink);
-				g.circle(s.x + side * 4, s.y - 4, 1.4).fill(KITCHEN.carrot).stroke({ width: 0.7, color: ink });
+				g.circle(s.x + side * 4, s.y - 4, 1.4).fill(BAKERY.carrot).stroke({ width: 0.7, color: ink });
 			}
 		}
 	};
@@ -796,11 +796,11 @@ export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
 
 	/** A carrot peeling held by its top going into the bin: `len` of it still shows. */
 	const peel = (g: Graphics, len: number) => {
-		g.moveTo(-6, 1).lineTo(6, 1).lineTo(4.4, 1 + len).quadraticCurveTo(0, 2 + len, -4.4, 1 + len).closePath().fill(KITCHEN.carrot).stroke({ width: 1.3, color: ink, join: "round" });
+		g.moveTo(-6, 1).lineTo(6, 1).lineTo(4.4, 1 + len).quadraticCurveTo(0, 2 + len, -4.4, 1 + len).closePath().fill(BAKERY.carrot).stroke({ width: 1.3, color: ink, join: "round" });
 		if (len > 5) line(g, [-2, 3, 1.6, len - 0.5], 0.9, 0xffc27a);
 	};
 	parts["held/slip"] = (g) => {
-		g.poly([0, -1.5, 16, -3.5, 17.5, 0.5, 1, 2.5]).fill(KITCHEN.carrot).stroke({ width: 1.3, color: ink, join: "round" });
+		g.poly([0, -1.5, 16, -3.5, 17.5, 0.5, 1, 2.5]).fill(BAKERY.carrot).stroke({ width: 1.3, color: ink, join: "round" });
 		line(g, [4, 0.6, 12, -0.6], 0.9, 0xffc27a);
 	};
 	parts["held/feed1"] = (g) => peel(g, 12);
@@ -828,12 +828,12 @@ export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
 		const body = flap
 			? [x - s, y + s, x + s, y + s, x + s + 0.8, y - s + 3, x + 2, y - s - 2, x - s + 0.2, y - s + 0.6]
 			: [x - s, y + s, x + s, y + s, x + s, y - s, x - s, y - s];
-		g.poly(body).fill(KITCHEN.ticket).stroke({ width: 1.3, color: ink, join: "round" });
+		g.poly(body).fill(BAKERY.ticket).stroke({ width: 1.3, color: ink, join: "round" });
 		if (!flap) g.rect(x - s + 0.7, y - s + 1.4, STICKY - 1.4, 2.2).fill(RED);
 		line(g, [x - s + 2, y + 0.6, x + s - 3, y + 0.6], 1, ink);
 		line(g, [x - s + 2, y + 2.6, x + s - 2, y + 2.6], 1, ink);
 		line(g, [x - s + 2, y + 4.4, x + s - 5, y + 4.4], 1, ink);
-		for (let k = 0; k < 5; k++) g.poly([x - s + k * 2.4, y + s, x - s + k * 2.4 + 1.2, y + s + 1, x - s + k * 2.4 + 2.4, y + s]).fill(KITCHEN.ticket);
+		for (let k = 0; k < 5; k++) g.poly([x - s + k * 2.4, y + s, x - s + k * 2.4 + 1.2, y + s + 1, x - s + k * 2.4 + 2.4, y + s]).fill(BAKERY.ticket);
 	};
 	parts["held/sticky"] = (g) => ticket(g, 0, -12, false);
 	parts["held/stickyFlap"] = (g) => ticket(g, 0, -12, true);
@@ -845,7 +845,7 @@ export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
 	// The in-tray: the mise tray. A hotel pan on the lead's station, the context stacked in it as
 	// deli tubs of prep, a tub a bundle of sheets high, so it buries the lead as the sheets did; it
 	// sways, a tub slides off the top, and one drops over the side.
-	const PREP = [KITCHEN.carrot, KITCHEN.basil, KITCHEN.onion, KITCHEN.tomato, 0xf2c94c, 0xb07ae8];
+	const PREP = [BAKERY.carrot, BAKERY.basil, BAKERY.onion, BAKERY.tomato, 0xf2c94c, 0xb07ae8];
 	const tub = (g: Graphics, x: number, y: number, w: number, h: number, k: number) => {
 		g.rect(x, y, w, h).fill(0xf3f6fb).stroke({ width: 0.9, color: ink });
 		g.rect(x + 1, y + h * 0.35, w - 2, h * 0.65 - 0.6).fill(PREP[k % PREP.length]!);
@@ -863,7 +863,7 @@ export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
 			for (let c = 0; c < 3; c++) tub(g, x - w / 2 + 1 + dx + c * tw + 0.4, y - k * h, tw - 0.8, k * h, row * 2 + c);
 			y -= k * h;
 		}
-		g.poly([x - w / 2 - 3, base - 5, x + w / 2 + 3, base - 5, x + w / 2 + 1, base, x - w / 2 - 1, base]).fill(KITCHEN.steel).stroke({ width: 1.4, color: ink, join: "round" });
+		g.poly([x - w / 2 - 3, base - 5, x + w / 2 + 3, base - 5, x + w / 2 + 1, base, x - w / 2 - 1, base]).fill(BAKERY.steel).stroke({ width: 1.4, color: ink, join: "round" });
 		line(g, [x - w / 2 - 1, base - 3.4, x + w / 2 + 1, base - 3.4], 0.8, 0xffffff);
 		if (top === "slide") {
 			tub(g, x + w / 2 + 1, y - 7, 9, 6, 3);
@@ -876,7 +876,7 @@ export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
 			g.translateTransform(-fx, -fy).rotateTransform(0.5).translateTransform(fx, fy);
 			tub(g, fx - 5, fy - 5, 10, 10, 1);
 			g.restore();
-			for (const [dx, dy] of [[-7, 4], [7, 6], [2, 9]] as const) g.circle(fx + dx, fy + dy, 1.4).fill(KITCHEN.basil).stroke({ width: 0.6, color: ink });
+			for (const [dx, dy] of [[-7, 4], [7, 6], [2, 9]] as const) g.circle(fx + dx, fy + dy, 1.4).fill(BAKERY.basil).stroke({ width: 0.6, color: ink });
 			line(g, [fx - 5, fy - 11, fx - 2, fy - 15], 1.2, ink);
 			line(g, [fx + 3, fy - 11, fx + 7, fy - 14], 1.2, ink);
 		}
@@ -901,5 +901,5 @@ export function kitchenTheme(p: Palette = PAPER_PALETTE): Theme {
 		add(t);
 	};
 
-	return { name: "kitchen", palette: p, parts };
+	return { name: "bakery", palette: p, parts };
 }

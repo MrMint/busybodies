@@ -4,7 +4,7 @@ import { describe, expect, test } from "bun:test";
 import { direct } from "../src/scene/director/direct";
 import type { View } from "../src/scene/director/social";
 import { STORY, headlinesFor, regularsOf } from "../src/scene/director/story";
-import { DECOR, FACTORY_STORY, KITCHEN_STORY, OFFICE_STORY, boardText, decorFor, frameSpots, regularNames, storyStyle } from "../src/scene/office/decor-plan";
+import { DECOR, FACTORY_STORY, BAKERY_STORY, OFFICE_STORY, boardText, decorFor, frameSpots, regularNames, storyStyle } from "../src/scene/office/decor-plan";
 import { REGULAR_NAMES, regularOf } from "../src/scene/rig/roles";
 import { type Diary, type DiaryDay, localDay, projectKey } from "../src/shared/diary";
 import type { World } from "../src/scene/director/types";
@@ -242,7 +242,7 @@ describe("the walls remember", () => {
 	});
 
 	test("every theme has story words of its own: the Line counts covers", () => {
-		expect(storyStyle({ id: "kitchen", slab: 1, lawn: 2, light: { lamp: 3, glow: 4, sky: { noon: [5, 6], dusk: [7, 8] } } } as never).words).toBe(KITCHEN_STORY);
+		expect(storyStyle({ id: "bakery", slab: 1, lawn: 2, light: { lamp: 3, glow: 4, sky: { noon: [5, 6], dusk: [7, 8] } } } as never).words).toBe(BAKERY_STORY);
 		expect(storyStyle({ id: "factory", slab: 1, lawn: 2, light: { lamp: 3, glow: 4, sky: { noon: [5, 6], dusk: [7, 8] } } } as never).words).toBe(FACTORY_STORY);
 	});
 });

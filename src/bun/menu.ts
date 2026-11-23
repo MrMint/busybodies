@@ -7,7 +7,7 @@ import { summaryOf } from "./mood";
 import { LOOK_IDS, type LookId } from "../shared/look";
 
 /** The Theme submenu's names. */
-const THEME_NAMES: Record<ThemeId, string> = { office: "Office", factory: "Factory", kitchen: "The Line" };
+const THEME_NAMES: Record<ThemeId, string> = { office: "Office", factory: "Factory", bakery: "Bakery" };
 
 export interface TrayStatus {
 	snapshot: Snapshot | undefined | null;
