@@ -140,12 +140,13 @@ function mugWall(g: Graphics, a: Area): Container {
 	const sy = y + h - 3.6;
 	for (let k = 0; k < mugs.length; k++) {
 		const mx = x + 4 + k * 15;
-		g.roundRect(mx, sy - 10, 9, 10, 2).fill(mugs[k]!).stroke({ width: 1.4, color: INK });
-		g.moveTo(mx + 9, sy - 8).arc(mx + 9, sy - 5.5, 2.5, -Math.PI / 2, Math.PI / 2).stroke({ width: 1.2, color: INK });
-		if (k % 2 === 0) g.rect(mx + 2, sy - 6.5, 5, 1.6).fill({ color: INK, alpha: 0.5 });
+		g.roundRect(mx, sy - 9, 9, 9, 2).fill(mugs[k]!).stroke({ width: 1.4, color: INK });
+		g.moveTo(mx + 9, sy - 7.5).arc(mx + 9, sy - 5, 2.5, -Math.PI / 2, Math.PI / 2).stroke({ width: 1.2, color: INK });
+		if (k % 2 === 0) g.rect(mx + 2, sy - 6, 5, 1.6).fill({ color: INK, alpha: 0.5 });
 	}
 	g.roundRect(x, sy, w, 3.6, 1.5).fill(0xd9a066).stroke({ width: 1.5, color: INK });
-	g.roundRect(x, y - 1, w, 12, 3).fill(0xffffff).stroke({ width: 1.5, color: INK });
+	// The banner over the mugs' tops, its two lines clear of its edge.
+	g.roundRect(x, y - 1, w, 13, 3).fill(0xffffff).stroke({ width: 1.5, color: INK });
 	const t = text("you don't have to be busy\nto work here", 4.6, { fontWeight: "800", align: "center", lineHeight: 5.2 });
 	if (t.width > w - 4) t.scale.set((w - 4) / t.width);
 	t.anchor.set(0.5, 0);
