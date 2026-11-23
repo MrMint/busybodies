@@ -1,8 +1,8 @@
 # Restructure plan
 
 The moves from [`architecture-review.md`](architecture-review.md), as an ordered list of small
-mechanical commits. **Start only after every open QA PR has merged** (perf, audio fixes, voice,
-polish, theme parity, robustness), and run the steps on one branch, one at a time. Every step
+mechanical commits. **Start only after voice (#32) and the PR that adds this plan (#29) have
+merged.** The other QA PRs (#30, #31, #33, #34, #35) are in. Run the steps on one branch, one at a time. Every step
 moves code without changing what it does.
 
 ## Rules for every step
@@ -23,20 +23,22 @@ moves code without changing what it does.
 
 - **R0. Format all.** `hutch run format`, then commit the result alone. Add its SHA to a new
   `.git-blame-ignore-revs`. Switch CI's lint step from `biome ci --formatter-enabled=false` to
-  `biome ci`. Expect about 111 files and +7.3k/−2.5k lines at width 160.
+  `biome ci`. Expect about 113 files and +7.3k/−2.5k lines at width 160 (measured after #35; voice adds a few).
 - **R1. Baseline screenshots.** Run `tools/shoot.ts --theme office|factory|bakery` and keep the
   output outside the repo. Every later step diffs against it.
 
 ## Phase 1: cleanup in place (no moves)
 
 - **R2. Biome fixes.** `biome lint --write` for unused imports, optional chains, `import type`
-  and `const`. Hand-fix `lastAtOf` (delete it), the unused parameters (prefix them with `_`) and
-  `shared/rpc.ts {}`. Then promote those rules from `warn` to `error` in `biome.json`.
+  and `const`. Hand-fix `lastAtOf` (delete it), the unused parameters (prefix them with `_`),
+  `shared/rpc.ts {}`, and the two shadowed globals (`tools/shoot.ts`, `test/sass.test.ts`). Then promote those rules from `warn` to `error` in `biome.json`.
 - **R3. Dead exports.** Delete the truly unused functions (review §5, after rechecking each one
-  with `knip`). Drop `export` from file-local helpers. Delete the unused barrel re-exports in
+  with `knip`). Drop `export` from file-local helpers (including `sound.ts` `roomBed`,
+  `masterChain`, `makeNoise`, `MASTER`, unless R28 has made them shared by then). Delete the unused barrel re-exports in
   `scene/rig/index.ts`, `scene/director.ts` and `scene/theme/index.ts`, keeping only the names
   something imports. Then add `exports,types` to knip's failing set in CI.
-- **R4. Shared helpers.** Add `src/shared/hash.ts` (the string hashes, each under its own name),
+- **R4. Shared helpers.** Add `src/shared/hash.ts` (the string hashes, each under its own name, including
+  `sound.ts hashId`, which `speech.ts` also uses),
   `src/shared/time.ts` (`SEC`, `MIN`, `HOUR`) and `src/shared/colour.ts` (`mix`). Point every copy
   at them, one helper per commit if the diff is large. Make `sameStop` one export from
   `office/camera.ts`, `crewSize` one export from `office/placement.ts`, `poseMs` one export
@@ -97,10 +99,12 @@ moves code without changing what it does.
   - cut `<ID>_WORDS` out of `scene/theme/words.ts` into `themes/<id>/words.ts`
   - factory also: `theme/factory-staging.ts`, `theme/arm.ts`, `theme/armplan.ts` → `themes/factory/`
   - add `themes/<id>/index.ts` exporting the pack
-- **R19. Sound beds into the packs.** Cut `humBed`, `droneBed`, `ovenBed` and `bakeryBeat` into
-  `themes/<id>/sound.ts`. `mainview/sound.ts` calls `pack.sound.bed(...)` and its
-  `theme === "…"` ternaries go away. Check by ear in all three themes, because sound has no
-  screenshot diff.
+- **R19. Sound beds and beats into the packs.** Cut each `BEDS` entry, and each branch of the
+  scheduler loop in `Sound` (bakery's `bakeryBeat`/`steam`/`doorBell`, factory's `clack`, the
+  office's `key`), into `themes/<id>/sound.ts` as `bed` and `beat`. `Sound` calls
+  `pack.sound.beat(...)` and its `theme === "…"` branches go away. Add a test that the voice
+  manifest's and `ambience/sources.json`'s theme keys are all in `THEME_IDS`. Check by ear in all
+  three themes, because sound has no screenshot diff.
 - **R20. Rewordings out of the shared lines.** Turn each `themed: { factory, bakery }` in
   `sass/lines.ts` into an entry in that theme's `lines.ts` `reword` map, and make `bank.ts`
   apply it. `test/sass*.test.ts` must give the same banks per theme, so add a snapshot of each
@@ -135,7 +139,10 @@ Do them in this order, smallest risk first.
   named phases it calls in order. The director tests and replayed fixtures must give
   byte-identical events, so add a fixture-replay snapshot of `direct()` output before R27 if
   there isn't one.
-- **R28. `mainview/sound.ts`** → `sound/plan.ts` (pure) and `sound/play.ts` (Web Audio).
+- **R28. `mainview/sound.ts` and `speech.ts`** → `mainview/audio/`: `plan.ts` (the pure rules both
+  players share: `LIMITS`, `Gate`, `Voices`, `vary`, `seq`, `loudness`, `panFor`, `zoomedArea`,
+  `heatOf`), `graph.ts` (`masterChain`, `makeNoise`, the kit), `sound.ts` (earcons) and
+  `speech.ts` (voiced lines and room loops). `speech.ts` stops importing from `sound.ts`.
 
 ## After
 
