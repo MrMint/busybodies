@@ -54,6 +54,12 @@ export interface SpeechMix {
 	under: number;
 	/** Semitones instead of the theme's own, while auditioning; undefined keeps the manifest's. */
 	pitch?: number;
+	/** Syllables on one tune, levelled and joined (sass/voiced.ts `grainPlan`); off is the first, raw cut. */
+	smooth: boolean;
+	/** Voices through the shared voice bus (a little compression, the lows trimmed, the top softened) and the room. */
+	shape: boolean;
+	/** The shared room's level (sound.ts `roomChain`): 0 dry, 1 the default. */
+	room: number;
 }
 
 export interface Spoken {
@@ -105,8 +111,11 @@ const GRAIN_GAIN = 0.8;
 const UNDER_GAIN = 0.35;
 /** The murmur is short: at most this many syllables. */
 const MURMUR_SYLLABLES = 6;
-/** A syllable's fade in and out, so a cut never clicks. */
-const GRAIN_FADE = 0.008;
+/** A syllable's rounded edges: in, and out (they overlap within a word, so it's a little longer). */
+const GRAIN_IN = 0.014;
+const GRAIN_OUT = 0.045;
+/** How much of the voices goes to the shared room. */
+const VOICE_SEND = 0.3;
 const ROOM_GAIN = 0.45;
 
 /** Formants (F1, F2) of a few vowels, for the babble: a, e, i, o, u. */
@@ -123,6 +132,7 @@ export class Speech {
 	#mouth: Mouth;
 	#murmur: Mouth;
 	#mix: SpeechMix;
+	#vbus?: { ctx: AudioContext; input: AudioNode };
 	#manifest?: VoiceManifest;
 	#loading?: Promise<void>;
 	#status: SpeechState["manifest"] = "none";
@@ -135,7 +145,7 @@ export class Speech {
 		this.#host = host;
 		this.#mouth = new Mouth({ graceMs: host.graceMs });
 		this.#murmur = new Mouth({ graceMs: host.graceMs, murmur: true });
-		this.#mix = { mode: host.mode ?? "synth", murmur: true, front: 1, under: 1 };
+		this.#mix = { mode: host.mode ?? "synth", murmur: true, front: 1, under: 1, smooth: true, shape: true, room: 1 };
 	}
 
 	/** From each voice run: the bubbles that just went up. Speaks at most one key beat, and murmurs at most one other. */
@@ -164,6 +174,38 @@ export class Speech {
 	}
 	setMix(change: Partial<SpeechMix>): void {
 		this.#mix = { ...this.#mix, ...change };
+		if (change.room !== undefined) this.#host.sound.setRoom(change.room);
+	}
+
+	/**
+	 * The voices' bus, made once per context: a gentle compressor (so a loud syllable and a quiet
+	 * one sit together), the lows below a small creature's trimmed, and a soft shelf off the top;
+	 * then the master, and a share of it into the shared room.
+	 */
+	#voiceBus(bus: { ctx: AudioContext; out: AudioNode; room: AudioNode }): AudioNode {
+		if (this.#vbus?.ctx === bus.ctx) return this.#vbus.input;
+		const ctx = bus.ctx;
+		const comp = ctx.createDynamicsCompressor();
+		comp.threshold.value = -26;
+		comp.knee.value = 8;
+		comp.ratio.value = 3;
+		comp.attack.value = 0.008;
+		comp.release.value = 0.18;
+		const low = ctx.createBiquadFilter();
+		low.type = "highpass";
+		low.frequency.value = 170;
+		low.Q.value = 0.6;
+		const top = ctx.createBiquadFilter();
+		top.type = "highshelf";
+		top.frequency.value = 5_500;
+		top.gain.value = -5;
+		const send = ctx.createGain();
+		send.gain.value = VOICE_SEND;
+		comp.connect(low).connect(top);
+		top.connect(bus.out);
+		top.connect(send).connect(bus.room);
+		this.#vbus = { ctx, input: comp };
+		return comp;
 	}
 
 	/** Bring the room loop in line with sound being live and the theme. */
@@ -236,7 +278,7 @@ export class Speech {
 		return p;
 	}
 
-	async #say(h: { who: string; text: string; trigger: TriggerKind }, layer: "front" | "murmur", bus: { ctx: AudioContext; out: AudioNode }): Promise<void> {
+	async #say(h: { who: string; text: string; trigger: TriggerKind }, layer: "front" | "murmur", bus: { ctx: AudioContext; out: AudioNode; room: AudioNode }): Promise<void> {
 		await this.#loading;
 		const { who, text } = h;
 		const ctx = bus.ctx;
@@ -265,7 +307,7 @@ export class Speech {
 			const own = ownVoice(who, Object.keys(voices.grains));
 			const bank = own ? voices.grains[own] : undefined;
 			if (bank) {
-				steps = grainPlan(who, text, bank, layer === "murmur" ? MURMUR_SYLLABLES : undefined);
+				steps = grainPlan(who, text, bank, { max: layer === "murmur" ? MURMUR_SYLLABLES : undefined, base: cents + pitch, raw: !this.#mix.smooth });
 				for (const file of new Set(steps.map((s) => s.file))) {
 					const b = await this.#buffer(ctx, `voice/${file}`);
 					if (b) grains.set(file, b);
@@ -280,11 +322,19 @@ export class Speech {
 		const floor = this.#host.floor();
 		const rect = area ? floor?.areas.find((a) => a.id === area)?.rect : undefined;
 		const pan = panFor(rect, this.#host.view(), this.#host.width());
-		const room = loudness(area, zoomedArea(this.#host.stop(), floor)) * (layer === "front" ? this.#mix.front : this.#mix.under * UNDER_GAIN);
+		const near = loudness(area, zoomedArea(this.#host.stop(), floor));
+		const room = near * (layer === "front" ? this.#mix.front : this.#mix.under * UNDER_GAIN);
 		const out = ctx.createGain();
 		const panner = ctx.createStereoPanner();
 		panner.pan.value = pan;
-		out.connect(panner).connect(bus.out);
+		// From another room (the camera is in a different one), it comes through the wall: duller.
+		if (near < 1 && this.#mix.shape) {
+			const wall = ctx.createBiquadFilter();
+			wall.type = "lowpass";
+			wall.frequency.value = 2_200;
+			out.connect(wall).connect(panner);
+		} else out.connect(panner);
+		panner.connect(this.#mix.shape ? this.#voiceBus(bus) : bus.out);
 		const at = ctx.currentTime + (layer === "front" ? LEAD_IN : 0.15);
 		let secs: number;
 		let how: Spoken["how"];
@@ -299,7 +349,7 @@ export class Speech {
 			how = clip!.how;
 		} else if (steps.length) {
 			out.gain.value = GRAIN_GAIN * room;
-			secs = playGrains(ctx, out, at, steps, grains, cents + pitch);
+			secs = playGrains(ctx, out, at, steps, grains);
 			how = "syllables";
 		} else {
 			out.gain.value = BABBLE_GAIN * room;
@@ -381,28 +431,36 @@ export function babble(ctx: BaseAudioContext, out: AudioNode, at: number, who: s
 }
 
 /**
- * Syllable babble: each step a slice of its clip, faded in and out over a few ms, shifted by the
- * character's pitch plus the step's tune. Returns its length in seconds.
+ * Syllable babble: each step a slice of its clip at its own shift and level, with rounded edges (a
+ * quarter-sine in, a longer one out) so a cut never clicks, and overlapping the next where the plan
+ * says (inside a word). Returns its length in seconds.
  */
-export function playGrains(ctx: BaseAudioContext, out: AudioNode, at: number, steps: readonly GrainStep[], buffers: ReadonlyMap<string, AudioBuffer>, cents: number): number {
+export function playGrains(ctx: BaseAudioContext, out: AudioNode, at: number, steps: readonly GrainStep[], buffers: ReadonlyMap<string, AudioBuffer>): number {
 	let t = at;
+	let end = at;
 	for (const s of steps) {
 		const buf = buffers.get(s.file);
 		if (!buf) continue;
-		const detune = cents + s.cents;
-		const dur = Math.max(0.02, Math.min(s.end, buf.duration) - s.start);
-		const len = dur / 2 ** (detune / 1200);
+		const dur = Math.max(0.03, Math.min(s.end, buf.duration) - s.start);
+		const len = dur / 2 ** (s.cents / 1200);
+		const fin = Math.min(GRAIN_IN, len / 3);
+		const fout = Math.min(GRAIN_OUT, len / 2);
 		const src = ctx.createBufferSource();
 		src.buffer = buf;
-		src.detune.value = detune;
+		src.detune.value = s.cents;
 		const env = ctx.createGain();
 		env.gain.setValueAtTime(0, t);
-		env.gain.linearRampToValueAtTime(1, t + GRAIN_FADE);
-		env.gain.setValueAtTime(1, t + Math.max(GRAIN_FADE, len - GRAIN_FADE));
-		env.gain.linearRampToValueAtTime(0, t + len);
+		env.gain.setValueCurveAtTime(EDGE_IN.map((v) => v * s.gain), t, fin);
+		env.gain.setValueAtTime(s.gain, t + len - fout);
+		env.gain.setValueCurveAtTime(EDGE_OUT.map((v) => v * s.gain), t + len - fout, fout);
 		src.connect(env).connect(out);
 		src.start(t, s.start, dur);
+		end = Math.max(end, t + len);
 		t += len + s.gap;
 	}
-	return t - at;
+	return end - at;
 }
+
+/** Quarter-sine edges, as curves for `setValueCurveAtTime`. */
+const EDGE_IN = Float32Array.from({ length: 16 }, (_, i) => Math.sin(((i / 15) * Math.PI) / 2));
+const EDGE_OUT = Float32Array.from({ length: 16 }, (_, i) => Math.cos(((i / 15) * Math.PI) / 2));

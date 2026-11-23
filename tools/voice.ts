@@ -542,6 +542,14 @@ async function cmdAudition(): Promise<void> {
 /** Which audition line answers which beat in "reactions" mode: a wait asks, done celebrates, waking is surprised. */
 const REACTION_OF: Partial<Record<TriggerKind, number>> = { waiting: 3, finished: 4, woken: 5 };
 
+/** Slicing measures pitch in every frame: keep each clip's result while the server runs. */
+const slicedCache = new Map<string, ReturnType<typeof sliceGrains>>();
+const sliced = (file: string) => {
+	let p = slicedCache.get(file);
+	if (!p) slicedCache.set(file, (p = sliceGrains(file)));
+	return p;
+};
+
 /** The lab's manifest from the kept takes (falling back to "maybe" when nothing is kept). */
 export async function labManifest(a: Auditions = loadAuditions()): Promise<VoiceManifest> {
 	const m: VoiceManifest = { version: 1, themes: {} };
@@ -572,7 +580,7 @@ export async function labManifest(a: Auditions = loadAuditions()): Promise<Voice
 			const bank: GrainClip[] = [];
 			for (const n of [6, 7, 8]) {
 				const x = take(n);
-				if (x) bank.push({ file: x.file, at: await sliceGrains(join(WORK, x.file)) });
+				if (x) bank.push({ file: x.file, ...(await sliced(join(WORK, x.file))) });
 			}
 			if (bank.length) t.grains![id] = bank;
 		}

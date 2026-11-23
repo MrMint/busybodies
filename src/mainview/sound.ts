@@ -322,12 +322,50 @@ function glide(param: AudioParam, to: number, now: number, tau: number): void {
 
 /** The room tone's level while a character speaks (speech.ts). */
 const DUCK = 0.35;
+/** How much of the shared room each earcon sends (design/sound.md: everything in one small room). */
+const EARCON_SEND = 0.22;
+
+/**
+ * The shared room: a short, warm echo every sound can send to, so voices and earcons sound like
+ * they are in the same small space. Its impulse is made here from seeded noise: two channels of
+ * decaying, darkened noise (about half a second, most of it in the first 150 ms), after 8 ms of
+ * nothing. Returns the send (a gain to connect to) and that gain's level, 1 by default.
+ */
+export function roomChain(ctx: BaseAudioContext, dest: AudioNode): GainNode {
+	const secs = 0.55;
+	const len = Math.floor(ctx.sampleRate * secs);
+	const ir = ctx.createBuffer(2, len, ctx.sampleRate);
+	const pre = Math.floor(ctx.sampleRate * 0.008);
+	for (let ch = 0; ch < 2; ch++) {
+		const r = seq(0x7007 + ch);
+		const d = ir.getChannelData(ch);
+		let lp = 0;
+		for (let i = pre; i < len; i++) {
+			const t = (i - pre) / ctx.sampleRate;
+			// A one-pole low-pass that closes as the tail goes on: the walls are soft (paper, felt).
+			const k = 0.55 - 0.4 * Math.min(1, t / secs);
+			lp += k * (r() * 2 - 1 - lp);
+			d[i] = lp * Math.exp(-t / 0.12) * 0.6;
+		}
+	}
+	const send = ctx.createGain();
+	const conv = ctx.createConvolver();
+	conv.normalize = true;
+	conv.buffer = ir;
+	const wet = ctx.createGain();
+	wet.gain.value = 0.5;
+	send.connect(conv).connect(wet).connect(dest);
+	return send;
+}
 
 export class Sound {
 	#host: SoundHost;
 	#enabled: boolean;
 	#ctx?: AudioContext;
 	#master?: GainNode;
+	/** The shared room's send (roomChain), and the earcons' share of it. */
+	#room?: GainNode;
+	#earconSend?: GainNode;
 	#noise?: AudioBuffer;
 	#ears = new Ears();
 	#gate = new Gate();
@@ -414,9 +452,14 @@ export class Sound {
 		for (const cue of cues) this.#play(cue);
 	}
 
-	/** For the speech player (speech.ts): the running context and the master bus, while live. */
-	bus(): { ctx: AudioContext; out: AudioNode } | undefined {
-		return this.#live && this.#ctx && this.#master ? { ctx: this.#ctx, out: this.#master } : undefined;
+	/** For the speech player (speech.ts): the running context, the master bus and the shared room's send, while live. */
+	bus(): { ctx: AudioContext; out: AudioNode; room: AudioNode } | undefined {
+		return this.#live && this.#ctx && this.#master && this.#room ? { ctx: this.#ctx, out: this.#master, room: this.#room } : undefined;
+	}
+
+	/** The shared room's level, 0 (dry) to 2; 1 is the default (the sound lab turns it). */
+	setRoom(level: number): void {
+		if (this.#room && this.#ctx) glide(this.#room.gain, level, this.#ctx.currentTime, 0.05);
 	}
 
 	/** Dip the room tone under a line of speech `secs` long, from `at` (the context's seconds). */
@@ -447,6 +490,10 @@ export class Sound {
 		const ctx = new Ctor();
 		this.#ctx = ctx;
 		this.#master = masterChain(ctx);
+		this.#room = roomChain(ctx, this.#master);
+		this.#earconSend = ctx.createGain();
+		this.#earconSend.gain.value = EARCON_SEND;
+		this.#earconSend.connect(this.#room);
 		this.#noise = makeNoise(ctx);
 		ctx.addEventListener("statechange", () => this.#syncTone());
 	}
@@ -477,7 +524,15 @@ export class Sound {
 		out.gain.value = gain * v.level * LEVEL[cue.kind];
 		const panner = ctx.createStereoPanner();
 		panner.pan.value = pan;
-		out.connect(panner).connect(this.#master);
+		// From another room (the camera is in a different one), it comes through the wall: duller.
+		if (gain < 1) {
+			const wall = ctx.createBiquadFilter();
+			wall.type = "lowpass";
+			wall.frequency.value = 2_200;
+			out.connect(wall).connect(panner);
+		} else out.connect(panner);
+		panner.connect(this.#master);
+		panner.connect(this.#earconSend!);
 		EARCONS[cue.kind](this.#kit(ctx, out), at, v.pitch, v.seed);
 		// Let the graph go once it has rung out.
 		setTimeout(() => {

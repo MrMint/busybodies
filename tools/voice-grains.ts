@@ -1,7 +1,9 @@
 // Cuts recorded mochi-speak into syllables for the app's syllable babble (sass/voiced.ts
 // `grainPlan`, mainview/speech.ts). A clip is decoded to mono, measured in 10 ms frames, and its
 // voiced stretches (above a threshold under its peak) are split at their quietest dip until each is
-// a syllable's length. No re-encoding: the app plays slices of the clip it already has.
+// a syllable's length. Each syllable's pitch (YIN, median over its voiced frames) and loudness are
+// measured too, so the app can retune every syllable onto one melody and level them (sass/voiced.ts
+// `grainPlan`). No re-encoding: the app plays slices of the clip it already has.
 const FRAME = 0.01;
 
 export interface GrainOptions {
@@ -75,11 +77,81 @@ export function segment(env: readonly number[], o: GrainOptions = GRAIN_DEFAULTS
 
 const round = (x: number) => Math.round(x * 1000) / 1000;
 
-/** A clip's syllables: decoded with ffmpeg (mono, 24 kHz), then `segment`. */
-export async function sliceGrains(file: string, o: GrainOptions = GRAIN_DEFAULTS): Promise<[number, number][]> {
+/**
+ * The pitch of one frame, in Hz, by YIN (de Cheveigné and Kawahara, 2002): the first lag whose
+ * cumulative-mean-normalised difference dips under `threshold`, refined by a parabola. Undefined
+ * for a frame with no clear pitch (a breath, a laugh's air, silence).
+ */
+export function yin(x: Float32Array, rate: number, minHz = 90, maxHz = 900, threshold = 0.15): number | undefined {
+	const minLag = Math.floor(rate / maxHz);
+	const maxLag = Math.min(Math.floor(rate / minHz), Math.floor(x.length / 2));
+	if (maxLag <= minLag + 2) return undefined;
+	const d = new Float32Array(maxLag + 1);
+	const w = x.length - maxLag;
+	for (let lag = 1; lag <= maxLag; lag++) {
+		let sum = 0;
+		for (let i = 0; i < w; i++) {
+			const v = x[i]! - x[i + lag]!;
+			sum += v * v;
+		}
+		d[lag] = sum;
+	}
+	let run = 0;
+	const cmnd = new Float32Array(maxLag + 1);
+	cmnd[0] = 1;
+	for (let lag = 1; lag <= maxLag; lag++) {
+		run += d[lag]!;
+		cmnd[lag] = run > 0 ? (d[lag]! * lag) / run : 1;
+	}
+	for (let lag = minLag; lag < maxLag; lag++) {
+		if (cmnd[lag]! >= threshold) continue;
+		while (lag + 1 < maxLag && cmnd[lag + 1]! < cmnd[lag]!) lag++;
+		const a = cmnd[lag - 1]!;
+		const b = cmnd[lag]!;
+		const c = cmnd[lag + 1]!;
+		const shift = (a - c) / (2 * (a - 2 * b + c) || 1);
+		return rate / (lag + (Number.isFinite(shift) ? shift : 0));
+	}
+	return undefined;
+}
+
+/** A syllable's pitch (the median of its voiced 40 ms frames, if at least half are) and loudness. */
+export function grainInfo(samples: Float32Array, rate: number, [start, end]: [number, number]): { hz?: number; db: number } {
+	const a = Math.floor(start * rate);
+	const b = Math.min(samples.length, Math.floor(end * rate));
+	const seg = samples.subarray(a, b);
+	let sum = 0;
+	for (const v of seg) sum += v * v;
+	const db = Math.round(10 * Math.log10(sum / Math.max(1, seg.length) + 1e-12) * 10) / 10;
+	const frame = Math.floor(rate * 0.04);
+	const hop = Math.floor(rate * 0.02);
+	const pitches: number[] = [];
+	let frames = 0;
+	for (let i = 0; i + frame <= seg.length; i += hop) {
+		frames++;
+		const f = yin(seg.subarray(i, i + frame), rate);
+		if (f) pitches.push(f);
+	}
+	if (!frames || pitches.length < frames / 2) return { db };
+	pitches.sort((x, y) => x - y);
+	return { hz: Math.round(pitches[pitches.length >> 1]! * 10) / 10, db };
+}
+
+/** A clip's syllables, each with its pitch (null when it has none) and loudness. */
+export interface Sliced {
+	at: [number, number][];
+	hz: (number | null)[];
+	db: number[];
+}
+
+/** A clip's syllables: decoded with ffmpeg (mono, 24 kHz), then `segment` and `grainInfo`. */
+export async function sliceGrains(file: string, o: GrainOptions = GRAIN_DEFAULTS): Promise<Sliced> {
 	const rate = 24_000;
 	const p = Bun.spawn(["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", file, "-ac", "1", "-ar", String(rate), "-f", "f32le", "pipe:1"], { stdout: "pipe", stderr: "pipe" });
 	const [buf, err, code] = await Promise.all([new Response(p.stdout).arrayBuffer(), new Response(p.stderr).text(), p.exited]);
 	if (code !== 0) throw new Error(`ffmpeg: ${err.trim()}`);
-	return segment(envelope(new Float32Array(buf), rate), o);
+	const samples = new Float32Array(buf);
+	const at = segment(envelope(samples, rate), o);
+	const info = at.map((g) => grainInfo(samples, rate, g));
+	return { at, hz: info.map((i) => i.hz ?? null), db: info.map((i) => i.db) };
 }

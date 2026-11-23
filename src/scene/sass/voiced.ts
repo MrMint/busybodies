@@ -88,6 +88,9 @@ export interface GrainClip {
 	file: string;
 	/** Each syllable's start and end, in seconds into the clip. */
 	at: [number, number][];
+	/** Each syllable's pitch in Hz (null with none: a breath, a laugh's air), and its loudness in dB. */
+	hz?: (number | null)[];
+	db?: number[];
 }
 
 /**
@@ -249,10 +252,47 @@ export interface GrainStep {
 	file: string;
 	start: number;
 	end: number;
-	/** Cents on top of the theme's pitch and the character's own. */
+	/** Cents to shift it by, everything included (the melody, the theme's pitch, the character's). */
 	cents: number;
-	/** Seconds of quiet before the next syllable. */
+	/** Seconds before the next syllable starts after this one ends: negative overlaps them. */
 	gap: number;
+	/** Its level, evening out loud and quiet syllables. */
+	gain: number;
+}
+
+/**
+ * The key every mochi sings in: the major pentatonic on C. Babble lands on its notes, so a line has a
+ * tune instead of a scatter, and an earcon in the same key sits with it (design/sound.md).
+ */
+export const MOCHI_KEY = { rootHz: 261.63, scale: [0, 2, 4, 7, 9] } as const;
+
+/** Every note of the key as semitones from its root, over a few octaves either way. */
+const LADDER: number[] = [];
+for (let o = -3; o <= 3; o++) for (const n of MOCHI_KEY.scale) LADDER.push(o * 12 + n);
+/** The ladder's step nearest a pitch in semitones. */
+const nearestStep = (semis: number) => LADDER.reduce((best, n, i) => (Math.abs(n - semis) < Math.abs(LADDER[best]! - semis) ? i : best), 0);
+
+/** A word's syllables, roughly: its vowel groups, less a silent final e ("some", "rope", not "the" or "table"). */
+export function syllablesOf(word: string): number {
+	const w = word.toLowerCase().replace(/[^a-z]/g, "");
+	let n = w.match(/[aeiouy]+/g)?.length ?? 1;
+	if (n > 1 && /[^aeiouyl]e$/.test(w)) n--;
+	return Math.max(1, n);
+}
+
+/** A line as words of syllables: how many each word gets, and the pause after it. */
+export function wordsOf(text: string): { syllables: number; pause: "word" | "comma" | "stop" | "end" }[] {
+	const tokens = text.replace(/\{[a-z0-9]+\}/gi, "la").replace(/<[^>]*>/g, " ").match(/[A-Za-z'0-9-]+|[,;:]|[.!?]+/g) ?? [];
+	const out: { syllables: number; pause: "word" | "comma" | "stop" | "end" }[] = [];
+	for (const t of tokens) {
+		if (/^[,;:]$/.test(t)) {
+			if (out.length) out.at(-1)!.pause = "comma";
+		} else if (/^[.!?]+$/.test(t)) {
+			if (out.length) out.at(-1)!.pause = "stop";
+		} else out.push({ syllables: Math.max(1, Math.min(3, syllablesOf(t))), pause: "word" });
+	}
+	if (out.length) out.at(-1)!.pause = "end";
+	return out;
 }
 
 /** A small deterministic sequence from a seed (xorshift), as sound.ts's `seq`. */
@@ -267,16 +307,75 @@ function seq(seed: number): () => number {
 }
 
 /**
- * A line as syllables from a voice's bank: as many as the line has vowel groups (babbleOf), each a
- * syllable picked from the key and the words (never the same one twice running), tuned like the
- * synth babble: falling at a full stop, rising at "?", up at "!". `max` caps it (the murmur is short).
+ * A line as syllables from a voice's bank. Two ways:
+ *
+ * smooth (the default): word by word, a word's syllables from one take and overlapping a little, a
+ *   short breath between words and a longer one at a comma; every syllable retuned from its own
+ *   pitch onto one melody in `MOCHI_KEY` around the voice's middle (falling at a full stop, rising
+ *   at "?", up at "!", a lift on each word's first syllable) and levelled to the bank's middle
+ *   loudness. Only syllables with a clear pitch within an octave of the voice's middle are used.
+ * raw (the first cut): any syllables, their own pitch plus a loose tune and jitter, uneven gaps.
+ *
+ * `base` is cents on top (the theme's pitch plus the character's own); `max` caps the syllables
+ * (the murmur is short). Every choice comes from the character and the words, never Math.random.
  */
-export function grainPlan(who: string, text: string, bank: readonly GrainClip[], max = 14): GrainStep[] {
-	const pool = bank.flatMap((c) => c.at.map(([start, end]) => ({ file: c.file, start, end })));
-	if (!pool.length) return [];
+export function grainPlan(who: string, text: string, bank: readonly GrainClip[], o: { max?: number; base?: number; raw?: boolean } = {}): GrainStep[] {
+	const max = o.max ?? 14;
+	const base = o.base ?? 0;
+	const r = seq(hash(`grain|${who}|${text}`));
+	const all = bank.flatMap((c, ci) => c.at.map(([start, end], i) => ({ clip: ci, file: c.file, start, end, hz: c.hz?.[i] ?? null, db: c.db?.[i] })));
+	if (!all.length) return [];
+	const voiced = all.filter((g) => g.hz !== null);
+	const mid = median(voiced.map((g) => g.hz!));
+	const pool = o.raw || mid === undefined ? [] : voiced.filter((g) => Math.abs(Math.log2(g.hz! / mid)) <= 1 && g.end - g.start >= 0.08);
+	if (pool.length < 3) return rawPlan(r, text, all, max, base);
+
+	const loud = median(pool.map((g) => g.db ?? -20)) ?? -20;
+	const { tune } = babbleOf(text);
+	let words = wordsOf(text);
+	// Over the cap, keep the opening words and the last one (it carries the tune's end).
+	while (words.reduce((n, w) => n + w.syllables, 0) > max && words.length > 1) words.splice(words.length - 2, 1);
+	const n = Math.min(max, words.reduce((k, w) => k + w.syllables, 0));
+	// The voice's middle, moved by the theme and the character, onto the key: where the tune starts from.
+	const home = nearestStep(12 * Math.log2(mid! / MOCHI_KEY.rootHz) + base / 100);
+	const out: GrainStep[] = [];
+	let i = 0;
+	let last = -1;
+	for (const w of words) {
+		let clip = -1;
+		for (let k = 0; k < w.syllables && i < n; k++, i++) {
+			const x = n > 1 ? i / (n - 1) : 0;
+			// The tune, in steps of the key from home.
+			const steps = tune === "rise" ? -0.5 + 3 * x * x : tune === "bright" ? 1 - x + (i === n - 1 ? 3 : 0) : 1.5 - 2.5 * x;
+			const lift = k === 0 && w.syllables > 1 ? 0.6 : 0;
+			const note = LADDER[Math.max(0, Math.min(LADDER.length - 1, home + Math.round(steps + lift)))]!;
+			// A word keeps to one take when it can, so its syllables sound like one word.
+			const same = pool.map((g, j) => j).filter((j) => pool[j]!.clip === clip && j !== last);
+			const choices = same.length && r() < 0.8 ? same : pool.map((_, j) => j).filter((j) => j !== last);
+			const j = choices[Math.floor(r() * choices.length)] ?? 0;
+			const g = pool[j]!;
+			last = j;
+			clip = g.clip;
+			const own = 12 * Math.log2(g.hz! / MOCHI_KEY.rootHz);
+			const end = k === w.syllables - 1 || i === n - 1;
+			const gap = !end ? -0.03 : w.pause === "comma" ? 0.16 : w.pause === "stop" ? 0.24 : w.pause === "end" ? 0 : 0.04 + r() * 0.025;
+			const gain = Math.max(0.6, Math.min(1.6, 10 ** ((loud - (g.db ?? loud)) / 20))) * (k === 0 ? 1.08 : 1) * (i === n - 1 ? 0.92 : 1);
+			out.push({ file: g.file, start: g.start, end: g.end, cents: Math.round((note - own) * 100), gap: Math.round(gap * 1000) / 1000, gain: Math.round(gain * 100) / 100 });
+		}
+	}
+	return out;
+}
+
+function median(xs: number[]): number | undefined {
+	if (!xs.length) return undefined;
+	const s = [...xs].sort((a, b) => a - b);
+	return s[s.length >> 1];
+}
+
+/** The first cut: any syllables, a loose tune and jitter, uneven gaps (for comparison, and banks with no pitches). */
+function rawPlan(r: () => number, text: string, pool: { file: string; start: number; end: number }[], max: number, base: number): GrainStep[] {
 	const { syllables, tune } = babbleOf(text);
 	const n = Math.min(max, syllables);
-	const r = seq(hash(`grain|${who}|${text}`));
 	const out: GrainStep[] = [];
 	let last = -1;
 	for (let i = 0; i < n; i++) {
@@ -286,7 +385,7 @@ export function grainPlan(who: string, text: string, bank: readonly GrainClip[],
 		const x = n > 1 ? i / (n - 1) : 0;
 		const shape = tune === "rise" ? 500 * x * x - 100 : tune === "bright" ? 200 - 150 * x + (i === n - 1 ? 250 : 0) : 150 - 350 * x;
 		const g = pool[k]!;
-		out.push({ file: g.file, start: g.start, end: g.end, cents: Math.round(shape + (r() - 0.5) * 120), gap: 0.015 + r() * 0.05 + (r() < 0.12 ? 0.08 : 0) });
+		out.push({ file: g.file, start: g.start, end: g.end, cents: Math.round(base + shape + (r() - 0.5) * 120), gap: 0.015 + r() * 0.05 + (r() < 0.12 ? 0.08 : 0), gain: 1 });
 	}
 	return out;
 }

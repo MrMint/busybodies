@@ -190,7 +190,7 @@ describe("auditions and Gemini 3.8 (tools/voice.ts)", async () => {
 
 describe("the sound lab's parts: syllables and the murmur", async () => {
 	const { segment, envelope, GRAIN_DEFAULTS } = await import("../tools/voice-grains");
-	const { MURMUR_LIMITS, grainPlan, voiceMode } = await import("../src/scene/sass/voiced");
+	const { MURMUR_LIMITS, MOCHI_KEY, grainPlan, voiceMode, wordsOf } = await import("../src/scene/sass/voiced");
 
 	test("cutting: voiced runs, long ones split at their dip, crumbs dropped, a little air kept", () => {
 		// 10 ms frames: 0.2 s quiet, 0.6 s voiced with a dip in the middle, 0.2 s quiet, a 30 ms blip.
@@ -216,8 +216,53 @@ describe("the sound lab's parts: syllables and the murmur", async () => {
 		expect(grainPlan("s:1", "I was resting my context.", bank)).toEqual(p);
 		expect(grainPlan("s:2", "I was resting my context.", bank)).not.toEqual(p);
 		for (let i = 1; i < p.length; i++) expect(`${p[i]!.file}${p[i]!.start}`).not.toBe(`${p[i - 1]!.file}${p[i - 1]!.start}`);
-		expect(grainPlan("s:1", "I was resting my context, and then some more, and more.", bank, 4).length).toBe(4);
+		expect(grainPlan("s:1", "I was resting my context, and then some more, and more.", bank, { max: 4 }).length).toBe(4);
 		expect(grainPlan("s:1", "Hello.", [])).toEqual([]);
+	});
+
+	// A bank with pitches and levels, as tools/voice-grains.ts measures them: one breath (no pitch),
+	// one squeak an octave and a half up, one quiet syllable.
+	const sung = [
+		{ file: "a.webm", at: [[0, 0.2], [0.25, 0.4], [0.5, 0.7], [0.8, 0.95]] as [number, number][], hz: [300, 320, null, 900], db: [-18, -20, -30, -15] },
+		{ file: "b.webm", at: [[0.1, 0.3], [0.4, 0.6], [0.7, 0.85]] as [number, number][], hz: [280, 310, 340], db: [-19, -28, -18] },
+	];
+
+	test("smooth: words drive the pauses, every syllable lands in the key, a word keeps to one take", () => {
+		const text = "Done before lunch, taking lunch anyway.";
+		const p = grainPlan("s:1", text, sung);
+		expect(p.length).toBe(wordsOf(text).reduce((n, w) => n + w.syllables, 0));
+		// No breath and no squeak.
+		for (const g of p) expect(`${g.file}@${g.start}`).not.toMatch(/a\.webm@0\.(5|8)$/);
+		// Each syllable's own pitch plus its shift is a note of the key.
+		const hzOf = (g: (typeof p)[number]) => sung.find((c) => c.file === g.file)!.hz[sung.find((c) => c.file === g.file)!.at.findIndex(([a]) => a === g.start)]!;
+		for (const g of p) {
+			const semis = 12 * Math.log2(hzOf(g) / MOCHI_KEY.rootHz) + g.cents / 100;
+			const inKey = ((Math.round(semis) % 12) + 12) % 12;
+			expect(Math.abs(semis - Math.round(semis))).toBeLessThan(0.02);
+			expect(MOCHI_KEY.scale as readonly number[]).toContain(inKey);
+		}
+		// Inside a word syllables overlap; the comma pauses longer than a word break.
+		expect(p.some((g) => g.gap < 0)).toBe(true);
+		expect(Math.max(...p.map((g) => g.gap))).toBeGreaterThanOrEqual(0.16);
+		// The quiet syllable is brought up, the loud ones down.
+		const quiet = p.find((g) => g.file === "b.webm" && g.start === 0.4);
+		if (quiet) expect(quiet.gain).toBeGreaterThan(1);
+	});
+
+	test("smooth: the raw switch, and a bank with no pitches, give the first cut", () => {
+		expect(grainPlan("s:1", "Hello there.", sung, { raw: true }).every((g) => g.gap > 0)).toBe(true);
+		expect(grainPlan("s:1", "Hello there.", bank).every((g) => g.gap > 0)).toBe(true);
+	});
+
+	test("words: syllables per word, and the pause each word ends on", () => {
+		expect(wordsOf("No rush. Some rush.")).toEqual([
+			{ syllables: 1, pause: "word" },
+			{ syllables: 1, pause: "stop" },
+			{ syllables: 1, pause: "word" },
+			{ syllables: 1, pause: "end" },
+		]);
+		expect(wordsOf("Finished at {time}, scrolling.").map((w) => w.pause)).toEqual(["word", "word", "comma", "end"]);
+		expect(wordsOf("Pa-ta-taa! <laugh>").length).toBe(1);
 	});
 
 	test("the tune: a question ends up, a full stop ends down", () => {
