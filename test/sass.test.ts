@@ -1,6 +1,7 @@
 // The sass module: the line bank against the design board, every detector against invented
 // snapshots, the scheduler's limits and cooldowns, and the signs. Every project, title and id
 // here is made up.
+import { FACTORY_SASS } from "../src/scene/sass/bank";
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -128,8 +129,8 @@ describe("the line bank in each scene theme", () => {
 		for (const l of LINES) for (const t of Object.values(l.themed ?? {})) expect(vars(t)).toEqual(vars(l.text));
 	});
 
-	test("the Line speaks the base wording for now: no kitchen words of its own yet", () => {
-		expect(linesIn("kitchen").map((l) => l.text)).toEqual(LINES.map((l) => l.text));
+	test("the bakery's builders talk pastry", () => {
+		expect(linesIn("bakery").find((l) => l.text === "Who moved my rolling pin.")).toBeDefined();
 	});
 
 	test("a crew in the office talks paperwork, and the factory's talks shop", () => {
@@ -458,15 +459,19 @@ describe("Sass, end to end", () => {
 	test("speaks the scene theme's words, and switches with it", () => {
 		const a = session("a", { title: "Crumb cache", waiting: { reason: "permission", since: NOW, source: "hook" } });
 		const sign = (o: Output) => o.signs.find((s) => s.slot === "room:teapot:sign")?.text;
-		expect(sign(new Sass({ ...OPTS, gapMs: 0, theme: "factory" }).update(snap(a), NOW, { zoom: 2 }))).toStartWith("Next up");
+		const factory = sign(new Sass({ ...OPTS, gapMs: 0, theme: "factory" }).update(snap(a), NOW, { zoom: 2 }));
+		expect(FACTORY_SASS.lines.some((l) => l.trigger === "waiting" && l.kind === "sign" && factory?.startsWith(l.text.split("{")[0]!))).toBe(true);
+		expect(factory).not.toStartWith("Now serving");
 		const sass = new Sass({ ...OPTS, gapMs: 0 });
 		expect(sign(sass.update(snap(a), NOW, { zoom: 2 }))).toStartWith("Now serving");
 		// Switched live, the next sign a trigger puts up is in the new words; what is up stays.
-		sass.theme = "factory";
+		sass.setTheme("factory");
 		const b = session("b", { project: "kettle", waiting: { reason: "permission", since: NOW + 1000, source: "hook" } });
 		const out = sass.update(snap(a, b), NOW + 1000, { zoom: 2 });
-		expect(out.signs.find((s) => s.slot === "room:kettle:sign")?.text).toStartWith("Next up");
-		expect(sign(out)).toBeUndefined();
+		const kettle = out.signs.find((s) => s.slot === "room:kettle:sign")?.text;
+		expect(FACTORY_SASS.lines.some((l) => l.trigger === "waiting" && l.kind === "sign" && kettle?.startsWith(l.text.split("{")[0]!))).toBe(true);
+		// Every slot is written again in the new words: nothing the office said stays up.
+		expect(sign(out)).not.toStartWith("Now serving");
 	});
 
 	test("bubbles and signs out, only changed signs, and a quiet office sleeps", () => {

@@ -9,6 +9,7 @@
 // no new snapshot (an acted pose ends, a habit rotates, a build turns long): call again then.
 import { seats } from "../office/layout";
 import { LEAD_SIZE, crewOf } from "../office/placement";
+import { habitsFor } from "../office/staging";
 import type { Mood } from "../office/slot";
 import type { Area, Slot, World as Floor } from "../office/world";
 import { OVERLAP, buildSlot, crewPlaces, crewSlot, crewSpots, endGaps, useFor, yieldFrom } from "../office/world";
@@ -347,8 +348,8 @@ export interface DirectOptions {
 
 export function direct(prev: World | undefined, snap: Snapshot, now: number, floor: Floor, opts: DirectOptions = {}): Direction {
 	const life = opts.life ?? false;
-	// The theme's idle habits (office/staging.ts), or the rig's seven.
-	const habits = floor.staging?.habits;
+	// The theme's idle habits (office/staging.ts), or the rig's seven; a line's lead has the booth's.
+	const habitsOf = (s: Spec) => habitsFor(floor.staging, s.kind === "lead");
 	const view = opts.view;
 	const before = prev?.actors ?? {};
 	const first = prev === undefined;
@@ -620,7 +621,7 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 
 		let choice: Choice;
 		if (work && want && want !== work.kind) wakes.push(work.since + WORK.holdMs);
-		let st = standing(s, now, count, work, life, habits);
+		let st = standing(s, now, count, work, life, habitsOf(s));
 		// Buried in the in-tray: past 95% of the context window, a busy lead at its desk (metrics.ts).
 		if (s.kind === "lead" && s.busy && !st.trigger && place.spot === "desk" && st.pose !== "grumpy" && st.pose !== "thinking" && trayFor(s.session.context)?.buried) st = { pose: "buried", as: "lead", acted: false };
 		if (visits.has(s.key) && st.pose !== "grumpy") st = { pose: "inspect", as: "lead", acted: false };
@@ -841,7 +842,7 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 
 		// When this picture changes on its own.
 		if (choice.acted) wakes.push(poseSince + poseMs(choice.pose, choice.as) - overlapOf(trait, choice.pose));
-		if (s.mood === "idle") wakes.push(habitAt(s.key, s.since, now, life, habits).wake);
+		if (s.mood === "idle") wakes.push(habitAt(s.key, s.since, now, life, habitsOf(s)).wake);
 		if (s.busy && s.running) {
 			for (const m of [RULES.thinkingMin, RULES.longBuildMin]) if (now < s.running.since + m * MIN) wakes.push(s.running.since + m * MIN);
 		}

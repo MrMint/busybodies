@@ -5,9 +5,16 @@
 //   steam    off the kitchen's coffee machine            (office)
 //   fan      the kitchen's ceiling fan                   (office)
 //   printer  the copier's light, blinking                (office)
+//   flicker  a fluorescent tube in each room, stuttering now and then   (office)
 //   beacon   a turning beacon on the press, while a build runs in the bay   (factory)
+//   pilot    the press's pilot lamp in every bay, blinking slow amber       (factory)
 //   vents    steam puffing from the aisle's floor vents  (factory)
 //   sparks   weld sparks off a busy line's belt          (factory)
+//   ovens    the deck ovens' windows glowing and flickering           (bakery)
+//   marquee  bulbs chasing round the pick-up counter's "Order up!" sign (bakery)
+//   cakeStand  a cake turning on its stand on the tasting table     (bakery)
+//   sprinkles  sprinkles drifting down round the shop's giant cupcake (bakery)
+//   parade   pastries riding the hallway's conveyor, all day long    (bakery)
 //
 // Everything here is drawn once (the theme's painters, or the shapes below), baked into a shared
 // texture (a belt's slats and hazard stripes are far too many vertices for Pixi to batch as Graphics,
@@ -19,9 +26,12 @@
 import { Container, Graphics, Rectangle, type Renderer, Sprite, type Texture } from "pixi.js";
 import { unit } from "../rig/player";
 import type { SceneTheme, StagePainters } from "../theme/types";
+import { type CrateRide, crateAt, crateRide } from "./crate";
 import { INK } from "./paper";
+import { KITCHEN_WALL, ceilingPanels } from "./propspots";
 import { type AmbientKind, stagingOf } from "./staging";
-import { BELT, type Belt, type Rect, type World } from "./world";
+import { DOCK_W } from "./layout";
+import { BELT, type Belt, type Fixture, type Rect, type World } from "./world";
 
 /** The belt's speed (world px per second of the life clock) and how fast the other things go. */
 export const AMBIENT = {
@@ -34,14 +44,28 @@ export const AMBIENT = {
 	beacon: 0.9,
 	/** The printer's light: on this long, once in each period (ms). */
 	led: { on: 260, period: [1800, 3000] },
+	/** A press's pilot lamp: on this long, once in each period (ms). */
+	pilot: { on: 900, period: [2400, 3400] },
+	/** A tube's flicker: a stutter (off, on, off for these ms) once in each period (ms). */
+	flicker: { stutter: [70, 60, 140], period: [8000, 15000] },
 	/** A vent's puff: its period (ms) and the share of it spent puffing. */
 	vent: { period: [3600, 5600], share: 0.45 },
 	/** Weld sparks: a burst this long (ms), once in each period. */
 	sparks: { burst: 380, period: [1100, 1900] },
 	/** A vent every this many px of hallway, from its left end. */
 	ventPitch: 640,
-	/** A PR crate: it waits for the arm to set it down, then rides at this speed (px/s), at least. */
-	crate: { delay: 2200, speed: 240, maxMs: 8000, fade: 300 },
+	/** The bakery's deck oven window, from its build station's base (theme/bakery.ts OVEN_WINDOW),
+	 * and its flicker's period (ms). */
+	oven: { x: -19, y: -29, w: 38, h: 15, period: 1700 },
+	/** Marquee bulbs: this far apart round the sign, this far out from it, a step of the chase (ms),
+	 * and a flash of them all once in each period. */
+	marquee: { pitch: 11, out: 6, step: 190, flash: 9000 },
+	/** The tasting table's cake: its turns per second, and where it stands on the table. */
+	cake: { turn: 0.12, y: -86 },
+	/** Sprinkles: how many, and how long one takes to drift down (ms). */
+	sprinkles: { n: 16, fall: [4200, 6800] },
+	/** Pastries on the hallway's conveyor: this far apart, at this speed (px/s). */
+	parade: { pitch: 66, speed: 26, scale: 1.5 },
 } as const;
 
 /** What the scene knows that the ambient life shows. */
@@ -52,6 +76,9 @@ export interface AmbientFacts {
 	building: Set<string>;
 	/** Each session's crew build: topped once its PR goes up. */
 	topped: Map<string, boolean>;
+	/** Where the bay's arm sets a session's PR crate down (its base, on the bay's loading dock) and
+	 * how long until it lets go: the conveyor's crate takes over from there (crate.ts). */
+	setDown?: Map<string, { x: number; y: number; delay?: number }>;
 }
 
 /** Something on the life clock: placed for a time `t` (ms) of it. */
@@ -65,12 +92,8 @@ interface Piece {
 
 interface Crate {
 	view: Container;
-	from: number;
-	to: number;
-	y: number;
+	ride: CrateRide;
 	t: number;
-	ms: number;
-	delay: number;
 }
 
 const range = (id: string, salt: string, [lo, hi]: readonly [number, number]) => lo + unit(id, salt) * (hi - lo);
@@ -125,7 +148,7 @@ export class Ambient {
 	}
 
 	/** For the inspector: what is staged and what moves. */
-	info(): { ambient: readonly AmbientKind[]; pieces: Record<string, number>; parts: number; crates: { t: number; ms: number; x: number }[]; lifeMs: number } {
+	info(): { ambient: readonly AmbientKind[]; pieces: Record<string, number>; parts: number; crates: { t: number; ms: number; x: number; y: number }[]; lifeMs: number } {
 		const pieces: Record<string, number> = {};
 		let parts = 0;
 		for (const [key, p] of this.#pieces) {
@@ -133,7 +156,7 @@ export class Ambient {
 			pieces[kind] = (pieces[kind] ?? 0) + 1;
 			if (kind === "parts") parts += p.views[0]?.children.length ?? 0;
 		}
-		return { ambient: this.#kinds, pieces, parts, crates: this.#crates.map((c) => ({ t: Math.round(c.t), ms: c.ms, x: Math.round(c.view.x) })), lifeMs: Math.round(this.#t) };
+		return { ambient: this.#kinds, pieces, parts, crates: this.#crates.map((c) => ({ t: Math.round(c.t), ms: c.ride.delay + c.ride.ms, x: Math.round(c.view.x), y: Math.round(c.view.y) })), lifeMs: Math.round(this.#t) };
 	}
 
 	/** Bring everything in line with the world: build what is new, drop what went, keep the rest. */
@@ -171,13 +194,35 @@ export class Ambient {
 			}
 			for (const st of a.stations) {
 				if (st.kind !== "build") continue;
+				if (has("ovens")) put(`oven:${st.id}`, `${st.base.x},${st.base.y}`, () => this.#oven(st.id, st.base));
 				if (has("printer")) put(`led:${st.id}`, `${st.base.x},${st.base.y}`, () => this.#led(st.id, st.base));
+				if (has("pilot")) put(`pilot:${st.id}`, `${st.base.x},${st.base.y}`, () => this.#led(st.id, st.base, 0xffb02e, AMBIENT.pilot));
 				if (has("beacon") && facts.building.has(a.id)) put(`beacon:${st.id}`, `${st.base.x},${st.base.y}`, () => this.#beacon(st.id, st.base));
+			}
+			// One tube in the room stutters now and then, picked from its id.
+			if (has("flicker")) {
+				const panels = ceilingPanels(a.rect);
+				const p = panels[Math.floor(unit(a.id, "flicker") * panels.length)]!;
+				put(`flicker:${a.id}`, `${p.cx},${p.y}`, () => this.#flicker(a.id, p));
 			}
 			if (a.kind === "kitchen") {
 				const counter = a.fixtures.find((f) => f.kind === "counter");
-				if (has("steam") && counter) put(`steam:${a.id}`, `${counter.x},${counter.y}`, () => this.#steam(a.id, counter.x - 36, counter.y - 128));
+				// Off the cup in the machine's hatch, in front of the machine, so it thins out before the
+				// mug wall above (propspots.ts KITCHEN_WALL).
+				if (has("steam") && counter) put(`steam:${a.id}`, `${counter.x},${counter.y}`, () => this.#steam(a.id, counter.x - KITCHEN_WALL.steam.dx, counter.y - KITCHEN_WALL.steam.dy));
 				if (has("fan")) put(`fan:${a.id}`, `${a.rect.x},${a.floorY}`, () => this.#fan(a.rect.x + 62, a.floorY + 160));
+			}
+			if (a.kind === "yours" && has("marquee")) {
+				const sign = a.wall.find((w) => w.slot === "yours:serving")?.rect;
+				if (sign) put(`marquee:${a.id}`, `${sign.x},${sign.y},${sign.w},${sign.h}`, () => this.#marquee(a.id, sign));
+			}
+			if (a.kind === "meeting" && has("cakeStand")) {
+				const table = a.fixtures.find((f) => f.kind === "table");
+				if (table) put(`cake:${a.id}`, `${table.x},${table.y}`, () => this.#cake(a.id, table));
+			}
+			if (a.kind === "lobby" && has("sprinkles")) {
+				const pod = a.fixtures.find((f) => f.kind === "pod");
+				if (pod) put(`sprinkles:${a.id}`, `${pod.x},${pod.y}`, () => this.#sprinkles(a.id, pod));
 			}
 		}
 		const hall = world.hallway;
@@ -186,6 +231,7 @@ export class Ambient {
 		}
 		const conveyor = world.conveyor;
 		if (stage && conveyor) put("dock:hall", `${conveyor.x1},${hall.y},${hall.h}`, () => this.#dock(stage, conveyor.x1, hall));
+		if (stage && conveyor && has("parade")) put("parade:hall", `${conveyor.x0},${conveyor.x1},${conveyor.y}`, () => this.#parade(stage, conveyor.x0, conveyor.x1 - DOCK_W, conveyor.y));
 
 		for (const [key, p] of this.#pieces) {
 			if (seen.has(key)) continue;
@@ -201,7 +247,10 @@ export class Ambient {
 			if (!stage || !conveyor || !topped || was !== false) continue;
 			const desk = world.desks.get(session);
 			const area = desk && world.areas.find((a) => a.id === desk.areaId);
-			if (area) this.#ship(stage, area.rect, conveyor.y, conveyor.dock.x);
+			// From where the arm sets it down, when it lets go; without the arm, the belt by the bay's dock.
+			const down = facts.setDown?.get(session);
+			const from = down ?? (area ? { x: area.rect.x + ARM_DOCK_X, y: conveyor.y + 9 } : undefined);
+			if (from) this.#ship(stage, crateRide(from, conveyor.y + 9, conveyor.dock.x, down?.delay));
 		}
 		for (const s of [...this.#topped.keys()]) if (!facts.topped.has(s)) this.#topped.delete(s);
 	}
@@ -215,10 +264,10 @@ export class Ambient {
 	/** Move the crates on by `ms` (acting time). */
 	step(ms: number): void {
 		for (const c of this.#crates) {
-			c.t = Math.min(c.delay + c.ms, c.t + ms);
+			c.t = Math.min(c.ride.delay + c.ride.ms, c.t + ms);
 			placeCrate(c);
 		}
-		const done = this.#crates.filter((c) => c.t >= c.delay + c.ms);
+		const done = this.#crates.filter((c) => c.t >= c.ride.delay + c.ride.ms);
 		for (const c of done) c.view.destroy({ children: true, context: true });
 		if (done.length) this.#crates = this.#crates.filter((c) => !done.includes(c));
 	}
@@ -332,14 +381,36 @@ export class Ambient {
 		return { views: [g], movers: [] };
 	}
 
-	/** The copier's light: a green blink on its panel, now and then. */
-	#led(id: string, base: { x: number; y: number }): Omit<Piece, "sig"> {
-		const g = new Graphics().circle(0, 0, 2.6).fill(0x5cff9d).stroke({ width: 1.2, color: INK });
+	/** The copier's light: a green blink on its panel, now and then (or, in amber and slower, a
+	 * press's pilot lamp). */
+	#led(id: string, base: { x: number; y: number }, colour = 0x5cff9d, blink: { on: number; period: readonly [number, number] } = AMBIENT.led): Omit<Piece, "sig"> {
+		const g = new Graphics().circle(0, 0, 2.6).fill(colour).stroke({ width: 1.2, color: INK });
 		g.position.set(base.x + 15, base.y - 33);
 		this.#add(g, base.y + 0.5);
-		const period = range(id, "led", AMBIENT.led.period);
+		const period = range(id, "led", blink.period);
 		const phase = unit(id, "led-phase") * period;
-		return { views: [g], movers: [(t) => (g.visible = wrap(t + phase, period) < AMBIENT.led.on)] };
+		return { views: [g], movers: [(t) => (g.visible = wrap(t + phase, period) < blink.on)] };
+	}
+
+	/** A fluorescent tube going on the blink: dark for a moment, back, dark again, back, now and then. */
+	#flicker(id: string, p: { cx: number; y: number }): Omit<Piece, "sig"> {
+		const g = new Graphics();
+		g.roundRect(p.cx - 33, p.y, 66, 3, 1.5).fill(0x8d97ab);
+		g.rect(p.cx - 34, p.y + 4, 68, 5).fill({ color: INK, alpha: 0.12 });
+		g.visible = false;
+		this.#add(g);
+		const period = range(id, "flicker", AMBIENT.flicker.period);
+		const phase = unit(id, "flicker-phase") * period;
+		const [off1, on, off2] = AMBIENT.flicker.stutter;
+		return {
+			views: [g],
+			movers: [
+				(t) => {
+					const u = wrap(t + phase, period);
+					g.visible = u < off1 || (u >= off1 + on && u < off1 + on + off2);
+				},
+			],
+		};
 	}
 
 	/** A turning beacon on the press's head, while a build runs: the lamp, and its beam sweeping. */
@@ -382,7 +453,7 @@ export class Ambient {
 				(t) => {
 					wisps.forEach((g, k) => {
 						const u = wrap(t / period + k / 3, 1);
-						g.position.set(Math.sin(u * 2 * Math.PI + k) * 3, -u * 26);
+						g.position.set(Math.sin(u * 2 * Math.PI + k) * 3, -u * KITCHEN_WALL.steam.rise);
 						g.scale.set(0.6 + u * 0.8);
 						g.alpha = Math.sin(Math.PI * u) * 0.7;
 					});
@@ -448,6 +519,188 @@ export class Ambient {
 		};
 	}
 
+	/** A deck oven's window glowing: a warm pane over it and a halo round it, breathing and now and
+	 * then flaring, as a wood-fired oven does. */
+	#oven(id: string, base: { x: number; y: number }): Omit<Piece, "sig"> {
+		const { x, y, w, h, period } = AMBIENT.oven;
+		const c = new Container({ label: `${id}:oven` });
+		c.position.set(base.x, base.y);
+		const halo = new Graphics().roundRect(x - 6, y - 5, w + 12, h + 10, 8).fill({ color: 0xffa040, alpha: 0.35 });
+		const pane = new Graphics().roundRect(x, y, w, h, 3).fill({ color: 0xffb347, alpha: 0.75 });
+		const ember = new Graphics().rect(x + 2, y + h - 5, w - 4, 3).fill({ color: 0xfff0a0, alpha: 0.9 });
+		c.addChild(halo, pane, ember);
+		this.#add(c, base.y + 0.5);
+		const phase = unit(id, "oven") * period;
+		return {
+			views: [c],
+			movers: [
+				(t) => {
+					const u = (t + phase) / period;
+					const f = 0.5 + 0.25 * Math.sin(u * 2 * Math.PI) + 0.15 * Math.sin(u * 7.3 + 1) + 0.1 * Math.sin(u * 13.1);
+					pane.alpha = 0.35 + 0.45 * f;
+					halo.alpha = 0.25 + 0.6 * f;
+					halo.scale.set(1, 0.9 + 0.2 * f);
+					ember.alpha = 0.5 + 0.5 * f;
+				},
+			],
+		};
+	}
+
+	/** Theatre bulbs round the pick-up counter's sign: every third lit, chasing round it, and now and
+	 * then all of them flashing at once. */
+	#marquee(id: string, r: Rect): Omit<Piece, "sig"> {
+		const { pitch, out, step, flash } = AMBIENT.marquee;
+		const c = new Container({ label: `${id}:marquee` });
+		const x0 = r.x - out;
+		const y0 = r.y - out;
+		const w = r.w + out * 2;
+		const h = r.h + out * 2;
+		const spots: [number, number][] = [];
+		const along = (n: number, at: (k: number) => [number, number]) => {
+			for (let k = 0; k < n; k++) spots.push(at(k / n));
+		};
+		const nx = Math.max(2, Math.round(w / pitch));
+		const ny = Math.max(2, Math.round(h / pitch));
+		along(nx, (u) => [x0 + u * w, y0]);
+		along(ny, (u) => [x0 + w, y0 + u * h]);
+		along(nx, (u) => [x0 + w - u * w, y0 + h]);
+		along(ny, (u) => [x0, y0 + h - u * h]);
+		const bulbs = spots.map(([bx, by]) => {
+			const g = new Graphics().circle(0, 0, 4.6).fill({ color: 0xffffff, alpha: 0.35 }).circle(0, 0, 2.6).fill(0xffffff).stroke({ width: 1.1, color: INK });
+			g.position.set(bx, by);
+			c.addChild(g);
+			return g;
+		});
+		this.#add(c);
+		const LIT = 0xffe066;
+		const DIM = 0x9a8a72;
+		return {
+			views: [c],
+			movers: [
+				(t) => {
+					const f = wrap(t, flash);
+					const flashing = f < 900;
+					const all = flashing && Math.floor(f / 150) % 2 === 0;
+					const k = Math.floor(t / step);
+					bulbs.forEach((b, i) => {
+						const lit = flashing ? all : (i + k) % 3 === 0;
+						b.tint = lit ? LIT : DIM;
+					});
+				},
+			],
+		};
+	}
+
+	/** The tasting table's cake turning on its stand: the cake stays, its rosettes and piped dots go
+	 * round (the ones at the back of its side hidden), a cherry on top. */
+	#cake(id: string, table: Fixture): Omit<Piece, "sig"> {
+		const c = new Container({ label: `${id}:cake`, sortableChildren: true });
+		c.position.set(table.x, table.y + AMBIENT.cake.y);
+		const cw = 34;
+		const ch = 22;
+		const body = this.#baked("cake-body", (g) => {
+			g.roundRect(-cw / 2, -ch, cw, ch, 4).fill(0xfff0f6).stroke({ width: 2, color: INK });
+			g.rect(-cw / 2 + 1, -ch * 0.55, cw - 2, 4).fill(0xff9ec4);
+			g.ellipse(0, -ch, cw / 2, 4.4).fill(0xffd3e4).stroke({ width: 2, color: INK });
+		});
+		c.addChild(body);
+		const ROSE = [0xff9ec4, 0xffffff, 0x9fe3c8, 0xfff08a];
+		const rosettes = Array.from({ length: 8 }, (_, k) => {
+			const g = new Graphics().circle(0, 0, 3).fill(ROSE[k % ROSE.length]!).stroke({ width: 1.1, color: INK });
+			c.addChild(g);
+			return g;
+		});
+		const dots = Array.from({ length: 10 }, () => {
+			const g = new Graphics().circle(0, 0, 1.6).fill(0xffffff).stroke({ width: 0.8, color: INK });
+			c.addChild(g);
+			return g;
+		});
+		const cherry = new Graphics().circle(0, -ch - 4, 3.6).fill(0xe8384f).stroke({ width: 1.2, color: INK });
+		c.addChild(cherry);
+		this.#add(c, table.depth + 0.5);
+		return {
+			views: [c],
+			movers: [
+				(t) => {
+					const a0 = 2 * Math.PI * (t / 1000) * AMBIENT.cake.turn;
+					rosettes.forEach((g, k) => {
+						const a = a0 + (k / rosettes.length) * 2 * Math.PI;
+						g.position.set(Math.cos(a) * (cw / 2 - 4), -ch + Math.sin(a) * 3);
+						g.zIndex = Math.sin(a);
+					});
+					dots.forEach((g, k) => {
+						const a = a0 + (k / dots.length) * 2 * Math.PI;
+						g.visible = Math.sin(a) > 0.05;
+						g.position.set(Math.cos(a) * (cw / 2 - 1), -ch * 0.25);
+					});
+				},
+			],
+		};
+	}
+
+	/** Sprinkles drifting down round the giant cupcake, tumbling as they go: some behind it, some in
+	 * front, each on its own loop. */
+	#sprinkles(id: string, pod: Fixture): Omit<Piece, "sig"> {
+		const back = new Container({ label: `${id}:sprinkles-back` });
+		const front = new Container({ label: `${id}:sprinkles-front` });
+		for (const c of [back, front]) c.position.set(pod.x, pod.y);
+		const COLOURS = [0xff9ec4, 0x9fe3c8, 0xfff08a, 0xcdb8ff, 0x6f86ec, 0xffa34d];
+		const bits = Array.from({ length: AMBIENT.sprinkles.n }, (_, k) => {
+			const g = new Graphics().roundRect(-3, -1, 6, 2, 1).fill(COLOURS[k % COLOURS.length]!).stroke({ width: 0.7, color: INK, alpha: 0.6 });
+			(k % 2 ? front : back).addChild(g);
+			const key = `${id}|${k}`;
+			return { g, x: (unit(key, "x") - 0.5) * 190, fall: range(key, "fall", AMBIENT.sprinkles.fall), phase: unit(key, "phase"), spin: (unit(key, "spin") - 0.5) * 8, sway: 4 + unit(key, "sway") * 6 };
+		});
+		this.#add(back, pod.depth - 0.5);
+		this.#add(front, pod.depth + 0.4);
+		return {
+			views: [back, front],
+			movers: [
+				(t) => {
+					for (const b of bits) {
+						const u = wrap(t / b.fall + b.phase, 1);
+						b.g.position.set(b.x + Math.sin(u * 9 + b.phase * 6) * b.sway, -190 + u * 186);
+						b.g.rotation = u * b.spin;
+						b.g.alpha = Math.min(1, u * 6, (1 - u) * 8);
+					}
+				},
+			],
+		};
+	}
+
+	/** Pastries riding the hallway's conveyor, end to end, at the belt's crawl: one of each kind in
+	 * turn, faded in at the left end and out at the hatch. */
+	#parade(stage: StagePainters, x0: number, x1: number, y: number): Omit<Piece, "sig"> {
+		const c = new Container({ label: "parade" });
+		c.position.set(x0, y + 7);
+		const len = Math.max(1, x1 - x0);
+		const n = Math.max(1, Math.floor(len / AMBIENT.parade.pitch));
+		const KINDS = ["read", "web", "search", "edit", "test", "shell"];
+		const list = Array.from({ length: n }, (_, k) => {
+			const kind = KINDS[(k * 5 + (k >> 2)) % KINDS.length]!;
+			const s = this.#baked(`pastry:${kind}`, (g) => {
+				g.scaleTransform(AMBIENT.parade.scale, AMBIENT.parade.scale);
+				stage.part(g, kind);
+			});
+			c.addChild(s);
+			return { s, at: (k / n) * len + (unit(`parade${k}`, "jitter") - 0.5) * 12 };
+		});
+		this.#add(c);
+		return {
+			views: [c],
+			movers: [
+				(t) => {
+					const run = (t / 1000) * AMBIENT.parade.speed;
+					for (const p of list) {
+						const x = wrap(p.at + run, len);
+						p.s.x = x;
+						p.s.alpha = Math.min(1, x / 24, (len - x) / 24);
+					}
+				},
+			],
+		};
+	}
+
 	/** The dock at the hallway's right end, where the conveyor's crates go off. */
 	#dock(stage: StagePainters, x: number, hall: Rect): Omit<Piece, "sig"> {
 		const g = this.#baked(`dock:${hall.h}`, (p) => stage.dock(p, hall.h));
@@ -456,21 +709,26 @@ export class Ambient {
 		return { views: [g], movers: [] };
 	}
 
-	/** A PR's crate: on the hallway's belt in front of its bay, then off to the dock. */
-	#ship(stage: StagePainters, room: Rect, y: number, dock: number): void {
+	/** A PR's crate: set down on its bay's loading dock, across onto the hallway's belt, off to the dock. */
+	#ship(stage: StagePainters, ride: CrateRide): void {
 		const view = this.#baked("crate", (g) => stage.crate(g));
-		const from = Math.round(room.x + room.w / 2);
-		const ms = Math.min(AMBIENT.crate.maxMs, (Math.max(0, dock - from) / AMBIENT.crate.speed) * 1000);
-		const c: Crate = { view, from, to: dock, y: y + 9, t: 0, ms, delay: AMBIENT.crate.delay };
-		this.#add(view, c.y);
+		const c: Crate = { view, ride, t: 0 };
+		this.#add(view, ride.from.y);
 		placeCrate(c);
 		this.#crates.push(c);
 	}
 }
 
+/** Without an arm's word, a crate starts on the belt this far into its bay (by the station strip,
+ * where the bay's dock is). */
+const ARM_DOCK_X = 40;
+
+/** The crate where its ride has it, sorted by its base as it crosses to the belt. */
 function placeCrate(c: Crate): void {
-	const u = Math.max(0, c.t - c.delay) / Math.max(1, c.ms);
-	c.view.visible = c.t >= c.delay;
-	c.view.position.set(c.from + (c.to - c.from) * Math.min(1, u), c.y);
-	c.view.alpha = Math.min(1, (c.delay + c.ms - c.t) / AMBIENT.crate.fade);
+	const at = crateAt(c.ride, c.t);
+	c.view.visible = at.visible;
+	c.view.position.set(at.x, at.y);
+	c.view.scale.set(at.scale);
+	c.view.zIndex = at.y;
+	c.view.alpha = at.alpha;
 }

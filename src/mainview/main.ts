@@ -263,10 +263,10 @@ function blank(): void {
 		const old = atlas;
 		atlas = Atlas.build(app.renderer, rigTheme(id));
 		office.setTheme(sceneTheme(id), charactersFor(atlas));
+		voice?.setTheme(id, sceneTheme(id).words.signs);
 		old.destroy();
 		if (!compact) app.renderer.background.color = sceneTheme(id).lawn;
 		sound?.themeChanged();
-		if (voice) voice.theme = id;
 		direct();
 		scene.redraw();
 	};

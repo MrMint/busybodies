@@ -191,11 +191,24 @@ the light both lean on walls. What's left is under "After wave 3" below.
   the way `ThemeWords` and `StoryWords` do.
 - The compact strip's tiles name areas by the office's words in every theme; sound plays the office
   hum in the kitchen.
-- The factory's idle foreman plays habits inside the booth, half hidden; the PR crate starts mid-bay
-  instead of following the arm's crate; ambient life only in the kitchen, copiers and hallway.
-- Story: the framed PR goes up when the diary hears of the merge, not when the reply reaches the
-  lead; glasses are the only regular accessory; 28 regular names can collide.
-- The mug wall still sits partly under the kitchen's painted name (no room to move it further).
+- ~~The factory's idle foreman plays habits inside the booth, half hidden~~ (wave 4 stream N: a
+  line's lead has its own habits, `leadHabits`, played at head height over its bench: binoculars,
+  a brew, a call, hands behind the head, the stretch). ~~The PR crate starts mid-bay~~ (it takes over
+  where the arm lets go of it, drops down the bay dock's chute and pops up on the hallway's belt in
+  line with it: `office/crate.ts`). ~~Ambient life only in the kitchen, copiers and hallway~~ (a
+  fluorescent tube in every office room flickers now and then; every factory press has a pilot
+  lamp). Still open: the foreman never comes down from the booth; stepping it out onto the floor to
+  slack needs a free spot by a crowded line and the story beats' "at the desk" checks to allow it.
+- ~~Story: the framed PR goes up when the diary hears of the merge~~ (a merge whose reply is still
+  being fetched holds its frame back: it goes up as the lead gets back to the desk and celebrates,
+  `framesPending`). ~~Glasses are the only regular accessory~~ (also a flower, earrings, freckles, a
+  pin and a plaster, `rig/accessories.ts`, the same in every theme). ~~28 regular names can
+  collide~~ (70 names, and the regulars on the floor at once never share one: a clash parts the
+  same way every time, `regularNamesFor`).
+- ~~The mug wall still sits partly under the kitchen's painted name~~ (what covered it at room zoom
+  was the coffee machine's top and its steam: the wall hangs a little higher and the steam rises
+  off the cup in front of the machine, thinning out below the shelf; `KITCHEN_WALL` holds the
+  geometry and a test keeps them apart).
 - **Life runs at 30 fps for now** (the owner, after comparing 10 and 20 by eye: both read choppy).
   Push on the visuals first; one **performance pass** over all of it comes once the look settles.
   Its starting points: life costs frames, not characters (stream J's profile); the 100 ms beat grid
@@ -203,6 +216,20 @@ the light both lean on walls. What's left is under "After wave 3" below.
   camera; skip springs on settled puppets.
 - Rerun the full e2e suite and `tools/profile.sh` on a quiet machine: every wave 3 stream and the
   merge ran under a load average of 35 to 80, where Chrome times out.
+
+## Wave 4
+
+- **K: the bakery's world.** The Line became the bakery, repainted as a patisserie gone over the
+  top (`theme/bakery.ts`): candy-stripe wallpaper, scalloped awnings and fairy lights, checkerboard
+  floors in each room's own pastel; a pastry case, a sweet shelf, a deck oven, a tasting stand, an
+  order phone and a pick-up shelf under the stations' slots; a café with an espresso machine, a cake
+  cabinet and macaron poufs; a giant cupcake in the shop front to nap in. It stages desks and a
+  `conveyor` hall: pastries ride the hallway's belt (`parade`), a PR's cake box rides it to the
+  pick-up hatch. Its own ambient life (`office/ambient.ts`): oven windows flickering, marquee bulbs
+  chasing round "Order up!", a cake turning on the tasting table, sprinkles drifting round the
+  cupcake, steam off the espresso machine. Its words (`BAKERY_WORDS`, `BAKERY_STORY`) are orders,
+  batches and boxes. Its habits are the rig's for now: the bakery's own (sipping a cappuccino,
+  licking the frosting spoon, sneaking a macaron, napping on a flour sack) wait on rig poses.
 
 ## Risks
 

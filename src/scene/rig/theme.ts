@@ -4,6 +4,7 @@
 // and frames never change. Part names are `<layer>/<variant>`; docs/decisions.md lists them.
 import { Container, Graphics, Text } from "pixi.js";
 import { EYES, FX, HELD, MOUTHS, WORKS } from "./vocab";
+import { paintAccessories } from "./accessories";
 import { ROLES, type Role } from "./roles";
 import { ANCHORS, AT, BELL, BELL_BASE, HANDOFF, PLANNER, STATION, STICKY, TRAY, WORK, handAt } from "./reach";
 
@@ -363,6 +364,8 @@ export function paperTheme(p: Palette = PAPER_PALETTE): Theme {
 		for (const x of [-A.eyeX, A.eyeX]) g.circle(x, A.eyeY, 15).fill({ color: 0xffffff, alpha: 0.22 }).stroke({ width: 2.4, color: ink });
 		line(g, [-5.5, A.eyeY - 2, 5.5, A.eyeY - 2], 2.2, ink);
 	};
+	// A regular's accessories (accessories.ts), the same in every theme.
+	paintAccessories(parts, p);
 	parts["wear/binoc"] = (g) => {
 		for (const x of [-A.eyeX + 2, A.eyeX - 2]) {
 			g.roundRect(x - 12, A.eyeY - 14, 24, 27, 8).fill(0x3a3f5c).stroke({ width: W.part, color: ink });

@@ -7,6 +7,8 @@ import type { Director } from "../scene/director";
 import { type News, type ShotState, SHOTS, type Tile, newsFrom, nextShot, scoreByArea, shotWake, tilesFor } from "../scene/director/shots";
 import type { Stop } from "../scene/office/camera";
 import type { Office } from "../scene/office/office";
+import type { AreaKind } from "../scene/office/world";
+import { type ThemeWords, areaLabel } from "../scene/theme/words";
 import type { Snapshot } from "../watcher/model";
 
 export interface ShotReport {
@@ -33,6 +35,9 @@ export interface Camerawork {
 	back(): void;
 	report(): ShotReport | undefined;
 }
+
+/** The areas as the compact strip names them: in the theme's words, not always the office's. */
+export const tileAreas = (areas: readonly { id: string; kind: AreaKind; name: string }[], words: ThemeWords) => areas.map((a) => ({ id: a.id, kind: a.kind, name: areaLabel(a, words) }));
 
 const sameStop = (a: Stop, b: Stop) => a.kind === b.kind && (a.kind === "office" || (b.kind !== "office" && a.id === b.id));
 
@@ -62,7 +67,7 @@ export function installCamerawork(office: Office, director: Director, opts: { vi
 		const mine = yours();
 		if (waits.length && mine) waitAreas.add(mine);
 		const rush = new Set(Object.keys(world?.rush ?? {}).map(areaOf).filter((a): a is string => !!a));
-		const areas = floor.areas.map((a) => ({ id: a.id, kind: a.kind, name: a.name }));
+		const areas = tileAreas(floor.areas, office.theme.words);
 		if (pinned !== undefined && !areas.some((a) => a.id === pinned)) pinned = undefined;
 		tiles = tilesFor(areas, score, rush, waitAreas);
 		// Off screen: keep the news, cut nothing.

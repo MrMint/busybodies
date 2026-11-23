@@ -46,12 +46,6 @@ export class Voice {
 		this.sass = new Sass(opts);
 	}
 
-	/** Speak in another scene theme's words (the tray's Theme menu, switched live): bubbles and new
-	 * sign lines; signs already up stay (Sass.theme). */
-	set theme(theme: ThemeId) {
-		this.sass.theme = theme;
-	}
-
 	/** Voice the scene at `now`: a new snapshot is read for triggers, the same one just moves time on. */
 	run(snap: Snapshot, now: number, view: View): Output {
 		const out = snap !== this.#snap ? this.sass.update(snap, now, view) : this.sass.tick(now, view);
@@ -76,6 +70,19 @@ export class Voice {
 			}
 		}
 		return out;
+	}
+
+	/**
+	 * The theme changed: speak in its words from the next run on (bank.ts). Every sign the voice
+	 * wrote goes back to the new theme's default for that slot (`defaults`, its words' signs) or
+	 * comes down, so no office joke is left on a bakery wall; the next run writes the counters again.
+	 */
+	setTheme(id: ThemeId, defaults: Record<string, { title: string; body?: string }> = {}): void {
+		if (id === this.sass.theme) return;
+		this.sass.setTheme(id);
+		for (const slot of this.written.keys()) this.#stage.setSign(slot, defaults[slot]);
+		this.written.clear();
+		this.dropped.clear();
 	}
 
 	/** A character left: take its bubble down now. */

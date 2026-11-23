@@ -89,7 +89,7 @@ export class FloorPlan {
 	/** Fold a snapshot into the plan and return the world it gives, staged as the theme says
 	 * (office/staging.ts): the rooms and desks are the same in every staging. */
 	update(snapshot: Snapshot, staging: Staging = DEFAULT_STAGING): World {
-		this.#staging = { bay: staging.bay, hall: staging.hall, ...(staging.habits ? { habits: staging.habits } : {}) };
+		this.#staging = { bay: staging.bay, hall: staging.hall, ...(staging.habits ? { habits: staging.habits } : {}), ...(staging.leadHabits ? { leadHabits: staging.leadHabits } : {}) };
 		const all = seats(snapshot.sessions);
 		const live = new Set(all.map((s) => s.session.id));
 

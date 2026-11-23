@@ -70,9 +70,9 @@ describe("themes", () => {
 		await factory.close();
 	}, T);
 
-	test("?theme=kitchen: the Line, the same floor and cast in kitchen words, no arms", async () => {
+	test("?theme=bakery: the bakery, the same floor and cast in bakery words, no arms", async () => {
 		const office = await open("demo&frozen");
-		const line = await open("demo&frozen&theme=kitchen");
+		const line = await open("demo&frozen&theme=bakery");
 		const facts = (p: Page) =>
 			p.evaluate(() => {
 				const b = window.__busybodies!;
@@ -87,30 +87,32 @@ describe("themes", () => {
 			});
 		const o = await facts(office);
 		const k = await facts(line);
-		expect(k.theme).toBe("kitchen");
+		expect(k.theme).toBe("bakery");
 		expect(k.areas).toEqual(o.areas);
 		expect(k.cast).toEqual(o.cast);
-		expect(k.meeting).toBe("NOTHING LEAVES");
-		expect(k.serving).toBe("SERVICE!");
+		expect(k.meeting).toBe("NO CRUMB UNTASTED");
+		expect(k.serving).toBe("ORDER UP!");
 		expect(k.arms).toBe(0);
 		// Switched live from the factory and back to the office, without a reload.
 		await line.evaluate(() => ((window as unknown as { __loaded: boolean }).__loaded = true));
 		await line.evaluate(() => window.__busybodies!.setTheme("factory"));
 		expect(await line.evaluate(() => [window.__busybodies!.theme(), window.__busybodies!.arms().length > 0])).toEqual(["factory", true]);
-		await line.evaluate(() => window.__busybodies!.setTheme("kitchen"));
+		await line.evaluate(() => window.__busybodies!.setTheme("bakery"));
 		const back = await line.evaluate(() => ({
 			theme: window.__busybodies!.theme(),
 			arms: window.__busybodies!.arms().length,
 			serving: window.__busybodies!.signs().find((s) => s.id === "yours:serving")?.text?.title,
 			sameDocument: (window as unknown as { __loaded?: boolean }).__loaded === true,
 		}));
-		expect(back).toEqual({ theme: "kitchen", arms: 0, serving: "SERVICE!", sameDocument: true });
+		expect(back).toEqual({ theme: "bakery", arms: 0, serving: "ORDER UP!", sameDocument: true });
 		await office.close();
 		await line.close();
 	}, T);
 
 	test("switching live redraws in the new look without a reload, and an idle office stays at zero frames", async () => {
-		const page = await open("demo=idle&calm");
+		// A long settle keeps the naps and waits from talking: a bubble going up or down in the
+		// quiet window below is one render, which isn't the switch's doing.
+		const page = await open("demo=idle&calm&settle=600000");
 		await page.evaluate(() => ((window as unknown as { __loaded: boolean }).__loaded = true));
 		const signs = () => page.evaluate(() => Object.fromEntries(window.__busybodies!.signs().map((s) => [s.id, s.text?.title ?? ""])));
 		const before = await page.evaluate(() => window.__busybodies!.entities().map((e) => e.key).sort());
@@ -129,7 +131,8 @@ describe("themes", () => {
 		expect(after.sameDocument).toBe(true);
 		expect(after.arms).toBeGreaterThan(0);
 		expect(after.cast).toEqual(before);
-		// A sign still on the office's default takes the factory's; what the voice wrote stays.
+		// A sign on the office's default takes the factory's; one the voice wrote goes back to the
+		// factory's default (or the voice writes it again in factory words): no office sign stays up.
 		const DEFAULTS: Record<string, [string, string]> = {
 			"meeting:sign": ["THIS MEETING", "QUALITY CONTROL"],
 			"kitchen:sign": ["1 CUP PER GREEN BUILD", "1 SNACK PER GREEN BUILD"],
@@ -137,7 +140,10 @@ describe("themes", () => {
 			"yours:serving": ["NOW SERVING", "NEXT UP"],
 		};
 		const signsAfter = await signs();
-		for (const [id, [office, factory]] of Object.entries(DEFAULTS)) expect(signsAfter[id]).toBe(signsBefore[id] === office ? factory : signsBefore[id]!);
+		for (const [id, [office, factory]] of Object.entries(DEFAULTS)) {
+			expect(signsAfter[id]).not.toBe(office);
+			if (signsBefore[id] === office) expect(signsAfter[id]).toBe(factory);
+		}
 		expect(Object.entries(DEFAULTS).some(([id, [office]]) => signsBefore[id] === office)).toBe(true);
 		// Settled, the switched office is as quiet as before.
 		await page.waitForFunction(() => !window.__busybodies!.counters().tickerRunning, undefined, { timeout: 15_000 });

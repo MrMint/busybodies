@@ -423,7 +423,8 @@ calls.
 
 **Part names are `<layer>/<variant>`**, and the rig asks for nothing else:
 `body/<role>`, `hand/<role>`, `hat/<role>` (plus `hat/lead-cup`), `front/<piece>` (tie, apron,
-kerchief, straps, bowtie, badge, scarf), `wear/<thing>` (glasses, binoc), `eye/<eyes>`,
+kerchief, straps, bowtie, badge, scarf), `wear/<thing>` (glasses, binoc, and a regular's flower,
+earrings, freckles, pin and plaster), `eye/<eyes>`,
 `mouth/<mouth>`, `held/<prop>`, `prop/<box|pls|desk|chair>`, `fx/<effect>`, and the singletons
 `shadow`, `leg`, `arm/upper`, `arm/fore`, `brow`, `cheek`. The variant names are the vocabulary
 in `vocab.ts`, the same words frames use.
@@ -1183,8 +1184,8 @@ tubs, a sandwich press on an oven (a burnt toastie for the jam), tasting with a 
 get a green or red pick, a takeout order pad, the pass for the outbox (the PR is a plate under a
 cloche), a scraps bin. The paper rig's brass service bell stays, and calls "service!". Tests hold
 every repaint within 6 rig units of the paper part (no exemptions) and the cutlet's top on each
-nail stroke. No ambient life of its own (stream G owns per-theme life). `docs/rig/pose-sheet-kitchen.png`
-is the sheet.
+nail stroke. No ambient life of its own (stream G owns per-theme life). The sheet was `docs/rig/pose-sheet-kitchen.png`;
+wave 4 repainted the cast for the bakery, now `docs/rig/pose-sheet-bakery.png`.
 
 Left: the sass voice still writes office lines on the Line's signs (OUT OF OFFICE, ONE CUP PER GREEN
 BUILD), the compact strip's tiles use the areas' office names in every theme, the copier poses still
@@ -1234,14 +1235,45 @@ from a table by theme id with the office's as the default, so a new theme draws 
 
 **Regulars are keyed by project and costume.** `regularsOf` gives each character
 `<project key>:<role>:<n>` (n its place among the same costume in that project); `regularOf` picks a
-short name and maybe glasses from the key alone, and the puppet takes the key as its id, so its loop
-phases and variants are the regular's own day after day. The name shows on the lead's desk card and
-on crew task tags only once the diary has seen that regular on two days.
+short name and maybe an accessory from the key alone, and the puppet takes the key as its id, so its
+loop phases and variants are the regular's own day after day. The name shows on the lead's desk card
+and on crew task tags only once the diary has seen that regular on two days.
 
-**What is left.** The framed PR goes up when the diary hears of the merge, not when the lead gets
-back with the reply. Regulars have only glasses for an accessory; more would need new parts in
-every theme's rig painters. Send-off wavers interrupt busy work for one wave; a quieter office
+**What is left.** Send-off wavers interrupt busy work for one wave; a quieter office
 might skip the busy ones.
+
+## 2026-11-22: polish after wave 3 (wave 4, stream N)
+
+**The framed PR is the reply's payoff.** The diary counts a merge as soon as it hears of it, but
+the wall holds that frame back while the room's lead is still fetching the reply (`framesPending`
+in `office/decor-plan.ts`, from the director's `story.replies`): it goes up the moment the lead is
+back at the desk with the envelope and the celebration starts. That beat, not the envelope landing
+in the outbox, is where the lead reacts, so the frame and the cheer read as one thing. A merge whose
+lead can't go (waiting on you, away) gets no reply, so nothing holds its frame back.
+
+**Regular accessories are the rig's, not each theme's.** Besides each theme's own glasses, a regular
+may wear a flower, earrings, freckles, an enamel pin or a sticking plaster (`rig/accessories.ts`,
+painted once in the paper rig so every theme inherits them). Each is small, sits clear of where the
+costumes go (the hat on the dome, the front piece down the middle) and keeps to colours that read
+over the office's suits, the factory's hi-vis and the bakery's whites. One regular in four wears
+nothing. A scarf was left out: the designer's costume already wears one, down the middle.
+
+**No two regulars on the floor share a name.** The pool is 70 short names. A regular's own name is
+picked from its key; the regulars you'd recognise on the floor at once are named in key order, and
+one whose name is taken steps through the names by a stride from its own key (`regularNamesFor`,
+`rig/roles.ts`). So a clash parts the same way every time, and anyone without a clash around keeps
+its own name.
+
+**The foreman slacks at head height.** Up in its booth, the bench and screen come to the
+foreman's chin, so a line's lead has habits of its own (`leadHabits` in the staging, `habitsFor`):
+binoculars on the line, a brew, a call, hands behind the head, the stretch. Stepping it down onto
+the floor to sit on a drum would read better still, but the line's floor is full (the belt, the
+crew's five spots, the next row's desks) and the story beats look for a lead "at the desk".
+
+**A PR crate takes over from the arm.** The conveyor's crate appears where the arm lets go of it, at
+the arm's size, sits a beat on the bay's dock, drops down its chute and pops up on the hallway's belt
+in line with the dock (`office/crate.ts`). The dock is a room's depth from the hallway, through a
+wall, so a chute reads better than sliding across the room.
 
 ## 2026-11-22: looks as render passes (wave 3, stream J)
 
@@ -1448,3 +1480,31 @@ wraparound shield with a bridge notch so the mouth stays clear.
 eye) were redrawn from the old round white eyes to the rig's: tall wide-set ink eyes with the glow
 and two highlights, cheeks out past the eyes, a small smile between them. When the rig's face
 changes, these follow.
+
+## 2026-11-23: the bakery wears the new look (wave 4)
+
+**The bakery's cast follows the costume rule.** Its bakers had been dressed for the old face: a
+jacket over the lower half of every body (through the cheeks), bib aprons and smocks over the
+belly, a bow and buttons at the lead's mouth, small round glasses across the big eyes, a sash near
+the explorer's mouth. Now the bodies are the paper rig's (the role colour is the tell), and each role
+wears one sweet idea on the dome and one small thing low on the belly (rig/bakery.ts's header):
+the head baker's tall toque and an accent bow, the bread baker's gingham bow with a baguette through
+it and a croissant brooch, the barista's flat cap with a cappuccino balanced on it and a bean pin,
+the candy-maker's striped cap and lollipop and a wrapped bonbon, the pâtissier's mushroom toque,
+gold half-moons (the office's size) and a macaron pin, the taster's cupcake hat and doughnut
+rosette, the decorator's tiered-cake headband and a piping bag. Belly pieces sit 3 below `frontY`.
+A regular's daisy, enamel pin and plaster (rig/accessories.ts) moved off the brow and cheek.
+
+**Its rooms follow the room pass.** The bench top's back edge is at DESK_TOP, so a lead's mouth
+and cheeks show over it; the till is drawn in the MONITOR slot at its size, a pink bezel round a
+slate face. The wall carries the project's colour (the candy stripes are white over it) and the
+checkerboard floor is a pale tint of it, with a rug a step deeper under the benches; the common
+rooms take pastel walls and pale floors the same way. The patio is a café terrace: bistro tables
+under striped umbrellas, a chalkboard A-frame, pots of giant lollipops.
+
+**Its words and habits are its own.** `BAKERY_WORDS.poses` names the baking (rolling pin, mixer,
+recipe, oven, tasting, order slips) where the office's words named paperwork; the shared lines that
+named the office's things got bakery wordings in `themed`, two of them matched to the bakery's own
+lines so the bank doesn't say them twice. The bakers' first idle habits are their own (rig/poses.ts,
+played by name, never by the idle trigger): a cappuccino, a sneaked macaron, a lick of the cake
+fork, a nap on a flour sack (the bakery repaints the drum as one).

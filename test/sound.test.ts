@@ -3,7 +3,7 @@
 // Actors here are invented and only carry the fields sound reads.
 import { describe, expect, test } from "bun:test";
 import type { Actor, World, WorldEvent } from "../src/scene/director";
-import { Ears, Gate, LIMITS, heatOf, loudness, panFor, vary, zoomedArea } from "../src/mainview/sound";
+import { BAKERY_STEP, Ears, Gate, LIMITS, bakeryBeat, hashId, heatOf, loudness, panFor, seq, vary, zoomedArea } from "../src/mainview/sound";
 
 const actor = (key: string, extra: Partial<Actor> = {}, seen: Partial<Actor["seen"]> = {}): Actor =>
 	({ key, area: "room:pebble", mood: "idle", seen: { prs: [], hires: [], ...seen }, ...extra }) as Actor;
@@ -103,5 +103,35 @@ describe("placing and varying", () => {
 		expect(heatOf(undefined)).toBe(0);
 		expect(heatOf(world(actor("a", { mood: "busy" }), actor("b", { mood: "busy" }), actor("c")))).toBeCloseTo(2 / 6);
 		expect(heatOf({ ...world(actor("a")), rush: { s: {} as never } })).toBe(1);
+	});
+});
+
+describe("the bakery's room tone", () => {
+	// An hour of quarter-second steps, drawn the way the tone draws them: one number per step from its index.
+	const hour = (heat: number) => {
+		const n = { steam: 0, door: 0 };
+		for (let i = 0; i < 3600 / BAKERY_STEP; i++) {
+			const beat = bakeryBeat(seq(hashId(`bakery:${i}`))(), heat);
+			if (beat) n[beat]++;
+		}
+		return n;
+	};
+
+	test("steam about once a minute when quiet, every 15 s or so when busy; the door now and then", () => {
+		const quiet = hour(0);
+		const busy = hour(1);
+		expect(quiet.steam).toBeGreaterThan(30);
+		expect(quiet.steam).toBeLessThan(110);
+		expect(busy.steam).toBeGreaterThan(160);
+		expect(busy.steam).toBeLessThan(340);
+		expect(quiet.door).toBeGreaterThan(10);
+		expect(quiet.door).toBeLessThan(60);
+	});
+
+	test("mostly nothing, and the same every time", () => {
+		expect(bakeryBeat(0.5, 1)).toBeUndefined();
+		expect(bakeryBeat(0, 0)).toBe("steam");
+		expect(bakeryBeat(0.005, 0)).toBe("door");
+		expect(hour(0.5)).toEqual(hour(0.5));
 	});
 });

@@ -57,11 +57,15 @@ export const COSTUMES: Record<Role, Costume> = {
 export const REGULAR_NAMES = [
 	"Pip", "Bo", "Tam", "Dot", "Wren", "Ozzy", "Mo", "Juno", "Kit", "Lou", "Nell", "Rafe", "Sol", "Tilly",
 	"Vee", "Ziggy", "Bea", "Cal", "Fen", "Gus", "Hal", "Ivy", "Jem", "Lark", "Moss", "Nib", "Odo", "Plum",
+	"Ada", "Bix", "Cleo", "Dex", "Effie", "Fitz", "Gil", "Hob", "Iggy", "Jojo", "Kip", "Lulu", "Mabel", "Nico",
+	"Olly", "Penny", "Quill", "Rosie", "Sid", "Tuck", "Uma", "Vito", "Wally", "Xan", "Yuki", "Zuzu", "Bram", "Clem",
+	"Dilly", "Edie", "Flo", "Gert", "Hugo", "Inez", "Jasper", "Kiki", "Lenny", "Midge", "Noor", "Otto", "Pru", "Rory",
 ] as const;
 
-/** Accessories a regular may wear on the face: a slot name the atlas has in every theme. The
- * reviewer's costume already wears glasses. */
-export const REGULAR_WEAR = [undefined, undefined, "wear/glasses"] as const;
+/** Accessories a regular may wear: a slot name the atlas has in every theme (glasses are each
+ * theme's own; the rest are rig/accessories.ts, the same in every theme). One in four goes without.
+ * The reviewer's costume already wears glasses, so it wears nothing more. */
+export const REGULAR_WEAR = [undefined, undefined, "wear/glasses", "wear/flower", "wear/earrings", "wear/freckles", "wear/pin", "wear/plaster"] as const;
 
 export interface Regular {
 	/** `<project key>:<role>:<n>`. */
@@ -79,10 +83,42 @@ function fnv(s: string): number {
 	return h >>> 0;
 }
 
+/** A regular's name: its own (`k` 0), or, if another regular on the floor already has that one, the
+ * next it tries (`k` 1, 2...): a step through the names picked from its key, so two who'd clash
+ * part ways the same way every time. */
+export function regularName(key: string, k = 0): string {
+	const n = REGULAR_NAMES.length;
+	// A step that is coprime with the list's length, so the walk visits every name before repeating.
+	let step = 1 + (fnv(`${key}|step`) % (n - 1));
+	while (gcd(step, n) !== 1) step = (step % (n - 1)) + 1;
+	return REGULAR_NAMES[(fnv(`${key}|name`) + k * step) % n]!;
+}
+
+const gcd = (a: number, b: number): number => (b ? gcd(b, a % b) : a);
+
+/**
+ * Everyone's names among the regulars on the floor at once (by regular key), with no two the same:
+ * in key order, each takes its own name, or the next of its own that nobody before it has taken. A
+ * regular keeps its own name whenever nobody it would clash with is around, and with 70 names that
+ * is nearly always.
+ */
+export function regularNamesFor(keys: Iterable<string>): Map<string, string> {
+	const out = new Map<string, string>();
+	const taken = new Set<string>();
+	for (const key of [...new Set(keys)].sort()) {
+		let k = 0;
+		let name = regularName(key);
+		while (taken.has(name) && k < REGULAR_NAMES.length) name = regularName(key, ++k);
+		taken.add(name);
+		out.set(key, name);
+	}
+	return out;
+}
+
 /** The regular with this key (`<project key>:<role>:<n>`): its name and accessory, from the key alone. */
 export function regularOf(key: string): Regular {
 	const role = key.split(":")[1] as Role | undefined;
-	const name = REGULAR_NAMES[fnv(`${key}|name`) % REGULAR_NAMES.length]!;
+	const name = regularName(key);
 	const wear = role && COSTUMES[role]?.wear ? undefined : REGULAR_WEAR[fnv(`${key}|wear`) % REGULAR_WEAR.length];
 	return { key, name, ...(wear ? { wear } : {}) };
 }

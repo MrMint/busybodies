@@ -2,11 +2,11 @@
 // Replays a recorded fixture through the sass module and prints who said what, when, so the
 // voice can be reviewed by reading. Times print in UTC so the dump is the same on every machine.
 //
-//   bun tools/sass-dump.ts [fixture name or path] [--zoom 2] [--seed 1] [--room <project>] [--tail 30] [--theme factory]
+//   bun tools/sass-dump.ts [fixture name or path] [--zoom 2] [--seed 1] [--room <project>] [--tail 30] [--theme bakery]
 //
 // --zoom is the camera scale (0.4 is the whole office, 2 is zoomed into a room), --room puts the
 // camera on one project's room, --tail keeps the clock running for that many minutes after the
-// last frame, --theme speaks in that scene theme's words (default: the office).
+// last frame. --theme speaks in that theme's words (office, factory, bakery; src/scene/sass/bank.ts).
 import { readFileSync } from "node:fs";
 import { parseRecording } from "../src/watcher/replay";
 import { type Output, Sass, allSessions, members, utcClock, utcDay, utcHour } from "../src/scene/sass";

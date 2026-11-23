@@ -187,8 +187,8 @@ export class Scheduler {
 		this.#lines = lines;
 	}
 
-	/** Speak from another bank (a scene theme's: lines.ts linesIn). The said-lately memory stays. */
-	set lines(lines: Line[]) {
+	/** The bank it picks from: another theme's lines from the next step on (cooldowns carry over). */
+	setLines(lines: Line[]): void {
 		this.#lines = lines;
 	}
 

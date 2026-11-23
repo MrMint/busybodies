@@ -27,6 +27,7 @@ import { CLOUD, cloudTexture, glassOf, panesOf, type SunSpot, sunSpot } from "./
 import { Outside } from "./outside";
 import { FloorPlan } from "./layout";
 import { Ambient, type AmbientFacts } from "./ambient";
+import { CRATE } from "./crate";
 import { stagingOf } from "./staging";
 import { type FurnitureKind, INK, type SignText, grainTexture, label, noise, pill, wobblyRect } from "./paper";
 import { LEAD_SIZE, type Placed, Placement, crewOf } from "./placement";
@@ -45,6 +46,7 @@ const BUILD_H = BUILD.brickH;
 const BURIED_DROP = Math.ceil(DESK_TOP + 2 - trayOnDesk(SEAT, LEAD_SIZE).y);
 import { OFFICE_THEME } from "../theme/office";
 import { FALLEN, buildTop } from "../theme/build";
+import { areaLabel } from "../theme/words";
 import { RobotArm } from "../theme/arm";
 import { type CrewBuild, FURNITURE_KINDS, type SceneTheme } from "../theme/types";
 
@@ -172,6 +174,8 @@ export class Office extends Container {
 	/** The factory's robot arms, one per project bay (theme/arm.ts), over everything on the floor. */
 	#armLayer = new Container();
 	#arms = new Map<string, { arm: RobotArm; sig: string }>();
+	/** Where an arm just set a PR's crate down, by session, for the conveyor to take it from there. */
+	#setDown = new Map<string, { x: number; y: number; delay?: number }>();
 	/** Story and continuity on the walls (decor.ts), and what the lobby's board said before the story took it. */
 	#decor = new DecorLayer();
 	#board?: { was: SignText | undefined; shows: SignText };
@@ -679,8 +683,9 @@ export class Office extends Container {
 		const running = new Set(flat(snapshot.sessions).filter(buildRunning).map((s) => s.id));
 		const building = new Set(world.areas.filter((a) => a.desks.some((d) => running.has(d.id))).map((a) => a.id));
 		const topped = new Map(Object.entries(this.#opts.builds?.() ?? {}).map(([id, b]) => [id, b.topped] as const));
-		const facts: AmbientFacts = { held, building, topped };
+		const facts: AmbientFacts = { held, building, topped, setDown: this.#setDown };
 		this.#ambient.update(world, this.#theme, facts);
+		this.#setDown.clear();
 		if (this.#ambient.acting) this.#opts.wake();
 	}
 
@@ -918,7 +923,7 @@ export class Office extends Container {
 		this.#theme.room(g, c, a, (slot) => this.#signs.get(slot));
 		// The paper pass: materials, the view out, grain and the room's name (material.ts).
 		const words = this.#theme.words;
-		const name = a.kind === "project" ? a.name : words.areas[a.kind];
+		const name = areaLabel(a, words);
 		dressRoom(c, a, { light: this.#theme.light, phase: this.#phase, name, sun, rug: this.#theme.rug?.(a) });
 		return c;
 	}
@@ -1041,7 +1046,12 @@ export class Office extends Container {
 				if (was && arm && build.topped && !was.topped) {
 					const dock = this.#data?.areas.find((a) => a.id === desk!.areaId)?.stations.find((st) => st.kind === "outbox");
 					const top = buildTop(build.pieces + 1);
-					if (dock) arm.ship({ x: desk!.at.x + top.x, y: desk!.at.y + top.y + BUILD_H / 2 }, { x: dock.base.x - 6, y: dock.base.y - 47 });
+					if (dock) {
+						// The conveyor's crate takes over where the arm lets go of it (ambient.ts, crate.ts).
+						const to = { x: dock.base.x - 6, y: dock.base.y - 47 };
+						const delay = arm.ship({ x: desk!.at.x + top.x, y: desk!.at.y + top.y + BUILD_H / 2 }, to);
+						this.#setDown.set(s.id, { x: to.x, y: to.y + CRATE.armHalf, ...(delay !== undefined ? { delay } : {}) });
+					}
 				}
 				if (arm?.moving) this.#opts.wake();
 				if (was && t.fallen && build.fellAt !== undefined && build.fellAt !== was.fell) moves.push(tumble(t.fallen, t.fellFrom!));

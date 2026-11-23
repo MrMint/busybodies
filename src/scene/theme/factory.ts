@@ -12,7 +12,7 @@ import { MONITOR, PROPS } from "../office/propspots";
 import { type Area, type Band, DESK_TOP, type Rect } from "../office/world";
 import { crewBuild } from "./build";
 import { COMMON_COLOURS, NIGHT_WATCH, ROOM_COLOURS, plannerOf } from "./office";
-import type { SceneStaging } from "../office/staging";
+import { FACTORY_STAGING } from "./factory-staging";
 import type { FurnitureKind, SceneLight, SceneTheme, StagePainters } from "./types";
 import { FACTORY_WORDS, type SignText } from "./words";
 
@@ -780,18 +780,9 @@ function prCrate(g: Graphics): void {
 	g.roundRect(-5, -23, 12, 7, 2).fill(GREEN).stroke(line(1.8));
 }
 
-export const FACTORY_STAGE: StagePainters = { belt, slats, rollers, part, booth, dock, crate: prCrate };
+export { FACTORY_STAGING };
 
-/** The factory stages its bays as lines with a belt across the floor, the crew along it and the
- * foreman up in a booth; the hallway's conveyor carries PR crates to the dock. A beacon turns on a
- * press while a build runs, the aisle's vents puff steam, a busy line throws weld sparks. Idle, the
- * crew sit on oil drums, play cards on a pallet and kick the vending machine (rig/poses.ts). */
-export const FACTORY_STAGING: SceneStaging = {
-	bay: "line",
-	hall: "conveyor",
-	ambient: ["beacon", "vents", "sparks"],
-	habits: ["drumSit", "palletCards", "vendingKick", "scrolling", "stretch", "faceDown", "slowWalk"],
-};
+export const FACTORY_STAGE: StagePainters = { belt, slats, rollers, part, booth, dock, crate: prCrate };
 
 export const FACTORY_THEME: SceneTheme = {
 	id: "factory",

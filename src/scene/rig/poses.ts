@@ -505,6 +505,101 @@ export const POSES: Pose[] = [
 		],
 	}),
 
+	// The foreman's booth habits (theme/factory-staging.ts `leadHabits`): up in the booth, its bench
+	// and screen come to the foreman's chin, so these play at head height (binoculars, a phone at the
+	// ear, hands behind the head, a mug at the lips), looking out over the line. Played by name,
+	// never by the idle trigger.
+	pose({
+		name: "boothMug", title: "A brew over the line", trigger: "idle", rarity: 0, play: "once",
+		lines: ["Quality control. Of the tea."],
+		frames: [
+			["e-half l-downR m-small hl-mug al-raise ar-hip", 4],
+			["e-closed m-small hl-mug al-sip ar-hip", 3],
+			["e-happy l-downR m-grin hl-mug al-raise ar-hip", 3],
+			["e-half l-right b-one m-flat hl-mug al-raise ar-point", 3],
+			["e-half l-downR m-smirk hl-mug al-raise ar-hip", 3],
+		],
+	}),
+	pose({
+		name: "boothWatch", title: "Keeping an eye on the line", trigger: "idle", rarity: 0, play: "once",
+		lines: ["Nobody move. I mean: keep moving."],
+		frames: [
+			["a-binoc m-small al-face ar-face bd-leanL", 4],
+			["a-binoc m-flat al-face ar-face", 2],
+			["a-binoc m-small al-face ar-face bd-leanR", 4],
+			["e-wide b-up m-open al-face ar-face bd-leanR", 2],
+			["e-happy l-downR m-grin al-low ar-wave1", 3],
+		],
+	}),
+	pose({
+		name: "boothLean", title: "Hands behind the head", trigger: "idle", rarity: 0, play: "once",
+		lines: ["The line runs itself. I made sure."],
+		frames: [
+			["e-half m-smirk al-head ar-head", 5],
+			["e-closed m-yawn al-head ar-head f-tip", 3],
+			["e-half l-downR m-small al-head ar-head", 4],
+			["e-wide l-downR b-up m-small al-low ar-head", 2],
+		],
+	}),
+	pose({
+		name: "boothCall", title: "On the booth phone", trigger: "idle", rarity: 0, play: "once",
+		lines: ["Yes. Yes. It's on the belt."],
+		frames: [
+			["e-half l-upR b-one m-small hl-receiver al-ear ar-head", 4],
+			["l-upR b-up m-open hl-receiver al-ear ar-wave1 bd-nod", 2],
+			["e-squint l-right b-flat m-flat hl-receiver al-ear ar-head", 3],
+			["e-happy l-upR m-grin hl-receiver al-ear ar-wave2 bd-nod", 2],
+			["e-half l-right m-smirk hl-receiver al-ear ar-head", 3],
+		],
+	}),
+
+	// The bakery's own habits (theme/bakery.ts BAKERY_STAGING): played by name from the theme's habit
+	// rotation, never by the idle trigger. The bakery's rig paints the mug as a cappuccino, the bolt
+	// as a macaron, the stamp as a cake fork with a morsel on it, and the drum as a flour sack.
+	pose({
+		name: "cappuccinoSip", title: "Sipping a cappuccino", trigger: "idle", rarity: 0, play: "once",
+		lines: ["Foam first. Feelings later."],
+		frames: [
+			["e-half l-left m-small hl-mug al-raise ar-hip", 3],
+			["e-closed m-small hl-mug al-sip ar-hip", 4],
+			["e-happy m-grin hl-mug al-raise ar-hip c-blush", 3],
+			["e-closed m-small hl-mug al-sip ar-hip bd-back", 3],
+			["e-half l-right b-one m-smirk hl-mug al-raise ar-hip", 3],
+		],
+	}),
+	pose({
+		name: "macaronSneak", title: "Sneaking a macaron", trigger: "idle", rarity: 0, play: "once",
+		lines: ["Nobody saw that. Nobody count them."],
+		frames: [
+			["e-half l-left b-flat m-flat hr-bolt ar-raise al-hip", 3],
+			["e-half l-right b-flat m-flat hr-bolt ar-raise al-hip", 3],
+			["e-closed b-up m-open hr-bolt ar-sip al-hip", 2],
+			["e-happy m-grin ar-low al-hip c-blush", 3],
+			["e-wide l-left b-up m-small ar-low al-hip", 2],
+		],
+	}),
+	pose({
+		name: "forkLick", title: "Licking the cake fork", trigger: "idle", rarity: 0, play: "once",
+		lines: ["Tasting is part of the job."],
+		frames: [
+			["e-half l-right m-small hr-stamp ar-raise al-hip", 3],
+			["e-closed m-open hr-stamp ar-sip al-hip", 3],
+			["e-happy m-grin hr-stamp ar-raise al-hip c-blush", 3],
+			["e-closed m-small hr-stamp ar-sip al-hip bd-back", 3],
+			["e-shine m-grin hr-stamp ar-raise al-cheer", 3],
+		],
+	}),
+	pose({
+		name: "flourNap", title: "Napping on a flour sack", trigger: "idle", rarity: 0, play: "once",
+		lines: ["zzz", "Five minutes. Then croissants."],
+		frames: [
+			["e-half m-yawn bd-back bk-drum f-wide al-head ar-head", 3],
+			["e-closed m-small bd-back bk-drum f-wide al-head ar-head x-z1", 4],
+			["e-closed m-drool bd-back bk-drum f-kick al-head ar-head x-z2", 4],
+			["e-closed m-small bd-back bk-drum f-wide al-head ar-head x-z3", 4],
+		],
+	}),
+
 	// Acted --------------------------------------------------------------------------------------
 	pose({
 		name: "waiting", title: "Waiting on you", trigger: "waiting", rarity: 1, play: "loop",

@@ -4,8 +4,8 @@
 // and `nextWake` is undefined when nothing is due, so an idle office can sleep.
 import type { Snapshot } from "../../watcher/model";
 import { type DetectOptions, MIN, detect } from "./detect";
-import { DEFAULT_THEME, type ThemeId } from "../theme/id";
-import { type Line, linesIn } from "./lines";
+import type { ThemeId } from "../theme/id";
+import { type SassBank, sassFor } from "./bank";
 import { type Say, Scheduler, type SchedulerOptions, type View } from "./scheduler";
 import { type CounterOptions, Counters, slotName } from "./signs";
 import type { Trigger, TriggerKind } from "./types";
@@ -21,7 +21,6 @@ export interface Output {
 	signs: SignOut[];
 }
 
-/** `theme` (CounterOptions) also picks the bubbles' words: the bank as that scene theme speaks it. */
 export interface SassOptions extends SchedulerOptions, CounterOptions, DetectOptions {
 	/** A sign a trigger put up stays this long before the counters take the slot back. */
 	signHoldMs?: number;
@@ -34,27 +33,38 @@ export class Sass {
 	readonly scheduler: Scheduler;
 	readonly #counters: Counters;
 	readonly #opts: SassOptions;
+	#bank: SassBank;
 	#prev: Snapshot | undefined;
 	#last: Snapshot | undefined;
 	#triggers: Trigger[] = [];
 	/** What each slot shows, and until when a trigger's sign holds it. */
 	#slots = new Map<string, { text: string; holdUntil: number }>();
 	#view: View = { zoom: 1 };
-	#lines: Line[];
 
 	constructor(opts: SassOptions = {}) {
 		this.#opts = opts;
-		this.#lines = linesIn(opts.theme ?? DEFAULT_THEME);
-		this.scheduler = new Scheduler(opts, this.#lines);
+		this.#bank = sassFor(opts.theme);
+		this.scheduler = new Scheduler(opts, this.#bank.lines);
 		this.#counters = new Counters(opts);
 	}
 
-	/** Speak in another scene theme's words from now on: bubbles, and the signs triggers put up
-	 * next. What the voice already wrote stays (e2e/theme.test.ts holds that), so the counters keep
-	 * the words they started with until the next launch. */
-	set theme(theme: ThemeId) {
-		this.#lines = linesIn(theme);
-		this.scheduler.lines = this.#lines;
+	/** Whose voice it speaks in (bank.ts). */
+	get theme(): ThemeId {
+		return this.#bank.theme;
+	}
+
+	/**
+	 * Speak in another theme's words. Bubbles already up finish; the next lines and the counter
+	 * signs are the new theme's, and every sign is written again (the office repaints its walls in
+	 * the new theme's defaults when it switches).
+	 */
+	setTheme(id: ThemeId): void {
+		const bank = sassFor(id);
+		if (bank === this.#bank) return;
+		this.#bank = bank;
+		this.scheduler.setLines(bank.lines);
+		this.#counters.setTheme(id);
+		this.#slots.clear();
 	}
 
 	/** A new snapshot. */
@@ -82,7 +92,7 @@ export class Sass {
 		// A timed state crossing its next tier ("No rush. Some rush." at 2 minutes).
 		for (const t of this.#triggers) {
 			if (!t.ongoing || !TIMED.has(t.kind)) continue;
-			const next = Math.min(...this.#lines.filter((l) => l.trigger === t.kind && l.min !== undefined && l.min > t.magnitude).map((l) => l.min!));
+			const next = Math.min(...this.#bank.lines.filter((l) => l.trigger === t.kind && l.min !== undefined && l.min > t.magnitude).map((l) => l.min!));
 			if (Number.isFinite(next)) times.push(now + (next - t.magnitude) * MIN);
 		}
 		for (const v of this.#slots.values()) if (v.holdUntil > now) times.push(v.holdUntil);
