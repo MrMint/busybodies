@@ -3,6 +3,7 @@
 import { readdir } from "node:fs/promises";
 import { dirname, join, relative } from "node:path";
 import { FileCache } from "./files";
+import { gitInfo } from "./git";
 import { TranscriptLedger } from "./ledger";
 import { modelFamily } from "./models";
 import type { Agent, AgentStatus, PullRequest, RunningTool, Session, Snapshot, Waiting } from "./model";
@@ -110,13 +111,18 @@ export class SnapshotBuilder {
 		if (transcript) this.liveProjectDirs.add(relative(join(this.roots.home, "projects"), dirname(transcript)));
 		const running = ledger.running;
 		const mtime = transcript ? await this.files.mtime(transcript) : undefined;
+		// The agent tool's own worktree folders say their repository by path; git says it for any
+		// layout, and knows the branch when the desktop app doesn't.
+		const git = await gitInfo(cwd, this.files);
+		const own = projectOf(cwd);
+		const place = own.worktree || !git.project ? own : { project: git.project, ...optional("worktree", git.worktree) };
 		return {
 			id: e.sessionId!,
 			pid: e.pid!,
-			title: e.name ?? desk?.title ?? projectOf(cwd).project,
+			title: e.name ?? desk?.title ?? place.project,
 			cwd,
-			...projectOf(cwd),
-			branch: desk?.branch,
+			...place,
+			branch: desk?.branch ?? git.branch,
 			origin: e.entrypoint ?? "unknown",
 			state: e.status ?? "unknown",
 			stateSince: e.statusUpdatedAt ?? e.startedAt ?? at,

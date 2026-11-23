@@ -88,11 +88,18 @@ export function members(s: Session): Member[] {
 	const out: Member[] = [{ id: s.id, role: "lead", session: s, commands: s.commands }];
 	const walk = (as: Agent[], parent: string) => {
 		for (const a of as) {
-			out.push({ id: a.id, role: roleFor(a.role), session: s, agent: a, parent, commands: a.commands });
+			out.push({ id: a.id, role: roleFor(a.role, a.task), session: s, agent: a, parent, commands: a.commands });
 			walk(a.children ?? [], a.id);
 		}
 	};
 	walk(s.agents ?? [], s.id);
+	return out;
+}
+
+/** How many of each costume these sessions' crews have, leads left out. */
+export function crewCount(sessions: Session[]): Partial<Record<Role, number>> {
+	const out: Partial<Record<Role, number>> = {};
+	for (const s of sessions) for (const m of members(s)) if (m.agent) out[m.role] = (out[m.role] ?? 0) + 1;
 	return out;
 }
 
@@ -119,7 +126,7 @@ export function detect(prev: Snapshot | undefined, snap: Snapshot, now: number, 
 
 	const sessions = allSessions(snap);
 	const push = (kind: TriggerKind, m: Member, magnitude: number, key: string, ongoing: boolean, extra: Partial<Trigger> = {}) =>
-		out.push({ kind, who: m.id, session: m.session.id, project: m.session.project, role: m.role, magnitude, key, ongoing, ...extra, vars: { name: m.session.title, ...extra.vars } });
+		out.push({ kind, who: m.id, session: m.session.id, project: m.session.project, role: m.role, magnitude, key, ongoing, crew: crewCount([m.session]), ...extra, vars: { name: m.session.title, ...extra.vars } });
 
 	let finishedCrew: Member[] = [];
 	for (const s of sessions) {

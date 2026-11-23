@@ -13,6 +13,7 @@ import type { World as Floor } from "./office/world";
 import { type Direction, type View, cueFor, direct, here } from "./director/direct";
 import { type Metrics, NO_METRICS } from "./director/metrics";
 import type { Actor, Build, World, WorldEvent } from "./director/types";
+import { roleFor } from "./rig/roles";
 import type { Snapshot } from "../watcher/model";
 
 export { direct, RULES, here, cueFor } from "./director/direct";
@@ -55,7 +56,7 @@ export class Director {
 		this.#last = d;
 		if (d.events.length) for (const fn of this.#listeners) fn(d.events, d.world);
 		return Object.values(d.world.actors).map((a) => ({
-			who: { key: a.key, kind: a.kind, role: a.role, mood: a.mood, size: a.size, tint: a.tint },
+			who: { key: a.key, kind: a.kind, role: a.role, look: a.kind === "lead" ? "lead" : roleFor(a.role, a.task), mood: a.mood, size: a.size, tint: a.tint },
 			slot: a.slot,
 			desk: a.session,
 			area: a.area,

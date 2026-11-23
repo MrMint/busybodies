@@ -67,7 +67,7 @@ class RigCharacter implements Character {
 		this.#who = who;
 		this.#cast = cast;
 		cast.set(who.key, this);
-		const role = who.kind === "lead" ? "lead" : roleFor(who.role);
+		const role = who.kind === "lead" ? "lead" : (who.look ?? roleFor(who.role));
 		// The office draws real desks, so the rig's own stays off.
 		this.puppet = new Puppet(atlas, { id: who.key, role, accent: ACCENTS[hash(who.tint) % ACCENTS.length], desk: false });
 		this.#size();

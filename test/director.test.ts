@@ -6,7 +6,9 @@ import { type Direction, RULES, direct, here } from "../src/scene/director/direc
 import { along, pathBetween, pathLength } from "../src/scene/director/paths";
 import type { World } from "../src/scene/director/types";
 import { FloorPlan } from "../src/scene/office/layout";
+import { stock } from "../src/mainview/demo";
 import { HABITS, POSE } from "../src/scene/rig/poses";
+import { roleFor } from "../src/scene/rig/roles";
 import { parseRecording } from "../src/watcher/replay";
 import type { Agent, Session, Snapshot } from "../src/watcher/model";
 
@@ -260,6 +262,18 @@ describe("movement", () => {
 		expect(gone.wake).toBe(out.gone);
 		const later = s.step(snap(out.gone!, [session("a", "teapot")]));
 		expect(later.world.actors["a:a:x"]).toBeUndefined();
+	});
+
+	test("a general-purpose agent asked to review goes to the meeting room, in a reviewer's costume", () => {
+		const s = stage();
+		const d = s.step({ at: T0, sessions: [session("a", "kettle", { agents: [agent("r", "general-purpose", { task: "Review the spout change" }), agent("b", "general-purpose", { task: "Fix the lid" })] })] });
+		expect(d.world.actors["a:a:r"]!.spot).toMatch(/^meeting:seat:/);
+		expect(d.world.actors["a:a:b"]!.spot).not.toMatch(/^meeting:/);
+	});
+
+	test("someone else's stock setup still gets a varied crew", () => {
+		const looks = new Set(stock().sessions.flatMap((s) => s.agents.map((a) => roleFor(a.role, a.task))));
+		expect([...looks].sort()).toEqual(["builder", "designer", "explorer", "reviewer", "scout", "verifier"]);
 	});
 
 	test("a newly hired reviewer starts at the desk and walks to the meeting room", () => {

@@ -3,10 +3,10 @@
 // the mugs pile up), and the one note on the fridge about whatever most needs a human. Pure apart
 // from the counters it keeps between snapshots.
 import type { Snapshot } from "../../watcher/model";
-import { LIMITS, MIN, allSessions, localClock, members, type DetectOptions } from "./detect";
+import { LIMITS, MIN, allSessions, crewCount, localClock, members, type DetectOptions } from "./detect";
 import { LINES } from "./lines";
 import { fill } from "./scheduler";
-import { type LineVars, type SignPlace, hash } from "./types";
+import { type LineVars, type Role, type SignPlace, hash } from "./types";
 
 /** The office's slot for a place: room places belong to the project's room. */
 export function slotName(place: SignPlace, project: string): string {
@@ -117,7 +117,7 @@ export class Counters {
 	#fridge(snap: Snapshot, now: number, clock: (ms: number) => string, hour: (ms: number) => number): string | undefined {
 		const five = (ms: number) => Math.floor(ms / MIN / 5) * 5;
 		const sessions = allSessions(snap);
-		const concerns: { tag: string; vars: LineVars; key: string }[] = [];
+		const concerns: { tag: string; vars: LineVars; key: string; crew?: Partial<Record<Role, number>> }[] = [];
 		const waiting = sessions.filter((s) => s.waiting && now - s.waiting.since >= 5 * MIN).sort((a, b) => a.waiting!.since - b.waiting!.since)[0];
 		if (waiting) concerns.push({ tag: "waiting", key: waiting.id, vars: { name: waiting.title, min: five(now - waiting.waiting!.since) } });
 		for (const s of sessions) {
@@ -128,7 +128,8 @@ export class Counters {
 		}
 		const streak = sessions.flatMap(members).sort((a, b) => (b.commands?.failStreak ?? 0) - (a.commands?.failStreak ?? 0))[0];
 		if (streak && (streak.commands?.failStreak ?? 0) >= 3) concerns.push({ tag: "red", key: streak.id, vars: { n: streak.commands!.failStreak } });
-		if (sessions.some((s) => members(s).some((m) => (m.agent?.depth ?? 0) >= 3))) concerns.push({ tag: "crew", key: "crew", vars: {} });
+		const deep = sessions.filter((s) => members(s).some((m) => (m.agent?.depth ?? 0) >= 3));
+		if (deep.length) concerns.push({ tag: "crew", key: "crew", vars: {}, crew: crewCount(deep) });
 		const stalled = sessions.find((s) => s.state === "busy" && !s.running && !s.waiting && now - (s.activity?.at ?? s.stateSince) >= 7 * MIN);
 		if (stalled) concerns.push({ tag: "stalled", key: stalled.id, vars: { name: stalled.title, min: five(now - (stalled.activity?.at ?? stalled.stateSince)) } });
 		const h = hour(now);
@@ -139,7 +140,7 @@ export class Counters {
 		if (idle) concerns.push({ tag: "idle", key: idle.id, vars: { name: idle.title, min: five(now - idle.stateSince) } });
 
 		for (const c of concerns) {
-			const lines = fridgeLines(c.tag);
+			const lines = fridgeLines(c.tag).filter((l) => !l.needs || (c.crew?.[l.needs.role] ?? 0) >= l.needs.n);
 			if (!lines.length) continue;
 			const l = lines[hash(`${c.tag}|${c.key}`) % lines.length]!;
 			const text = fill(l.text, c.vars);
