@@ -1182,8 +1182,8 @@ tubs, a sandwich press on an oven (a burnt toastie for the jam), tasting with a 
 get a green or red pick, a takeout order pad, the pass for the outbox (the PR is a plate under a
 cloche), a scraps bin. The paper rig's brass service bell stays, and calls "service!". Tests hold
 every repaint within 6 rig units of the paper part (no exemptions) and the cutlet's top on each
-nail stroke. No ambient life of its own (stream G owns per-theme life). `docs/rig/pose-sheet-kitchen.png`
-is the sheet.
+nail stroke. No ambient life of its own (stream G owns per-theme life). The sheet was `docs/rig/pose-sheet-kitchen.png`;
+wave 4 repainted the cast for the bakery, now `docs/rig/pose-sheet-bakery.png`.
 
 Left: the sass voice still writes office lines on the Line's signs (OUT OF OFFICE, ONE CUP PER GREEN
 BUILD), the compact strip's tiles use the areas' office names in every theme, the copier poses still

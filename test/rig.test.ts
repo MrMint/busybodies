@@ -679,47 +679,47 @@ describe("themes", async () => {
 		});
 	});
 
-	describe("the bakery (still the Line's kit until wave 4 repaints it)", async () => {
+	describe("the bakery", async () => {
 		const { bakeryTheme, BAKERY_REPAINTS } = await import("../src/scene/rig/bakery");
 		const { rigTheme } = await import("../src/scene/rig/themes");
 		const { THEME_IDS } = await import("../src/scene/theme/id");
-		const kitchen = bakeryTheme();
-		const kitchenBox = measure(kitchen);
+		const bakery = bakeryTheme();
+		const bakeryBox = measure(bakery);
 		const repainted = new Set<string>(BAKERY_REPAINTS);
 
 		test("every theme has its own rig, named for it", () => {
 			for (const id of THEME_IDS) expect(rigTheme(id).name).toBe(id);
 		});
 
-		test("the kitchen repaints the costumes, the builder's work and the stations by name, and nothing else", () => {
-			for (const name of Object.keys(paper.parts)) expect(kitchen.parts[name], name).toBeDefined();
+		test("the bakery repaints the costumes, the builder's work and the stations by name, and nothing else", () => {
+			for (const name of Object.keys(paper.parts)) expect(bakery.parts[name], name).toBeDefined();
 			for (const name of BAKERY_REPAINTS) {
 				expect(paper.parts[name], `${name} is a paper part`).toBeDefined();
-				expect(kitchen.parts[name], `${name} is repainted`).not.toBe(paper.parts[name]);
+				expect(bakery.parts[name], `${name} is repainted`).not.toBe(paper.parts[name]);
 			}
-			for (const name of Object.keys(paper.parts)) if (!repainted.has(name)) expect(kitchenBox.get(name), name).toEqual(paperBox.get(name)!);
-			// No new parts: the kitchen dresses the slots the paper rig has.
-			expect(Object.keys(kitchen.parts).filter((n) => !paper.parts[n])).toEqual([]);
-			// Every hat and front piece is the kitchen's own (no hard hat or pith helmet on the line),
-			// and so is every body (chef whites).
+			for (const name of Object.keys(paper.parts)) if (!repainted.has(name)) expect(bakeryBox.get(name), name).toEqual(paperBox.get(name)!);
+			// No new parts: the bakery dresses the slots the paper rig has.
+			expect(Object.keys(bakery.parts).filter((n) => !paper.parts[n])).toEqual([]);
+			// Every hat and front piece is the bakery's own (no hard hat or pith helmet behind the
+			// counter), and so is every body (each role's own garment).
 			for (const n of Object.keys(paper.parts).filter((n) => /^(hat|front|body)\//.test(n))) expect(repainted.has(n), n).toBe(true);
-			// The construction gear and the office's stations are all kitchen kit.
-			for (const n of ["held/hammer", "work/nail1", "work/stack", "work/nut1", "work/copier", "work/forms", "work/outbox", "work/tray4", "work/cabinet", "prop/bigEnvelope"]) expect(repainted.has(n), n).toBe(true);
+			// The construction gear and the office's stations are all bakery kit, and the confetti is sprinkles.
+			for (const n of ["held/hammer", "work/nail1", "work/stack", "work/nut1", "work/copier", "work/forms", "work/outbox", "work/tray4", "work/cabinet", "prop/bigEnvelope", "fx/conf1"]) expect(repainted.has(n), n).toBe(true);
 		});
 
 		test("a repainted prop or station part keeps its size and its working ends, so the solved reaches still land", () => {
-			for (const [name, b] of kitchenBox) expect(b.x1 - b.x0, name).toBeGreaterThan(0);
+			for (const [name, b] of bakeryBox) expect(b.x1 - b.x0, name).toBeGreaterThan(0);
 			for (const name of BAKERY_REPAINTS.filter((n) => /^(work|held|prop)\//.test(n))) {
 				const a = paperBox.get(name)!;
-				const b = kitchenBox.get(name)!;
+				const b = bakeryBox.get(name)!;
 				for (const k of ["x0", "y0", "x1", "y1"] as const) expect(Math.abs(a[k] - b[k]), `${name} ${k}`).toBeLessThan(6);
 			}
-			// The cutlet's top is where the nail's head was at each strike, so the mallet lands on it.
-			(["work/nail1", "work/nail2", "work/nail3"] as const).forEach((n, i) => expect(Math.abs(kitchenBox.get(n)!.y0 - WORK.nailTop[i]!), n).toBeLessThan(2.5));
+			// The dough's top is where the nail's head was at each strike, so the rolling pin lands on it.
+			(["work/nail1", "work/nail2", "work/nail3"] as const).forEach((n, i) => expect(Math.abs(bakeryBox.get(n)!.y0 - WORK.nailTop[i]!), n).toBeLessThan(2.5));
 		});
 
-		test("the kitchen atlas packs within the atlas limits", () => {
-			const bounds = [...kitchenBox].map(([name, b]) => ({ name, x: b.x0, y: b.y0, width: Math.max(1, b.x1 - b.x0), height: Math.max(1, b.y1 - b.y0) }));
+		test("the bakery atlas packs within the atlas limits", () => {
+			const bounds = [...bakeryBox].map(([name, b]) => ({ name, x: b.x0, y: b.y0, width: Math.max(1, b.x1 - b.x0), height: Math.max(1, b.y1 - b.y0) }));
 			const { width, height } = pack(bounds, ATLAS_WIDTH, PAD);
 			expect(width * RESOLUTION).toBeLessThanOrEqual(4096);
 			expect(height * RESOLUTION).toBeLessThanOrEqual(4096);
