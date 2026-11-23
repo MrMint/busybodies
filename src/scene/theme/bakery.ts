@@ -1268,7 +1268,9 @@ function patio(g: Graphics, r: Rect, _band: Band): void {
 	for (let j = 0, y = p.y; y < p.y + p.h - 2; y += s, j++) for (let i = 0, x = p.x; x < p.x + p.w - 2; x += s, i++) if ((i + j) % 2 === 0) g.rect(x + 1, y + 1, Math.min(s, p.x + p.w - x) - 2, Math.min(s, p.y + p.h - y) - 2);
 	g.fill(0xfde3e6);
 	g.roundRect(p.x, p.y, p.w, p.h, 8).stroke({ width: 3, color: INK, alpha: 0.45 });
-	const seed = Math.round(r.x + r.y * 3);
+	// From the place's position, so the same every load. A hash, never the coordinates themselves:
+	// the top band's gaps sit above the hallway at negative y, and a negative seed picks no colour.
+	const seed = hash(`patio:${r.x},${r.y}`);
 	// What stands on it, back to front.
 	const things: [number, () => void][] = [];
 	const corner = p.w >= 48 && p.h >= 64;
