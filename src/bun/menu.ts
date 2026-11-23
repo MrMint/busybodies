@@ -6,7 +6,7 @@ import { THEME_IDS, type ThemeId } from "../scene/theme/id";
 import { summaryOf } from "./mood";
 
 /** The Theme submenu's names. */
-const THEME_NAMES: Record<ThemeId, string> = { office: "Office", factory: "Factory" };
+const THEME_NAMES: Record<ThemeId, string> = { office: "Office", factory: "Factory", kitchen: "The Line" };
 
 export interface TrayStatus {
 	snapshot: Snapshot | undefined | null;

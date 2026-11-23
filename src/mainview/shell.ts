@@ -30,6 +30,7 @@ const SWITCHES: { key: keyof Toggles; name: string; note: string }[] = [
 const THEME_NAMES: Record<ThemeId, { name: string; note: string }> = {
 	office: { name: "Office", note: "Desks, copiers and a lot of paper." },
 	factory: { name: "Factory", note: "Hard hats, machines and robot arms." },
+	kitchen: { name: "The Line", note: "A restaurant kitchen: tickets on the rail, plates out of the pass." },
 };
 
 const CSS = `
