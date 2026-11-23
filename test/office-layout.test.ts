@@ -5,7 +5,7 @@ import { FloorPlan } from "../src/scene/office/layout";
 import { demo } from "../src/mainview/demo";
 import { LEAD_SIZE } from "../src/scene/office/placement";
 import { KITCHEN_WALL, MONITOR, ceilingPanels, deskParts } from "../src/scene/office/propspots";
-import { BUILD, DESK_TOP, SEAT, STATIONS_BASE, STATION_CREW, STRIP, type Rect, type World, crewSlot, faceZone, meets } from "../src/scene/office/world";
+import { BUILD, DESK_TOP, SEAT, STATIONS_BASE, STATION_CREW, STRIP, type Rect, type World, bodyRect, crewPlaces, crewSlot, endPlaces, faceZone, meets } from "../src/scene/office/world";
 import type { Agent } from "../src/watcher/model";
 import type { Session, Snapshot } from "../src/watcher/model";
 
@@ -356,5 +356,46 @@ describe("the lead's face is a keep-out zone", () => {
 		expect(MONITOR.x).toBeGreaterThan(0);
 		expect(BUILD.left + BUILD.wide * BUILD.brickW + 3).toBeLessThan(face.x);
 		expect(BUILD.left).toBeLessThan(-80);
+	});
+});
+
+describe("the crew's towers stay in view", () => {
+	const LINE = { bay: "line", hall: "conveyor" } as const;
+	/** A desk's tower as drawn (propspots.ts `deskParts().build`, strokes included), `courses` high. */
+	const tower = (at: { x: number; y: number }, courses: number): Rect => ({
+		x: at.x + BUILD.left - 1,
+		y: at.y + BUILD.floor - courses * BUILD.brickH - 1,
+		w: BUILD.wide * BUILD.brickW + 3 + 2,
+		h: courses * BUILD.brickH + 2,
+	});
+	const area = (a: Rect, b: Rect) => Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
+
+	test("crew on a desk's end place cover under 15% of any tower, a short one or a tall one, in either staging", () => {
+		let ends = 0;
+		for (const name of ["", "release", "thirty", "crowd"]) {
+			for (const staging of [undefined, LINE]) {
+				const world = new FloorPlan().update(demo(name || null).snapshot, staging);
+				for (const a of world.areas) {
+					for (const d of a.desks) {
+						const mine = endPlaces(world, d);
+						for (let n = 1; n <= 10; n++) {
+							for (const p of crewPlaces(world, d, n)) {
+								if (!mine.some((e) => e.x === p.x && e.y === p.y)) continue;
+								ends++;
+								const body = bodyRect(p, 58);
+								for (const other of a.desks) {
+									for (const courses of [1, 3, 10]) {
+										const t = tower(other.at, courses);
+										const covered = area(body, t) / (t.w * t.h);
+										if (covered > 0.15) throw new Error(`${name || "busy"}/${staging ? "line" : "desks"}: ${d.id}'s end place covers ${(covered * 100).toFixed(0)}% of ${other.id}'s tower`);
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		expect(ends).toBeGreaterThan(5);
 	});
 });

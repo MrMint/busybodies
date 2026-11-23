@@ -414,6 +414,14 @@ const LINE: [dx: number, dy: number, facing: 1 | -1][] = [
 	[56, 50 + AISLE.row, -1],
 ];
 
+/**
+ * A line whose floor in front of the belt is not open (the room's front row, where the pair would
+ * stand off the floor, or a row with a desk in front, whose desk and booth the pair would stand on):
+ * four behind the belt at the aisle's places (AISLE), all facing downstream. Five there would bunch
+ * (61 px bodies in a 220 px cell); a fifth takes the desk's end place, as in the office (`crewPlaces`).
+ */
+const LINE_ABREAST: [dx: number, dy: number, facing: 1 | -1][] = AISLE.places.map((dx) => [dx, 50, 1]);
+
 /** A line's belt, from the desk front's centre: its top surface this far down, its ends this far in
  * from the row's outer cells, its front edge this deep. */
 export const BELT = { y: 62, inset: 8, front: 8, pitch: 16 } as const;
@@ -435,8 +443,17 @@ export function beltsFor(area: Pick<Area, "id" | "cells" | "desks" | "cols">): B
 	return out;
 }
 
-/** A desk's own spots in this world's staging: the aisle's row, or a line's. */
-const ownPattern = (world: Pick<World, "staging">) => (world.staging?.bay === "line" ? LINE : WIDE);
+/** True if the cell in front of this one (a row nearer the room's front) is open floor: there is
+ * one, and no desk stands in it. */
+const openInFront = (area: Pick<Area, "cells" | "desks">, cell: Rect) =>
+	area.cells.some((c) => c.x === cell.x && c.y === cell.y + ROW) && !area.desks.some((d) => d.cell.x === cell.x && d.cell.y === cell.y + ROW);
+
+/** The own spots of a desk's cell (or a lent desk row cell) in this world's staging: the aisle's
+ * row, or a line's: its pair in front of the belt only where the floor in front is open. */
+function ownPattern(world: Pick<World, "staging">, area: Pick<Area, "cells" | "desks"> | undefined, cell: Rect) {
+	if (world.staging?.bay !== "line") return WIDE;
+	return area && openInFront(area, cell) ? LINE : LINE_ABREAST;
+}
 
 /** Spots on a bare cell (a row with no desks), relative to the cell's top-left corner: a pair, then
  * a second pair a row lower and half a place in, facing out, so the first pair's task pills hang
@@ -448,9 +465,14 @@ const BARE: [dx: number, dy: number, facing: 1 | -1][] = [
 	[172 - AISLE.pitch / 2 - 4, 64 + AISLE.row + 2, 1],
 ];
 
+/** How far a line lifts a bare cell's spots when a desk stands in the cell in front: that desk's
+ * booth roof comes up to 120 below the bare cell's top (factory.ts `booth`), and the second pair's
+ * feet (130) would stand on it; lifted, they stand 4 px clear, a row apart still. */
+const BARE_LINE_LIFT = 14;
+
 /**
  * Where a desk's crew stand, in fill order: the four spots of its own aisle (on a line, the five
- * along its belt: `LINE`), then the free cells it is lent. A free cell is lent to exactly one desk:
+ * along its belt: `LINE`, or four behind it where the floor in front is closed: `LINE_ABREAST`), then the free cells it is lent. A free cell is lent to exactly one desk:
  * the one it lies in front of, else the one it lies behind, else its left neighbour, else its right.
  * A bare cell (its row has no desks) gives four spots; a free desk's cell gives the four in front of
  * that desk. Past these, the crowd (`crowdSlot`) takes the overflow.
@@ -458,11 +480,10 @@ const BARE: [dx: number, dy: number, facing: 1 | -1][] = [
 export function crewSpots(world: World, desk: Desk): Slot[] {
 	const area = world.areas.find((a) => a.id === desk.areaId);
 	const out: Slot[] = [];
-	const pattern = ownPattern(world);
-	const wide = (x: number, y: number) => {
-		for (const [dx, dy, facing] of pattern) out.push({ x: x + dx, y: y + dy, depth: y + dy, facing });
+	const wide = (x: number, y: number, cell: Rect) => {
+		for (const [dx, dy, facing] of ownPattern(world, area, cell)) out.push({ x: x + dx, y: y + dy, depth: y + dy, facing });
 	};
-	wide(desk.at.x, desk.at.y);
+	wide(desk.at.x, desk.at.y, desk.cell);
 	if (!area) return out;
 	const at = (x: number, y: number) => area.cells.find((c) => c.x === x && c.y === y);
 	const deskAt = (c: Rect | undefined) => (c ? area.desks.find((d) => d.cell.x === c.x && d.cell.y === c.y) : undefined);
@@ -474,8 +495,13 @@ export function crewSpots(world: World, desk: Desk): Slot[] {
 	const near = [at(c.x, c.y + ROW), at(c.x, c.y - ROW), at(c.x - CELL_W, c.y), at(c.x + CELL_W, c.y)];
 	for (const f of near) {
 		if (!f || deskAt(f) || owner(f)?.id !== desk.id) continue;
-		if (rowsWithDesks.has(f.y)) wide(f.x + f.w / 2, f.y + 78);
-		else for (const [dx, dy, facing] of BARE) out.push({ x: f.x + dx, y: f.y + dy, depth: f.y + dy, facing });
+		if (rowsWithDesks.has(f.y)) wide(f.x + f.w / 2, f.y + 78, f);
+		else {
+			// On a line, a desk in front of the bare cell stands in a booth whose roof reaches up into
+			// it: the spots step back off the roof (BARE_LINE_LIFT).
+			const lift = world.staging?.bay === "line" && deskAt(at(f.x, f.y + ROW)) ? BARE_LINE_LIFT : 0;
+			for (const [dx, dy, facing] of BARE) out.push({ x: f.x + dx, y: f.y + dy - lift, depth: f.y + dy - lift, facing });
+		}
 	}
 	return out;
 }
@@ -515,8 +541,8 @@ export function crowdSlot(desk: Desk, k: number): Slot {
 /**
  * When the crowd's next row would stand outside the room (a desk in the room's front row: its aisle
  * is the last floor before the hallway or the outside), the extras first stand beside the desk's
- * ends, in the gap between it and the next desk (`end`: the gap's middle, `dy` the feet, drawn just
- * in front of the desk), and the row of four keeps its normal spacing. A gap is one place, however
+ * ends, in the gap between it and the next desk (`end`: the gap's middle, or just left of the tower in
+ * the gap if the middle would stand on it; `dy` the feet, drawn just in front of the desk), and the row of four keeps its normal spacing. A gap is one place, however
  * many desks border it: it goes to the desk on its left (that desk's right end), so a desk's left end
  * is its own only with no desk beside it. A gap also holds the build spot of the desk on its right
  * (`buildSlot`, just past that desk's left end): a tower stands for most of a desk's life but a
@@ -555,12 +581,16 @@ export function endGaps(world: World, desk: Desk): { slot: Slot; builder?: strin
 	const beside = (col: number) => area.desks.find((d) => d.row === desk.row && d.col === col);
 	const out: { slot: Slot; builder?: string }[] = [];
 	for (const side of [1, -1] as const) {
-		const x = desk.at.x + side * SQUEEZE.end.dx;
+		const tower = side > 0 ? beside(desk.col + 1) : desk;
+		// The gap's middle, unless that puts a body on the tower in the gap (the build spot's desk's,
+		// at its left end): then just left of its bricks, which leaves room for the name card on its left.
+		const mid = desk.at.x + side * SQUEEZE.end.dx;
+		const x = tower ? Math.min(mid, Math.floor(tower.at.x + BUILD.left - CREW_HALF)) : mid;
 		if (x < lo || x > hi) continue;
 		// The gap's owner is the desk on its left: our left end is the left neighbour's right end.
 		if (side < 0 && beside(desk.col - 1)) continue;
 		const y = desk.at.y + SQUEEZE.end.dy;
-		const builder = side > 0 ? beside(desk.col + 1)?.id : desk.id;
+		const builder = tower?.id;
 		out.push({ slot: { x, y, depth: desk.at.y + 1, facing: side > 0 ? -1 : 1 }, ...(builder ? { builder } : {}) });
 	}
 	return out;
@@ -578,7 +608,8 @@ export function yieldFrom(end: Slot): Slot {
 }
 
 /**
- * Where a desk's `n` crew stand: `crewSpot`'s places while they all stand on the room's floor; else
+ * Where a desk's `n` crew stand: `crewSpot`'s places while they all stand on the room's floor (a line
+ * with no open floor in front of its belt: on its own cell's); else
  * the row of four as it is, the spots in lent cells, the desk's free ends (`endPlaces`), and only
  * then the row tightened to as many abreast as it takes (up to six), then (a crowd past all that)
  * the crowd's places held at the room's foot. Spot `crew:i` is the i-th; once the row tightens, its
@@ -589,10 +620,13 @@ export function crewPlaces(world: World, desk: Desk, n: number): Slot[] {
 	const normal = Array.from({ length: n }, (_, i) => crewSpot(spots, desk, i));
 	const area = world.areas.find((a) => a.id === desk.areaId);
 	if (!area) return normal;
-	const foot = floorFoot(area);
+	// A line with no open floor in front of its belt keeps its crew on its own cell's floor: a crowd
+	// row there would stand on the next row's desk and booth.
+	const closed = world.staging?.bay === "line" && !openInFront(area, desk.cell);
+	const foot = closed ? Math.min(floorFoot(area), desk.cell.y + desk.cell.h - SQUEEZE.foot) : floorFoot(area);
 	if (normal.every((s) => s.y <= foot)) return normal;
-	const own = ownPattern(world).length;
-	// The aisle's row always stands on the floor; a line's front pair may not, in a front-row bay.
+	const own = ownPattern(world, area, desk.cell).length;
+	// The aisle's row, and a line's, always stand on the floor (a line's pair is in front only over open floor).
 	const row = spots.slice(0, own).filter((s) => s.y <= foot);
 	const lent = spots.slice(own).filter((s) => s.y <= foot);
 	const ends = endPlaces(world, desk);
@@ -607,7 +641,8 @@ export function crewPlaces(world: World, desk: Desk, n: number): Slot[] {
 	const shift = left < lo ? lo - left : right > hi ? hi - right : 0;
 	// Fill order: the outer pair first (facing in, their work between them), then inwards.
 	const order = [...xs].sort((p, q) => Math.abs(q) - Math.abs(p) || p - q);
-	const y = desk.at.y + AISLE.front;
+	// The row's own line: the aisle's front row, or a line's belt.
+	const y = spots[0]!.y;
 	const tight: Slot[] = order.map((dx) => {
 		const x = Math.round(desk.at.x + dx + shift);
 		return { x, y, depth: y, facing: x < desk.lead.x ? 1 : -1 };

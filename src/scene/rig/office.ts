@@ -326,24 +326,34 @@ export function officeTheme(p: Palette = PAPER_PALETTE): Theme {
 		g.poly([-7, -11.5, 7, -11.5, 9.5, -1, -9.5, -1]).fill(OFFICE.shades).stroke({ width: W.fine, color: ink, join: "round" });
 		line(g, [-6, -9.2, 6, -9.2], 1.4, 0x6a7090);
 	};
-	// A tape dispenser (the right part, at last): a heavy charcoal body with a hump at the back, a
-	// fat clear roll on it, the tape running to the serrated cutter at the nose.
+	// A tape dispenser (the right part, at last): a heavy charcoal body, its hump low at the back, a
+	// fat roll standing up out of it (pale see-through tape on a bright card core), the tape running
+	// to the serrated cutter at the nose. As big as the gear's box allows, so it reads at room zoom.
 	parts["held/gear"] = (g) => {
-		g.moveTo(-14.5, -2)
-			.lineTo(-14.5, -12)
-			.quadraticCurveTo(-14.5, -22, -5.5, -22)
-			.quadraticCurveTo(2.5, -22, 4.5, -15)
-			.lineTo(11.5, -10)
-			.lineTo(11.5, -2)
+		const [cx, cy, r] = [-1.5, -14.5, 9.8];
+		g.moveTo(-14.6, 2.4)
+			.lineTo(-14.6, -10)
+			.arc(-7.4, -10, 7.2, Math.PI, Math.PI * 1.6)
+			.lineTo(4, -13)
+			.lineTo(13.2, -10.5)
+			.lineTo(13.2, 2.4)
 			.closePath()
 			.fill(OFFICE.shades)
-			.stroke({ width: W.fine, color: ink, join: "round" });
-		line(g, [-11.5, -5, 8.5, -5], 1.3, 0x6a7090);
-		g.circle(-5.5, -15, 8).fill({ color: 0xdff4ff, alpha: 0.95 }).stroke({ width: 1.6, color: ink });
-		g.circle(-5.5, -15, 5.2).stroke({ width: 1.4, color: 0xffffff });
-		g.circle(-5.5, -15, 2.6).fill(0xffffff).stroke({ width: 1.2, color: ink });
-		line(g, [1.7, -18.2, 11.9, -11.6], 1.4, 0xbfe6ff);
-		g.poly([10.5, -13.4, 14.1, -12, 12.9, -10.8, 14.3, -9.6, 11.1, -8.6]).fill(p.steel).stroke({ width: 1.2, color: ink, join: "round" });
+			.stroke({ width: W.part, color: ink, join: "round" });
+		line(g, [-12, -1.4, 10.6, -1.4], 1.4, 0x6a7090);
+		// The tape, off the roll's front to the cutter.
+		line(g, [cx + r * 0.9, cy + r * 0.44, 13.6, -11], 1.8, 0xbfe6ff);
+		g.poly([12.2, -13.2, 15.4, -12.6, 14.2, -11.4, 15.6, -10.2, 14.2, -9.2, 15.4, -8, 12.2, -7.6])
+			.fill(p.steel)
+			.stroke({ width: 1.1, color: ink, join: "round" });
+		// The roll: a pale band of tape, a glint on it, and the card core.
+		g.circle(cx, cy, r).fill({ color: 0xe6f6ff, alpha: 0.9 }).stroke({ width: W.fine, color: ink });
+		const [a0, a1, gr] = [Math.PI * 1.08, Math.PI * 1.42, r - 2.4];
+		g.moveTo(cx + gr * Math.cos(a0), cy + gr * Math.sin(a0))
+			.arc(cx, cy, gr, a0, a1)
+			.stroke({ width: 1.6, color: 0xffffff, cap: "round" });
+		g.circle(cx, cy, 4.6).fill(OFFICE.pencil).stroke({ width: 1.5, color: ink });
+		g.circle(cx, cy, 1.8).fill(OFFICE.shades);
 	};
 	/** A ream of copy paper in its wrapper, centred at (x, y). */
 	const ream = (g: Graphics, x: number, y: number, w: number, h: number, band = 0x3d7dff) => {

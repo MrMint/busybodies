@@ -9,7 +9,9 @@ import { FloorPlan } from "../src/scene/office/layout";
 import { DEFAULT_STAGING, habitsFor, stagingOf } from "../src/scene/office/staging";
 import { FACTORY_STAGING } from "../src/scene/theme/factory-staging";
 import { CRATE, crateAt, crateRide } from "../src/scene/office/crate";
-import { BELT, OVERLAP, type World, crewSpots } from "../src/scene/office/world";
+import { AISLE, BELT, DESK_TOP, type Desk, OVERLAP, ROW, type Rect, SQUEEZE, type World, bodyRect, crewPlaces, crewSpots, endPlaces, faceZone, meets, overlapX } from "../src/scene/office/world";
+import { LEAD_SIZE } from "../src/scene/office/placement";
+import { demo } from "../src/mainview/demo";
 import { HABITS, POSE } from "../src/scene/rig/poses";
 import type { Agent, Session, Snapshot } from "../src/watcher/model";
 
@@ -86,25 +88,116 @@ describe("the staging grammar", () => {
 		}
 	});
 
-	test("the crew stand along the belt: three behind it facing downstream, a pair in front, none on another", () => {
-		const { line } = both(sessions);
-		for (const d of line.desks.values()) {
-			const belt = line.areas.find((a) => a.id === d.areaId)!.belts!.find((b) => b.desks.includes(d.id))!;
-			const spots = crewSpots(line, d).slice(0, 5);
-			const behind = spots.filter((s) => s.y < belt.y);
-			const front = spots.filter((s) => s.y > belt.depth);
-			expect(behind).toHaveLength(3);
-			expect(front).toHaveLength(2);
-			for (const s of behind) {
-				expect(s.facing).toBe(1);
-				expect(s.depth).toBeLessThan(belt.depth);
-				expect(s.x).toBeGreaterThan(belt.x);
-				expect(s.x).toBeLessThan(belt.x + belt.w);
+	/** True if the cell in front of a desk's (a row nearer the room's front) is open floor. */
+	const openInFront = (w: World, d: Desk) => {
+		const a = w.areas.find((x) => x.id === d.areaId)!;
+		return a.cells.some((c) => c.x === d.cell.x && c.y === d.cell.y + ROW) && !a.desks.some((o) => o.cell.x === d.cell.x && o.cell.y === d.cell.y + ROW);
+	};
+	/** Body boxes overlap by at most `cap` of the smaller one. */
+	const share = (p: Rect, q: Rect) =>
+		(Math.max(0, Math.min(p.x + p.w, q.x + q.w) - Math.max(p.x, q.x)) * Math.max(0, Math.min(p.y + p.h, q.y + q.h) - Math.max(p.y, q.y))) / Math.min(p.w * p.h, q.w * q.h);
+
+	test("the crew stand along the belt facing downstream: three behind it and a pair in front over open floor, else four behind it; none on another", () => {
+		// A back-row desk whose front-row neighbour has gone: the floor in front of its belt is open.
+		const plan = new FloorPlan();
+		const six = Array.from({ length: 6 }, () => session("pebble"));
+		const full = plan.update(snap(six), LINE);
+		const gone = [...full.desks.values()].find((d) => d.row === 0 && full.desks.size > 0 && [...full.desks.values()].some((o) => o.row === 1 && o.col === d.col))!;
+		const opened = plan.update(snap(six.filter((x) => x.id !== gone.id)), LINE);
+		let open = 0;
+		let closed = 0;
+		for (const line of [both(sessions).line, opened]) {
+			for (const d of line.desks.values()) {
+				const belt = line.areas.find((a) => a.id === d.areaId)!.belts!.find((b) => b.desks.includes(d.id))!;
+				const spots = crewSpots(line, d).slice(0, openInFront(line, d) ? 5 : 4);
+				const behind = spots.filter((s) => s.y < belt.y);
+				const front = spots.filter((s) => s.y > belt.depth);
+				for (const s of behind) {
+					expect(s.facing).toBe(1);
+					expect(s.depth).toBeLessThan(belt.depth);
+					expect(s.x).toBeGreaterThan(belt.x);
+					expect(s.x).toBeLessThan(belt.x + belt.w);
+				}
+				if (openInFront(line, d)) {
+					open++;
+					expect(behind).toHaveLength(3);
+					expect(front).toHaveLength(2);
+					// The pair in front face each other across their work.
+					expect(front.map((s) => s.facing).sort()).toEqual([-1, 1]);
+					for (const [i, a] of spots.entries()) for (const b of spots.slice(i + 1)) expect(Math.abs(a.x - b.x) >= OVERLAP.dx || Math.abs(a.y - b.y) >= OVERLAP.dy).toBe(true);
+				} else {
+					// No open floor in front (the room's front row, or a desk in front): four behind the
+					// belt at the aisle's places, inside the desk's cell, as clear of each other as the aisle.
+					closed++;
+					expect(behind).toHaveLength(4);
+					for (const s of spots) {
+						expect(s.x).toBeGreaterThan(d.cell.x);
+						expect(s.x).toBeLessThan(d.cell.x + d.cell.w);
+					}
+					for (const [i, a] of spots.entries()) for (const b of spots.slice(i + 1)) expect(overlapX(bodyRect(a, 58), bodyRect(b, 58))).toBeLessThanOrEqual(AISLE.overlap * 61);
+				}
 			}
-			// The pair in front face each other across their work.
-			expect(front.map((s) => s.facing).sort()).toEqual([-1, 1]);
-			for (const [i, a] of spots.entries()) for (const b of spots.slice(i + 1)) expect(Math.abs(a.x - b.x) >= OVERLAP.dx || Math.abs(a.y - b.y) >= OVERLAP.dy).toBe(true);
 		}
+		expect(open).toBeGreaterThan(0);
+		expect(closed).toBeGreaterThan(0);
+	});
+
+	test("one to six crew at every line desk: none bunched on another, no lead's face covered, nobody on a desk or booth they stand behind", () => {
+		// The demo days' rooms (the busy day's lanternfish has Ship release 2.4 with five out), every
+		// desk with the same crew at once, so neighbours' crews meet too.
+		for (const name of [null, "release", "thirty", "crowd"] as const) {
+			const line = new FloorPlan().update(demo(name).snapshot, LINE);
+			for (const a of line.areas) {
+				if (a.kind !== "project") continue;
+				for (let n = 1; n <= 6; n++) {
+					// A desk whose crew outgrow its line and its ends squeezes its row (world.ts SQUEEZE),
+					// which may reach into a neighbour's cell: its own crew still keep the cap.
+					const squeezed = (d: Desk) => {
+						const known = [...crewSpots(line, d), ...endPlaces(line, d)];
+						return crewPlaces(line, d, n).some((p) => !known.some((k) => k.x === p.x && k.y === p.y));
+					};
+					const crew = a.desks.flatMap((d) => crewPlaces(line, d, n).map((p) => ({ d, p, body: bodyRect(p, 58), squeezed: squeezed(d) })));
+					for (const [i, c] of crew.entries()) {
+						const where = `${name ?? "busy"} ${a.id} n=${n}: ${c.d.id} at ${c.p.x},${c.p.y}`;
+						for (const o of crew.slice(i + 1)) {
+							if (o.d !== c.d && (c.squeezed || o.squeezed)) continue;
+							const s = share(c.body, o.body);
+							if (s > SQUEEZE.overlap) throw new Error(`${where} overlaps ${o.d.id} at ${o.p.x},${o.p.y} by ${(s * 100).toFixed(0)}%`);
+						}
+						for (const lead of a.desks) if (meets(c.body, faceZone(lead.lead, LEAD_SIZE))) throw new Error(`${where} covers ${lead.id}'s face`);
+						// Any desk and booth the crew member stands behind, its own included (from the
+						// roof to the desk front): no face behind them, and no feet below the roof
+						// (factory.ts booth: x -90..45, its roof -128..-120).
+						for (const o of a.desks) {
+							if (c.p.y >= o.at.y + DESK_TOP) continue;
+							const desk = { x: o.at.x - 90, y: o.at.y - 128, w: 180, h: 130 };
+							if (meets(faceZone(c.p, 58), desk) || (c.p.x > desk.x && c.p.x < desk.x + desk.w && c.p.y > o.at.y - 120 && c.p.y < o.at.y + 2))
+								throw new Error(`${where} stands on ${o.id}'s desk or booth`);
+						}
+					}
+				}
+			}
+		}
+	});
+
+	test("every spot a line desk is lent, past its own, keeps off any booth roof in front of it", () => {
+		let behind = 0;
+		for (const name of [null, "release", "thirty", "crowd"] as const) {
+			const line = new FloorPlan().update(demo(name).snapshot, LINE);
+			for (const d of line.desks.values()) {
+				const a = line.areas.find((x) => x.id === d.areaId)!;
+				for (const p of crewSpots(line, d)) {
+					for (const o of a.desks) {
+						if (p.y >= o.at.y + DESK_TOP || Math.abs(p.x - o.at.x) > 90) continue;
+						behind++;
+						// The booth's roof is -128..-120 from the desk front's centre (factory.ts booth).
+						expect(p.y, `${name ?? "busy"}: ${d.id}'s spot at ${p.x},${p.y} behind ${o.id}`).toBeLessThanOrEqual(o.at.y - 120);
+						expect(meets(faceZone(p, 58), { x: o.at.x - 90, y: o.at.y - 128, w: 180, h: 130 })).toBe(false);
+					}
+				}
+			}
+		}
+		expect(behind).toBeGreaterThan(0);
 	});
 
 	test("a conveyor hall runs the hallway's length to the dock at its right end", () => {

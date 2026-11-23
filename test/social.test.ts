@@ -8,7 +8,7 @@ import { HANDOFF_LOOK, NOTICE, RIPPLE, type View, freshReturn, pairUp, rippleDel
 import { TRIP } from "../src/scene/director/trips";
 import type { World } from "../src/scene/director/types";
 import { FloorPlan } from "../src/scene/office/layout";
-import { AISLE, CROWD, OVERLAP, SQUEEZE, bodyRect, buildSlot, crewPlaces, crewSpot, crewSpots, crowdSlot, endGaps, endPlaces, faceFront, faceZone, floorFoot, meets, restagger, yieldFrom } from "../src/scene/office/world";
+import { AISLE, BUILD, CELL_W, CROWD, OVERLAP, SQUEEZE, bodyRect, buildSlot, crewPlaces, crewSpot, crewSpots, crowdSlot, endGaps, endPlaces, faceFront, faceZone, floorFoot, meets, restagger, yieldFrom } from "../src/scene/office/world";
 import { CARD } from "../src/scene/office/propspots";
 import { demo } from "../src/mainview/demo";
 import { AT_VIEWER, GAZE, aimAt } from "../src/scene/rig/gaze";
@@ -231,7 +231,8 @@ describe("a front-row desk's crew", () => {
 		expect(desks).toContain(d);
 		const places = crewPlaces(floor, d, 5);
 		expect(places.slice(0, 4)).toEqual(crewSpots(floor, d).slice(0, 4));
-		expect(places[4]!).toMatchObject({ x: d.at.x + SQUEEZE.end.dx, y: d.at.y + SQUEEZE.end.dy });
+		// The gap's middle, but just left of the neighbour's tower in it (its body clear of the bricks).
+		expect(places[4]!).toMatchObject({ x: Math.min(d.at.x + SQUEEZE.end.dx, Math.floor(d.at.x + CELL_W + BUILD.left - body / 2)), y: d.at.y + SQUEEZE.end.dy });
 		// Its end's gap holds its neighbour's build spot: the place is kept all the same (it yields).
 		expect(endGaps(floor, d)[0]!.builder).toBe(floor.desks.get(endGaps(floor, d)[0]!.builder!)!.id);
 		const rel = new FloorPlan().update(demo("release").snapshot);

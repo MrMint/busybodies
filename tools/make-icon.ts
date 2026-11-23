@@ -10,7 +10,8 @@
  * the rig's cast: a dome body wider than it is tall, a thick navy outline, and the rig's face:
  * tall wide-set ink eyes with no white, each with a violet glow in its lower third, a big white
  * highlight up and right and a small one down and left, pink cheeks out past the eyes' outer
- * lower corners, and a small "u" smile tucked between the eyes.
+ * lower corners, and a small "u" smile tucked between the eyes. At 32 px and below, where those
+ * details average away, the eyes are drawn simpler (see `layersFor`).
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -85,8 +86,10 @@ const not =
 const body = dome(512, 600, 300, 250, 170);
 const outline = dome(512, 600, 326, 276, 196);
 
-/** Layers, painted in order. */
-const layers: Array<[Inside, RGBA]> = [
+type Layer = [Inside, RGBA];
+
+/** The tile and the mochi without its face, the same at every size. */
+const BASE: Layer[] = [
 	[tile(0), TILE_EDGE],
 	[tile(10), TILE],
 	[ellipse(512, 800, 300, 46), SHADOW],
@@ -94,21 +97,60 @@ const layers: Array<[Inside, RGBA]> = [
 	[body, BODY],
 	[and(body, not(dome(494, 575, 300, 250, 170))), BODY_SHADE],
 	[ellipse(400, 440, 70, 34), SHINE],
-	// Eyes: tall ink ovals with a violet glow low inside, a big highlight up and right and a small
-	// one down and left (same side on both eyes, not mirrored).
-	...[389, 635].flatMap((ex): Array<[Inside, RGBA]> => [
+];
+
+const CHEEKS: Layer[] = [
+	[ellipse(287, 655, 42, 24), BLUSH],
+	[ellipse(737, 655, 42, 24), BLUSH],
+];
+
+const SMILE: Layer = [smile(512, 614, 26, 16), INK];
+
+/** The rig's face, for 64 px and up: tall ink ovals with a violet glow low inside, a big highlight
+ * up and right and a small one down and left (same side on both eyes, not mirrored). */
+const FULL_FACE: Layer[] = [
+	...[389, 635].flatMap((ex): Layer[] => [
 		[ellipse(ex, 580, 60, 75), INK],
 		[and(ellipse(ex, 580, 60, 75), ellipse(ex, 617, 37, 25)), GLOW],
 		[circle(ex + 18, 552, 22), WHITE],
 		[circle(ex - 22, 602, 10), WHITE],
 	]),
-	[ellipse(287, 655, 42, 24), BLUSH],
-	[ellipse(737, 655, 42, 24), BLUSH],
-	[smile(512, 614, 26, 16), INK],
+	...CHEEKS,
+	SMILE,
 ];
 
+/**
+ * The eyes for 32 px and below, where a pixel covers 32 or 64 units and the full face's highlights
+ * average away into flat dark blobs. Each eye is 10% bigger and snapped to the 16 px grid: a solid
+ * two-by-two core (x 320..448 or 576..704, y 512..640) with soft caps above and below. One big
+ * highlight, up and to the right in both eyes as on the full face (mirrored, they stare apart),
+ * lights one pixel of the core at 16 px and a 2x2 block at 32; the violet glow fills the eye's
+ * lower half, so it still shows as colour.
+ */
+const SMALL_EYES: Layer[] = [384, 640].flatMap((ex): Layer[] => {
+	const eye = ellipse(ex, 576, 66, 82);
+	return [
+		[eye, INK],
+		[and(eye, ellipse(ex, 625, 66, 40)), GLOW],
+		[and(eye, circle(ex + 32, 544, 38)), WHITE],
+	];
+});
+
+/** The mouth at 16 px, where the smile is a grey smear: a short dash one pixel row tall
+ * (y 640..704), centred, so it covers half of each of the two middle pixels. */
+const DASH: Layer = [(x, y) => Math.abs(x - 512) <= 32 && y >= 640 && y <= 704, INK];
+
+/** Rendered sizes up to this get `SMALL_EYES`. 64 px keeps the full face: both highlights and the
+ * glow still read there. */
+const SMALL_MAX = 32;
+
+/** Layers, painted in order, for an icon `size` pixels across: one design, with simpler eyes at
+ * 32 px and below and a simpler mouth at 16. */
+const layersFor = (size: number): Layer[] =>
+	size > SMALL_MAX ? [...BASE, ...FULL_FACE] : [...BASE, ...SMALL_EYES, ...CHEEKS, size <= 16 ? DASH : SMILE];
+
 /** Shades one pixel of a `size`-pixel icon by averaging an n×n grid of samples inside it. */
-function shade(px: number, py: number, size: number, n: number): RGBA {
+function shade(layers: Layer[], px: number, py: number, size: number, n: number): RGBA {
 	const scale = 1024 / size;
 	let r = 0;
 	let g = 0;
@@ -142,10 +184,11 @@ function shade(px: number, py: number, size: number, n: number): RGBA {
 
 function render(size: number): Uint8Array {
 	const n = size <= 64 ? 8 : 4;
+	const layers = layersFor(size);
 	const pixels = new Uint8Array(size * size * 4);
 	for (let y = 0; y < size; y++) {
 		for (let x = 0; x < size; x++) {
-			const [r, g, b, a] = shade(x, y, size, n);
+			const [r, g, b, a] = shade(layers, x, y, size, n);
 			const i = (y * size + x) * 4;
 			// Un-premultiply for PNG's straight alpha.
 			pixels[i] = a > 0 ? Math.round(r / a) : 0;
