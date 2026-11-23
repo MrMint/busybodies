@@ -148,15 +148,19 @@ describe("auditions and Gemini 3.8 (tools/voice.ts)", async () => {
 
 	test("a theme's sample lines: one per key beat in its words, then the reactions", () => {
 		const lines = auditionLines("bakery");
-		expect(lines.length).toBe(VOICED.length + 3);
+		expect(lines.length).toBe(VOICED.length + 6);
+		expect(lines.slice(-3).every((l) => l.includes("<"))).toBe(true);
 		expect(corpus("bakery").some((l) => l.text === lines[0])).toBe(true);
 		expect(lines.every((l) => !templated(l))).toBe(true);
+		// Mochi-speak's vocal tags are 3.8's: an older model would read them aloud, so it skips them.
+		const old = auditionPlan(empty, "bakery", { models: ["gemini-3.1-flash-tts-preview"], voices: ["Puck"], deliveries: ["plain"] });
+		expect(old.length).toBe(VOICED.length + 3);
 	});
 
 	test("every model, voice, delivery and line once; recorded ones are skipped", () => {
 		const o = { models: ["gemini-3.1-flash-tts-preview", "gemini-3.8-flash-tts"], voices: [...PREBUILT], deliveries: Object.keys(DELIVERIES) };
 		const jobs = auditionPlan(empty, "office", o);
-		expect(jobs.length).toBe(2 * PREBUILT.length * Object.keys(DELIVERIES).length * auditionLines("office").length);
+		expect(jobs.length).toBe(PREBUILT.length * Object.keys(DELIVERIES).length * (2 * auditionLines("office").length - 3));
 		expect(new Set(jobs.map((j) => j.file)).size).toBe(jobs.length);
 		const j = jobs[0]!;
 		const done = { ...empty, takes: { [j.file]: { theme: "office" as const, model: j.model, voice: j.voice.voice, delivery: j.delivery, n: j.n, text: j.line.text, ms: 1 } } };

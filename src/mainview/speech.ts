@@ -216,10 +216,10 @@ export class Speech {
 			out.gain.value = CLIP_GAIN * room;
 			const src = ctx.createBufferSource();
 			src.buffer = buf;
-			src.detune.value = cents;
+			src.detune.value = cents + (voices?.pitch ?? 0) * 100;
 			src.connect(out);
 			src.start(at);
-			secs = buf.duration / 2 ** (cents / 1200);
+			secs = buf.duration / 2 ** (src.detune.value / 1200);
 		} else {
 			out.gain.value = BABBLE_GAIN * room;
 			secs = babble(ctx, out, at, who, text);

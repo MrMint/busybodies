@@ -72,6 +72,8 @@ export interface ThemeVoices {
 	/** The theme's voice pool, by id, in order: a character's own voice is `voices[hash(id) % n]`. */
 	voices: string[];
 	lines: Record<string, { text: string; takes: Take[] }>;
+	/** Semitones every clip in the theme is shifted by (the audition's pitch slider): a stock voice made small. */
+	pitch?: number;
 }
 
 /** `voice/manifest.json`: approved takes only (tools/voice.ts `ship` writes it). */

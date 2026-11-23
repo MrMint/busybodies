@@ -34,7 +34,7 @@ import { dirname, join, relative } from "node:path";
 import { VOICED, corpus, type VoiceLine, type VoiceManifest, voicesFor } from "../src/scene/sass/voiced";
 import { hash } from "../src/scene/sass/types";
 import { THEME_IDS, type ThemeId } from "../src/scene/theme/id";
-import { CAST, type CastVoice, DELIVERIES, PREBUILT, REACTIONS, promptFor } from "./voice-cast";
+import { CAST, type CastVoice, DELIVERIES, MOCHI_SPEAK, PREBUILT, REACTIONS, promptFor } from "./voice-cast";
 
 const ROOT = join(import.meta.dir, "..");
 export const WORK = join(ROOT, "voice-takes");
@@ -49,7 +49,8 @@ const TAKES = join(WORK, "takes.json");
  * before adding one.
  */
 export const TERMS_OK = ["gemini-3.1-flash-tts-preview", "gemini-3.8-flash-tts", "gemini-3.8-flash-lite-tts", "gemini-2.5-flash-lite-preview-tts"] as const;
-const DEFAULT_MODEL = TERMS_OK[0];
+/** Gemini 3.8 Flash TTS: GA, cheaper, and the one we iterate on (decisions.md). */
+const DEFAULT_MODEL = "gemini-3.8-flash-tts";
 
 /**
  * Gemini 3.8 TTS reads its text word for word: the style goes in each part's `speech_metadata`,
@@ -375,7 +376,8 @@ export function ship(work: Work): { files: number; bytes: number } {
 	for (const theme of THEME_IDS) {
 		const lines = work.themes[theme] ?? {};
 		const live = new Map(corpus(theme).map((l) => [l.key, l]));
-		const out: NonNullable<VoiceManifest["themes"][ThemeId]> = { voices: CAST[theme].map((v) => v.id), lines: {} };
+		const auditions = loadAuditions();
+		const out: NonNullable<VoiceManifest["themes"][ThemeId]> = { voices: CAST[theme].map((v) => v.id), lines: {}, ...(auditions.pitch[theme] ? { pitch: auditions.pitch[theme] } : {}) };
 		for (const [key, l] of Object.entries(lines)) {
 			if (!live.has(key)) continue;
 			const takes = l.takes.filter((t) => t.status === "approved");
@@ -437,11 +439,11 @@ export function saveAuditions(a: Auditions): void {
 	writeFileSync(AUD_JSON, `${JSON.stringify(a, null, "\t")}\n`);
 }
 
-/** The sample lines: the shortest fixed line of each key beat in the theme's words, then the reactions. */
+/** The sample lines: the shortest fixed line of each key beat in the theme's words, the reactions, then mochi-speak. */
 export function auditionLines(theme: ThemeId): string[] {
 	const lines = corpus(theme).filter((l) => l.beat && !l.templated);
 	const beats = VOICED.map((t) => lines.filter((l) => l.trigger === t).sort((a, b) => a.text.length - b.text.length)[0]?.text).filter((t): t is string => !!t);
-	return [...beats, ...REACTIONS];
+	return [...beats, ...REACTIONS, ...MOCHI_SPEAK];
 }
 
 export interface AuditionJob extends Utterance {
@@ -451,8 +453,8 @@ export interface AuditionJob extends Utterance {
 	file: string;
 }
 
-/** Models auditioned side by side by default: the Preview model we checked first, and the GA 3.8. */
-export const AUDITION_MODELS = ["gemini-3.1-flash-tts-preview", "gemini-3.8-flash-tts"];
+/** Models auditioned by default: 3.8 only now; `--models` adds 3.1 back for a comparison. */
+export const AUDITION_MODELS = ["gemini-3.8-flash-tts"];
 
 /** Every model × voice × delivery × sample line not yet recorded (`fake` stands in for every model). */
 export function auditionPlan(a: Auditions, theme: ThemeId, o: { models: readonly string[]; voices: readonly string[]; deliveries: readonly string[]; fake?: boolean }): AuditionJob[] {
@@ -462,6 +464,7 @@ export function auditionPlan(a: Auditions, theme: ThemeId, o: { models: readonly
 		for (const voice of o.voices)
 			for (const delivery of o.deliveries)
 				lines.forEach((text, n) => {
+					if (!isV38(model) && text.includes("<")) return;
 					const file = `audition/${theme}/${model}/${voice}-${delivery}-${n}.webm`;
 					const t = a.takes[file];
 					if (t && t.text === text && (t.model === model || (o.fake && t.model === "fake"))) return;

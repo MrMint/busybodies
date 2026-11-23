@@ -39,7 +39,7 @@
 <header>
 	<h1>Voice auditions</h1>
 	<label>Theme <select id="theme"></select></label>
-	<label>Model <select id="model"><option value="">all</option></select></label>
+	<label>Model <select id="model"><option value="">all</option><option>gemini-3.1-flash-tts-preview</option></select></label>
 	<label>Delivery <select id="delivery"><option value="">all</option></select></label>
 	<label>Show <select id="show"><option value="">every voice</option><option value="keep">kept</option><option value="keep,maybe">kept and maybe</option><option value="none">not yet picked</option></select></label>
 	<label>Pitch <input id="pitch" type="range" min="-4" max="8" step="0.5" value="0"><span id="pitchv">0</span> st</label>
@@ -68,6 +68,7 @@
 			const themes = Object.keys(data.lines);
 			const recorded = themes.find((t) => Object.values(data.auditions.takes).some((x) => x.theme === t));
 			if (recorded) $("theme").value = recorded;
+			if (data.models.includes("gemini-3.8-flash-tts")) $("model").value = "gemini-3.8-flash-tts";
 		}
 		render();
 	}

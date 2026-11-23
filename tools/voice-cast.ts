@@ -69,11 +69,24 @@ export const PREBUILT = [
 	"Puck", "Rasalgethi", "Sadachbia", "Sadaltager", "Schedar", "Sulafat", "Umbriel", "Vindemiatrix", "Zephyr", "Zubenelgenubi",
 ] as const;
 
-/** Deliveries to audition, said after the theme's setting. "small" is the guess at a mochi. */
+/**
+ * Deliveries to audition, said after the theme's setting. "small" was the first guess at a mochi;
+ * round 2 (the stock voices read as adults, and the owner pitched them up 6 semitones) leans
+ * into animation: a cartoon sidekick, and a creature that's more sounds than words.
+ */
 export const DELIVERIES: Record<string, string> = {
 	plain: "",
 	small: "Your voice is very small, soft and bright, rounded at the edges, and a little quick, like a tiny squishy creature. Cute, but not a baby voice and not squeaky.",
+	cartoon: "Voice a tiny character in an animated cartoon: high, bright and bouncy, very expressive and a bit exaggerated, quick, squeaky at the top of a phrase.",
+	creature: "Voice a small round creature in an animated film: a tiny, high, breathy voice, gleeful and curious, more little sounds than words, every syllable bouncy.",
 };
 
 /** Short voiced reactions to hear beside the full lines: what a mochi might say while the bubble carries the joke. */
 export const REACTIONS = ["Hm?", "Ta-da!", "Huh? Oh. Hi."] as const;
+
+/**
+ * Mochi-speak: nonsense syllables with Gemini 3.8's inline vocal tags, so a voice acts the beat
+ * (waiting, done, back to work) the way babble does, but with a real voice's warmth. Appended
+ * after the reactions, so earlier takes keep their numbers. 3.8 only: older models read the tags aloud.
+ */
+export const MOCHI_SPEAK = ["Mumu? <short pause> Mu-mupa?", "Pa-ta-taa! <laugh>", "Hnnm... <sigh> mm-hm! Mupa!"] as const;
