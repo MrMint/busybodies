@@ -282,6 +282,31 @@ slowWalk: The slow walk
    3   390ms  { eyes: 'half', look: 'right', mouth: 'smirk', armL: 'raise', armR: 'low', feet: 'swingL', holdL: 'paper' }
    4   390ms  { eyes: 'half', look: 'right', mouth: 'smirk', armL: 'raise', armR: 'down', feet: 'swingR', body: 'bob', holdL: 'paper' }
 
+drumSit: Sitting on an oil drum
+  on idle, rare 1 in Infinity, once; 4 frames, 1820 ms (14 beats)
+  may say: "Supervising. The drum."
+   1   520ms  { eyes: 'half', mouth: 'smirk', armL: 'low', armR: 'head', feet: 'wide', body: 'back', back: 'drum' }
+   2   390ms  { eyes: 'half', look: 'left', mouth: 'small', armL: 'low', armR: 'head', feet: 'kick', body: 'back', back: 'drum' }
+   3   520ms  { eyes: 'closed', mouth: 'yawn', armL: 'head', armR: 'head', feet: 'wide', body: 'back', back: 'drum' }
+   4   390ms  { eyes: 'half', mouth: 'smirk', armL: 'low', armR: 'head', feet: 'kick', body: 'back', back: 'drum' }
+
+palletCards: Cards on a pallet
+  on idle, rare 1 in Infinity, once; 4 frames, 1560 ms (12 beats)
+  may say: "Gin. Again."
+   1   520ms  { eyes: 'half', look: 'downR', brows: 'flat', mouth: 'flat', armL: 'raise', armR: 'low', holdL: 'hand', work: 'pallet' }
+   2   390ms  { eyes: 'squint', look: 'downR', brows: 'one', mouth: 'smirk', armL: 'raise', armR: 'low', holdL: 'hand', work: 'pallet' }
+   3   260ms  { eyes: 'wide', look: 'downR', brows: 'up', mouth: 'grin', armL: 'raise', armR: 'throw2', holdL: 'hand', work: 'palletSlap' }
+   4   390ms  { eyes: 'happy', look: 'right', mouth: 'grin', armL: 'raise', armR: 'hip', holdL: 'hand', work: 'palletSlap' }
+
+vendingKick: Kicking the vending machine
+  on idle, rare 1 in Infinity, once; 5 frames, 1820 ms (14 beats)
+  may say: "It owes me a snack."
+   1   520ms  { eyes: 'squint', look: 'right', brows: 'angry', mouth: 'flat', armL: 'hip', armR: 'hip', work: 'vending' }
+   2   260ms  { eyes: 'squint', look: 'right', brows: 'angry', mouth: 'shout', armL: 'hip', armR: 'out', feet: 'boot', fx: 'hit', work: 'vendingRock' }
+   3   390ms  { eyes: 'half', look: 'right', brows: 'angry', mouth: 'pout', armL: 'hip', armR: 'hip', work: 'vending' }
+   4   260ms  { eyes: 'wide', look: 'downR', brows: 'up', mouth: 'open', armL: 'hip', armR: 'low', work: 'vendingDrop' }
+   5   390ms  { eyes: 'happy', look: 'downR', mouth: 'grin', armL: 'hip', armR: 'cheer', work: 'vendingDrop' }
+
 waiting: Waiting on you
   on waiting, loop; 10 frames, 2990 ms (23 beats)
   may say: "Whenever you are ready." "No rush. Some rush."
