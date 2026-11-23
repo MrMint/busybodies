@@ -66,10 +66,8 @@ export interface Inspector {
 	/** Sound: on or off, the AudioContext's state, the last earcons scheduled (undefined in the
 	 * compact window, which never plays sound). Set by main.ts. */
 	sound(): SoundState | undefined;
-	/** The tray's Sound and Calm office toggles and its Look, as the app sends them over RPC. Set by main.ts. */
-	setToggles(change: { sound?: boolean; calm?: boolean; look?: string }): void;
-	/** The look (mainview/look.ts), and the pixel pass's texture size in its own pixels. Set by main.ts. */
-	look(): { look: string; pixel?: { width: number; height: number; resolution: number } };
+	/** The tray's Sound and Calm office toggles, as the app sends them over RPC. Set by main.ts. */
+	setToggles(change: { sound?: boolean; calm?: boolean }): void;
 	/** The following camera (compact, or ?follow): its stop, why, until when, pinned, cuts made,
 	 * and the room tiles. Undefined when the camera doesn't follow. */
 	shot(): ShotReport | undefined;
@@ -205,7 +203,6 @@ export function installInspector(
 		bricks: () => office.bricks,
 		sound: () => undefined,
 		setToggles: () => {},
-		look: () => ({ look: "plain" }),
 		shot: () => shots?.report(),
 		pin: (area) => {
 			shots?.pin(area);
