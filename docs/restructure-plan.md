@@ -1,11 +1,16 @@
 # Restructure plan
 
 The moves from [`architecture-review.md`](architecture-review.md), as an ordered list of small
-mechanical commits. **Start only after voice (#32) and the PR that adds this plan (#29) have
-merged.** The other QA PRs (#30, #31, #33, #34, #35) are in. Run the steps on one branch, one at a time. Every step
+mechanical commits. **Start once the PR that adds this plan (#29) has merged**; every other QA PR (#30–#35) is in.
+Run the steps on one branch, one at a time. Every step
 moves code without changing what it does.
 
 ## Rules for every step
+
+- **Leave the voice files alone until the voice follow-up PR merges:** `tools/voice*`,
+  `tools/ambience.ts`, `src/mainview/speech.ts`, `src/scene/sass/voice.ts`, `voiced.ts`,
+  `e2e/speech.test.ts`, `test/voiced.test.ts`. Steps that would touch them do so in **R29** at the
+  end. Where a moved module is imported by one of them, keep a re-export at the old path until R29.
 
 - One step, one commit, and the commit message names the step (`R3: move theme ids to src/themes/ids.ts`).
 - A move is `git mv` plus import rewrites, nothing else, so `git log --follow` and blame keep
@@ -21,9 +26,11 @@ moves code without changing what it does.
 
 ## Phase 0: baseline
 
-- **R0. Format all.** `hutch run format`, then commit the result alone. Add its SHA to a new
-  `.git-blame-ignore-revs`. Switch CI's lint step from `biome ci --formatter-enabled=false` to
-  `biome ci`. Expect about 113 files and +7.3k/−2.5k lines at width 160 (measured after #35; voice adds a few).
+- **R0. Format all but the voice files.** Add a `biome.json` override that turns the formatter
+  off for the voice files listed above, run `hutch run format`, and commit the result alone. Add
+  its SHA to a new `.git-blame-ignore-revs`. Switch CI's lint step from
+  `biome ci --formatter-enabled=false` to `biome ci`. Expect about 110 files and +7.2k/−2.5k lines at
+  width 160 (123 files with the voice files).
 - **R1. Baseline screenshots.** Run `tools/shoot.ts --theme office|factory|bakery` and keep the
   output outside the repo. Every later step diffs against it.
 
@@ -38,7 +45,7 @@ moves code without changing what it does.
   `scene/rig/index.ts`, `scene/director.ts` and `scene/theme/index.ts`, keeping only the names
   something imports. Then add `exports,types` to knip's failing set in CI.
 - **R4. Shared helpers.** Add `src/shared/hash.ts` (the string hashes, each under its own name, including
-  `sound.ts hashId`, which `speech.ts` also uses),
+  `sound.ts hashId`; `sound.ts` re-exports it for `speech.ts` until R29),
   `src/shared/time.ts` (`SEC`, `MIN`, `HOUR`) and `src/shared/colour.ts` (`mix`). Point every copy
   at them, one helper per commit if the diff is large. Make `sameStop` one export from
   `office/camera.ts`, `crewSize` one export from `office/placement.ts`, `poseMs` one export
@@ -139,10 +146,17 @@ Do them in this order, smallest risk first.
   named phases it calls in order. The director tests and replayed fixtures must give
   byte-identical events, so add a fixture-replay snapshot of `direct()` output before R27 if
   there isn't one.
-- **R28. `mainview/sound.ts` and `speech.ts`** → `mainview/audio/`: `plan.ts` (the pure rules both
-  players share: `LIMITS`, `Gate`, `Voices`, `vary`, `seq`, `loudness`, `panFor`, `zoomedArea`,
-  `heatOf`), `graph.ts` (`masterChain`, `makeNoise`, the kit), `sound.ts` (earcons) and
-  `speech.ts` (voiced lines and room loops). `speech.ts` stops importing from `sound.ts`.
+- **R28. `mainview/sound.ts`** → `mainview/audio/`: `plan.ts` (the pure rules both players share:
+  `LIMITS`, `Gate`, `Voices`, `vary`, `seq`, `loudness`, `panFor`, `zoomedArea`, `heatOf`),
+  `graph.ts` (`masterChain`, `makeNoise`, the kit) and `sound.ts` (earcons). Leave
+  `mainview/sound.ts` re-exporting what `speech.ts` imports.
+
+## Last: the voice files
+
+- **R29. After the voice follow-up merges.** `git mv src/mainview/speech.ts src/mainview/audio/`,
+  point it and the other voice files at the new homes (`audio/plan.ts`, `shared/hash.ts`,
+  `themes/`), and drop the re-exports left for them. Remove the R0 formatter override and format
+  the voice files in their own commit, added to `.git-blame-ignore-revs`.
 
 ## After
 

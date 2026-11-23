@@ -34,7 +34,7 @@
 	<h1>Voice takes</h1>
 	<select id="theme"></select>
 	<select id="show"><option value="all">all takes</option><option value="new">to review</option><option value="redo">marked redo</option><option value="approved">approved</option></select>
-	<button id="approveAll" title="Approve every take still to review on this page">Approve all shown "new"</button>
+	<button type="button" id="approveAll" title="Approve every take still to review on this page">Approve all shown "new"</button>
 	<span class="counts" id="counts"></span>
 	<div class="keys">Keys: <b>j</b>/<b>k</b> next/previous take, <b>space</b> play, <b>a</b> approve, <b>r</b> redo, <b>u</b> back to new. Marks save at once to voice-takes/takes.json; then run <code>bun tools/voice.ts ship</code>, and <code>record</code> again for the redos.</div>
 </header>
