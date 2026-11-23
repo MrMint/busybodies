@@ -1,0 +1,82 @@
+{
+	"$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true
+	},
+	"files": {
+		"includes": ["src/**", "test/**", "e2e/**", "tools/**", "*.ts", "*.json", "!hutch.lock"]
+	},
+	"formatter": {
+		"enabled": true,
+		"indentStyle": "tab",
+		"indentWidth": 4,
+		"lineWidth": 160
+	},
+	"javascript": {
+		"formatter": {
+			"quoteStyle": "double",
+			"semicolons": "always",
+			"trailingCommas": "all",
+			"arrowParentheses": "always"
+		}
+	},
+	"assist": {
+		"actions": {
+			"source": {
+				"organizeImports": "off"
+			}
+		}
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"preset": "recommended",
+			"style": {
+				"noNonNullAssertion": "off",
+				"useImportType": "warn",
+				"useConst": "warn"
+			},
+			"complexity": {
+				"noCommaOperator": "off",
+				"noBannedTypes": "warn",
+				"useOptionalChain": "warn",
+				"noUselessLoneBlockStatements": "warn"
+			},
+			"correctness": {
+				"noVoidTypeReturn": "off",
+				"noUnusedImports": "warn",
+				"noUnusedVariables": "warn",
+				"noUnusedFunctionParameters": "warn"
+			},
+			"suspicious": {
+				"noAssignInExpressions": "off",
+				"useIterableCallbackReturn": "off",
+				"noShadowRestrictedNames": "warn"
+			},
+			"performance": {
+				"useDomNodeTextContent": "off"
+			}
+		}
+	},
+	"overrides": [
+		{
+			"includes": ["src/watcher/**", "src/shared/**", "src/scene/director/**", "src/scene/director.ts", "src/scene/sass/**"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"paths": {
+									"pixi.js": "This layer is Pixi-free: it is pure data and logic, tested without a browser. See AGENTS.md, Architecture."
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	]
+}

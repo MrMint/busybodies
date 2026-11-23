@@ -1,0 +1,7 @@
+{
+	"$schema": "https://unpkg.com/knip@6/schema.json",
+	"entry": ["src/bun/index.ts", "src/mainview/main.ts", "tools/*.ts", "test/**/*.test.ts", "e2e/**/*.test.ts", "electrobun.config.ts", "hutch.config.ts"],
+	"project": ["src/**/*.ts", "tools/**/*.ts", "test/**/*.ts", "e2e/**/*.ts"],
+	"ignoreDependencies": ["@biomejs/biome", "concurrently"],
+	"vite": false
+}

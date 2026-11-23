@@ -54,6 +54,34 @@ v7-era APIs that look right and silently draw the wrong thing. Update it only wi
   versions. Every field is optional, unknown records are skipped, and a torn write keeps the last
   good value.
 
+## Architecture
+
+Data flows one way: **watcher → snapshot → director → world → scene → app**. Each layer imports
+only from the layers before it.
+
+| Layer | Where | May import |
+|---|---|---|
+| snapshot | `src/watcher/model.ts`, the contract | nothing |
+| watcher | `src/watcher/` | the snapshot, `node:*` |
+| shared | `src/shared/`, code both processes run | the snapshot |
+| director | `src/scene/director*`, `src/scene/sass/` | the above, plus the Pixi-free floor plan (`office/world.ts`, `layout.ts`, `placement.ts`, …) and rig data (`rig/poses.ts`, `roles.ts`, `player.ts`, …) |
+| scene | `src/scene/office/`, `theme/`, `rig/` drawing | everything above |
+| app | `src/mainview/` (webview), `src/bun/` (main process; Pixi-free, reads `theme/id.ts`) | everything above |
+
+- **Pixi-free layers stay Pixi-free.** Watcher, shared, director and sass are plain data and
+  logic, unit-tested without a browser. Biome fails CI on a `pixi.js` import there. Put new
+  logic in a Pixi-free module that returns data, and keep the drawing side thin.
+- **Drawing reads the director's `World`.** Scene code that needs to know about the snapshot
+  gets it from the director's output.
+- **Themes sit behind `SceneTheme`** (`theme/types.ts`) and the rig's `Theme`. They use the same
+  director and the same cast. Theme-specific behaviour belongs in the theme's painters,
+  `staging`, words or lines, keyed by `ThemeId`.
+- Run `hutch run lint` (Biome) and `hutch run knip` (unused files and dependencies) before a PR.
+  Biome's formatter isn't enforced yet, so leave formatting as you found it.
+
+Known breaks and the planned restructure: [`docs/architecture-review.md`](docs/architecture-review.md)
+and [`docs/restructure-plan.md`](docs/restructure-plan.md).
+
 ## Layout
 
 | Path | What |
