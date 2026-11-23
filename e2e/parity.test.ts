@@ -46,11 +46,7 @@ const STATES: State[] = [
  * Known gaps, by theme and state name, each with where it is being fixed. The test still runs: it is
  * expected to fail (`test.failing`), so when the fix lands it starts passing and this entry must go.
  */
-const KNOWN: Partial<Record<ThemeId, Record<string, string>>> = {
-	// The café terrace's seed goes negative and its chalkboard's colour is undefined: the scene
-	// throws while baking and never comes up. Fixed in the QA polish PR; delete this entry with it.
-	bakery: { "empty office": "the terrace throws with nobody in" },
-};
+const KNOWN: Partial<Record<ThemeId, Record<string, string>>> = {};
 
 let server: ReturnType<typeof Bun.serve>;
 let browser: Browser;
