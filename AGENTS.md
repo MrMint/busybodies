@@ -25,7 +25,8 @@ v7-era APIs that look right and silently draw the wrong thing. Update it only wi
 - **Render on demand.** The ticker runs only while something animates. **Off screen** (WebKit's page
   visibility: minimized, hidden, another Space, covered, locked) the scene draws nothing at all.
   On screen, a quiet office may keep **life** going (blinks, glances, rotating habits, ambient
-  props) at up to 10 fps, on life's 100 ms beat grid (`rig/life.ts`); acting runs at 30 and camera moves at 60. **Calm mode** (`?calm`, the Calm office
+  props) at up to 30 fps, like acting; camera moves run at 60. For now the visuals come first: a
+  performance pass on life's cost is deferred (`docs/plan-alive.md`). **Calm mode** (`?calm`, the Calm office
   setting, or reduced motion) has no life, so a quiet calm office costs near-zero CPU. Anything new
   that moves on its own rides the life clock and stops when calm or hidden. Pixi's global tickers
   stay stopped: drive any `AnimatedSprite` from the app ticker. Check with
@@ -38,7 +39,7 @@ v7-era APIs that look right and silently draw the wrong thing. Update it only wi
 - **Check before you call it done:** `hutch pm exec -- tsc --noEmit` (Vite builds don't
   type-check), `bun test test/`, and for scene work `hutch pm exec -- vite build && bun test e2e/`.
   The e2e tests run the bundled scene in headless Chrome and hold the frame budgets: a hidden
-  office and an idle calm one make zero animation frames, a living idle one stays at 10 fps or
+  office and an idle calm one make zero animation frames, a living idle one stays at 30 fps or
   less, and a busy one renders at 30 fps or less.
 - **Add a changeset with any PR that changes the app:** `hutch pm exec -- changeset add --minor
   busybodies -m "..."` (`--patch` for a fix), written for the release notes. Docs-only and

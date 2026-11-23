@@ -19,7 +19,7 @@ export interface LifeBeat {
 export const STILL: LifeBeat = { blink: false, lookX: 0, lookY: 0 };
 
 /** Life's beat grid: every blink and glance starts on it (and a glance ends on it), so the cast's
- * beats share frames and the app draws life alone at the grid's rate, 10 fps (mainview/main.ts).
+ * beats share frames (a lower life rate, `?lifefps=10`, still shows every one).
  * A blink, and the gap inside a double blink, last longer than a grid step, so no frame misses one. */
 export const LIFE_GRID_MS = 100;
 /** A time snapped down to the grid. */

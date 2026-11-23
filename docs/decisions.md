@@ -1283,6 +1283,8 @@ and the tray menu tests. Two seams needed code: the Line got its own story words
 `ThemeId`, so a fourth theme can't forget them. The pose sheets were regenerated after the merge,
 with G's habit poses, J's theme-neutral titles and H's kitchen sheet.
 
-**Life runs at 10 fps** (from J): its cost was frames, not characters, so halving the rate is what
-saves CPU; blinks and glances start on a 100 ms grid so none is skipped. The tests hold a living
-office to 10 fps. Not yet seen live or profiled on a quiet machine (plan-alive, "After wave 3").
+**Life runs at 30 fps.** Stream J dropped it to 10 (its cost is frames, not characters, so the rate
+is what saves CPU). Compared side by side (`?lifefps=`), 10 looked bad and 20 still choppy next to
+acting, so life now runs at acting's 30. Visuals come first; a performance pass over the whole
+scene is deferred until the look settles. The 100 ms beat grid stays: it costs nothing and lets a
+lower rate show every blink when that pass comes.

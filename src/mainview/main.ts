@@ -16,7 +16,6 @@ import { Sound } from "./sound";
 import { type Bridge, installShell } from "./shell";
 import { placeholders } from "./placeholder";
 import { Atlas, buildPoseSheet, rigCharacters, rigTheme } from "../scene/rig";
-import { LIFE_GRID_MS } from "../scene/rig/life";
 import { Director, NOTICE, placeholderVoice } from "../scene/director";
 import { Voice } from "../scene/sass";
 import { type Diary, diaryOf, newMemory, noteSnapshot } from "../shared/diary";
@@ -113,13 +112,12 @@ function blank(): void {
 	// move must be smooth (the whole view slides), so it gets 60 for as long as it lasts. Walks stay
 	// at 30: a busy room has someone walking nearly all the time (trips, brick runs, rounds), and a
 	// walker moves a few pixels a frame, which reads fine at 30.
-	// Life alone (blinks, glances, idle habits) gets less again: one frame per step of life's beat
-	// grid (rig/life.ts), 10 fps. Every blink starts on the grid and outlasts a step, and a pose beat
-	// (130 ms) outlasts one too, so nothing is skipped; at 20 the office cost twice the frames.
+	// Life alone (blinks, glances, idle habits, ambient props) gets the same 30: at 10 and at 20 it
+	// read choppy next to acting. Visuals first for now; a performance pass comes later (plan-alive).
 	const AMBIENT_FPS = 30;
 	const MOVING_FPS = 60;
-	// `?lifefps=20` overrides life's rate, to compare by eye; the default is one frame per beat.
-	const LIFE_FPS = Number(params.get("lifefps")) || 1000 / LIFE_GRID_MS;
+	// `?lifefps=10` overrides life's rate, to compare by eye.
+	const LIFE_FPS = Number(params.get("lifefps")) || AMBIENT_FPS;
 	const fps = () => (office.moving ? MOVING_FPS : office.acting ? AMBIENT_FPS : LIFE_FPS);
 	app.ticker.maxFPS = AMBIENT_FPS;
 	app.ticker.add((t) => {

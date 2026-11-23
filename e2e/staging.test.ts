@@ -147,10 +147,11 @@ describe("staging", () => {
 			busy.prs = [{ number: 4242, url: "https://example.invalid/pull/4242", at: s.at }];
 			b.show(s);
 			const start = b.staging().crates;
+			// Ten frames a render: the ride is ~400 frames, and a render per frame is slow headless.
 			let steps = 0;
 			while (b.staging().crates.length && steps < 1200) {
-				b.step(1);
-				steps++;
+				b.step(10);
+				steps += 10;
 			}
 			return { start, steps, after: b.staging().crates.length, dock: b.staging().conveyor!.dock.x };
 		});
@@ -173,22 +174,22 @@ describe("frame budgets with the factory's staging", () => {
 		await page.close();
 	}, T);
 
-	test("a living idle factory (belts, vents, habits) stays at 20 fps or less", async () => {
+	test("a living idle factory (belts, vents, habits) stays at 30 fps or less", async () => {
 		const page = await open("demo=idle&settle=600000&theme=factory");
 		const c = await measure(page, 2000);
 		expect(c.life).toBe(true);
 		expect(c.tickerRunning).toBe(true);
-		expect(c.maxFPS).toBe(20);
+		expect(c.maxFPS).toBe(30);
 		expect(c.renders).toBeGreaterThan(0);
-		expect(c.renders).toBeLessThanOrEqual(44); // 20 fps over 2 s, plus slack for timer edges
+		expect(c.renders).toBeLessThanOrEqual(64); // 30 fps over 2 s, plus slack for timer edges
 		await page.close();
 	}, T);
 
-	test("a living idle office (steam, the fan, the printer's light) stays at 20 fps or less", async () => {
+	test("a living idle office (steam, the fan, the printer's light) stays at 30 fps or less", async () => {
 		const page = await open("demo=idle&settle=600000");
 		const c = await measure(page, 2000);
-		expect(c.maxFPS).toBe(20);
-		expect(c.renders).toBeLessThanOrEqual(44);
+		expect(c.maxFPS).toBe(30);
+		expect(c.renders).toBeLessThanOrEqual(64);
 		await page.close();
 	}, T);
 });

@@ -66,13 +66,13 @@ describe("the pixel look keeps the frame budgets", () => {
 		await page.close();
 	}, T);
 
-	test("a living idle office stays at 10 fps or less: the pass adds no renders", async () => {
+	test("a living idle office stays at 30 fps or less: the pass adds no renders", async () => {
 		const page = await open("demo=idle&settle=600000&look=pixel");
 		const c = await measure(page, 2000);
 		expect(c.life).toBe(true);
-		expect(c.maxFPS).toBe(10);
+		expect(c.maxFPS).toBe(30);
 		expect(c.renders).toBeGreaterThan(0);
-		expect(c.renders).toBeLessThanOrEqual(24);
+		expect(c.renders).toBeLessThanOrEqual(64);
 		await page.close();
 	}, T);
 

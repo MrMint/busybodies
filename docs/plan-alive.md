@@ -196,9 +196,11 @@ the light both lean on walls. What's left is under "After wave 3" below.
 - Story: the framed PR goes up when the diary hears of the merge, not when the reply reaches the
   lead; glasses are the only regular accessory; 28 regular names can collide.
 - The mug wall still sits partly under the kitchen's painted name (no room to move it further).
-- **Life at 10 fps** (stream J): measure on a quiet machine with the window on screen, and look at
-  the idle habits live; if they read choppy, go back to 20 (`LIFE_FPS` in `main.ts`), keeping the
-  beat grid.
+- **Life runs at 30 fps for now** (the owner, after comparing 10 and 20 by eye: both read choppy).
+  Push on the visuals first; one **performance pass** over all of it comes once the look settles.
+  Its starting points: life costs frames, not characters (stream J's profile); the 100 ms beat grid
+  is in place, so a lower rate (`?lifefps=`) still shows every blink; render only the rooms on
+  camera; skip springs on settled puppets.
 - Rerun the full e2e suite and `tools/profile.sh` on a quiet machine: every wave 3 stream and the
   merge ran under a load average of 35 to 80, where Chrome times out.
 

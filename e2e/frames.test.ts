@@ -131,14 +131,14 @@ describe(`frame budgets (${theme})`, () => {
 });
 
 describe("life and the off-screen freeze", () => {
-	test("a visible idle office lives (blinks, glances) at no more than 10 fps, life's beat grid", async () => {
+	test("a visible idle office lives (blinks, glances) at no more than 30 fps", async () => {
 		const page = await open("demo=idle&settle=600000");
 		const c = await measure(page, 2000);
 		expect(c.life).toBe(true);
 		expect(c.tickerRunning).toBe(true);
-		expect(c.maxFPS).toBe(10);
+		expect(c.maxFPS).toBe(30);
 		expect(c.renders).toBeGreaterThan(0);
-		expect(c.renders).toBeLessThanOrEqual(24); // 10 fps over 2 s, plus slack for timer edges
+		expect(c.renders).toBeLessThanOrEqual(64); // 30 fps over 2 s, plus slack for timer edges
 		await page.close();
 	}, T);
 
