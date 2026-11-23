@@ -1097,3 +1097,55 @@ settings sheet gained Sound and Calm office beside Theme, saved and synced with 
 new `setToggles` RPC request. Every stream's e2e run was under a load average of 40 to 370 from the
 others, where the unchanged base failed the same way; the suite was rerun here once the machine was
 quiet.
+
+## 2026-11-22: lived in, wave 3, stream I (story and continuity)
+
+**A diary of counts and kinds, kept by the Bun process.** The office remembers through
+`diary.json`, next to `settings.json` in the app's data folder (`src/bun/diary.ts`), never in the
+repo. Per local day it holds counts (sessions, hires, PRs opened and merged, red test runs, red
+streaks fixed, sessions finished and long ones, compactions), the same by project, the regulars who
+came in, and marks that stop a restart counting the same thing twice. Nothing in it names anything:
+a project is `p` plus a 32-bit FNV hash of its name, a regular is that hash and one of the rig's
+seven costumes (never the agent tool's free-text agent type), a mark is a hash. `diaryOf` reads any
+input back through a whitelist (kinds, `YYYY-MM-DD` days, hash-shaped keys), so a hand-edited or
+torn file cannot carry text in. It keeps 21 days and at most 3000 marks a day (a busy day is a few
+kilobytes); writes are a temp file renamed over the old one, held back 5 s so a busy office writes
+it every few seconds at most, and flushed on exit. The pure part (`src/shared/diary.ts`) is shared:
+the webview gets the diary over RPC (a `diary` request on load, a `diary` message whenever it
+changes, sent just before the snapshot that changed it), and `?demo` keeps one in memory from its
+own invented snapshots with the same code.
+
+**Beats live in the director; decor lives on the walls.** The story's beats are pure, in
+`director/story.ts`, with their memory in `World.story` so a replay tells the same story; direct.ts
+calls in at a few marked places. A merged PR (the `prs[].state` the watcher already captured) sends
+the lead to the room's outbox for the reply: it reaches in (`mailDrop`), carries it back
+(`envelopeCarry`) and celebrates with a busy teammate, or waves to you alone. A red streak
+(`DIARY.reds` = 2 red runs in a row, per character) going green earns a `flourish`, and the crew
+look up at it through the same ripple a red test uses. A session that ran 90 minutes or more gets a
+send-off when it ends: up to five characters standing in its room (then the lobby and kitchen) wave,
+the nearest first, 260 ms apart, looking at it as it walks out. A PR or a test already in that state
+when the office first sees it is history, not news. All of these reuse existing poses, so the rig and
+its pose sheet are unchanged.
+
+**"While you were out" and the day's ledger share the lobby's frame.** The director logs its beats
+(12 hours, 200 entries). Coming back after a while away (the view now carries `since`, when the
+window went, beside `back`), the counts between the two go up on the lobby's frame for 90 s. At dusk
+and night the frame shows the day's ledger from the diary. Otherwise it keeps whatever it said; the
+office restores it when the story lets go.
+
+**Rooms collect decor through the week** (`office/decor.ts`, its own layer over the walls, redrawn
+only when it changes, never per frame): a framed PR per merge this week in the gaps between the
+back wall's items, a pennant per day the project came in over its planner, a gold star on its sign
+per red streak fixed. Colours come from the theme's slab, lamp, glow, sky and lawn, and the words
+from a table by theme id with the office's as the default, so a new theme draws it unchanged.
+
+**Regulars are keyed by project and costume.** `regularsOf` gives each character
+`<project key>:<role>:<n>` (n its place among the same costume in that project); `regularOf` picks a
+short name and maybe glasses from the key alone, and the puppet takes the key as its id, so its loop
+phases and variants are the regular's own day after day. The name shows on the lead's desk card and
+on crew task tags only once the diary has seen that regular on two days.
+
+**What is left.** The framed PR goes up when the diary hears of the merge, not when the lead gets
+back with the reply. Regulars have only glasses for an accessory; more would need new parts in
+every theme's rig painters. Send-off wavers interrupt busy work for one wave; a quieter office
+might skip the busy ones.

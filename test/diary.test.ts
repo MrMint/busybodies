@@ -16,7 +16,7 @@ const session = (id: string, extra: Partial<Session> = {}): Session => ({
 	id,
 	pid: 1,
 	title: "Teach the kettle to whistle in tune",
-	cwd: "/home/someone/code/kettle-works",
+	cwd: "/Users/you/code/kettle-works",
 	project: "kettle-works",
 	branch: "tune-the-whistle",
 	origin: "cli",
@@ -52,7 +52,7 @@ describe("the diary", () => {
 		const s = session("s1", { agents: [agent("a1", "kettle-whisperer")], prs: [{ number: 3, url: "https://example.invalid/kettle-works/pull/3", repo: "someone/kettle-works", state: "MERGED" }] });
 		const d = noteSnapshot(emptyDiary(), mem, snap(T0, [s]), { day });
 		const text = JSON.stringify(d);
-		for (const word of ["kettle", "whistle", "tune", "someone", "home", "code", "example", "Explore", "whisperer", "s1", "a1"]) expect(text).not.toContain(word);
+		for (const word of ["kettle", "whistle", "tune", "someone", "Users", "code", "example", "Explore", "whisperer", "s1", "a1"]) expect(text).not.toContain(word);
 	});
 
 	test("a red streak that goes green is a redemption; one red then green is not", () => {
