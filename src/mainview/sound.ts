@@ -320,6 +320,9 @@ function glide(param: AudioParam, to: number, now: number, tau: number): void {
 	param.setTargetAtTime(to, now, tau);
 }
 
+/** The room tone's level while a character speaks (speech.ts). */
+const DUCK = 0.35;
+
 export class Sound {
 	#host: SoundHost;
 	#enabled: boolean;
@@ -409,6 +412,20 @@ export class Sound {
 		const cues = this.#ears.hear(events, world);
 		this.#heat = heatOf(world);
 		for (const cue of cues) this.#play(cue);
+	}
+
+	/** For the speech player (speech.ts): the running context and the master bus, while live. */
+	bus(): { ctx: AudioContext; out: AudioNode } | undefined {
+		return this.#live && this.#ctx && this.#master ? { ctx: this.#ctx, out: this.#master } : undefined;
+	}
+
+	/** Dip the room tone under a line of speech `secs` long, from `at` (the context's seconds). */
+	duck(at: number, secs: number): void {
+		const g = this.#tone?.out.gain;
+		if (!g || !this.#ctx) return;
+		g.cancelScheduledValues(this.#ctx.currentTime);
+		g.setTargetAtTime(DUCK, at, 0.08);
+		g.setTargetAtTime(1, at + secs, 0.4);
 	}
 
 	state(): SoundState {
