@@ -222,7 +222,7 @@ export class Office extends Container {
 	/** True while anything has frames to draw, life included. */
 	get animating(): boolean {
 		if (this.acting) return true;
-		if (this.#life) for (const p of this.#people.values()) if (p.alive) return true;
+		for (const p of this.#people.values()) if (p.animating || (this.#life && p.alive)) return true;
 		return false;
 	}
 
@@ -235,7 +235,8 @@ export class Office extends Container {
 		// A room in rush flickers its light at the acting rate, while life is on (never when calm).
 		if (this.#life && this.#light.flickering) return true;
 		for (const a of this.#arms.values()) if (a.arm.moving) return true;
-		for (const p of this.#people.values()) if (p.animating) return true;
+		// An idle or finished character's habit is ambient life: drawn at the life rate.
+		for (const p of this.#people.values()) if (p.animating && !p.ambient) return true;
 		return false;
 	}
 

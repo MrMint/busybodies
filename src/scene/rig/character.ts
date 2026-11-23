@@ -92,6 +92,10 @@ class RigCharacter implements Character {
 		this.puppet.life = on;
 	}
 
+	get ambient(): boolean {
+		return !this.moving && (this.#who.mood === "idle" || this.#who.mood === "done");
+	}
+
 	get alive(): boolean {
 		return !this.#gone && this.puppet.alive;
 	}

@@ -61,7 +61,8 @@ async function settle(page: Page): Promise<Snapshot> {
 
 describe("compact: a live camera", () => {
 	test("an idle office rests on the whole office; news cuts with a 60 fps camera move, then it goes quiet (calm)", async () => {
-		const page = await open("demo=idle&calm");
+		// The voice is held back (?settle): this measures the camera, and a bubble is a render.
+		const page = await open("demo=idle&calm&settle=600000");
 		const first = await shot(page);
 		expect(first.cuts).toBe(0);
 		const s = await settle(page);

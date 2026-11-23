@@ -46,6 +46,9 @@ export interface Character {
 	life?: boolean;
 	/** Optional: true while life keeps it moving with nothing else to play. */
 	readonly alive?: boolean;
+	/** Optional: true when what it plays is ambient (an idle or finished character's habit, not a
+	 * walk): the office draws that at the life rate, not the acting rate. */
+	readonly ambient?: boolean;
 	/** Optional: back to the start of its pose, settled (the inspector's freeze, so step(n) is the
 	 * same however long the page ran first). */
 	rewind?(): void;
