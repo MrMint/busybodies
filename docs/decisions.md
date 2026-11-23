@@ -1355,6 +1355,8 @@ git. A director test checks that its crew still wears six costumes.
 
 ## 2026-11-22: the lead is the star (desk art direction)
 
+*Where crew stand is partly superseded by "2026-11-22: the room pass (art direction)" below.*
+
 **The lead's face is a keep-out zone.** At the room and desk stops the lead was buried: a solid
 ink screen over one cheek, the crew build over the other, the in-tray over its mouth. Now nothing
 drawn at a desk in front of its lead meets its face (`faceZone` in office/world.ts: the torso's
@@ -1508,3 +1510,50 @@ named the office's things got bakery wordings in `themed`, two of them matched t
 lines so the bank doesn't say them twice. The bakers' first idle habits are their own (rig/poses.ts,
 played by name, never by the idle trigger): a cappuccino, a sneaked macaron, a lick of the cake
 fork, a nap on a flour sack (the bakery repaints the drum as one).
+
+## 2026-11-23: end places, line bays, the plant and the foreman's corner
+
+**An end place keeps the tower in its gap clear.** The fifth crew member at Ship release 2.4 stood
+on its right end place, the middle of the gap to Export endpoint (110 px from its desk), and that
+gap holds Export endpoint's tower (a build starts 87 px left of its desk's centre, so 133 px from
+ours): the 61 px body covered 8 px of the tower's 41, a fifth of a one-course tower. `endGaps`
+(world.ts) now takes the gap's middle unless a body there would stand on the tower in the gap, and
+then stands just left of its bricks (102 px out), which still clears its own name card (there are
+61.4 px between the card and the tower, and a body is 61.4 wide). A left end's tower is the desk's
+own build, so a left end moves out by the same rule (118 px). An end with no tower in its gap (the
+first preference) exists only on the right with no desk beyond, and that one already stands at the
+middle. A test holds every crew member on an end place under 15% of every tower's drawn box, one,
+three and ten courses high, in both stagings.
+
+**A line's pair stands in front of its belt only over open floor.** The factory gave each bay five
+spots: three behind the belt, a pair 114 px down in front of it. In a front-row bay the pair stood
+off the room's floor, so `crewPlaces` dropped them, squeezed four abreast at 42 px and put the
+fifth on the end place: that was the bunch in the lanternfish room. In a back-row bay, untested, it
+was worse: the pair stood on the next row's desk and booth, over that lead's face, and a crowd row
+landed there too. The belt is at +62 and the next row's booth roof reaches down to +42, so there is
+floor in front of a belt only when the cell in front has no desk. Now a line's own spots are
+`LINE` (three and the pair) when that cell is open floor, else `LINE_ABREAST`: four behind the belt
+at the aisle's places (±81 and ±27, overlapping about 12%), all facing downstream; a fifth takes
+the end place as in the office, and a line without open floor keeps any crowd on its own cell's
+floor. We chose four and the end over five behind the belt at 43 px: five passed the 35% box cap
+(28%), but with hard hats and arms drawn they read as a pile and their task pills overlapped. The
+trade is that the fifth stands beside the desk ends, off the line. Tests hold, at 1 to 6 crew at
+every desk of four demo days at once: no two crew overlapping by more than 35% of a box (across
+desks too, unless a desk's crew squeezes, which can still reach a neighbour's cell when a desk has
+no free end), no lead's face covered, and no one's face behind, or feet below the roof of, another
+row's desk and booth. On a line, a bare cell with a desk in front of it lifts its spots 14 px
+(`BARE_LINE_LIFT`): that desk's booth roof reaches up into the cell, and the second pair stood on it.
+
+**A poster gives way to the plant.** The corner plant stands against the back wall, and the office's
+posters (theme/office.ts `posterSpots`) filled the bare wall up to the room's end, so a poster sat
+6 px from the leaves. A plant against the back wall now counts as taken wall (its leaves, 24 left
+and 22 right of its base, and 8 px of air each side): the poster centres in what is left, or is
+dropped. Below the hallway the plant stands 113 px from the room's right edge, its leaves 6 px clear
+of the door.
+
+**The foreman's office is furnished.** The office's boss corner has a factory twin in the same
+footprint (`foremanCorner`, theme/factory.ts), so it meets nothing the room has: a clipboard on a
+nail where the picture hangs, a faint rubber mat with hazard edges where the rug lies, a slate
+two-door locker where the armchair stands (vents, a smiley magnet, a scuff, the right door ajar on
+a hi-vis sleeve, a yellow hard hat on a hook at its side), and a crate for a side table with a
+thermos and a lunch tin where the bookcase is. Baked into the room's Graphics like the boss's.

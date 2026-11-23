@@ -18,9 +18,11 @@ const dots = (cy: number, r: number) =>
 	`<circle cx="${12.3 + 1.2}" cy="${cy}" r="${r}"/><circle cx="${23.7 + 1.2}" cy="${cy}" r="${r}"/>`;
 
 const FACES: Record<string, { cut: string; dots: string; extra: string }> = {
-	// Wide eyes, a short determined mouth, and a bead of sweat.
+	// Wide eyes, a short flat mouth (concentration), and a bead of sweat. The mouth sits low, on the
+	// pixel grid at 1x and 2x, so there are 2 points of clear body between it and each eye (keep at
+	// least 1.5 at the 18-point menu-bar size, or the lower face clots into one blob).
 	busy: {
-		cut: `${eyes(18.5, 3.4, 4.2)}<rect x="16.2" y="23" width="3.6" height="1.8" rx="0.9"/>`,
+		cut: `${eyes(18.5, 3.4, 4.2)}<rect x="16" y="26" width="4" height="2" rx="1"/>`,
 		dots: dots(16.9, 1.1),
 		extra: '<path d="M32.5 6 C34.5 9 34.5 11 32.5 12 C30.5 11 30.5 9 32.5 6 Z"/>',
 	},

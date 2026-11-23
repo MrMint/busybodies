@@ -335,8 +335,9 @@ function dressRoom(a: Area): void {
 	if (a.band === "bottom") a.wall.push({ kind: "door", rect: { x: x + w - 82, y: y + 14, w: 60, h: WALL - 14 } });
 	// The plant stands at the back, behind the shredder: in the right corner, or (below the hallway,
 	// where the door has that corner) just left of the door. The front corner is where the rightmost
-	// desk's crew stand (its outer place reaches the side wall).
-	a.fixtures.push(fixture("plant", a.band === "bottom" ? x + w - 102 : x + w - 24, a.floorY + 6));
+	// desk's crew stand (its outer place reaches the side wall). By the door, its leaves (22 right of
+	// its base) keep 6 px clear of the door frame.
+	a.fixtures.push(fixture("plant", a.band === "bottom" ? x + w - 113 : x + w - 24, a.floorY + 6));
 }
 
 function meeting(a: Area): void {

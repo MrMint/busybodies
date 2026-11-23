@@ -257,13 +257,20 @@ function mugWall(g: Graphics, a: Area): Container {
 	return t;
 }
 
+/** The ficus's leaves (`ficus`), left and right of its base x, and the air a poster keeps from them. */
+const PLANT_LEAVES = { left: 24, right: 22, air: 8 } as const;
+
 /** Bare stretches of back wall, between the wall items and the room's ends: a poster's place in
  * each one wide enough (the layout decides what hangs where; this only fills what it left). */
 function posterSpots(a: Area): Rect[] {
 	const { x, y, w } = a.rect;
-	const taken = a.wall.map((it) => [it.rect.x, it.rect.x + it.rect.w] as const).sort((p, q) => p[0] - q[0]);
+	const taken: (readonly [number, number])[] = a.wall.map((it) => [it.rect.x, it.rect.x + it.rect.w] as const);
 	// The kitchen's mug wall and the fridge in front of the wall are taken too.
 	if (a.kind === "kitchen") taken.push([x, x + 196]);
+	// So is a plant standing against the back wall (not one out on the floor): its leaves reach up it.
+	for (const f of a.fixtures) {
+		if (f.kind === "plant" && Math.abs(f.y - a.floorY) <= 20) taken.push([f.x - PLANT_LEAVES.left - PLANT_LEAVES.air, f.x + PLANT_LEAVES.right + PLANT_LEAVES.air]);
+	}
 	taken.sort((p, q) => p[0] - q[0]);
 	const spots: Rect[] = [];
 	let from = x + 18;
