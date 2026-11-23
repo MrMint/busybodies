@@ -6,7 +6,7 @@ import type { Container, Graphics } from "pixi.js";
 import type { DeskProps, Lamp, PlannerRow, Tray } from "../director/metrics";
 import type { Who } from "../office/slot";
 import type { Phase } from "../office/daylight";
-import type { Area, AreaKind, Fixture, Rect } from "../office/world";
+import type { Area, AreaKind, Band, Fixture, Rect } from "../office/world";
 import type { SceneStaging } from "../office/staging";
 import type { ThemeId } from "./id";
 import type { SignText, ThemeWords } from "./words";
@@ -94,6 +94,13 @@ export interface SceneTheme {
 	desk: DeskPainters;
 	/** The room's planner of todos, a colour per session. */
 	planner(r: Rect, rows: PlannerRow[]): Container;
+	/** A room's own rug colours under its desks (the paper pass's `rug`); none: a pale sheet over
+	 * whatever floor it has. */
+	rug?(a: Area): { fill: number; edge: number } | undefined;
+	/** A gap in the building's footprint (`World.yards`: where a band of rooms is shorter than the
+	 * building), made a place outside: a patio, a yard. Baked with the rooms. `band`: which side of
+	 * the hallway it is on. */
+	patio(g: Graphics, r: Rect, band: Band): void;
 	/** The crew's build on the desk's left end (world.ts BUILD is its geometry). */
 	crewBuild(b: CrewBuild, seed: string): DrawnBuild;
 	/** Who keeps an empty office company (napping in the lobby's pod). */

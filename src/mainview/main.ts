@@ -345,7 +345,7 @@ function blank(): void {
 		const name = params.get("demo");
 		// ?demo=day-N: the demo day's first N beats, played at once (for screenshots of a beat).
 		const beat = name?.match(/^day-(\d)$/);
-		const day = demo(beat ? null : name);
+		const day = demo(beat ? null : name, theme);
 		for (const [id, sign] of Object.entries(day.signs)) office.setSign(id, sign);
 		// ?demo=story keeps its own diary: an invented week before, today from its own snapshots.
 		// The other demos keep none, so their walls and boards look the same at any hour.

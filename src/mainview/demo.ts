@@ -17,6 +17,9 @@
 //   ?demo=empty   nobody's in; ?demo=nohome: no coding agent found (add &compact for the small window)
 // The clock is fixed, so the same demo always draws the same frames.
 import type { SignText } from "../scene/office/paper";
+import { LINES, linesIn } from "../scene/sass/lines";
+import { signText } from "../scene/sass/voice";
+import { DEFAULT_THEME, type ThemeId } from "../scene/theme/id";
 import { type Diary, DIARY_KINDS, type DiaryDay, localDay, projectKey } from "../shared/diary";
 import type { Agent, Session, Snapshot } from "../watcher/model";
 
@@ -122,11 +125,23 @@ const FLOOR_BUSY_SIGNS: Record<string, SignText> = {
 	"room:lanternfish:sign": { title: "CAUTION", body: "scouts running" },
 	"room:orbit-kit:sign": { title: "PRS TODAY: 4", body: "Humility: 0" },
 	"room:orbit-kit:board": { title: "PAGE 2 LOADS", body: "Nobody touch anything." },
-	"room:breadbox:sign": { title: "NOW SERVING: NOBODY", body: "Your number: 1" },
 	"room:mossy-docs:sign": { title: "THE COMPACTOR", body: "Memories in. Vibes out." },
-	"room:kettle-api:sign": { title: "IDLE: 31 MIN", body: "Plant: also idle." },
 	"meeting:board": { title: "PR #212 · round 2", body: "Same diff. Same no." },
 };
+
+/** A bank line's sign as `theme` words it (sass/lines.ts `themed`), `{min}` filled in. */
+function bankSign(theme: ThemeId, office: string, idleMin = 0): SignText {
+	const i = LINES.findIndex((l) => l.text === office);
+	const text = i < 0 ? office : linesIn(theme)[i]!.text;
+	return signText(text.replace("{min}", String(idleMin)));
+}
+
+/** FloorBusy's walls in `theme`'s words: the bank's lines follow the theme, the rest are neutral. */
+const floorBusySigns = (theme: ThemeId): Record<string, SignText> => ({
+	...FLOOR_BUSY_SIGNS,
+	"room:breadbox:sign": bankSign(theme, "Now serving: nobody. Your number: 1."),
+	"room:kettle-api:sign": bankSign(theme, "Idle: {min} min. Plant: also idle.", 31),
+});
 
 /** The same office after hours: every session idle, every agent finished. */
 export const asleep = (snap: Snapshot): Snapshot => {
@@ -499,10 +514,10 @@ export interface DemoDay {
 	signs: Record<string, SignText>;
 }
 
-export function demo(name: string | null): DemoDay {
+export function demo(name: string | null, theme: ThemeId = DEFAULT_THEME): DemoDay {
 	switch (name) {
 		case "idle":
-			return { snapshot: asleep(floorBusy()), signs: FLOOR_BUSY_SIGNS };
+			return { snapshot: asleep(floorBusy()), signs: floorBusySigns(theme) };
 		case "one":
 			return { snapshot: one(), signs: {} };
 		case "thirty":
@@ -522,7 +537,7 @@ export function demo(name: string | null): DemoDay {
 		case "nohome":
 			return { snapshot: { at: NOW, sessions: [] }, signs: {} };
 		default:
-			return { snapshot: floorBusy(), signs: FLOOR_BUSY_SIGNS };
+			return { snapshot: floorBusy(), signs: floorBusySigns(theme) };
 	}
 }
 

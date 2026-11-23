@@ -27,6 +27,7 @@ import {
 	MIN_ROWS,
 	ROW,
 	type Rect,
+	SEAT,
 	SIDE,
 	STATION_FURNITURE,
 	STRIP,
@@ -35,6 +36,7 @@ import {
 	WALL,
 	type WallItem,
 	type World,
+	type Yard,
 	beltsFor,
 	roomHeight,
 	roomWidth,
@@ -185,12 +187,40 @@ export class FloorPlan {
 		const staging = { ...this.#staging };
 		const mid = HALL / 2;
 		const conveyor = staging.hall === "conveyor" ? { y: mid, x0: 0, x1: right, dock: { x: right - DOCK_W / 2, y: mid } } : undefined;
-		return { bounds: { x: 0, y: top, w: right, h: bottom - top }, hallway, areas, desks, signs, staging, ...(conveyor ? { conveyor } : {}) };
+		const yards = yardsOf(areas, right, top, bottom);
+		return { bounds: { x: 0, y: top, w: right, h: bottom - top }, hallway, areas, desks, signs, yards, staging, ...(conveyor ? { conveyor } : {}) };
 	}
 }
 
 /** The dock at the hallway's right end (staging `conveyor`): this wide. */
 export const DOCK_W = 56;
+
+/**
+ * The footprint's gaps: in each band, past its last room (the hallway runs the building's whole
+ * width, so the shorter band leaves a block), and outside any room shallower than its band. Strips
+ * side by side at the same depth are one gap.
+ */
+export function yardsOf(areas: Area[], right: number, top: number, bottom: number): Yard[] {
+	const out: Yard[] = [];
+	for (const band of ["top", "bottom"] as Band[]) {
+		const rooms = areas.filter((a) => a.band === band).sort((a, b) => a.rect.x - b.rect.x);
+		const strips: Rect[] = [];
+		const edge = band === "top" ? top : bottom;
+		const near = band === "top" ? 0 : HALL;
+		for (const a of rooms) {
+			const depth = band === "top" ? a.rect.y - top : bottom - (a.rect.y + a.rect.h);
+			if (depth > 0) strips.push({ x: a.rect.x, y: band === "top" ? top : a.rect.y + a.rect.h, w: a.rect.w, h: depth });
+		}
+		const end = rooms.reduce((x, a) => Math.max(x, a.rect.x + a.rect.w), 0);
+		if (right > end) strips.push({ x: end, y: Math.min(edge, near), w: right - end, h: Math.abs(edge - near) });
+		for (const r of strips) {
+			const last = out[out.length - 1];
+			if (last && last.band === band && last.rect.y === r.y && last.rect.h === r.h && last.rect.x + last.rect.w === r.x) last.rect.w += r.w;
+			else if (r.w > 0 && r.h > 0) out.push({ rect: { ...r }, band });
+		}
+	}
+	return out;
+}
 
 function common(kind: "meeting" | "lobby" | "yours" | "kitchen", band: Band): Room {
 	return { key: kind, kind, band, width: COMMON_W[kind], cols: 0, cells: [] };
@@ -268,9 +298,10 @@ function cellRect(room: Room, x: number, i: number): Rect {
 
 function desk(id: string, areaId: string, room: Room, i: number, cell: Rect): Desk {
 	const at = { x: cell.x + CELL_W / 2, y: cell.y + 78 };
-	// The lead stands behind the desk, its face just above the desk top, beside the screen.
-	const lead: Slot = { x: at.x - 26, y: cell.y + 36, depth: cell.y + 36, facing: 1 };
-	const chair: Fixture = { kind: "chair", x: lead.x, y: cell.y + 32, depth: cell.y + 32 };
+	// The lead stands behind the desk (SEAT), its whole face above the desk top, between the crew
+	// build and the screen.
+	const lead: Slot = { x: at.x + SEAT.x, y: at.y + SEAT.y, depth: at.y + SEAT.y, facing: 1 };
+	const chair: Fixture = { kind: "chair", x: lead.x, y: lead.y - 4, depth: lead.y - 4 };
 	return { id, areaId, col: i % room.cols, row: Math.floor(i / room.cols), cell, at, lead, chair };
 }
 
@@ -302,8 +333,10 @@ function dressRoom(a: Area): void {
 		at += ww + 26;
 	}
 	if (a.band === "bottom") a.wall.push({ kind: "door", rect: { x: x + w - 82, y: y + 14, w: 60, h: WALL - 14 } });
-	const front = a.band === "top" ? y + a.rect.h - FRONT - 4 : y + a.rect.h - FRONT - 4;
-	a.fixtures.push(fixture("plant", x + w - 26, front));
+	// The plant stands at the back, behind the shredder: in the right corner, or (below the hallway,
+	// where the door has that corner) just left of the door. The front corner is where the rightmost
+	// desk's crew stand (its outer place reaches the side wall).
+	a.fixtures.push(fixture("plant", a.band === "bottom" ? x + w - 102 : x + w - 24, a.floorY + 6));
 }
 
 function meeting(a: Area): void {

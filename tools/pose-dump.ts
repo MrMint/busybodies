@@ -1,10 +1,13 @@
 // tools/pose-dump.ts [pose...]: print every pose (or the named ones) as text, one line per frame,
-// so a pose can be reviewed by reading. No renderer needed. Parts not printed are at rest.
+// so a pose can be reviewed by reading. No renderer needed. Parts not printed are at rest. A theme
+// that names a pose its own way (theme/words.ts) gets an "in the <theme>" line.
 //   bun tools/pose-dump.ts            every pose
 //   bun tools/pose-dump.ts waiting    one pose
 // Pixi-free modules only, so this runs under plain Bun.
 import { describe } from "../src/scene/rig/frame";
 import { BEAT_MS, POSES, type Pose, duration } from "../src/scene/rig/poses";
+import { THEME_IDS } from "../src/scene/theme/id";
+import { wordsFor } from "../src/scene/theme/words";
 
 const pick = process.argv.slice(2);
 const poses = pick.length ? POSES.filter((p) => pick.includes(p.name)) : POSES.filter((p) => p.name !== "rest");
@@ -28,6 +31,11 @@ for (const p of poses) {
 	console.log(`${p.name}: ${p.title}`);
 	console.log(`  on ${p.trigger}${rare}, ${p.play}${p.habit ? ", slacking habit" : ""}${roles}; ${p.frames.length} frames, ${duration(p.frames)} ms (${duration(p.frames) / BEAT_MS} beats)`);
 	if (p.lines.length) console.log(`  may say: ${p.lines.map((l) => `"${l}"`).join(" ")}`);
+	// A theme that paints different things in the hands names the pose its own way (theme/words.ts).
+	for (const id of THEME_IDS) {
+		const w = wordsFor(id).poses[p.name];
+		if (w) console.log(`  in the ${id}: ${[w.title, w.lines && `may say: ${w.lines.map((l) => `"${l}"`).join(" ")}`].filter(Boolean).join("; ")}`);
+	}
 	if (p.partner) {
 		console.log(block("lead ", p.frames));
 		console.log(block(`${p.partner.role.padEnd(5).slice(0, 5)}`, p.partner.frames));

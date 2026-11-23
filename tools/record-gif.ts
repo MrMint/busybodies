@@ -45,7 +45,8 @@ const texts = new Set<string>();
 let n = 0;
 try {
 	const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: 1 });
-	await page.goto(`http://localhost:${server.port}/?inspect&frozen&demo=day-1`);
+	// The hour is pinned (as tools/shoot.ts does), so the light never depends on when this runs.
+	await page.goto(`http://localhost:${server.port}/?inspect&frozen&demo=day-1&hour=14`);
 	await page.waitForFunction(() => window.__busybodies?.ready === true, undefined, { timeout: 20_000 });
 
 	const frame = async () => {

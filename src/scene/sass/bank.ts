@@ -6,7 +6,7 @@
 import type { ThemeId } from "../theme/id";
 import { BAKERY_LINES } from "./lines-bakery";
 import { FACTORY_LINES } from "./lines-factory";
-import { type Line, LINES } from "./lines";
+import { type Line, LINES, linesIn } from "./lines";
 
 /** What the counters write (signs.ts). The first three are sign lines in the bank. */
 export interface CounterWords {
@@ -26,12 +26,25 @@ export interface SassBank {
 	counters: CounterWords;
 }
 
+/** The shared lines in a theme's words, then its own (any the shared lines already say left out). */
+const bankOf = (theme: ThemeId, own: Line[]): Line[] => {
+	const shared = sharedIn(theme);
+	const said = new Set(shared.map((l) => l.text));
+	return [...shared, ...own.filter((l) => !said.has(l.text))];
+};
+
 /** Lines that fit any theme: the office's, less the ones that name its furniture. */
 export const ANYWHERE_LINES: Line[] = LINES.filter((l) => !l.office);
 
+/** The shared lines a theme says, in its words: the office-only ones only where it has its own. */
+export const sharedIn = (theme: ThemeId): Line[] =>
+	linesIn(theme)
+		.filter((_, i) => theme === "office" || !LINES[i]!.office || LINES[i]!.themed?.[theme])
+		.map((l) => (theme !== "office" && l.office ? { ...l, office: undefined } : l));
+
 export const OFFICE_SASS: SassBank = {
 	theme: "office",
-	lines: LINES,
+	lines: sharedIn("office"),
 	counters: {
 		daysSince: "Days since a test broke: {n}",
 		failStreak: "Fail streak: {n}. New personal best.",
@@ -42,7 +55,7 @@ export const OFFICE_SASS: SassBank = {
 
 export const FACTORY_SASS: SassBank = {
 	theme: "factory",
-	lines: [...ANYWHERE_LINES, ...FACTORY_LINES],
+	lines: bankOf("factory", FACTORY_LINES),
 	counters: {
 		daysSince: "Days without incident: {n}",
 		failStreak: "Rejects this shift: {n}. A record.",
@@ -53,7 +66,7 @@ export const FACTORY_SASS: SassBank = {
 
 export const BAKERY_SASS: SassBank = {
 	theme: "bakery",
-	lines: [...ANYWHERE_LINES, ...BAKERY_LINES],
+	lines: bankOf("bakery", BAKERY_LINES),
 	counters: {
 		daysSince: "Days since a soufflé fell: {n}",
 		failStreak: "Burnt batches: {n}. Smoke alarm: hoarse.",

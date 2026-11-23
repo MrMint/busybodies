@@ -150,100 +150,132 @@ export function paperTheme(p: Palette = PAPER_PALETTE): Theme {
 	};
 
 	// Face ------------------------------------------------------------------------------------------
+	// The eyes are big, glossy and low (reach.ts ANCHORS): a rest eye 20 wide with a violet glow in
+	// its lower half and two highlights; the rest of the set drawn to match, `shine` and `tear`
+	// bigger and sparklier still. The puppet mirrors the right eye (but not `side`), so `squint`
+	// points at the nose and `tear` runs from the outer edge.
+	const RX = 10;
+	const RY = 12.4;
+	const GLOW = 0x7b68e0;
+	/** The part of the rest ellipse below a lid line at `lid`, as a polygon. */
+	const lower = (lid: number): number[] => {
+		const t0 = Math.asin(lid / RY);
+		const pts: number[] = [];
+		for (let k = 0; k <= 24; k++) {
+			const t = t0 + ((Math.PI - 2 * t0) * k) / 24;
+			pts.push(RX * Math.cos(t), RY * Math.sin(t));
+		}
+		return pts;
+	};
+	const glossy = (g: Graphics, glow: number, gx: number, gy: number, k: number) => {
+		g.ellipse(0, RY * 0.5, gx, gy).fill({ color: glow, alpha: 0.9 });
+		g.circle(3, -4.5, 3.7 * k).fill(0xffffff);
+		g.circle(-3.6, 3.7, 1.7 * k).fill(0xffffff);
+	};
+	const twinkle = (g: Graphics, x: number, y: number, r: number) => {
+		const i = r * 0.3;
+		g.poly([x, y - r, x + i, y - i, x + r, y, x + i, y + i, x, y + r, x - i, y + i, x - r, y, x - i, y - i]).fill(0xffffff);
+	};
 	const eye: Record<(typeof EYES)[number], Painter> = {
 		rest: (g) => {
-			g.ellipse(0, 0, 4.2, 5.4).fill(ink);
-			g.circle(1.3, -1.8, 1.5).fill(0xffffff);
+			g.ellipse(0, 0, RX, RY).fill(ink);
+			g.ellipse(0, RY * 0.5, RX * 0.62, RY * 0.33).fill({ color: GLOW, alpha: 0.85 });
+			g.circle(3, -4.5, 3.7).fill(0xffffff);
+			g.circle(-3.6, 3.7, 1.7).fill(0xffffff);
 		},
 		wide: (g) => {
-			g.circle(0, 0, 6.6).fill(0xffffff).stroke({ width: 2.2, color: ink });
-			g.circle(0, 0.6, 3.2).fill(ink);
-			g.circle(1, -0.6, 1).fill(0xffffff);
+			g.ellipse(0, 0, 11.2, 13).fill(0xffffff).stroke({ width: W.part, color: ink });
+			g.circle(0, 1, 4.2).fill(ink);
+			g.circle(1.4, -0.5, 1.4).fill(0xffffff);
 		},
 		shine: (g) => {
-			g.ellipse(0, 0, 5.8, 7).fill(ink);
-			g.circle(1.8, -2.4, 2.1).fill(0xffffff);
-			g.circle(-1.9, 2.4, 1.1).fill(0xffffff);
+			g.ellipse(0, 0, 11, 13.4).fill(ink);
+			glossy(g, 0x8f7bff, 7.4, 5, 1.25);
+			twinkle(g, 2.2, 4, 2.9);
 		},
 		tear: (g) => {
-			g.ellipse(0, 0, 5.8, 7).fill(ink);
-			g.circle(1.8, -2.4, 2.1).fill(0xffffff);
-			g.circle(-1.9, 2.4, 1.1).fill(0xffffff);
-			g.moveTo(-3, 6).quadraticCurveTo(-6, 11, -3, 13).quadraticCurveTo(0, 11, -3, 6).fill(p.tear).stroke({ width: 1, color: ink });
+			g.ellipse(0, 0, 11, 13.4).fill(ink);
+			glossy(g, p.tear, 8, 5.2, 1.25);
+			g.moveTo(-5, 11.8).quadraticCurveTo(-8.4, 18.3, -5, 20.8).quadraticCurveTo(-1.6, 18.3, -5, 11.8).fill(p.tear).stroke({ width: 1.3, color: ink });
 		},
-		squint: (g) => line(g, [-4, -4, 3, 0, -4, 4], 2.6, ink),
+		squint: (g) => line(g, [-9, -6.2, 6, 0, -9, 6.2], 4, ink),
 		happy: (g) => {
-			g.arc(0, 3, 5, Math.PI + 0.25, -0.25).stroke({ width: 2.6, color: ink, cap: "round" });
+			g.moveTo(-10, 3.7).quadraticCurveTo(0, -11.8, 10, 3.7).stroke({ width: 4, color: ink, cap: "round" });
 		},
 		half: (g) => {
-			g.arc(0, -0.5, 5, 0, Math.PI).fill(ink);
-			line(g, [-6, -0.5, 6, -0.5], 2.4, ink);
+			g.poly(lower(-1)).fill(ink);
+			g.ellipse(0, 6.4, 5.6, 3.2).fill({ color: GLOW, alpha: 0.85 });
+			g.circle(3, 2.5, 2).fill(0xffffff);
+			line(g, [-11.5, -1, 11.5, -1], 3.6, ink);
 		},
 		star: (g) => {
-			g.star(0, 0, 5, 7, 3.2, 0).fill(ink);
+			g.star(0, 0, 5, 12, 5.4, 0).fill(p.sun).stroke({ width: 2.4, color: ink, join: "round" });
 		},
 		side: (g) => {
-			g.ellipse(0, 0, 5.6, 4.6).fill(0xffffff).stroke({ width: 2, color: ink });
-			g.circle(2.8, 0.6, 2.4).fill(ink);
-			line(g, [-6, -2.4, 6, -2.4], 2.4, ink);
+			g.poly(lower(-2.5)).fill(0xffffff).stroke({ width: 2.4, color: ink, join: "round" });
+			g.circle(4.2, 2.7, 4.6).fill(ink);
+			g.circle(5.6, 1, 1.4).fill(0xffffff);
+			line(g, [-11.5, -2.5, 11.5, -2.5], 3.6, ink);
 		},
 		closed: (g) => {
-			g.arc(0, -1.5, 4.8, 0.25, Math.PI - 0.25).stroke({ width: 2.6, color: ink, cap: "round" });
+			g.moveTo(-10, -0.6).quadraticCurveTo(0, 8.7, 10, -0.6).stroke({ width: 3.6, color: ink, cap: "round" });
 		},
 		dead: (g) => {
-			line(g, [-4, -4, 4, 4], 2.6, ink);
-			line(g, [4, -4, -4, 4], 2.6, ink);
+			line(g, [-8, -8, 8, 8], 4, ink);
+			line(g, [8, -8, -8, 8], 4, ink);
 		},
 	};
 	for (const e of EYES) parts[`eye/${e}`] = eye[e];
 
+	// The mouth is small and tucked between the eyes; the big ones (grin, shout, yawn) stay clear of
+	// the eyes above and the belly piece below.
 	const mouth: Record<(typeof MOUTHS)[number], Painter> = {
 		rest: (g) => {
-			g.arc(0, -2, 4.5, 0.35, Math.PI - 0.35).stroke({ width: 2.4, color: ink, cap: "round" });
+			g.moveTo(-3.6, -1.4).quadraticCurveTo(0, 3.4, 3.6, -1.4).stroke({ width: 2.4, color: ink, cap: "round" });
 		},
-		flat: (g) => line(g, [-5, 0, 5, 0], 2.4, ink),
+		flat: (g) => line(g, [-4.2, 0, 4.2, 0], 2.4, ink),
 		small: (g) => {
-			g.ellipse(0, 0, 2.6, 3).fill(ink);
+			g.ellipse(0, 0, 2.4, 2.8).fill(ink);
 		},
 		pout: (g) => {
-			g.moveTo(-4, 1.5).quadraticCurveTo(0, -3, 4, 1.5).stroke({ width: 2.4, color: ink, cap: "round" });
+			g.moveTo(-3.6, 1.4).quadraticCurveTo(0, -2.6, 3.6, 1.4).stroke({ width: 2.4, color: ink, cap: "round" });
 		},
 		grin: (g) => {
-			g.moveTo(-8, -2.5).lineTo(8, -2.5).quadraticCurveTo(7.5, 8, 0, 8).quadraticCurveTo(-7.5, 8, -8, -2.5).fill(ink);
-			g.ellipse(0, 5.2, 4, 2.4).fill(p.tongue);
-			g.rect(-5, -2.5, 10, 2).fill(0xffffff);
+			g.moveTo(-6.2, -2).lineTo(6.2, -2).quadraticCurveTo(5.8, 6, 0, 6).quadraticCurveTo(-5.8, 6, -6.2, -2).fill(ink);
+			g.ellipse(0, 3.8, 3, 1.8).fill(p.tongue);
+			g.rect(-4, -2, 8, 1.6).fill(0xffffff);
 		},
 		open: (g) => {
-			g.ellipse(0, 1, 4.6, 5.4).fill(ink);
-			g.ellipse(0, 3.6, 2.8, 1.8).fill(p.tongue);
+			g.ellipse(0, 1, 4, 4.8).fill(ink);
+			g.ellipse(0, 3.3, 2.4, 1.6).fill(p.tongue);
 		},
-		wobble: (g) => line(g, [-7, 1, -4.5, -1.5, -2, 1, 0.5, -1.5, 3, 1, 5.5, -1.5, 7, 0.5], 2.2, ink),
+		wobble: (g) => line(g, [-6, 1, -4, -1.2, -2, 1, 0, -1.2, 2, 1, 4, -1.2, 6, 0.6], 2.2, ink),
 		shout: (g) => {
-			g.moveTo(-9, -3).lineTo(9, -3).quadraticCurveTo(8, 10, 0, 10).quadraticCurveTo(-8, 10, -9, -3).fill(ink);
-			g.ellipse(0, 6.8, 5, 2.8).fill(p.tongue);
+			g.moveTo(-6.8, -2.5).lineTo(6.8, -2.5).quadraticCurveTo(6.2, 7, 0, 7).quadraticCurveTo(-6.2, 7, -6.8, -2.5).fill(ink);
+			g.ellipse(0, 4.6, 3.6, 2.1).fill(p.tongue);
 		},
 		smirk: (g) => {
-			g.moveTo(-5, 1).quadraticCurveTo(1, 3, 5.5, -2.5).stroke({ width: 2.4, color: ink, cap: "round" });
+			g.moveTo(-4.4, 1).quadraticCurveTo(1, 2.6, 4.8, -2.2).stroke({ width: 2.4, color: ink, cap: "round" });
 		},
 		drool: (g) => {
-			g.ellipse(0, 0, 3.4, 2.6).fill(ink);
-			g.moveTo(2.5, 1).quadraticCurveTo(5, 7, 3, 9).quadraticCurveTo(1, 7, 2.5, 1).fill(p.tear);
+			g.ellipse(0, 0, 3, 2.3).fill(ink);
+			g.moveTo(2.2, 1).quadraticCurveTo(4.6, 6.6, 2.8, 8.4).quadraticCurveTo(1, 6.6, 2.2, 1).fill(p.tear);
 		},
 		yawn: (g) => {
-			g.ellipse(0, 1, 4.4, 7).fill(ink);
-			g.ellipse(0, 5, 2.6, 1.8).fill(p.tongue);
+			g.ellipse(0, 1, 3.6, 5.6).fill(ink);
+			g.ellipse(0, 4.1, 2.2, 1.5).fill(p.tongue);
 		},
 		blep: (g) => {
-			g.arc(0, -2, 4.5, 0.35, Math.PI - 0.35).stroke({ width: 2.4, color: ink, cap: "round" });
-			g.roundRect(-0.5, 1.2, 4.4, 4.4, 2).fill(p.tongue).stroke({ width: 1.2, color: ink });
+			g.moveTo(-3.6, -1.4).quadraticCurveTo(0, 3.4, 3.6, -1.4).stroke({ width: 2.4, color: ink, cap: "round" });
+			g.roundRect(-0.4, 0.6, 4, 4, 1.8).fill(p.tongue).stroke({ width: 1.2, color: ink });
 		},
 		frown: (g) => {
-			g.arc(0, 4, 4.5, Math.PI + 0.4, -0.4).stroke({ width: 2.4, color: ink, cap: "round" });
+			g.arc(0, 3.6, 4, Math.PI + 0.4, -0.4).stroke({ width: 2.4, color: ink, cap: "round" });
 		},
 	};
 	for (const m of MOUTHS) parts[`mouth/${m}`] = mouth[m];
 
-	parts.brow = (g) => line(g, [-4.6, 0, 4.6, 0], 2.8, ink);
+	parts.brow = (g) => line(g, [-5.4, 0, 5.4, 0], 3, ink);
 	parts.cheek = (g) => {
 		g.ellipse(0, 0, 6.4, 3.8).fill(0xffffff);
 	};
@@ -329,17 +361,17 @@ export function paperTheme(p: Palette = PAPER_PALETTE): Theme {
 
 	// Worn on the face, centred between the eyes.
 	parts["wear/glasses"] = (g) => {
-		for (const x of [-A.eyeX, A.eyeX]) g.circle(x, A.eyeY, 9).fill({ color: 0xffffff, alpha: 0.22 }).stroke({ width: 2.4, color: ink });
-		line(g, [-7, A.eyeY - 1, 7, A.eyeY - 1], 2.2, ink);
+		for (const x of [-A.eyeX, A.eyeX]) g.circle(x, A.eyeY, 15).fill({ color: 0xffffff, alpha: 0.22 }).stroke({ width: 2.4, color: ink });
+		line(g, [-5.5, A.eyeY - 2, 5.5, A.eyeY - 2], 2.2, ink);
 	};
 	// A regular's accessories (accessories.ts), the same in every theme.
 	paintAccessories(parts, p);
 	parts["wear/binoc"] = (g) => {
 		for (const x of [-A.eyeX + 2, A.eyeX - 2]) {
-			g.roundRect(x - 8, A.eyeY - 9, 16, 17, 5).fill(0x3a3f5c).stroke({ width: W.part, color: ink });
-			g.circle(x, A.eyeY - 0.5, 5).fill(0x9fe3ff).stroke({ width: 1.6, color: ink });
+			g.roundRect(x - 12, A.eyeY - 14, 24, 27, 8).fill(0x3a3f5c).stroke({ width: W.part, color: ink });
+			g.circle(x, A.eyeY - 0.5, 7.4).fill(0x9fe3ff).stroke({ width: 1.6, color: ink });
 		}
-		g.rect(-6, A.eyeY - 4, 12, 6).fill(0x3a3f5c);
+		g.rect(-7.5, A.eyeY - 4, 15, 6).fill(0x3a3f5c);
 	};
 
 	/** A clipboard held by its edge, on the hand's left (`side` -1, the left hand's board) or right. */

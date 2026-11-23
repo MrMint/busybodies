@@ -8,7 +8,7 @@ import { STATION_POSE, STATION_REACH } from "../src/scene/director/stations";
 import { TRIP } from "../src/scene/director/trips";
 import { WORK, WORK_POSE, nextWork, tempo, workKind } from "../src/scene/director/work";
 import { FloorPlan } from "../src/scene/office/layout";
-import { STATION_CREW_PX, crewSpots } from "../src/scene/office/world";
+import { AISLE, STATION_CREW_PX, crewSpots } from "../src/scene/office/world";
 import { POSE, duration } from "../src/scene/rig/poses";
 import { detect } from "../src/scene/sass/detect";
 import type { Agent, Session, Snapshot } from "../src/watcher/model";
@@ -416,18 +416,20 @@ describe("crew chatter", () => {
 });
 
 describe("crew spots", () => {
-	test("six crew get room for their work: spaced in the desk's cell, then the free cell in front", () => {
+	test("six crew spread out: four abreast in the desk's aisle, then the free cell nearby", () => {
 		const plan = new FloorPlan();
 		const floor = plan.update(snap(T0, [release(six(["Edit", "Edit", "Edit", "Edit", "Edit", "Edit"]))]));
 		const desk = floor.desks.get("rel")!;
 		const spots = crewSpots(floor, desk);
 		expect(spots.length).toBeGreaterThanOrEqual(6);
-		// Two in a row with their work between them stand at least 120 px apart; back to back, 90.
-		for (const a of spots)
-			for (const b of spots) {
-				if (a === b || a.y !== b.y || a.x > b.x) continue;
-				expect(b.x - a.x).toBeGreaterThanOrEqual(a.facing === 1 && b.facing === -1 ? 120 : 90);
-			}
+		// The first four stand in one row in the desk's own aisle, AISLE.pitch apart; the first two
+		// (the outer pair, facing in) have their work between them, 120 px or more apart.
+		const row = spots.slice(0, 4);
+		for (const p of row) expect(p.y).toBe(desk.at.y + AISLE.front);
+		const xs = row.map((p) => p.x).sort((a, b) => a - b);
+		for (let i = 1; i < xs.length; i++) expect(xs[i]! - xs[i - 1]!).toBeGreaterThanOrEqual(AISLE.pitch);
+		expect(spots[1]!.x - spots[0]!.x).toBeGreaterThanOrEqual(120);
+		expect([spots[0]!.facing, spots[1]!.facing]).toEqual([1, -1]);
 		// A free cell is lent to one desk only.
 		const other = { ...release([]), id: "other", startedAt: T0 - 30 * MIN };
 		const two = new FloorPlan().update(snap(T0, [release([]), other]));

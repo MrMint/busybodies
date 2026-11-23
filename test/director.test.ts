@@ -5,8 +5,10 @@ import { join } from "node:path";
 import { type Direction, RULES, direct, here } from "../src/scene/director/direct";
 import { along, pathBetween, pathLength } from "../src/scene/director/paths";
 import type { World } from "../src/scene/director/types";
+import { demo, demoDay, releaseDay, stock } from "../src/mainview/demo";
 import { FloorPlan } from "../src/scene/office/layout";
-import { stock } from "../src/mainview/demo";
+import { CARD } from "../src/scene/office/propspots";
+import { AISLE, SQUEEZE, bodyRect, crewPlaces, crewSpot, crewSpots, endGaps, faceZone, floorFoot, meets, overlapX, yieldFrom } from "../src/scene/office/world";
 import { HABITS, POSE } from "../src/scene/rig/poses";
 import { roleFor } from "../src/scene/rig/roles";
 import { parseRecording } from "../src/watcher/replay";
@@ -329,5 +331,151 @@ describe("replay", () => {
 		expect(run()).toEqual(a);
 		const kinds = new Set(a.map((e) => e.type));
 		expect(kinds.has("pose")).toBe(true);
+	});
+});
+
+describe("the desk aisle", () => {
+	/** Every demo day, played forward like the office does: each step's world and floor. */
+	const days = (): [string, { after: number; snapshot: Snapshot }[]][] => [
+		["busy", [{ after: 0, snapshot: demo(null).snapshot }, ...demoDay()]],
+		["release", [{ after: 0, snapshot: demo("release").snapshot }, ...releaseDay()]],
+		["thirty", [{ after: 0, snapshot: demo("thirty").snapshot }]],
+		["crowd", [{ after: 0, snapshot: demo("crowd").snapshot }]],
+		["release, five more crew", [{ after: 0, snapshot: biggerCrew(demo("release").snapshot, "demo-session-7", 5) }]],
+	];
+	/** A snapshot with `n` more busy crew at one session: a front-row desk's crew too big for its row
+	 * and its end places, so the row squeezes (world.ts SQUEEZE). */
+	function biggerCrew(snap: Snapshot, id: string, n: number): Snapshot {
+		const copy = structuredClone(snap);
+		const find = (list: Session[]): Session | undefined => list.reduce<Session | undefined>((f, x) => f ?? (x.id === id ? x : find(x.children)), undefined);
+		const s = find(copy.sessions)!;
+		const model = s.agents.find((a) => a.status === "running")!;
+		for (let k = 0; k < n; k++) s.agents.push({ ...structuredClone(model), id: `${model.id}-extra-${k}`, children: [] });
+		return copy;
+	}
+	const still = (a: World["actors"][string], now: number) => !a.gone && !(a.walk && now < a.walk.since + a.walk.ms);
+	/** Standing at its own spot: still, and not stepped aside for a brick run (a yield is a walk's
+	 * cousin, exempt from the aisle's spacing and pills like a walker is: world.ts `yieldFrom`). */
+	const placed = (a: World["actors"][string], now: number) => still(a, now) && !a.yielding;
+	/** A task pill under a crew member's feet, at its widest (office.ts: 14 characters at 6.5 px). */
+	const PILL_W = 54;
+
+	test("crew standing at a desk overlap by under 15% of a body (35% squeezed up), and none stands on a name card", () => {
+		let checked = 0;
+		let squeezes = 0;
+		for (const [name, steps] of days()) {
+			const plan = new FloorPlan();
+			let world: World | undefined;
+			for (const { after, snapshot } of steps) {
+				const floor = plan.update(snapshot);
+				const now = snapshot.at + after;
+				world = direct(world, snapshot, now, floor).world;
+				const byDesk = new Map<string, World["actors"][string][]>();
+				for (const a of Object.values(world.actors)) {
+					if (a.kind !== "crew" || !a.spot.startsWith("crew:") || !placed(a, now)) continue;
+					byDesk.set(a.session, [...(byDesk.get(a.session) ?? []), a]);
+				}
+				const cards = [...floor.desks.values()].map((d) => ({ id: d.id, r: { x: d.at.x - CARD.maxW / 2, y: d.at.y + CARD.top, w: CARD.maxW, h: CARD.foot - CARD.top } }));
+				for (const [id, crew] of byDesk) {
+					// A desk at the room's front whose crew fill its row, its lent cells and its free
+					// ends tightens its row (world.ts SQUEEZE): that row may overlap up to SQUEEZE.overlap.
+					const desk = floor.desks.get(id)!;
+					const n = Math.max(...crew.map((a) => Number(a.spot.slice(5)) + 1));
+					const row = crewSpots(floor, desk).slice(0, 4);
+					const squeezed = crewPlaces(floor, desk, n).slice(0, 4).some((p, i) => p.x !== row[i]!.x || p.y !== row[i]!.y);
+					if (squeezed) squeezes++;
+					for (const [i, a] of crew.entries()) {
+						const body = bodyRect(a.slot, a.size);
+						for (const c of cards) if (meets(body, c.r)) throw new Error(`${name} +${after}: ${a.key} stands on ${c.id}'s name card`);
+						for (const b of crew.slice(i + 1)) {
+							const other = bodyRect(b.slot, b.size);
+							const limit = (squeezed ? SQUEEZE.overlap : AISLE.overlap) * Math.min(body.w, other.w);
+							if (overlapX(body, other) > limit) throw new Error(`${name} +${after}: ${a.key} and ${b.key} at ${id} overlap ${overlapX(body, other).toFixed(1)} px`);
+							checked++;
+						}
+					}
+				}
+			}
+		}
+		expect(checked).toBeGreaterThan(20);
+		expect(squeezes).toBeGreaterThan(0);
+	});
+
+	test("the one on a desk's end place steps aside while a brick run to the build spot in its gap is under way, then back", () => {
+		const snapshot = demo(null).snapshot;
+		const floor = new FloorPlan().update(snapshot);
+		const t0 = snapshot.at;
+		const start = direct(undefined, snapshot, t0, floor).world;
+		const d = floor.desks.get("demo-session-14")!;
+		const gap = endGaps(floor, d)[0]!;
+		expect(gap.builder).toBeDefined();
+		const ender = Object.values(start.actors).find((a) => a.session === d.id && a.slot.x === gap.slot.x && a.slot.y === gap.slot.y)!;
+		expect(ender).toBeDefined();
+		// A brick run to the neighbour's build spot, as the director would have it under way.
+		const t = t0 + 1000;
+		const build = start.builds[gap.builder!] ?? ({ session: gap.builder!, pieces: 1, topped: false, seen: {} } as World["builds"][string]);
+		const runner = Object.values(start.actors).find((a) => a.session === gap.builder && a.kind === "crew")?.key ?? "runner";
+		const was: World = { ...start, builds: { ...start.builds, [gap.builder!]: { ...build, run: { key: runner, from: "crew:0", since: t, walkMs: 1500, lands: t + 3000, done: t + 4500, carried: true } } } };
+		const during = direct(was, snapshot, t, floor);
+		const a = during.world.actors[ender.key]!;
+		expect(a.yielding).toBe(true);
+		expect(a.slot).toEqual(yieldFrom(gap.slot));
+		expect(a.walk).toBeDefined();
+		// Only that one moves: the row does not reshuffle.
+		for (const o of Object.values(during.world.actors)) if (o.session === d.id && o.kind === "crew" && o.key !== ender.key) expect(o.slot).toEqual(start.actors[o.key]!.slot);
+		// Held aside while the run lasts, then back to the end place.
+		const mid = direct(during.world, snapshot, t + 2000, floor).world.actors[ender.key]!;
+		expect(mid.slot).toEqual(yieldFrom(gap.slot));
+		const back = direct(direct(during.world, snapshot, t + 2000, floor).world, snapshot, t + 5000, floor).world.actors[ender.key]!;
+		expect(back.yielding).toBeUndefined();
+		expect(back.slot).toEqual(gap.slot);
+		expect(back.walk).toBeDefined();
+	});
+
+	test("a standing crew member's feet are always on its own room's floor", () => {
+		let checked = 0;
+		for (const [name, steps] of days()) {
+			const plan = new FloorPlan();
+			let world: World | undefined;
+			for (const { after, snapshot } of steps) {
+				const floor = plan.update(snapshot);
+				const now = snapshot.at + after;
+				world = direct(world, snapshot, now, floor).world;
+				for (const a of Object.values(world.actors)) {
+					if (a.kind !== "crew" || !a.spot.startsWith("crew:") || !still(a, now)) continue;
+					const room = floor.areas.find((r) => r.id === floor.desks.get(a.session)?.areaId)!;
+					const ok = a.slot.y >= room.floorY && a.slot.y <= floorFoot(room) && a.slot.x > room.rect.x + 13 && a.slot.x < room.rect.x + room.rect.w - 13;
+					if (!ok) throw new Error(`${name} +${after}: ${a.key} stands at ${a.slot.x},${a.slot.y}, off ${room.id}'s floor`);
+					checked++;
+				}
+			}
+		}
+		expect(checked).toBeGreaterThan(20);
+	});
+
+	test("at the desk stop, each crew member's task pill crosses no one's face", () => {
+		let pills = 0;
+		for (const [name, steps] of days()) {
+			const plan = new FloorPlan();
+			let world: World | undefined;
+			for (const { after, snapshot } of steps) {
+				const floor = plan.update(snapshot);
+				const now = snapshot.at + after;
+				world = direct(world, snapshot, now, floor).world;
+				const standing = Object.values(world.actors).filter((a) => placed(a, now));
+				for (const a of standing) {
+					if (a.kind !== "crew" || !a.task || a.mood === "done" || !a.spot.startsWith("crew:")) continue;
+					pills++;
+					const pill = { x: a.slot.x - PILL_W / 2, y: a.slot.y + AISLE.pill.gap, w: PILL_W, h: AISLE.pill.h };
+					for (const b of standing) {
+						// Whoever is at a station or in its queue is acting there, off the desk's floor plan
+						// (the strip's queue reaches into the first column's aisle).
+						if (b === a || /^(station|queue):/.test(b.spot)) continue;
+						if (meets(pill, faceZone(b.slot, b.size))) throw new Error(`${name} +${after}: ${a.key}'s pill crosses ${b.key}'s face`);
+					}
+				}
+			}
+		}
+		expect(pills).toBeGreaterThan(20);
 	});
 });

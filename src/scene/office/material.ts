@@ -19,6 +19,8 @@ export interface Dressing {
 	/** The room's name as the theme says it. */
 	name: string;
 	sun?: SunSpot;
+	/** The rug's own colours (the theme's `rug`), else a pale sheet over the floor. */
+	rug?: { fill: number; edge: number };
 }
 
 /** Everything the paper pass adds to a room, as children of its container `c`, after the theme's. */
@@ -39,7 +41,7 @@ export function dressRoom(c: Container, a: Area, d: Dressing): void {
 		const xs = a.cells.map((r) => r.x);
 		const ys = a.cells.map((r) => r.y);
 		const r = { x: Math.min(...xs) + 10, y: Math.min(...ys) + 10, w: Math.max(...xs) - Math.min(...xs) + a.cells[0]!.w - 20, h: Math.max(...ys) - Math.min(...ys) + a.cells[0]!.h - 20 };
-		if (light.cluster === "rug") rug(g, r, seed);
+		if (light.cluster === "rug") rug(g, r, seed, d.rug);
 		else zone(g, r);
 	}
 
@@ -95,9 +97,16 @@ function planks(g: Graphics, f: Rect, seed: number): void {
 	g.fill({ color: INK, alpha: 0.055 });
 }
 
-/** A rug under the desks: a lighter sheet with a border, a little crooked. */
-function rug(g: Graphics, r: Rect, seed: number): void {
+/** A rug under the desks, a little crooked: in the room's own colours, with a band of its edge
+ * colour round it; or a lighter sheet with a border. */
+function rug(g: Graphics, r: Rect, seed: number, own?: { fill: number; edge: number }): void {
 	const pts = wobblyRect(r, seed + 3, 1.2, 60);
+	if (own) {
+		g.poly(pts, true).fill(own.fill).stroke({ width: 2, color: INK, alpha: 0.16 });
+		g.roundRect(r.x + 8, r.y + 8, r.w - 16, r.h - 16, 6).stroke({ width: 4, color: own.edge, alpha: 0.75 });
+		g.roundRect(r.x + 15, r.y + 15, r.w - 30, r.h - 30, 4).stroke({ width: 1.5, color: 0xffffff, alpha: 0.6 });
+		return;
+	}
 	g.poly(pts, true).fill({ color: 0xffffff, alpha: 0.2 }).stroke({ width: 2, color: INK, alpha: 0.14 });
 	g.roundRect(r.x + 9, r.y + 9, r.w - 18, r.h - 18, 6).stroke({ width: 3, color: 0xffffff, alpha: 0.38 });
 }

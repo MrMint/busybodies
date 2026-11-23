@@ -129,7 +129,8 @@ describe("themes", () => {
 		expect(after.sameDocument).toBe(true);
 		expect(after.arms).toBeGreaterThan(0);
 		expect(after.cast).toEqual(before);
-		// A sign still on the office's default takes the factory's; what the voice wrote stays.
+		// A sign on the office's default takes the factory's; one the voice wrote goes back to the
+		// factory's default (or the voice writes it again in factory words): no office sign stays up.
 		const DEFAULTS: Record<string, [string, string]> = {
 			"meeting:sign": ["THIS MEETING", "QUALITY CONTROL"],
 			"kitchen:sign": ["1 CUP PER GREEN BUILD", "1 SNACK PER GREEN BUILD"],
@@ -137,7 +138,10 @@ describe("themes", () => {
 			"yours:serving": ["NOW SERVING", "NEXT UP"],
 		};
 		const signsAfter = await signs();
-		for (const [id, [office, factory]] of Object.entries(DEFAULTS)) expect(signsAfter[id]).toBe(signsBefore[id] === office ? factory : signsBefore[id]!);
+		for (const [id, [office, factory]] of Object.entries(DEFAULTS)) {
+			expect(signsAfter[id]).not.toBe(office);
+			if (signsBefore[id] === office) expect(signsAfter[id]).toBe(factory);
+		}
 		expect(Object.entries(DEFAULTS).some(([id, [office]]) => signsBefore[id] === office)).toBe(true);
 		// Settled, the switched office is as quiet as before.
 		await page.waitForFunction(() => !window.__busybodies!.counters().tickerRunning, undefined, { timeout: 15_000 });

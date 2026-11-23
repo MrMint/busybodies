@@ -19,7 +19,7 @@ import type { Lamp, PlannerRow, Tray } from "../director/metrics";
 import { GREEN, INK, RED, SHADOW, type SignStyle, batched, hash, label, line, signboard, wob } from "../office/paper";
 import { PROPS } from "../office/propspots";
 import type { SceneStaging } from "../office/staging";
-import type { Area, Rect } from "../office/world";
+import type { Area, Band, Rect } from "../office/world";
 import { crewBuild } from "./build";
 import { NIGHT_WATCH, ROOM_COLOURS } from "./office";
 import type { FurnitureKind, SceneLight, SceneTheme, StagePainters } from "./types";
@@ -1229,6 +1229,12 @@ export const BAKERY_STAGING: SceneStaging = {
 	habits: ["waterCooler", "feetUp", "stretch", "scrolling", "faceDown", "chairSpin", "slowWalk"],
 };
 
+/** A gap in the footprint: a plain pad (placeholder until the bakery dresses its own patio). */
+function pad(g: Graphics, r: Rect, _band: Band): void {
+	if (r.w < 32 || r.h < 32) return;
+	g.roundRect(r.x + 7, r.y + 7, r.w - 14, r.h - 14, 6).fill(0xf3e6d8).stroke({ width: 3, color: INK, alpha: 0.45 });
+}
+
 export const BAKERY_THEME: SceneTheme = {
 	id: "bakery",
 	words: BAKERY_WORDS,
@@ -1239,6 +1245,7 @@ export const BAKERY_THEME: SceneTheme = {
 	furniture,
 	desk: { tray: macaronStand, mugs: cappuccinos, lamp: clocheLamp, drawers: cakeBoxes, skip: crumbBin },
 	planner: orderBoard,
+	patio: pad,
 	crewBuild: (b, seed) => crewBuild(b, seed, CAKE_BUILD),
 	nightWatch: { ...NIGHT_WATCH, tint: "night-baker" },
 	arms: false,

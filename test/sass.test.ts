@@ -1,6 +1,7 @@
 // The sass module: the line bank against the design board, every detector against invented
 // snapshots, the scheduler's limits and cooldowns, and the signs. Every project, title and id
 // here is made up.
+import { FACTORY_SASS } from "../src/scene/sass/bank";
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -9,6 +10,7 @@ import {
 	BOARD_LINES,
 	Counters,
 	LINES,
+	type Output,
 	NEW_LINES,
 	Sass,
 	Scheduler,
@@ -19,6 +21,7 @@ import {
 	detect,
 	fill,
 	fitting,
+	linesIn,
 	utcClock,
 	utcDay,
 	utcHour,
@@ -98,6 +101,43 @@ describe("the line bank", () => {
 			if (l.kind === "sign") expect(l.place).toBeDefined();
 			if (l.min !== undefined && l.max !== undefined) expect(l.min).toBeLessThan(l.max);
 		}
+	});
+});
+
+describe("the line bank in each scene theme", () => {
+	const office = linesIn("office");
+	const factory = linesIn("factory");
+
+	test("is the same bank, line for line: same triggers, tiers, tags and places, only the words", () => {
+		for (const bank of [office, factory]) {
+			expect(bank.length).toBe(LINES.length);
+			bank.forEach((l, i) => expect({ ...l, text: "" }).toEqual({ ...LINES[i]!, text: "" }));
+			const texts = bank.map((l) => l.text);
+			expect(new Set(texts).size).toBe(texts.length);
+		}
+	});
+
+	test("keeps each theme's things in its own theme, and the voice rules", () => {
+		const banned = /\b(claude|anthropic|openai|gpt|gemini|copilot|cursor|github|slack|google|apple|microsoft|stupid|idiot|dumb|hate you|damn|hell|crap)\b/i;
+		for (const l of LINES) for (const t of Object.values(l.themed ?? {})) expect(t).not.toMatch(banned);
+		const workshop = /\b(clamp|hammer|nails?|load-bearing wall|wall load-bearing|hard hat|wrench|sawhorse)\b/i;
+		for (const l of office) expect([l.text, workshop.test(l.text)]).toEqual([l.text, false]);
+		const officeOnly = /\b(office|stapler|copier|memo|shredder|ceiling tiles|sofa|now serving|meeting)\b/i;
+		for (const l of factory) expect([l.text, officeOnly.test(l.text)]).toEqual([l.text, false]);
+		// A themed line still fills the same placeholders as the line it stands in for.
+		const vars = (t: string) => [...t.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
+		for (const l of LINES) for (const t of Object.values(l.themed ?? {})) expect(vars(t)).toEqual(vars(l.text));
+	});
+
+	test("the bakery's builders talk pastry", () => {
+		expect(linesIn("bakery").find((l) => l.text === "Who moved my rolling pin.")).toBeDefined();
+	});
+
+	test("a crew in the office talks paperwork, and the factory's talks shop", () => {
+		const chatter = { kind: "chatter", key: "k", who: "a", session: "a", project: "teapot", role: "builder", magnitude: 0, ongoing: true, at: NOW, vars: {} } as unknown as Trigger;
+		const said = (theme: "office" | "factory") => fitting(chatter, "bubble", linesIn(theme)).map((l) => l.text);
+		expect(said("office")).toContain("Who moved my stapler.");
+		expect(said("factory")).toContain("Who moved my hammer.");
 	});
 });
 
@@ -383,6 +423,10 @@ describe("signs and gags", () => {
 		expect(out.get("room:teapot:board")).toBe("Days since a test broke: 2");
 		expect(out.get("room:teapot:sign")).toBe("PRs today: 1. Humility: 0.");
 		expect(out.get("kitchen:sign")).toBe("One cup per green build. Today: 1.");
+		// The factory's break room keeps snacks, and its signs say so.
+		const f = new Counters({ ...OPTS, theme: "factory" });
+		f.update(snap(session("a", { commands: cmd(0, 0, NOW) })), NOW);
+		expect(f.update(snap(session("a", { commands: cmd(0, 0, NOW + MIN) })), NOW + MIN).get("kitchen:sign")).toBe("One snack per green build. Today: 2.");
 	});
 
 	test("idle time wilts the plant and piles up the mugs", () => {
@@ -412,6 +456,24 @@ describe("signs and gags", () => {
 });
 
 describe("Sass, end to end", () => {
+	test("speaks the scene theme's words, and switches with it", () => {
+		const a = session("a", { title: "Crumb cache", waiting: { reason: "permission", since: NOW, source: "hook" } });
+		const sign = (o: Output) => o.signs.find((s) => s.slot === "room:teapot:sign")?.text;
+		const factory = sign(new Sass({ ...OPTS, gapMs: 0, theme: "factory" }).update(snap(a), NOW, { zoom: 2 }));
+		expect(FACTORY_SASS.lines.some((l) => l.trigger === "waiting" && l.kind === "sign" && factory?.startsWith(l.text.split("{")[0]!))).toBe(true);
+		expect(factory).not.toStartWith("Now serving");
+		const sass = new Sass({ ...OPTS, gapMs: 0 });
+		expect(sign(sass.update(snap(a), NOW, { zoom: 2 }))).toStartWith("Now serving");
+		// Switched live, the next sign a trigger puts up is in the new words; what is up stays.
+		sass.setTheme("factory");
+		const b = session("b", { project: "kettle", waiting: { reason: "permission", since: NOW + 1000, source: "hook" } });
+		const out = sass.update(snap(a, b), NOW + 1000, { zoom: 2 });
+		const kettle = out.signs.find((s) => s.slot === "room:kettle:sign")?.text;
+		expect(FACTORY_SASS.lines.some((l) => l.trigger === "waiting" && l.kind === "sign" && kettle?.startsWith(l.text.split("{")[0]!))).toBe(true);
+		// Every slot is written again in the new words: nothing the office said stays up.
+		expect(sign(out)).not.toStartWith("Now serving");
+	});
+
 	test("bubbles and signs out, only changed signs, and a quiet office sleeps", () => {
 		const sass = new Sass({ ...OPTS, gapMs: 0 });
 		const a = session("a", { title: "Crumb cache", waiting: { reason: "permission", since: NOW, source: "hook" } });

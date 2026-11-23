@@ -2,8 +2,10 @@
 // title here is invented.
 import { describe, expect, test } from "bun:test";
 import { FloorPlan } from "../src/scene/office/layout";
-import { KITCHEN_WALL, ceilingPanels } from "../src/scene/office/propspots";
-import { STATIONS_BASE, STATION_CREW, STRIP, type Rect, type World, crewSlot } from "../src/scene/office/world";
+import { demo } from "../src/mainview/demo";
+import { LEAD_SIZE } from "../src/scene/office/placement";
+import { KITCHEN_WALL, MONITOR, ceilingPanels, deskParts } from "../src/scene/office/propspots";
+import { BUILD, DESK_TOP, SEAT, STATIONS_BASE, STATION_CREW, STRIP, type Rect, type World, crewSlot, faceZone, meets } from "../src/scene/office/world";
 import type { Agent } from "../src/watcher/model";
 import type { Session, Snapshot } from "../src/watcher/model";
 
@@ -317,4 +319,42 @@ test("a room's ceiling panels (one of which flickers) sit evenly along its back 
 			expect(p.y).toBe(-45);
 		}
 	}
+});
+
+describe("the lead's face is a keep-out zone", () => {
+	test("nothing drawn at a desk in front of its lead covers the lead's face, in the busiest offices", () => {
+		const parts = Object.entries(deskParts());
+		// The tower is a column from the desk up, at any height; the card and the screen are real.
+		expect(parts.map(([k]) => k)).toEqual(expect.arrayContaining(["screen", "build", "tray", "mugs", "lamp", "card"]));
+		for (const name of ["thirty", "release", "", "crowd"]) {
+			const world = new FloorPlan().update(demo(name || null).snapshot);
+			let leads = 0;
+			for (const a of world.areas) {
+				for (const lead of a.desks) {
+					leads++;
+					const face = faceZone(lead.lead, LEAD_SIZE);
+					// Its own desk and every desk drawn in front of it (lower on the floor).
+					for (const d of a.desks) {
+						if (d.at.y <= lead.lead.y) continue;
+						for (const [part, r] of parts) {
+							const at = { ...r, x: r.x + d.at.x, y: r.y + d.at.y };
+							if (meets(face, at)) throw new Error(`${name || "busy"}: ${d.id}'s ${part} covers ${lead.id}'s face`);
+						}
+					}
+					// Its face shows over the desk top, mouth included: the top's back edge is below it.
+					expect(face.y + face.h).toBeLessThan(lead.at.y + DESK_TOP - 2);
+				}
+			}
+			expect(leads).toBeGreaterThan(1);
+		}
+	});
+
+	test("the screen is small, at the desk's far end; the build's base at its outer end", () => {
+		expect(MONITOR.w * MONITOR.h).toBeLessThanOrEqual(46 * 34);
+		const face = faceZone(SEAT, LEAD_SIZE);
+		expect(MONITOR.x - MONITOR.w / 2).toBeGreaterThan(face.x + face.w);
+		expect(MONITOR.x).toBeGreaterThan(0);
+		expect(BUILD.left + BUILD.wide * BUILD.brickW + 3).toBeLessThan(face.x);
+		expect(BUILD.left).toBeLessThan(-80);
+	});
 });
