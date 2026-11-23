@@ -119,7 +119,7 @@ export const POSES: Pose[] = [
 		// Edit/Write: a nail driven home in three strokes, checked, and the next one started. Each
 		// strike lands on the head (ARMS.hit1-3), and on the beat after it the nail and the hammer go
 		// down together.
-		name: "hammer", title: "Hammering until it compiles", trigger: "busy", rarity: 1, play: "loop", roles: ["builder"],
+		name: "hammer", title: "Whacking it until it compiles", trigger: "busy", rarity: 1, play: "loop", roles: ["builder"],
 		lines: ["It compiles in my heart."],
 		frames: [
 			["l-downR b-flat m-flat hr-hammer ar-wind al-hip w-nail1", 2],
@@ -287,7 +287,7 @@ export const POSES: Pose[] = [
 	pose({
 		// A red test: the strike goes crooked, the nail folds, the hammer flies off, and the stung
 		// hand gets flapped and blown on.
-		name: "thumb", title: "Hammered the thumb", trigger: "test-failed", rarity: 1, play: "once", roles: ["builder"],
+		name: "thumb", title: "Whacked the thumb", trigger: "test-failed", rarity: 1, play: "once", roles: ["builder"],
 		lines: ["Ow. The test hit me."],
 		frames: [
 			["l-downR b-flat m-flat hr-hammer ar-wind al-hip w-nail1", 2],
@@ -687,7 +687,7 @@ export const POSES: Pose[] = [
 	// and up (theme WORK.brick), lets go and pats it. The last frame has empty hands and holds: the
 	// office puts the brick on the tower the moment `place` ends.
 	pose({
-		name: "carry", title: "Carrying a brick", trigger: "walking", rarity: 1, play: "loop", roles: ["builder"],
+		name: "carry", title: "Carrying a piece over", trigger: "walking", rarity: 1, play: "loop", roles: ["builder"],
 		lines: [],
 		frames: [
 			["l-right b-one m-small hr-brick ar-shoulder al-low f-swingL", 2],
@@ -698,7 +698,7 @@ export const POSES: Pose[] = [
 		],
 	}),
 	pose({
-		name: "place", title: "Setting a brick on the build", trigger: "working", rarity: 1, play: "once", roles: ["builder"],
+		name: "place", title: "Adding a piece to the build", trigger: "working", rarity: 1, play: "once", roles: ["builder"],
 		lines: [],
 		frames: [
 			["l-right b-one m-small hr-brick ar-shoulder al-low", 1],

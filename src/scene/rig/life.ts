@@ -18,6 +18,13 @@ export interface LifeBeat {
 
 export const STILL: LifeBeat = { blink: false, lookX: 0, lookY: 0 };
 
+/** Life's beat grid: every blink and glance starts on it (and a glance ends on it), so the cast's
+ * beats share frames and the app draws life alone at the grid's rate, 10 fps (mainview/main.ts).
+ * A blink, and the gap inside a double blink, last longer than a grid step, so no frame misses one. */
+export const LIFE_GRID_MS = 100;
+/** A time snapped down to the grid. */
+const grid = (ms: number) => Math.floor(ms / LIFE_GRID_MS) * LIFE_GRID_MS;
+
 /** How long a blink holds the eyes shut, and the gap inside a double blink. */
 export const BLINK_MS = 130;
 const DOUBLE_GAP_MS = 140;
@@ -50,7 +57,7 @@ export function blinking(id: string, ms: number): boolean {
 	const k = Math.floor(ms / BLINK_WINDOW_MS);
 	const into = ms - k * BLINK_WINDOW_MS;
 	// Somewhere in the window, leaving room for a double blink to finish inside it.
-	const at = 300 + u(id, "blink", k) * (BLINK_WINDOW_MS - 300 - 2 * BLINK_MS - DOUBLE_GAP_MS - 100);
+	const at = 300 + grid(u(id, "blink", k) * (BLINK_WINDOW_MS - 300 - 2 * BLINK_MS - DOUBLE_GAP_MS - 100));
 	if (into >= at && into < at + BLINK_MS) return true;
 	// About one blink in five is a double.
 	const second = at + BLINK_MS + DOUBLE_GAP_MS;
@@ -64,8 +71,8 @@ export function glancing(id: string, ms: number): [number, number] {
 	// Not every window: a character that glances every few seconds looks nervous.
 	if (u(id, "glance?", k) > 0.55) return [0, 0];
 	const into = ms - k * GLANCE_WINDOW_MS;
-	const hold = 900 + u(id, "hold", k) * 1700;
-	const at = 400 + u(id, "when", k) * (GLANCE_WINDOW_MS - hold - 800);
+	const hold = 900 + grid(u(id, "hold", k) * 1700);
+	const at = 400 + grid(u(id, "when", k) * (GLANCE_WINDOW_MS - hold - 800));
 	if (into < at || into >= at + hold) return [0, 0];
 	return GLANCES[hash(`${id}:where:${k}`) % GLANCES.length]!;
 }
