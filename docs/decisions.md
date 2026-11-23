@@ -1097,3 +1097,57 @@ settings sheet gained Sound and Calm office beside Theme, saved and synced with 
 new `setToggles` RPC request. Every stream's e2e run was under a load average of 40 to 370 from the
 others, where the unchanged base failed the same way; the suite was rerun here once the machine was
 quiet.
+
+## 2026-11-22: lived in, wave 3, stream G (themes own their staging)
+
+**A theme stages the place, not just its paint.** `SceneTheme.staging` (appended, optional;
+`office/staging.ts`) is a small grammar over the one floor plan: `bay` ("desks" or "line"), `hall`
+("corridor" or "conveyor"), `ambient` (what moves on its own) and `habits` (the idle rotation). A
+theme without one gets `DEFAULT_STAGING`: the office's behaviour before this wave (desks, a
+corridor, nothing ambient, the rig's seven habits), so a new theme only says what it changes. The
+layout reads the bay and the hall and puts the result on the world (`World.staging`, `Area.belts`,
+`World.conveyor`); the director reads the habits from the same place. Staging never moves a room, a
+desk, a lead or a station (tested): only the crew's spots and what the floor adds, so every
+solved reach, prop spot and arm keeps working. What a staging adds is painted by the theme
+(`SceneTheme.stage`: belt, slats, rollers, part, booth, dock, crate) and placed by the office.
+
+**The factory's bays are lines.** A belt runs across each row that has a desk, the row's cells end
+to end, in front of the desks. The crew stand along it: three behind it facing downstream (the belt's
+front draws over their feet, so they work on it), then a pair in front facing each other across their
+work; past those, the free cells and the crowd as before. The foreman stands in a booth at its bench:
+posts, wired glass and a top rail framing the lead where it already stood (no slot moved), the rail
+no higher than the back wall's signs come down. Tool calls ride the belt as parts (a blueprint roll,
+a valve, a nut, a gear, a billet, a gauge for read, web, search, edit, shell, test), two per kind
+held at a desk on the line; only kinds the director holds (`Actor.work`, passed through `Placed.work`)
+show, so a single call never puts a part on the belt. Idle, the belts run empty. The hallway's belt
+is a conveyor: when a crew build is topped by a PR, a crate rides it from the bay to the dock at the
+hallway's right end (acting, at the acting rate, once; then gone).
+
+**Staged things are baked sprites.** A belt's slats and hazard stripes are far more vertices than
+Pixi batches as a Graphics, and an unbatched Graphics sorted between sprites in the depth layer
+split the batches: the busy factory went from ~10 WebGL draws to 70. Every staged or ambient
+drawing is now baked once per key into a shared texture (at 2x) and placed as a sprite; the busy
+factory is back to 6–12 draws.
+
+**Ambient life rides the life clock.** `office/ambient.ts` draws each piece once and moves only
+transforms and alpha from the office's life clock, every phase and period from a hash of an id. The
+office: steam off the coffee machine, a ceiling fan over a free corner of the kitchen (seen from
+below, so it turns like the floor is drawn), the copier's light blinking. The factory: a turning
+beacon on the press while a build runs in the bay, steam puffing from the aisle's floor vents, weld
+sparks off a line with parts on it. The belt's slats slide at 22 px/s. Calm or off screen nothing
+moves (the clock stops); `Office.animating` counts ambient life as life, so a living office stays at
+20 fps and only a riding crate counts as acting.
+
+**Per-theme habits, through the rotation.** `habitAt` takes the theme's set; the timing (grid,
+replays, turns, calm's ten minutes) is the same for any set. The factory's: sitting on an oil drum,
+cards on a pallet, kicking the vending machine, then four of the rig's. The three new poses use new
+rig parts (`bk-drum`, `hl-hand`, `w-pallet`/`palletSlap`, `w-vending`/`vendingRock`/`vendingDrop`,
+painted in the paper rig) and are played only by name (`rarity: 0`, no `habit` flag), so the office's
+seven and the idle trigger are untouched. The puppet's back prop is now by name, not only the chair.
+A foreman's habit plays in its booth, so the bench hides the pallet and most of the drum; the cards
+and the vending machine's top show. Moving idle foremen out of the booth for their habit is left for
+later (it is the director's placing).
+
+**Left for later.** Office ambient beyond the kitchen and the copier (a fan per room, the printer's
+light going amber while it prints); the conveyor's crates come from the bay's middle rather than
+following the arm's crate out of the bay; the factory's vents are in the hallway only.

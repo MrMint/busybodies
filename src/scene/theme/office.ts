@@ -783,3 +783,9 @@ export const OFFICE_THEME: SceneTheme = {
 	arms: false,
 	light: OFFICE_LIGHT,
 };
+
+// --- Staging (office/staging.ts) ----------------------------------------------------------------
+
+/** The office keeps its desks and its corridor; what moves on its own is the steam off the coffee,
+ * the kitchen's ceiling fan and the copier's light (office/ambient.ts). */
+OFFICE_THEME.staging = { bay: "desks", hall: "corridor", ambient: ["steam", "fan", "printer"] };

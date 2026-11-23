@@ -471,6 +471,40 @@ export const POSES: Pose[] = [
 		],
 	}),
 
+	// The factory's own habits (theme/factory.ts FACTORY_STAGING): played by name from the theme's
+	// habit rotation (director/habits.ts), never by the idle trigger, so the office keeps its seven.
+	pose({
+		name: "drumSit", title: "Sitting on an oil drum", trigger: "idle", rarity: 0, play: "once",
+		lines: ["Supervising. The drum."],
+		frames: [
+			["e-half m-smirk bd-back bk-drum f-wide al-low ar-head", 4],
+			["e-half l-left m-small bd-back bk-drum f-kick al-low ar-head", 3],
+			["e-closed m-yawn bd-back bk-drum f-wide al-head ar-head", 4],
+			["e-half m-smirk bd-back bk-drum f-kick al-low ar-head", 3],
+		],
+	}),
+	pose({
+		name: "palletCards", title: "Cards on a pallet", trigger: "idle", rarity: 0, play: "once",
+		lines: ["Gin. Again."],
+		frames: [
+			["e-half l-downR b-flat m-flat hl-hand al-raise ar-low w-pallet", 4],
+			["e-squint l-downR b-one m-smirk hl-hand al-raise ar-low w-pallet", 3],
+			["e-wide l-downR b-up m-grin hl-hand al-raise ar-throw2 w-palletSlap", 2],
+			["e-happy l-right m-grin hl-hand al-raise ar-hip w-palletSlap", 3],
+		],
+	}),
+	pose({
+		name: "vendingKick", title: "Kicking the vending machine", trigger: "idle", rarity: 0, play: "once",
+		lines: ["It owes me a snack."],
+		frames: [
+			["e-squint l-right b-angry m-flat al-hip ar-hip w-vending", 4],
+			["e-squint l-right b-angry m-shout al-hip ar-out f-boot w-vendingRock x-hit", 2],
+			["e-half l-right b-angry m-pout al-hip ar-hip w-vending", 3],
+			["e-wide l-downR b-up m-open al-hip ar-low w-vendingDrop", 2],
+			["e-happy l-downR m-grin al-hip ar-cheer w-vendingDrop", 3],
+		],
+	}),
+
 	// Acted --------------------------------------------------------------------------------------
 	pose({
 		name: "waiting", title: "Waiting on you", trigger: "waiting", rarity: 1, play: "loop",

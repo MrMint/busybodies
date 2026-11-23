@@ -296,7 +296,7 @@ interface Choice {
 }
 
 /** The standing pose for a character's mood and running state, when nothing acted is playing. */
-function standing(s: Spec, now: number, count: Record<string, number>, work?: Work, life = false): Choice {
+function standing(s: Spec, now: number, count: Record<string, number>, work?: Work, life = false, habits?: readonly string[]): Choice {
 	if (s.mood === "stalled") return { pose: "stalled", as: "lead", acted: false };
 	if (s.mood === "done") return { pose: "done", as: "lead", acted: false };
 	if (s.seen.waiting !== undefined) return { pose: choosePose("waiting", s.key, s.rig, count.waiting ?? 0).name, as: "lead", acted: false, trigger: "waiting" };
@@ -312,7 +312,7 @@ function standing(s: Spec, now: number, count: Record<string, number>, work?: Wo
 	}
 	// Idle: one of the seven habits, from the id (habits.ts): with life on, rotating every minute or
 	// two and played again every half minute or so; calm, moving on every ten minutes.
-	const h = habitAt(s.key, s.since, now, life);
+	const h = habitAt(s.key, s.since, now, life, habits);
 	return { pose: h.pose, as: "lead", acted: false, ...(h.since !== undefined ? { since: h.since } : {}) };
 }
 
@@ -341,6 +341,8 @@ export interface DirectOptions {
 
 export function direct(prev: World | undefined, snap: Snapshot, now: number, floor: Floor, opts: DirectOptions = {}): Direction {
 	const life = opts.life ?? false;
+	// The theme's idle habits (office/staging.ts), or the rig's seven.
+	const habits = floor.staging?.habits;
 	const view = opts.view;
 	const before = prev?.actors ?? {};
 	const first = prev === undefined;
@@ -559,7 +561,7 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 
 		let choice: Choice;
 		if (work && want && want !== work.kind) wakes.push(work.since + WORK.holdMs);
-		let st = standing(s, now, count, work, life);
+		let st = standing(s, now, count, work, life, habits);
 		// Buried in the in-tray: past 95% of the context window, a busy lead at its desk (metrics.ts).
 		if (s.kind === "lead" && s.busy && !st.trigger && place.spot === "desk" && st.pose !== "grumpy" && st.pose !== "thinking" && trayFor(s.session.context)?.buried) st = { pose: "buried", as: "lead", acted: false };
 		if (visits.has(s.key) && st.pose !== "grumpy") st = { pose: "inspect", as: "lead", acted: false };
@@ -769,7 +771,7 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 
 		// When this picture changes on its own.
 		if (choice.acted) wakes.push(poseSince + poseMs(choice.pose, choice.as) - overlapOf(trait, choice.pose));
-		if (s.mood === "idle") wakes.push(habitAt(s.key, s.since, now, life).wake);
+		if (s.mood === "idle") wakes.push(habitAt(s.key, s.since, now, life, habits).wake);
 		if (s.busy && s.running) {
 			for (const m of [RULES.thinkingMin, RULES.longBuildMin]) if (now < s.running.since + m * MIN) wakes.push(s.running.since + m * MIN);
 		}
