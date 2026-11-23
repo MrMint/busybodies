@@ -17,7 +17,9 @@
 //   ?demo=empty   nobody's in; ?demo=nohome: no coding agent found (add &compact for the small window)
 // The clock is fixed, so the same demo always draws the same frames.
 import type { SignText } from "../scene/office/paper";
-import { LINES, linesIn } from "../scene/sass/lines";
+import { sassFor } from "../scene/sass/bank";
+import { type Line, LINES, linesIn } from "../scene/sass/lines";
+import { fill } from "../scene/sass/scheduler";
 import { signText } from "../scene/sass/voice";
 import { DEFAULT_THEME, type ThemeId } from "../scene/theme/id";
 import { type Diary, DIARY_KINDS, type DiaryDay, localDay, projectKey } from "../shared/diary";
@@ -119,15 +121,18 @@ function floorBusy(): Snapshot {
 	};
 }
 
-/** What the sass engine would have written on the walls by now (lines from design/boards/Lines). */
+/** What the sass engine would have written on the walls by now that is the same in any theme
+ * (lines from design/boards/Lines). */
 const FLOOR_BUSY_SIGNS: Record<string, SignText> = {
-	"room:lanternfish:board": { title: "DAYS SINCE A TEST BROKE: 0", body: "previous records: 3, 1, 2" },
-	"room:lanternfish:sign": { title: "CAUTION", body: "scouts running" },
-	"room:orbit-kit:sign": { title: "PRS TODAY: 4", body: "Humility: 0" },
 	"room:orbit-kit:board": { title: "PAGE 2 LOADS", body: "Nobody touch anything." },
-	"room:mossy-docs:sign": { title: "THE COMPACTOR", body: "Memories in. Vibes out." },
 	"meeting:board": { title: "PR #212 · round 2", body: "Same diff. Same no." },
 };
+
+/** The first room sign `theme`'s bank says for a trigger, as the voice would write it. */
+function roomSign(theme: ThemeId, trigger: Line["trigger"]): SignText {
+	const l = sassFor(theme).lines.find((x) => x.trigger === trigger && x.place === "sign");
+	return signText(l?.text ?? trigger);
+}
 
 /** A bank line's sign as `theme` words it (sass/lines.ts `themed`), `{min}` filled in. */
 function bankSign(theme: ThemeId, office: string, idleMin = 0): SignText {
@@ -139,6 +144,11 @@ function bankSign(theme: ThemeId, office: string, idleMin = 0): SignText {
 /** FloorBusy's walls in `theme`'s words: the bank's lines follow the theme, the rest are neutral. */
 const floorBusySigns = (theme: ThemeId): Record<string, SignText> => ({
 	...FLOOR_BUSY_SIGNS,
+	// The counters' signs and the room signs in the theme's own words (sass/bank.ts, signs.ts).
+	"room:lanternfish:board": { ...signText(fill(sassFor(theme).counters.daysSince, { n: 0 })!), body: "previous records: 3, 1, 2" },
+	"room:orbit-kit:sign": signText(fill(sassFor(theme).counters.prTally, { count: 4 })!),
+	"room:lanternfish:sign": roomSign(theme, "hiring"),
+	"room:mossy-docs:sign": roomSign(theme, "compacting"),
 	"room:breadbox:sign": bankSign(theme, "Now serving: nobody. Your number: 1."),
 	"room:kettle-api:sign": bankSign(theme, "Idle: {min} min. Plant: also idle.", 31),
 });
