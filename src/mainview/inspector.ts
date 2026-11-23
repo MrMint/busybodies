@@ -96,6 +96,8 @@ function summarise(office: Office) {
 	return {
 		bounds: w.bounds,
 		hallway: w.hallway,
+		/** The footprint's gaps made places (the theme's patio), by band. */
+		yards: w.yards,
 		areas: w.areas.map((a) => ({
 			id: a.id,
 			kind: a.kind,

@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { join, normalize } from "node:path";
 import { type Browser, type Page, chromium } from "playwright-core";
+import { THEME_IDS } from "../src/scene/theme/id";
 
 const ROOT = join(import.meta.dir, "..");
 const DIST = join(ROOT, "dist");
@@ -201,6 +202,38 @@ describe("themes", () => {
 		expect(done).toEqual({ moving: false, jobs: 0, still: true });
 		await page.close();
 	}, T);
+
+	// The bakery once drew no one at all: the upper band's gaps lie above the hallway at negative y,
+	// a big one there gave the café terrace a negative seed, its chalkboard a colour of undefined, and
+	// the throw ended the office's draw before the cast. An empty office has that gap, and so do
+	// many real floors; the demo days don't.
+	test("every theme shows its crew, from an empty office to a full one, in the full and compact windows", async () => {
+		const source = await open("demo&frozen");
+		const busy = await source.evaluate(() => window.__busybodies!.snapshot()!);
+		const crew = await source.evaluate(() => window.__busybodies!.entities().map((e) => e.key).sort());
+		await source.close();
+		expect(crew.length).toBeGreaterThan(10);
+		for (const id of THEME_IDS) {
+			for (const compact of [false, true]) {
+				const page = await browser.newPage({ viewport: compact ? { width: 440, height: 340 } : { width: 1280, height: 800 } });
+				const errors: string[] = [];
+				page.on("pageerror", (e) => errors.push(e.message));
+				await page.goto(`http://localhost:${server.port}/?inspect&demo=empty&frozen&theme=${id}${compact ? "&compact" : ""}`);
+				const ready = await page
+					.waitForFunction(() => window.__busybodies?.ready === true, undefined, { timeout: 15_000 })
+					.then(() => true)
+					.catch(() => false);
+				expect({ id, compact, ready, errors }).toEqual({ id, compact, ready: true, errors: [] });
+				// The risky gap is there: a deep, wide yard in the upper band, above the hallway.
+				const yards = await page.evaluate(() => window.__busybodies!.layout()!.yards);
+				expect(yards.some((y) => y.band === "top" && y.rect.y < 0 && y.rect.w >= 164 && y.rect.h >= 164)).toBe(true);
+				await page.evaluate((s) => window.__busybodies!.show(s), busy);
+				const shown = await page.evaluate(() => window.__busybodies!.entities().map((e) => e.key).sort());
+				expect({ id, compact, shown, errors }).toEqual({ id, compact, shown: crew, errors: [] });
+				await page.close();
+			}
+		}
+	}, 90_000);
 
 	test("the settings cog: pick a theme in the sheet, and this window switches", async () => {
 		const page = await open("demo&frozen");
