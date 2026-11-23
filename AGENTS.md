@@ -60,7 +60,7 @@ v7-era APIs that look right and silently draw the wrong thing. Update it only wi
 |---|---|
 | `src/bun/` | The Electrobun main process: the office and compact windows, the tray, the app menu, updates, the way out on quit (`shutdown.ts`), the diary on disk (`diary.ts`; its counts-only model is `src/shared/diary.ts`) |
 | `src/watcher/` | Capture: reads the agent tool's files into a `Snapshot` (`model.ts` is the contract) |
-| `src/mainview/` | The webview's entry: app setup, the top bar, the inspector, demo days; on-screen visibility (`visibility.ts`), the compact camera (`shots.ts`), opt-in sound (`sound.ts`), looks as render passes (`look.ts`) |
+| `src/mainview/` | The webview's entry: app setup, the top bar, the inspector, demo days; on-screen visibility (`visibility.ts`), the compact camera (`shots.ts`), opt-in sound (`sound.ts`) |
 | `src/scene/office/` | The open-floor office: floor plan, camera, cut-paper drawing, the character slot interface; light and time of day (`daylight.ts`, `light.ts`), windows and the yard (`outlook.ts`, `outside.ts`), the paper pass (`material.ts`); a theme's staging (`staging.ts`), ambient life (`ambient.ts`), the walls that remember (`decor.ts`) |
 | `src/scene/theme/` | Scene themes (`?theme=`, the tray's Theme menu): the office's, the factory's and the bakery's (`bakery.ts`: a patisserie, a pastry conveyor down the hallway) look, words and staging behind a `SceneTheme`, and the factory's robot arms |
 | `src/scene/rig/` | The mochi character rig: parts atlas, springs, frames, poses, and the office's character factory (`?sheet`, `?demo=crowd`); life (`life.ts`: blinks and glances), gaze (`gaze.ts`), the office's corporate cast (`office.ts`) and the Line's kitchen brigade (`kitchen.ts`) |

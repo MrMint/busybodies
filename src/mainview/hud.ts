@@ -28,6 +28,8 @@ const CSS = `
 @media (max-width:960px){#hud .pill.count{display:none}}
 @media (max-width:760px){#hud .pill.clock{display:none}#hud .next{font-size:0}#hud .next::after{content:"›";font-size:14px}}
 #hud .icon{padding:5px 11px}
+#hud .settings{padding:5px 7px;display:flex;align-items:center}
+#hud .settings svg{display:block;margin:.5px 0}
 #hud.compact{height:34px;gap:6px;padding:0 6px 0 10px;pointer-events:auto;cursor:grab;font-size:12px}
 #hud.compact .brand{font-size:13px;padding:2px 9px 4px;border-radius:8px}
 #hud.compact .pill{border-width:2px;padding:1px 8px}
@@ -49,6 +51,10 @@ const CSS = `
 `;
 
 const PIN = `<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="3.4" r="2.6" fill="#e5484d"/><path d="M5 5.5v4" stroke="#1b2140" stroke-width="1.4" stroke-linecap="round"/></svg>`;
+
+/** The settings button's mark: three ink sliders with paper knobs, in the bar's own line weight
+ * (the ⚙ glyph drew small and thin beside the buttons' 3px ink). */
+const SLIDERS = `<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="#fff" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M2 3.5h12M2 8h12M2 12.5h12"/><circle cx="10.5" cy="3.5" r="2"/><circle cx="5" cy="8" r="2"/><circle cx="9" cy="12.5" r="2"/></svg>`;
 
 export interface HudOptions {
 	/** The compact floating window's strip. */
@@ -74,7 +80,7 @@ export function installHud(office: Office, opts: HudOptions = {}) {
 	bar.id = "hud";
 	bar.innerHTML = `<span class="brand">Busybodies</span><span class="pill clock"></span><span class="pill count"></span><span class="pill waiting" hidden></span>
 <span class="gap"></span><button class="all">Whole office</button><button class="prev" aria-label="Previous room">‹</button><button class="next">Next room ›</button>
-<button class="settings icon" aria-label="Settings" title="Settings">⚙</button><button class="about icon" aria-label="About Busybodies">?</button><button class="expand" title="Open the full office">Office ⤢</button><button class="hide" aria-label="Hide the compact window">×</button>`;
+<button class="settings icon" aria-label="Settings" title="Settings">${SLIDERS}</button><button class="about icon" aria-label="About Busybodies">?</button><button class="expand" title="Open the full office">Office ⤢</button><button class="hide" aria-label="Hide the compact window">×</button>`;
 	if (opts.compact) {
 		// Electrobun drags a frameless window by elements with this class; buttons opt out.
 		bar.classList.add("compact", "electrobun-webkit-app-region-drag");

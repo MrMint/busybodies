@@ -3,7 +3,7 @@
 // Actors here are invented and only carry the fields sound reads.
 import { describe, expect, test } from "bun:test";
 import type { Actor, World, WorldEvent } from "../src/scene/director";
-import { BAKERY_STEP, Ears, Gate, LIMITS, bakeryBeat, hashId, heatOf, loudness, panFor, seq, vary, zoomedArea } from "../src/mainview/sound";
+import { BAKERY_STEP, Ears, Gate, LEVEL, LIMITS, MAX_VOICES, RING, Voices, bakeryBeat, hashId, heatOf, loudness, panFor, seq, vary, zoomedArea } from "../src/mainview/sound";
 
 const actor = (key: string, extra: Partial<Actor> = {}, seen: Partial<Actor["seen"]> = {}): Actor =>
 	({ key, area: "room:pebble", mood: "idle", seen: { prs: [], hires: [], ...seen }, ...extra }) as Actor;
@@ -71,6 +71,29 @@ describe("gate", () => {
 	});
 });
 
+describe("voices", () => {
+	test("at most MAX_VOICES ring at once; the rest wait their turn, but a bell takes the oldest's place", () => {
+		const v = new Voices<string>();
+		expect(v.admit("chime", 0, 0 + RING.chime, "chime")).toEqual({ ok: true });
+		expect(v.admit("red", 0.6, 0.6 + RING.red, "red")).toEqual({ ok: true });
+		expect(MAX_VOICES).toBe(2);
+		expect(v.count(0.7)).toBe(2);
+		expect(v.admit("stamp", 0.7, 0.95, "stamp")).toEqual({ ok: false });
+		expect(v.admit("bell", 0.8, 0.8 + RING.bell, "bell")).toEqual({ ok: true, steal: "chime" });
+		// Once the red has rung out, there's room again.
+		expect(v.admit("stamp", 1.6, 1.85, "stamp")).toEqual({ ok: true });
+		expect(v.count(3)).toBe(0);
+	});
+
+	test("every earcon has a ring length and a level, and the mix stays even", () => {
+		for (const kind of ["bell", "stamp", "red", "rustle", "chime", "grind"] as const) {
+			expect(RING[kind]).toBeGreaterThan(0);
+			expect(RING[kind]).toBeLessThan(3);
+			expect(LEVEL[kind]).toBeGreaterThan(0);
+		}
+	});
+});
+
 describe("placing and varying", () => {
 	test("variation is the same for the same id, and stays small", () => {
 		expect(vary("bell:s:1:10")).toEqual(vary("bell:s:1:10"));
@@ -81,7 +104,13 @@ describe("placing and varying", () => {
 			expect(v.pitch).toBeLessThanOrEqual(1.05);
 			expect(v.delay).toBeGreaterThanOrEqual(0);
 			expect(v.delay).toBeLessThanOrEqual(0.04);
+			// About ±1.5 dB.
+			expect(v.level).toBeGreaterThanOrEqual(0.84);
+			expect(v.level).toBeLessThanOrEqual(1.16);
 		}
+		// The level comes from other bits than the pitch: two ids can share one and not the other.
+		const ids = Array.from({ length: 64 }, (_, i) => `bell:s:${i}`);
+		expect(new Set(ids.map((id) => vary(id).level.toFixed(3))).size).toBeGreaterThan(30);
 	});
 
 	test("pan follows the room's screen x; loudness the camera", () => {
