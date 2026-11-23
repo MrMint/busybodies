@@ -19,8 +19,6 @@ import { Atlas, buildPoseSheet, rigCharacters, rigTheme } from "../scene/rig";
 import { Director, NOTICE, placeholderVoice } from "../scene/director";
 import { Voice } from "../scene/sass";
 import { type Diary, diaryOf, newMemory, noteSnapshot } from "../shared/diary";
-import { lookId } from "../shared/look";
-import { installLooks } from "./look";
 
 const params = new URLSearchParams(location.search);
 /** ?compact: the small floating window (transparent, always on top; src/bun/compact.ts). */
@@ -174,9 +172,8 @@ function blank(): void {
 				width: () => app.screen.width,
 			});
 	director.on((events, world) => sound?.hear(events, world));
-	/** The tray's Sound and Calm office toggles, and its Look, live. */
-	const setToggles = (change: { sound?: boolean; calm?: boolean; look?: string }) => {
-		if (change.look !== undefined) looks.set(lookId(change.look));
+	/** The tray's Sound and Calm office toggles, live. */
+	const setToggles = (change: { sound?: boolean; calm?: boolean }) => {
 		if (change.calm !== undefined) calmOn = change.calm;
 		office.life = visibility.visible && !calm();
 		if (change.sound !== undefined) sound?.setEnabled(change.sound);
@@ -272,10 +269,8 @@ function blank(): void {
 	};
 	const show = scene.show;
 	const redraw = scene.redraw;
-	// The look (mainview/look.ts): from ?look= (the saved Look), switched live over RPC.
-	const looks = installLooks(app, office, { look: lookId(params.get("look")), hour: pinnedHour, compact, redraw });
 	const inspector = import.meta.env.DEV || params.has("inspect") ? installInspector(app, office, scene, director, voice && { voice, now: () => director.now }, { current: () => theme, set: setTheme }, visibility) : undefined;
-	if (inspector) Object.assign(inspector, { sound: () => sound?.state(), setToggles, look: () => looks.info() });
+	if (inspector) Object.assign(inspector, { sound: () => sound?.state(), setToggles });
 	// The diary (src/shared/diary.ts): counts and kinds only, from the Bun process (or, in a demo,
 	// kept here from the demo's snapshots). The walls and the lobby board read it (office/decor.ts).
 	const setDiary = (d: unknown) => {
@@ -299,7 +294,7 @@ function blank(): void {
 		live: !params.has("demo") && !params.has("replay"),
 		compact,
 		theme: { current: () => theme, set: (id) => setTheme(id) },
-		toggles: { current: () => ({ sound: sound?.enabled ?? params.has("sound"), calm: calmOn, look: looks.current }), set: (change) => setToggles(change) },
+		toggles: { current: () => ({ sound: sound?.enabled ?? params.has("sound"), calm: calmOn }), set: (change) => setToggles(change) },
 		// ?demo=nohome: the "no coding agent found" state, without a real home folder.
 		status: params.get("demo") === "nohome" ? { homeFound: false, home: "~/.claude" } : undefined,
 	});

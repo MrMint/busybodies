@@ -181,8 +181,9 @@ the light both lean on walls. What's left is under "After wave 3" below.
   redemption beat when a red streak goes green, send-offs for long sessions, "while you were out"
   headlines on the lobby board, regulars you recognise (the same face, accessory and short name per
   project and role), rooms that collect decor through the week, the day's ledger at closing.
-- **Looks as render passes**: pixel as a quarter-resolution render upscaled nearest; night is the
-  light layer's night phase.
+- ~~**Looks as render passes**: pixel as a quarter-resolution render upscaled nearest; night is the
+  light layer's night phase.~~ Built, then removed (decisions.md, 2026-11-23): the light layer's real
+  time of day stays.
 
 ## After wave 3
 
