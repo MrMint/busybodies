@@ -191,6 +191,8 @@ export class Light extends Container {
 		base.rect(r.x, r.y, r.w, r.h).fill(0xffffff);
 		base.rect(b.x - 14, b.y - 14, b.w + 28, b.h + 28).fill(ambient);
 		base.rect(world.hallway.x, world.hallway.y, world.hallway.w, world.hallway.h).fill(light.hall[phase]);
+		// The footprint's gaps are outside (a patio, a yard): lit like the lawn.
+		for (const y of world.yards ?? []) base.rect(y.rect.x, y.rect.y, y.rect.w, y.rect.h).fill(light.outside[phase]);
 		const areaLight = (a: Area) => (a.kind === "vacant" ? mul(ambient, grey(1 - (1 - light.vacant) * (0.4 + 0.6 * on))) : ambient);
 		for (const a of world.areas) base.rect(a.rect.x, a.rect.y, a.rect.w, a.rect.h).fill(areaLight(a));
 		// Empty desks sit a shade darker than the ones in use, at any hour: a soft shadow where no

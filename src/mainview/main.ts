@@ -99,7 +99,7 @@ function blank(): void {
 	// the room settle a few seconds before the naps and waits start talking; a frozen one (tests,
 	// screenshots) speaks at once; ?settle=<ms> sets it (the walk e2e keeps the voice out of its way).
 	const settleMs = params.has("settle") ? Number(params.get("settle")) : params.has("frozen") ? 0 : 6_000;
-	const voice = params.has("toolvoice") ? undefined : new Voice(office, { settleMs });
+	const voice = params.has("toolvoice") ? undefined : new Voice(office, { settleMs, theme });
 	director.on((events) => {
 		for (const e of events) if (e.type === "leave") voice?.gone(e.key);
 	});
@@ -258,6 +258,7 @@ function blank(): void {
 		old.destroy();
 		if (!compact) app.renderer.background.color = sceneTheme(id).lawn;
 		sound?.themeChanged();
+		if (voice) voice.theme = id;
 		direct();
 		scene.redraw();
 	};
@@ -317,7 +318,7 @@ function blank(): void {
 		const name = params.get("demo");
 		// ?demo=day-N: the demo day's first N beats, played at once (for screenshots of a beat).
 		const beat = name?.match(/^day-(\d)$/);
-		const day = demo(beat ? null : name);
+		const day = demo(beat ? null : name, theme);
 		for (const [id, sign] of Object.entries(day.signs)) office.setSign(id, sign);
 		show(day.snapshot);
 		if (beat) for (const b of demoDay().slice(0, Number(beat[1]))) show(b.snapshot);

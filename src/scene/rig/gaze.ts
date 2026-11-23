@@ -2,7 +2,7 @@
 // `lookAt`: an actor's key, a world point, or the viewer). Pure: world pixels in, the face's slide in
 // rig units out, so the conversion is unit-tested without a renderer.
 //
-// The face slides inside the body (vocab.ts LOOKS: about 5.5 units to a side, 4.5 up, 5 down). A
+// The face slides inside the body (vocab.ts LOOKS: about 4 units to a side, 3.5 up and down). A
 // target is turned into that slide by its direction from the character's eyes, in the character's
 // own facing (a target behind it is a look over the shoulder), clamped to the face's range. The
 // floor is seen from above at an angle, so a teammate lower on the screen is mostly nearer, not

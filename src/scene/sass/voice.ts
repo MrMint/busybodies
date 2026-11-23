@@ -3,6 +3,7 @@
 // time is up, and drops what the office has no slot for (yet). Pixi-free: the office is passed in
 // as the three methods it needs, so tests drive it with a fake.
 import type { Snapshot } from "../../watcher/model";
+import type { ThemeId } from "../theme/id";
 import { type Output, Sass, type SassOptions } from "./sass";
 import type { Say, View } from "./scheduler";
 
@@ -43,6 +44,12 @@ export class Voice {
 	constructor(stage: Stage, opts: SassOptions = {}) {
 		this.#stage = stage;
 		this.sass = new Sass(opts);
+	}
+
+	/** Speak in another scene theme's words (the tray's Theme menu, switched live): bubbles and new
+	 * sign lines; signs already up stay (Sass.theme). */
+	set theme(theme: ThemeId) {
+		this.sass.theme = theme;
 	}
 
 	/** Voice the scene at `now`: a new snapshot is read for triggers, the same one just moves time on. */

@@ -10,7 +10,9 @@ import { PACE } from "../src/scene/director/pace";
 import { TRAITS } from "../src/scene/director/traits";
 import type { World } from "../src/scene/director/types";
 import { FloorPlan } from "../src/scene/office/layout";
+import { LEAD_SIZE } from "../src/scene/office/placement";
 import { PROPS } from "../src/scene/office/propspots";
+import { DESK_TOP, SEAT, faceZone } from "../src/scene/office/world";
 import { RIG_PLANNER, bellFrom } from "../src/scene/office/rigpoints";
 import { POSE, duration } from "../src/scene/rig/poses";
 import type { Agent, Session, Snapshot } from "../src/watcher/model";
@@ -190,12 +192,17 @@ describe("the tower counts lines", () => {
 });
 
 describe("the rig's working points", () => {
-	test("the in-tray sits at the rig's TRAY for the lead behind its desk", () => {
-		// 21 units right of a 72 px lead at (-26, -42), 30 units wide, on the desk top 28 units up.
+	test("the in-tray sits on the desk top, the rig's tray's size, right of the lead's face", () => {
+		// As wide as the rig's tray for a 72 px lead (30 units), its sheets as thick (1.5 units), on
+		// the desk top (between its back edge and the front panel), wholly right of the lead's face:
+		// the rig draws its own in front of the face only while the lead plays `buried`.
 		const t = PROPS.tray;
-		expect(t.x + t.w / 2).toBeCloseTo(-26 + (21 * 72) / 85, 5);
-		expect(t.w).toBeCloseTo((30 * 72) / 85, 5);
-		expect(t.y).toBeCloseTo(-42 - (28 * 72) / 85, 5);
+		expect(t.w).toBeCloseTo((30 * 72) / 85, 1);
+		expect(t.sheet).toBeCloseTo((1.5 * 72) / 85, 2);
+		expect(t.y).toBeGreaterThan(DESK_TOP);
+		expect(t.y).toBeLessThan(-44);
+		const face = faceZone(SEAT, LEAD_SIZE);
+		expect(t.x - 4).toBeGreaterThan(face.x + face.w);
 	});
 
 	test("the bell counter stands under the first ringer's plunger", () => {

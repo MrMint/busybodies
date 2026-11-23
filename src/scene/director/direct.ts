@@ -11,7 +11,7 @@ import { seats } from "../office/layout";
 import { LEAD_SIZE, crewOf } from "../office/placement";
 import type { Mood } from "../office/slot";
 import type { Area, Slot, World as Floor } from "../office/world";
-import { buildSlot, crewSlot, crewSpot, crewSpots, useFor } from "../office/world";
+import { OVERLAP, buildSlot, crewPlaces, crewSlot, crewSpots, endGaps, useFor, yieldFrom } from "../office/world";
 import { choosePose, hash } from "../rig/player";
 import { POSE, duration } from "../rig/poses";
 import { type Role, roleFor } from "../rig/roles";
@@ -215,14 +215,15 @@ function assign(list: Spec[], floor: Floor, prev: Record<string, Actor>): Map<st
 	const meeting = commonSpots(floor, "meeting", "seat");
 	const outs = OUT_ORDER.flatMap(([k, n, a, b]) => commonSpots(floor, k, n, a, b));
 	const crewTaken = new Map<string, Set<number>>();
-	// Each desk's crew spots, spaced so their work shows, spilling into free cells nearby.
-	const spotsFor = new Map<string, Slot[]>();
+	// Each desk's crew spots, spaced so their work shows, spilling into free cells nearby (or, in a
+	// desk at the room's front, squeezing up so nobody stands outside the room): placed once every
+	// crew member has its number, since the squeeze depends on how many there are.
+	const crewAt: { key: string; desk: string; i: number }[] = [];
 	const crewPlace = (s: Spec, i: number): Place | undefined => {
 		const desk = floor.desks.get(s.session.id);
 		if (!desk) return undefined;
-		let spots = spotsFor.get(desk.id);
-		if (!spots) spotsFor.set(desk.id, (spots = crewSpots(floor, desk)));
-		return { spot: `crew:${i}`, area: desk.areaId, slot: crewSpot(spots, desk, i) };
+		crewAt.push({ key: s.key, desk: desk.id, i });
+		return { spot: `crew:${i}`, area: desk.areaId, slot: desk.lead };
 	};
 	const takeCrew = (s: Spec, i: number) => {
 		const set = crewTaken.get(s.session.id) ?? new Set<number>();
@@ -273,6 +274,10 @@ function assign(list: Spec[], floor: Floor, prev: Record<string, Actor>): Map<st
 		while (!takeCrew(s, i)) i++;
 		out.set(s.key, crewPlace(s, i)!);
 	}
+	const count = new Map<string, number>();
+	for (const c of crewAt) count.set(c.desk, Math.max(count.get(c.desk) ?? 0, c.i + 1));
+	const slots = new Map([...count].map(([id, n]) => [id, crewPlaces(floor, floor.desks.get(id)!, n)]));
+	for (const c of crewAt) out.set(c.key, { ...out.get(c.key)!, slot: slots.get(c.desk)![c.i]! });
 	return out;
 }
 
@@ -799,6 +804,36 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 		wakes.push(now + ms);
 	}
 
+	// Yields: whoever stands on a desk's end place steps aside while a brick run to the build spot in
+	// its gap is under way (from setting off to stepping away), then walks back when the run is over.
+	// Only that one moves; the row stays as it is.
+	for (const a of Object.values(actors)) {
+		if (a.kind !== "crew" || a.gone !== undefined || !a.spot.startsWith("crew:") || a.home !== undefined) continue;
+		const desk = floor.desks.get(a.session);
+		const gap = desk && endGaps(floor, desk).find((g) => g.slot.x === a.slot.x && g.slot.y === a.slot.y);
+		const run = gap?.builder !== undefined ? runs.active.get(gap.builder) : undefined;
+		if (!gap || !run || now >= run.done || run.key === a.key) continue;
+		const to = yieldFrom(gap.slot);
+		const was = before[a.key];
+		const there = was !== undefined && was.gone === undefined && was.slot.x === to.x && was.slot.y === to.y;
+		// The loop just sent it back to the end place: that walk (and its event) is not happening.
+		for (let i = events.length - 1; i >= 0; i--) {
+			const e = events[i]!;
+			if (e.type === "walk" && e.key === a.key && e.at === now) events.splice(i, 1);
+		}
+		let walk = there && was.walk && now < was.walk.since + was.walk.ms ? was.walk : undefined;
+		if (!there) {
+			const from = was && was.gone === undefined ? here(was, now) : a.slot;
+			const path = pathBetween(floor, a.area, from, a.area, to);
+			walk = { path, ms: walkMs(path), since: now };
+			events.push({ type: "walk", key: a.key, at: now, from: a.spot, to: a.spot, ms: walk.ms });
+			wakes.push(now + walk.ms);
+		}
+		const { walk: _, ...rest } = a;
+		actors[a.key] = { ...rest, slot: to, yielding: true, ...(walk ? { walk } : {}) };
+		wakes.push(run.done);
+	}
+
 	// Dodges: a walk starting now that would pass through another walker in its area sidesteps. Walks
 	// whose timing something else counts on (a brick, a folder, an envelope, a leaver) keep their path.
 	const timed = new Set([...runs.active.values()].map((r) => r.key));
@@ -1091,12 +1126,20 @@ function foremanVisits(list: Spec[], places: Map<string, Place>, now: number, wa
 			continue;
 		}
 		wakes.push(now + every - phase);
-		const m = crew[(Math.floor(t / every) + hash(s.key)) % crew.length]!;
-		const p = places.get(m.key)!;
-		// On the crew member's outer side, a step back, facing the same way: looking over its shoulder.
-		const x = p.slot.x - p.slot.facing * 34;
-		const y = p.slot.y - 10;
-		out.set(s.key, { spot: `visit:${m.key}`, area: p.area, slot: { x, y, depth: y, facing: p.slot.facing } });
+		// On the crew member's outer side, a step back, facing the same way: looking over its shoulder;
+		// the turn's crew member, or the next whose shoulder has room (not someone else's place, such
+		// as the desk's end place beside the row).
+		const others = list.filter((o) => o.session.id === s.session.id && o.kind === "crew").map((o) => places.get(o.key)).filter((o): o is Place => !!o?.spot.startsWith("crew:"));
+		const first = (Math.floor(t / every) + hash(s.key)) % crew.length;
+		for (let k = 0; k < crew.length; k++) {
+			const m = crew[(first + k) % crew.length]!;
+			const p = places.get(m.key)!;
+			const x = p.slot.x - p.slot.facing * 34;
+			const y = p.slot.y - 10;
+			if (others.some((o) => o !== p && Math.abs(o.slot.x - x) < OVERLAP.dx && Math.abs(o.slot.y - y) < OVERLAP.dy)) continue;
+			out.set(s.key, { spot: `visit:${m.key}`, area: p.area, slot: { x, y, depth: y, facing: p.slot.facing } });
+			break;
+		}
 	}
 	return out;
 }

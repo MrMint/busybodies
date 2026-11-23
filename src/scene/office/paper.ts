@@ -76,7 +76,11 @@ export interface SignStyle {
 	top?: number;
 }
 
-export const PAPER_SIGNS: SignStyle = { sign: SUN, signAlt: 0xffd0e4, whiteboard: 0xffffff, frame: 0xffffff };
+/** A wall sign's yellow: a sticky note's, softer than SUN, so a sign never pulls the eye before the
+ * characters do. */
+export const NOTE_YELLOW = 0xffe66b;
+
+export const PAPER_SIGNS: SignStyle = { sign: NOTE_YELLOW, signAlt: 0xffd0e4, whiteboard: 0xffffff, frame: 0xffffff };
 
 /** A sign, whiteboard or frame with its text, as a container to bake into the room. */
 export function signboard(kind: WallItem["kind"], r: Rect, content: SignText | undefined, seed: number, style: SignStyle = PAPER_SIGNS): Container {

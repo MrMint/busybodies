@@ -9,12 +9,12 @@ export const PUPPET_HEIGHT = 85;
 
 /** Where the face and limbs attach, in torso space (origin: the middle of the body's base). */
 export const ANCHORS = {
-	eyeX: 16,
-	eyeY: -40,
-	browY: -51,
-	mouthY: -27,
-	cheekX: 31,
-	cheekY: -31,
+	eyeX: 20.5,
+	eyeY: -35.5,
+	browY: -53,
+	mouthY: -25.5,
+	cheekX: 37.5,
+	cheekY: -22,
 	shoulderX: 46,
 	shoulderY: -28,
 	upper: 15,
@@ -24,7 +24,7 @@ export const ANCHORS = {
 	legY: -18,
 	base: -15,
 	bodyTop: -70,
-	frontY: -16,
+	frontY: -13,
 } as const;
 
 /** Where the work stands, in puppet space (ground at y = 0, the body centred on x = 0), out front on

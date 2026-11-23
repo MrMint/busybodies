@@ -7,11 +7,11 @@
 // flat shapes and the same ink, so the cast reads the same in both.
 import { Container, Graphics } from "pixi.js";
 import type { Lamp, Tray } from "../director/metrics";
-import { GREEN, INK, RED, SHADOW, type SignStyle, batched, hash, label, line, signboard, wob } from "../office/paper";
-import { PROPS } from "../office/propspots";
-import type { Area, Rect } from "../office/world";
+import { GREEN, INK, RED, SHADOW, type SignStyle, batched, hash, label, line, noise, signboard, wob } from "../office/paper";
+import { MONITOR, PROPS } from "../office/propspots";
+import { type Area, type Band, DESK_TOP, type Rect } from "../office/world";
 import { crewBuild } from "./build";
-import { COMMON_COLOURS, NIGHT_WATCH, ROOM_COLOURS, plannerOf } from "./office";
+import { COMMON_COLOURS, NIGHT_WATCH, plannerOf } from "./office";
 import type { FurnitureKind, SceneLight, SceneTheme } from "./types";
 import { FACTORY_WORDS, type SignText } from "./words";
 
@@ -150,11 +150,24 @@ const rivets = (g: Graphics, x: number, y: number, w: number, h: number) => {
 	g.fill(STEEL_DARK);
 };
 
-const SIGNS: SignStyle = { sign: SAFETY, signAlt: ORANGE, whiteboard: 0xe6eaee, frame: 0xffffff, dress: (g, _k, x, y, w, h) => rivets(g, x, y, w, h) };
+/** Each bay's tint pair (pale, deep), in room order: the office's project colours as they were
+ * before its floors went pale. The factory mixes them into steel and concrete, where they were
+ * never loud enough to fight the cast, so it keeps them. */
+const BAY_TINTS: [number, number][] = [
+	[0xffe9cf, 0xffc47f],
+	[0xdeecff, 0xa6d0ff],
+	[0xdff7ec, 0xa5e6c9],
+	[0xffe6f0, 0xffbdd6],
+	[0xeee7ff, 0xd2c0ff],
+	[0xfff6c9, 0xffe08a],
+	[0xe3f7ff, 0x9fdcf5],
+];
+
+const SIGNS: SignStyle ={ sign: SAFETY, signAlt: ORANGE, whiteboard: 0xe6eaee, frame: 0xffffff, dress: (g, _k, x, y, w, h) => rivets(g, x, y, w, h) };
 
 function room(g: Graphics, c: Container, a: Area, sign: (slot: string) => SignText | undefined): void {
 	const [officeWall, officeFloor] =
-		a.kind === "project" ? ROOM_COLOURS[a.hue % ROOM_COLOURS.length]! : COMMON_COLOURS[a.kind as keyof typeof COMMON_COLOURS];
+		a.kind === "project" ? BAY_TINTS[a.hue % BAY_TINTS.length]! : COMMON_COLOURS[a.kind as keyof typeof COMMON_COLOURS];
 	// Each bay keeps its office colour as a tint on the steel, so rooms still tell apart.
 	const wall = mix(0xa9b2bc, officeFloor, a.kind === "project" ? 0.45 : 0.25);
 	const floor = a.kind === "meeting" ? 0xb4cdb9 : mix(CONCRETE, officeWall, 0.25);
@@ -318,13 +331,23 @@ function scrapBin(load: number): Graphics {
 // --- Furniture --------------------------------------------------------------------------------
 
 /** A workbench: a steel top behind, a front with a drawer row and a hazard edge. 150 wide. */
-function bench(g: Graphics, w = 150, top = STEEL_LIGHT, front = STEEL_DARK): void {
+function bench(g: Graphics, w = 150, top = STEEL_LIGHT, front = STEEL_DARK, back = -70): void {
 	g.rect(-w / 2 + 5, -44 + 6, w, 44).fill(SHADOW);
-	g.roundRect(-w / 2 - 12, -70, w + 24, 32, 4).fill(top).stroke(line(4));
+	g.roundRect(-w / 2 - 12, back, w + 24, -38 - back, 4).fill(top).stroke(line(4));
 	g.roundRect(-w / 2, -44, w, 44, 3).fill(front).stroke(line(4));
 	hazard(g, -w / 2 + 4, -40, w - 8, 4, 10);
 	for (let i = 0; i < 3; i++) g.roundRect(-w / 2 + 10 + (i * (w - 20)) / 3, -30, (w - 20) / 3 - 6, 10, 2);
 	g.fill({ color: 0xffffff, alpha: 0.18 });
+}
+
+/** The bench's control screen, its stand's foot at the origin (propspots.ts MONITOR): a steel
+ * bezel in an ink outline round a face of `face`. */
+function panel(g: Graphics, face: number): void {
+	const { w, h, neck } = MONITOR;
+	g.roundRect(-9, -3, 18, 4, 2).fill(INK);
+	g.rect(-3, -neck - 1, 6, neck).fill(INK);
+	g.roundRect(-w / 2, -neck - h, w, h, 4).fill(STEEL_DARK).stroke(line(4));
+	g.roundRect(-w / 2 + 4, -neck - h + 4, w - 8, h - 8, 2).fill(face);
 }
 
 /** Station bodies: between ST_L (toward the wall) and ST_R (toward the user), tops at the point. */
@@ -336,7 +359,8 @@ function furniture(kind: FurnitureKind): Graphics {
 	const w = ST_R - ST_L;
 	switch (kind) {
 		case "desk":
-			bench(g);
+			// The lead's bench: its top's back edge low (DESK_TOP), so the lead's face shows over it.
+			bench(g, 150, STEEL_LIGHT, STEEL_DARK, DESK_TOP);
 			break;
 		case "table": {
 			// The QA booth's inspection table, with a magnifier lamp over a part.
@@ -428,15 +452,12 @@ function furniture(kind: FurnitureKind): Graphics {
 			g.roundRect(14, -40, 30, 4, 2).roundRect(14, -32, 22, 4, 2).fill(INK);
 			break;
 		case "screen-lit":
-			g.rect(-6, -2, 12, 12).fill(INK);
-			g.roundRect(-31, -44, 62, 44, 4).fill(STEEL_DARK).stroke(line(4));
-			g.roundRect(-26, -39, 52, 34, 2).fill(0x1d2a22);
-			g.rect(-22, -34, 22, 4).rect(-22, -25, 30, 4).rect(-22, -16, 12, 3).fill(0xffb347);
+			// A control panel's screen: a deep green-slate face (not near-black), amber lines.
+			panel(g, 0x3b5048);
+			g.rect(-15, -45, 16, 3.5).rect(-15, -38, 22, 3.5).rect(-15, -31, 9, 3).fill(0xffb347);
 			break;
 		case "screen-off":
-			g.rect(-6, -2, 12, 12).fill(INK);
-			g.roundRect(-31, -44, 62, 44, 4).fill(STEEL_DARK).stroke(line(4));
-			g.roundRect(-26, -39, 52, 34, 2).fill(0x8d96a3);
+			panel(g, 0x8d96a3);
 			break;
 		case "files": {
 			// The parts rack (reference): open shelving with boxes, a little taller than the point.
@@ -598,6 +619,57 @@ export const FACTORY_LIGHT: SceneLight = {
 	yard: "yard",
 };
 
+/** A gap in the footprint as the works' back yard: a concrete apron with its joints and a painted
+ * walkway line, pallets of boxes in the corners and a couple of oil drums; as much as fits. */
+function yard(g: Graphics, r: Rect, _band: Band): void {
+	const p = { x: r.x + 7, y: r.y + 7, w: r.w - 14, h: r.h - 14 };
+	if (p.w < 18 || p.h < 18) return;
+	g.roundRect(p.x, p.y, p.w, p.h, 6).fill(0xbfbab0);
+	for (let x = p.x + 64; x < p.x + p.w - 8; x += 64) g.rect(x, p.y + 3, 2, p.h - 6);
+	for (let y = p.y + 64; y < p.y + p.h - 8; y += 64) g.rect(p.x + 3, y, p.w - 6, 2);
+	g.fill({ color: INK, alpha: 0.08 });
+	// An oil stain, from the yard's place.
+	const sx = p.x + p.w * (0.3 + noise(Math.round(r.x), Math.round(r.y), 61) * 0.4);
+	const sy = p.y + p.h * (0.3 + noise(Math.round(r.x), Math.round(r.y), 62) * 0.4);
+	g.ellipse(sx, sy, Math.min(22, p.w * 0.2), Math.min(9, p.h * 0.08)).fill({ color: INK, alpha: 0.1 });
+	if (p.w >= 40) g.roundRect(p.x + 9, p.y + 9, p.w - 18, p.h - 18, 4).stroke({ width: 3, color: SAFETY, alpha: 0.8 });
+	g.roundRect(p.x, p.y, p.w, p.h, 6).stroke({ width: 3, color: INK, alpha: 0.45 });
+	const things: [number, () => void][] = [];
+	const corner = p.w >= 64 && p.h >= 64;
+	if (corner) {
+		things.push([p.y + 42, () => pallet(g, p.x + p.w / 2 - Math.min(p.w / 2 - 34, 60), p.y + 42, 0)]);
+		things.push([p.y + p.h - 12, () => drums(g, p.x + p.w - 26, p.y + p.h - 12, p.w >= 110 ? 2 : 1)]);
+	}
+	if (p.w >= 80 && p.h >= 150) things.push([p.y + p.h * 0.6, () => pallet(g, p.x + p.w / 2, p.y + p.h * 0.6, 1)]);
+	if (p.w >= 150 && p.h >= 150) things.push([p.y + p.h - 12, () => pallet(g, p.x + 40, p.y + p.h - 12, 2)]);
+	if (!corner) things.push([p.y + p.h - 6, () => drums(g, p.x + p.w / 2, p.y + p.h - 6, 1)]);
+	for (const [, draw] of things.sort((a, b) => a[0] - b[0])) draw();
+}
+
+/** A pallet with boxes on it, its base's centre at (x, y). */
+function pallet(g: Graphics, x: number, y: number, k: number): void {
+	g.rect(x - 28, y - 3, 62, 6).fill(SHADOW);
+	g.rect(x - 30, y - 9, 60, 9).fill(WOOD).stroke(line(2.5));
+	g.rect(x - 24, y - 7, 8, 5).rect(x - 4, y - 7, 8, 5).rect(x + 16, y - 7, 8, 5).fill(INK);
+	const boxes: [number, number, number, number][] = [[-26, -31, 26, 22], [2, -27, 24, 18], [-14, -49, 24, 18]];
+	for (const [i, [bx, by, bw, bh]] of boxes.slice(0, 2 + (k % 2)).entries()) {
+		g.rect(x + bx, y + by, bw, bh).fill(i === 2 ? 0xd6b48a : 0xc9a77a).stroke(line(2));
+		g.moveTo(x + bx + bw / 2, y + by).lineTo(x + bx + bw / 2, y + by + bh * 0.45).stroke({ width: 3, color: 0xe8d6b5 });
+	}
+}
+
+/** Oil drums standing together, the front one's base centre at (x, y). */
+function drums(g: Graphics, x: number, y: number, n: number): void {
+	for (let i = n - 1; i >= 0; i--) {
+		const dx = x - i * 22;
+		const dy = y - i * 8;
+		g.ellipse(dx + 3, dy + 1, 13, 4).fill(SHADOW);
+		g.roundRect(dx - 11, dy - 32, 22, 32, 3).fill(i ? 0x3d7dff : RED).stroke(line(2.5));
+		g.rect(dx - 11, dy - 22, 22, 2).rect(dx - 11, dy - 11, 22, 2).fill(INK);
+		g.ellipse(dx, dy - 32, 11, 3).fill(i ? 0x6f9cff : 0xff8f8f).stroke({ width: 1.8, color: INK });
+	}
+}
+
 export const FACTORY_THEME: SceneTheme = {
 	id: "factory",
 	words: FACTORY_WORDS,
@@ -608,6 +680,7 @@ export const FACTORY_THEME: SceneTheme = {
 	furniture,
 	desk: { tray: hopper, mugs: cans, lamp: beacon, drawers: toolChest, skip: scrapBin },
 	planner: jobBoard,
+	patio: yard,
 	crewBuild: (b, seed) => crewBuild(b, seed, CRATE_BUILD),
 	nightWatch: { ...NIGHT_WATCH, tint: "night-shift" },
 	arms: true,

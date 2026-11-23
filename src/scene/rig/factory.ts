@@ -166,11 +166,12 @@ export function factoryTheme(p: Palette = PAPER_PALETTE): Theme {
 	// The lead: the foreman. A white hard hat with an ear defender on a stalk, and a hi-vis vest
 	// open at the front over the tie. The ear cup and the vest's reflective trim are the tinted
 	// part (hat/lead-cup), so they take the project accent as the tie and headset did.
-	const vYat = (y: number) => 3 + (9 * (-3 - y)) / 21;
+	// The vest's top stops at the coveralls' collar seam, clear of the big eyes.
+	const vYat = (y: number) => 3 + (9 * (-3 - y)) / 18;
 	const vestPanel = (side: -1 | 1): number[] => {
 		const pts: number[] = [side * 3, -3];
-		for (let y = -3; y >= -24; y -= 1.5) pts.push(side * (bodyEdge(y) - 0.4), y);
-		pts.push(side * 12, -24);
+		for (let y = -3; y >= -21; y -= 1.5) pts.push(side * (bodyEdge(y) - 0.4), y);
+		pts.push(side * 12, -21);
 		return pts;
 	};
 	parts["hat/lead"] = (g) => {
@@ -213,7 +214,7 @@ export function factoryTheme(p: Palette = PAPER_PALETTE): Theme {
 		}
 	};
 
-	// Scouts: the green cap, with a headlamp strapped on; a hi-vis bandana.
+	// Scouts: the green cap, with a headlamp strapped on; a hi-vis neckerchief knotted to one side.
 	parts["hat/scout"] = (g) => {
 		g.moveTo(-20, T + 3).lineTo(-16, T - 15).quadraticCurveTo(0, T - 20, 16, T - 15).lineTo(20, T + 3).closePath().fill(0x35b866).stroke({ width: W.part, color: ink });
 		g.rect(-19, T - 4, 38, 5).fill(ink);
@@ -223,8 +224,12 @@ export function factoryTheme(p: Palette = PAPER_PALETTE): Theme {
 		for (const [x0, x1] of [[-5, -9], [0, 0], [5, 9]] as const) line(g, [x0, T - 13, x1, T - 18], 1.6, ink);
 	};
 	parts["front/kerchief"] = (g) => {
-		g.poly([-14, F - 2, 14, F - 2, 0, F + 10]).fill(FACTORY.orange).stroke({ width: 2, color: ink, join: "round" });
-		g.poly([-10.5, F + 1, 10.5, F + 1, 8.2, F + 3, -8.2, F + 3]).fill(FACTORY.reflect);
+		// Knotted low and off to one side, on the coveralls' collar seam, well clear of the mouth.
+		g.moveTo(-30, F - 3).quadraticCurveTo(0, F + 4, 30, F - 3).stroke({ width: 5.6, color: ink, cap: "round" });
+		g.moveTo(-30, F - 3).quadraticCurveTo(0, F + 4, 30, F - 3).stroke({ width: 3.2, color: FACTORY.orange, cap: "round" });
+		g.poly([-22, F + 0.5, -12, F + 1, -13.5, F + 12, -19, F + 10.5]).fill(FACTORY.orange).stroke({ width: W.fine, color: ink, join: "round" });
+		line(g, [-20.2, F + 6, -13.2, F + 6.4], 1.6, FACTORY.reflect);
+		g.roundRect(-21.5, F - 3.5, 9, 7, 3).fill(FACTORY.orange).stroke({ width: W.fine, color: ink });
 	};
 
 	// Explorers: a safety-orange brimmed hard hat, a harness with a torch clipped on, knee pads.
@@ -264,15 +269,32 @@ export function factoryTheme(p: Palette = PAPER_PALETTE): Theme {
 		g.roundRect(-8, T - 2, 16, 5, 2.5).fill(0x7a5ad0).stroke({ width: 2, color: ink });
 	};
 	parts["wear/glasses"] = (g) => {
+		// One wraparound shield over both (big) eyes, with a bridge notch so the mouth stays clear.
 		const y = A.eyeY;
 		for (const side of [-1, 1]) {
-			const sh = [-27, y - 6, -33, y - 4, -33, y + 3, -27, y + 5].map((v, i) => (i % 2 ? v : side * v));
+			const sh = [-33, y - 10, -39, y - 7, -39, y + 7, -33, y + 10].map((v, i) => (i % 2 ? v : side * v));
 			g.poly(sh).fill({ color: 0xdff4ff, alpha: 0.5 }).stroke({ width: 1.6, color: ink, join: "round" });
 		}
-		g.roundRect(-27, y - 8, 54, 15, 6).fill({ color: 0xdff4ff, alpha: 0.24 }).stroke({ width: 2.4, color: ink });
-		g.roundRect(-27.5, y - 9, 55, 3.4, 1.7).fill(FACTORY.orange).stroke({ width: 1.4, color: ink });
-		line(g, [-22, y - 3, -18, y + 2], 1.4, 0xffffff);
-		line(g, [11, y - 3, 15, y + 2], 1.4, 0xffffff);
+		g.moveTo(-27, y - 14)
+			.lineTo(27, y - 14)
+			.quadraticCurveTo(33, y - 14, 33, y - 8)
+			.lineTo(33, y + 7)
+			.quadraticCurveTo(33, y + 13, 27, y + 13)
+			.lineTo(15, y + 13)
+			.quadraticCurveTo(10, y + 13, 7.5, y + 7.5)
+			.quadraticCurveTo(4.5, y + 3, 0, y + 3)
+			.quadraticCurveTo(-4.5, y + 3, -7.5, y + 7.5)
+			.quadraticCurveTo(-10, y + 13, -15, y + 13)
+			.lineTo(-27, y + 13)
+			.quadraticCurveTo(-33, y + 13, -33, y + 7)
+			.lineTo(-33, y - 8)
+			.quadraticCurveTo(-33, y - 14, -27, y - 14)
+			.closePath()
+			.fill({ color: 0xdff4ff, alpha: 0.24 })
+			.stroke({ width: 2.4, color: ink, join: "round" });
+		g.roundRect(-33.5, y - 15.5, 67, 3.6, 1.8).fill(FACTORY.orange).stroke({ width: 1.4, color: ink });
+		line(g, [-28, y - 7, -23, y + 1], 1.8, 0xffffff);
+		line(g, [14, y - 7, 19, y + 1], 1.8, 0xffffff);
 	};
 	parts["front/bowtie"] = (g) => {
 		g.roundRect(-6, F - 4, 12, 15, 1.5).fill(0xc99a6b).stroke({ width: 1.6, color: ink });
@@ -301,9 +323,9 @@ export function factoryTheme(p: Palette = PAPER_PALETTE): Theme {
 		line(g, [-2, 7.4, -0.6, 8.6, 2.2, 5.8], 1.2, 0xffffff);
 	};
 
-	// Designers: a welding helmet flipped up on its pivots, and a welder's leather scarf.
+	// Designers: a welding helmet flipped up on its pivots, and a short leather apron bib.
 	parts["hat/designer"] = (g) => {
-		const y = -56;
+		const y = -58;
 		const e = bodyEdge(y) - 1;
 		g.moveTo(-e, y).quadraticCurveTo(0, y - 6, e, y).stroke({ width: 4.2, color: ink, cap: "round" });
 		g.moveTo(-e, y).quadraticCurveTo(0, y - 6, e, y).stroke({ width: 2.2, color: FACTORY.gunmetal, cap: "round" });
@@ -317,10 +339,15 @@ export function factoryTheme(p: Palette = PAPER_PALETTE): Theme {
 		line(g, [-8, T - 7, -4, T - 3], 1.2, 0x9fe3cf);
 	};
 	parts["front/scarf"] = (g) => {
-		g.roundRect(8, F + 1, 7, 13, 3).fill(FACTORY.leather).stroke({ width: 1.8, color: ink });
-		line(g, [11.5, F + 4, 11.5, F + 11], 0.9, 0x8a5a33);
-		g.moveTo(-24, F - 1).quadraticCurveTo(0, F + 7, 24, F - 1).stroke({ width: 7, color: ink, cap: "round" });
-		g.moveTo(-24, F - 1).quadraticCurveTo(0, F + 7, 24, F - 1).stroke({ width: 3.8, color: FACTORY.leather, cap: "round" });
+		// A short leather apron bib, low on the belly, its straps running out to the sides.
+		for (const s of [-1, 1]) {
+			line(g, [s * 11, F, s * 44, F - 5], 4.4, ink);
+			line(g, [s * 11, F, s * 44, F - 5], 2.2, 0x8a5a33);
+		}
+		g.roundRect(-13, F - 2, 26, 16, 3.5).fill(FACTORY.leather).stroke({ width: W.fine + 0.2, color: ink });
+		g.roundRect(-10, F + 1, 20, 10, 2).stroke({ width: 1.2, color: 0x9a6634 });
+		g.roundRect(-6, F + 5, 12, 6, 1.5).fill(0xb37638).stroke({ width: 1.3, color: ink });
+		for (const s of [-1, 1]) g.circle(s * 10, F + 0.5, 1.5).fill(p.steel).stroke({ width: 0.9, color: ink });
 	};
 
 	// Held tools ------------------------------------------------------------------------------------

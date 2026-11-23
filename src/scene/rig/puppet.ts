@@ -163,9 +163,11 @@ export class Puppet extends Container {
 		this.#legR.scale.x = -1;
 
 		this.#body = s(`body/${opts.role}`);
-		this.#costume = s(costume.front ?? "front/tie");
-		this.#costume.visible = !!costume.front;
-		if (costume.front === "front/tie") this.#costume.tint = this.accent;
+		// A theme may leave a role's belly bare by not painting its front piece (the office designer).
+		const front = costume.front && atlas.has(costume.front) ? costume.front : undefined;
+		this.#costume = s(front ?? "front/tie");
+		this.#costume.visible = !!front;
+		if (front === "front/tie") this.#costume.tint = this.accent;
 		this.#cheekL = s("cheek");
 		this.#cheekR = s("cheek");
 		this.#cheekL.position.set(-A.cheekX, A.cheekY);

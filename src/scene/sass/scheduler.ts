@@ -165,7 +165,7 @@ interface Ongoing {
 
 export class Scheduler {
 	readonly opts: Required<SchedulerOptions>;
-	readonly #lines: Line[];
+	#lines: Line[];
 	#active: Say[] = [];
 	#pending: { t: Trigger; since: number }[] = [];
 	#ongoing: Trigger[] = [];
@@ -183,6 +183,11 @@ export class Scheduler {
 
 	constructor(opts: SchedulerOptions = {}, lines: Line[] = LINES) {
 		this.opts = { ...DEFAULTS, ...opts };
+		this.#lines = lines;
+	}
+
+	/** Speak from another bank (a scene theme's: lines.ts linesIn). The said-lately memory stays. */
+	set lines(lines: Line[]) {
 		this.#lines = lines;
 	}
 

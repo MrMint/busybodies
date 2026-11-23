@@ -1,22 +1,24 @@
 // The seven role costumes. A role is a body colour, a hat, a front piece and maybe something worn
-// on the face; mochi has no chest to speak of, so the hat and the props carry the role.
+// on the face; mochi has no chest to speak of, so the body colour, the hat and the props carry the
+// role.
 //
 // The part names below are slots, and each theme dresses them its own way, so the costumes are per
 // theme while the puppet stays the same (rig/themes.ts picks the painters):
 //
 //   role      office (office.ts)                          factory (factory.ts)
-//   lead      pompadour, loud tie, headset with foam mic  white hard hat, hi-vis vest, ear defender
-//   builder   spiky hair, pencil behind the ear, tie      striped hard hat, tool belt
-//             flung over the shoulder
-//   scout     high ponytail, lanyard and ID badge         cap with a headlamp, hi-vis bandana
-//   explorer  shades pushed up on gelled hair, fleece     orange hard hat, harness, knee pads
-//             vest with a laser pointer
+//   lead      one soft tuft, headset with foam mic,       white hard hat, hi-vis vest, ear defender
+//             short loud tie
+//   builder   pencil behind the ear, a sticky note on     striped hard hat, tool belt
+//             the dome, a small crooked tie
+//   scout     sprout top-knot with a scrunchie, lanyard   cap with a headlamp, hi-vis neckerchief
+//             and a big ID badge                          knotted to one side
+//   explorer  sunglasses parked on top, a bum bag         orange hard hat, harness, knee pads
 //   reviewer  grey bun with a pencil through it,          bun in a hairnet, safety glasses
-//             cardigan, half-moon glasses on a chain
-//   verifier  green accountant's visor over a combover,   bump cap, QA tag, QA armband
-//             pocket protector, sleeve garter
-//   designer  black beret, round glasses, black           welding helmet flipped up, leather scarf
-//             turtleneck
+//             half-moon glasses, pearls
+//   verifier  translucent green eyeshade, pocket          bump cap, QA tag, QA armband
+//             protector, sleeve garter
+//   designer  tilted beret, big round frames, a bare      welding helmet flipped up, leather apron
+//             belly (the office paints no front/scarf)    bib
 //
 // (`front/apron` is the builder's front piece whatever the theme draws there, and so on.)
 
