@@ -118,7 +118,8 @@ function blank(): void {
 	// (130 ms) outlasts one too, so nothing is skipped; at 20 the office cost twice the frames.
 	const AMBIENT_FPS = 30;
 	const MOVING_FPS = 60;
-	const LIFE_FPS = 1000 / LIFE_GRID_MS;
+	// `?lifefps=20` overrides life's rate, to compare by eye; the default is one frame per beat.
+	const LIFE_FPS = Number(params.get("lifefps")) || 1000 / LIFE_GRID_MS;
 	const fps = () => (office.moving ? MOVING_FPS : office.acting ? AMBIENT_FPS : LIFE_FPS);
 	app.ticker.maxFPS = AMBIENT_FPS;
 	app.ticker.add((t) => {
