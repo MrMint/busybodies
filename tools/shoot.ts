@@ -1,5 +1,8 @@
 // Deterministic screenshots of named scene states, plus one contact sheet of them all.
 //   bun tools/shoot.ts [--out artifacts/shots] [--only floor-busy,room-kitchen] [--dpr 1] [--check] [--theme factory]
+//   bun tools/shoot.ts --theme office,factory,bakery   every state in each theme, the sheet a state per row
+// A state that doesn't come up (a thrown error, a timeout) is a captioned gap on the sheet, not the
+// end of the run.
 // Each state is a demo fixture, a camera stop and a window size. The scene starts with its clock
 // stopped (?frozen) and is stepped a fixed number of frames, so two runs give the same pixels on
 // the same machine; --check renders every state twice and fails if any pair differs. Renders the
@@ -92,7 +95,8 @@ const { values: o } = parseArgs({
 		check: { type: "boolean", default: false },
 		build: { type: "boolean", default: false },
 		title: { type: "string", default: "Busybodies · tools/shoot.ts" },
-		/** The scene theme (src/scene/theme/id.ts): every state in that theme. */
+		/** The scene theme (src/scene/theme/id.ts): every state in that theme. Several, comma
+		 * separated: every state in each, side by side on the sheet (shots in a folder per theme). */
 		theme: { type: "string" },
 	},
 });
@@ -111,10 +115,17 @@ const server = Bun.serve({
 	},
 });
 
-async function shoot(browser: Browser, s: State, dpr: number): Promise<Buffer> {
+async function shoot(browser: Browser, s: State, dpr: number, theme: string | undefined): Promise<Buffer> {
 	const page = await browser.newPage({ viewport: { width: s.size[0], height: s.size[1] }, deviceScaleFactor: dpr });
-	await page.goto(`http://localhost:${server.port}/?inspect&frozen&demo=${s.demo}&hour=${s.hour ?? 14}${s.query ? `&${s.query}` : ""}${o.theme ? `&theme=${o.theme}` : ""}`);
-	await page.waitForFunction(() => window.__busybodies?.ready === true, undefined, { timeout: 20_000 });
+	const thrown: string[] = [];
+	page.on("pageerror", (e) => thrown.push(e.message));
+	await page.goto(`http://localhost:${server.port}/?inspect&frozen&demo=${s.demo}&hour=${s.hour ?? 14}${s.query ? `&${s.query}` : ""}${theme ? `&theme=${theme}` : ""}`);
+	try {
+		await page.waitForFunction(() => window.__busybodies?.ready === true, undefined, { timeout: 30_000 });
+	} catch (e) {
+		await page.close();
+		throw new Error(thrown[0] ?? String(e).split("\n")[0]);
+	}
 	await page.evaluate(
 		({ aim, frames }) => {
 			const b = window.__busybodies!;
@@ -136,17 +147,29 @@ async function shoot(browser: Browser, s: State, dpr: number): Promise<Buffer> {
 	return png;
 }
 
-function contactSheet(shots: { name: string; png: Buffer; size: [number, number] }[], title: string): string {
+interface Shot {
+	name: string;
+	png?: Buffer;
+	/** Why there is no picture: the state didn't come up. */
+	error?: string;
+	size: [number, number];
+}
+
+const escape = (t: string) => t.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+
+function contactSheet(shots: Shot[], title: string, cols = 3): string {
 	const figs = shots
-		.map(
-			(s) =>
-				`<figure><img src="data:image/png;base64,${s.png.toString("base64")}" style="aspect-ratio:${s.size[0]}/${s.size[1]}"><figcaption>${s.name} · ${s.size[0]}×${s.size[1]}</figcaption></figure>`,
+		.map((s) =>
+			s.png
+				? `<figure><img src="data:image/png;base64,${s.png.toString("base64")}" style="aspect-ratio:${s.size[0]}/${s.size[1]}"><figcaption>${s.name} · ${s.size[0]}×${s.size[1]}</figcaption></figure>`
+				: `<figure><div class="gap" style="aspect-ratio:${s.size[0]}/${s.size[1]}">didn't come up:<br>${escape(s.error ?? "")}</div><figcaption>${s.name} · ${s.size[0]}×${s.size[1]}</figcaption></figure>`,
 		)
 		.join("");
 	return `<!doctype html><meta charset="utf-8"><style>
 body{margin:0;padding:20px;background:#1b2140;font:700 14px ui-rounded,system-ui,sans-serif;color:#fff}
-h1{margin:0 0 14px;font-size:20px}main{display:grid;grid-template-columns:repeat(3,480px);gap:16px}
+h1{margin:0 0 14px;font-size:20px}main{display:grid;grid-template-columns:repeat(${cols},480px);gap:16px}
 figure{margin:0}img{display:block;width:480px;border-radius:8px;background:#bfe8c6}figcaption{margin-top:5px;opacity:.85}
+.gap{box-sizing:border-box;width:480px;padding:24px;border-radius:8px;background:#5a1f2e;color:#ffd6dc;font-size:15px}
 </style><h1>${title}</h1><main>${figs}</main>`;
 }
 
@@ -155,26 +178,44 @@ try {
 	const only = o.only ? new Set(o.only.split(",")) : undefined;
 	const states = STATES.filter((s) => !only || only.has(s.name));
 	const dpr = Number(o.dpr);
-	mkdirSync(o.out!, { recursive: true });
-	const shots: { name: string; png: Buffer; size: [number, number] }[] = [];
+	const themes = o.theme ? o.theme.split(",") : [undefined];
+	const many = themes.length > 1;
+	const shots: Shot[] = [];
 	let mismatches = 0;
+	let gaps = 0;
+	for (const theme of themes) mkdirSync(many ? join(o.out!, theme!) : o.out!, { recursive: true });
+	// A state per row, a theme per column, when there are several.
 	for (const s of states) {
-		const png = await shoot(browser, s, dpr);
-		if (o.check) {
-			const again = await shoot(browser, s, dpr);
-			const same = png.equals(again);
-			if (!same) mismatches++;
-			console.log(`${same ? "same " : "DIFF "} ${s.name}`);
+		for (const theme of themes) {
+			const name = many ? `${theme} · ${s.name}` : s.name;
+			const file = join(many ? join(o.out!, theme!) : o.out!, `${s.name}.png`);
+			let png: Buffer;
+			try {
+				png = await shoot(browser, s, dpr, theme);
+			} catch (e) {
+				gaps++;
+				shots.push({ name, error: (e as Error).message, size: s.size });
+				console.log(`GAP   ${name}: ${(e as Error).message}`);
+				continue;
+			}
+			if (o.check) {
+				const again = await shoot(browser, s, dpr, theme);
+				const same = png.equals(again);
+				if (!same) mismatches++;
+				console.log(`${same ? "same " : "DIFF "} ${name}`);
+			}
+			writeFileSync(file, png);
+			shots.push({ name, png, size: s.size });
+			if (!o.check) console.log(`shot  ${name}`);
 		}
-		writeFileSync(join(o.out!, `${s.name}.png`), png);
-		shots.push({ name: s.name, png, size: s.size });
-		if (!o.check) console.log(`shot  ${s.name}`);
 	}
-	const sheet = await browser.newPage({ viewport: { width: 20 * 2 + 480 * 3 + 16 * 2, height: 400 } });
-	await sheet.setContent(contactSheet(shots, o.title!));
+	const cols = many ? themes.length : 3;
+	const sheet = await browser.newPage({ viewport: { width: 20 * 2 + 480 * cols + 16 * (cols - 1), height: 400 } });
+	await sheet.setContent(contactSheet(shots, o.title!, cols));
 	await sheet.evaluate(() => Promise.all([...document.images].map((i) => i.decode())));
 	writeFileSync(join(o.out!, "contact-sheet.png"), await sheet.screenshot({ type: "png", fullPage: true }));
-	console.log(`wrote ${shots.length} shots and contact-sheet.png to ${o.out}`);
+	console.log(`wrote ${shots.length - gaps} shots and contact-sheet.png to ${o.out}${gaps ? `; ${gaps} state(s) didn't come up` : ""}`);
+	if (gaps) process.exitCode = 1;
 	if (mismatches) {
 		console.error(`${mismatches} state(s) rendered differently on a second run`);
 		process.exitCode = 1;

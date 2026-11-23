@@ -31,12 +31,16 @@ v7-era APIs that look right and silently draw the wrong thing. Update it only wi
 - **Render on demand.** The ticker runs only while something animates. **Off screen** (WebKit's page
   visibility: minimized, hidden, another Space, covered, locked) the scene draws nothing at all.
   On screen, a quiet office may keep **life** going (blinks, glances, rotating habits, ambient
-  props) at up to 30 fps, like acting; camera moves run at 60. For now the visuals come first: a
-  performance pass on life's cost is deferred (`docs/plan-alive.md`). **Calm mode** (`?calm`, the Calm office
+  props) at up to 30 fps, like acting; camera moves run at 60. **Calm mode** (`?calm`, the Calm office
   setting, or reduced motion) has no life, so a quiet calm office costs near-zero CPU. Anything new
   that moves on its own rides the life clock and stops when calm or hidden. Pixi's global tickers
   stay stopped: drive any `AnimatedSprite` from the app ticker. Check with
-  `tools/profile.sh idle --busy 0 --rate 0`, with and without calm.
+  `tools/profile.sh idle --busy 0 --rate 0`, with and without calm, and a frame's cost with
+  `bun tools/bench.ts`.
+- **Don't rebuild the world on a frame.** Pixi rebuilds a render group's draw list whenever a
+  child's `visible` or `zIndex` changes. Anything that blinks or swaps often switches by alpha
+  (alpha 0 draws nothing), and anything that sorts by its feet every frame uses `setDepth`
+  (`src/scene/office/depth.ts`). `visible` is for what changes on a snapshot.
 - **Drive PixiJS directly.** Use imperative scene code, not `@pixi/react`.
 - **Use WebGL2.** Keep `preference: "webgl"`; WebGPU is opt-in later.
 - **No GSAP.** Tweens and springs come from our own small helper.
@@ -64,7 +68,7 @@ v7-era APIs that look right and silently draw the wrong thing. Update it only wi
 
 | Path | What |
 |---|---|
-| `src/bun/` | The Electrobun main process: the office and compact windows, the tray, updates, the diary on disk (`diary.ts`; its counts-only model is `src/shared/diary.ts`) |
+| `src/bun/` | The Electrobun main process: the office and compact windows, the tray, the app menu, updates, the way out on quit (`shutdown.ts`), the diary on disk (`diary.ts`; its counts-only model is `src/shared/diary.ts`) |
 | `src/watcher/` | Capture: reads the agent tool's files into a `Snapshot` (`model.ts` is the contract) |
 | `src/mainview/` | The webview's entry: app setup, the top bar, the inspector, demo days; on-screen visibility (`visibility.ts`), the compact camera (`shots.ts`), opt-in sound (`sound.ts`) |
 | `src/scene/office/` | The open-floor office: floor plan, camera, cut-paper drawing, the character slot interface; light and time of day (`daylight.ts`, `light.ts`), windows and the yard (`outlook.ts`, `outside.ts`), the paper pass (`material.ts`); a theme's staging (`staging.ts`), ambient life (`ambient.ts`), the walls that remember (`decor.ts`) |
@@ -77,7 +81,8 @@ v7-era APIs that look right and silently draw the wrong thing. Update it only wi
 | `src/mainview/public/` | Files shipped as they are: approved voice takes and their manifest (`voice/`), room loops and their sources (`ambience/`) |
 | `tools/voice.ts`, `tools/ambience.ts` | Records voiced lines offline with Gemini TTS on Vertex (`--dry-run`, `--fake`), a listening page to approve takes, `ship`; seamless room loops from CC0 recordings or Lyria |
 | `tools/watch-tree.ts` | Prints the live session/agent tree in a terminal |
-| `tools/fake-home.ts`, `tools/profile.sh` | Synthetic load, and CPU per process under it |
+| `tools/fake-home.ts`, `tools/profile.sh`, `tools/soak.sh` | Synthetic load (`--churn` for sessions coming and going), CPU per process under it, and memory over a long run (`SOAK_APP=` for a built app) |
+| `tools/bench.ts` | A frame's cost per demo scene and theme in headless Chrome on the GPU, and where it goes (`--profile`) |
 | `tools/shoot.ts`, `tools/shot-diff.ts` | Deterministic screenshots of named scene states (`--theme`), a contact sheet, and a pixel diff of two runs |
 | `tools/record-gif.ts`, `tools/tray-icons.ts` | The README's GIF from `?demo`, and the menu-bar faces |
 | `tools/pose-dump.ts`, `tools/pose-sheet.ts` | Every pose as text, and as one PNG (`docs/rig/pose-sheet.png`) |

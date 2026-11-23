@@ -187,6 +187,54 @@ describe("SnapshotBuilder", () => {
 		expect(snap.sessions[0]!.children.map((s) => s.id)).toEqual(["s-side"]);
 	});
 
+	test("odd registry, meta and index files: wrong types, torn, not objects, are skipped or ignored", async () => {
+		const cwd = "/Users/you/code/teapot";
+		await session(501, "s-good", cwd, { name: 42, status: { busy: true }, startedAt: "yesterday", hostSessionId: "local_good" });
+		// A cwd that isn't a string used to throw inside the build and freeze every later snapshot.
+		await write(join(home, "sessions", "502.json"), { pid: 502, sessionId: "s-numcwd", cwd: 7 });
+		await write(join(home, "sessions", "503.json"), { pid: 503, sessionId: 99, cwd });
+		await write(join(home, "sessions", "504.json"), '{"pid":504,"sessionId":"s-torn","cw');
+		await write(join(home, "sessions", "505.json"), "[1,2,3]");
+		await write(join(home, "sessions", "506.json"), "null");
+		await write(join(home, "sessions", "507.json"), "");
+		await write(join(home, "sessions", "notes.txt"), "not a registry file");
+		await write(join(home, "projects", projectSlug(cwd), "s-good.jsonl"), [
+			'{"type":"some-new-record","payload":{"x":1}}',
+			toolLine("Edit", 3000),
+			"[]",
+			"42",
+			'{"type":"assistant","message":{"content":"not an array","usage":"none"}}',
+			'{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t1","name":"Re',
+		].join("\n"));
+		const dir = join(home, "projects", projectSlug(cwd), "s-good", "subagents");
+		await write(join(dir, "agent-a.meta.json"), { agentType: 5, description: ["x"], spawnDepth: "deep", finished: "yes", parentAgentId: {} });
+		await write(join(dir, "agent-a.jsonl"), `${toolLine("Read", 1000)}\n`);
+		await write(join(dir, "agent-b.meta.json"), "12");
+		await write(join(desk, "a", "o", "local_good.json"), { title: ["no"], branch: 3, spawnedFrom: "local_x", prs: "none" });
+
+		const snap = await build([501, 502, 503, 504, 505, 506, 507]);
+		expect(snap.sessions.map((s) => s.id)).toEqual(["s-good"]);
+		const s = snap.sessions[0]!;
+		expect(s).toMatchObject({ title: "teapot", state: "unknown", startedAt: NOW, activity: { tool: "Edit" }, prs: [] });
+		expect(s.branch).toBeUndefined();
+		expect(s.agents.map((a) => [a.id, a.role, a.task, a.depth, a.status])).toEqual([["a", "agent", "", 1, "running"]]);
+	});
+
+	test("many sessions at once build in one pass", async () => {
+		const pids = Array.from({ length: 120 }, (_, i) => 1000 + i);
+		await Promise.all(
+			pids.map(async (pid) => {
+				const cwd = `/Users/you/code/shop-${pid % 7}`;
+				await session(pid, `s-${pid}`, cwd);
+				await write(join(home, "projects", projectSlug(cwd), `s-${pid}.jsonl`), `${toolLine("Bash", 2000)}\n`);
+			}),
+		);
+		const t0 = performance.now();
+		const snap = await build(pids);
+		expect(snap.sessions).toHaveLength(120);
+		expect(performance.now() - t0).toBeLessThan(2000);
+	});
+
 	test("finds a transcript outside the cwd's project folder", async () => {
 		await session(301, "s-moved", "/Users/you/code/kettle");
 		await write(join(home, "projects", "-somewhere-else", "s-moved.jsonl"), `${toolLine("Grep", 500)}\n`);

@@ -8,8 +8,10 @@ import { TranscriptLedger } from "./ledger";
 import { modelFamily } from "./models";
 import type { Agent, AgentStatus, PullRequest, RunningTool, Session, Snapshot, Waiting } from "./model";
 import {
-	type AgentMeta,
 	type DesktopEntry,
+	agentMeta,
+	desktopEntry,
+	registryEntry,
 	HOOK_DIR,
 	HOOK_EVENTS,
 	type HookEvent,
@@ -63,7 +65,7 @@ export class SnapshotBuilder {
 		const at = this.now();
 		const dir = join(this.roots.home, "sessions");
 		const names = (await readdir(dir).catch(() => [] as string[])).filter((n) => n.endsWith(".json"));
-		const entries = await Promise.all(names.map((n) => this.files.json<RegistryEntry>(join(dir, n))));
+		const entries = (await Promise.all(names.map((n) => this.files.json<unknown>(join(dir, n))))).map(registryEntry);
 		this.#hooks =
 			(await this.files.fromTail(join(this.roots.home, HOOK_DIR, HOOK_EVENTS), hookEvents, [64 * 1024])) ?? new Map();
 		this.liveProjectDirs = new Set();
@@ -74,8 +76,16 @@ export class SnapshotBuilder {
 		const sessions: Session[] = [];
 		for (const e of entries) {
 			if (!e?.sessionId || typeof e.pid !== "number" || !e.cwd || !this.alive(e.pid)) continue;
-			const desk = e.hostSessionId ? await this.#desktop(e.hostSessionId) : undefined;
-			const s = await this.#session(e, desk, at);
+			let desk: DesktopEntry | undefined;
+			let s: Session;
+			try {
+				desk = e.hostSessionId ? await this.#desktop(e.hostSessionId) : undefined;
+				s = await this.#session(e, desk, at);
+			} catch (err) {
+				// One session's odd files must never stop the whole office from updating.
+				console.warn(`[busybodies] skipped a session this round: ${err instanceof Error ? err.message : err}`);
+				continue;
+			}
 			sessions.push(s);
 			if (e.hostSessionId) {
 				byHost.set(e.hostSessionId, s);
@@ -182,7 +192,7 @@ export class SnapshotBuilder {
 		const parentOf = new Map<Agent, string | undefined>();
 		for (const name of metas) {
 			const id = name.replace(/^agent-/, "").replace(/\.meta\.json$/, "");
-			const meta = await this.files.json<AgentMeta>(join(dir, name));
+			const meta = agentMeta(await this.files.json<unknown>(join(dir, name)));
 			if (!meta) continue;
 			const log = join(dir, `agent-${id}.jsonl`);
 			const lastWriteAt = (await this.files.mtime(log)) ?? (await this.files.mtime(join(dir, name))) ?? 0;
@@ -239,7 +249,7 @@ export class SnapshotBuilder {
 		if (!root) return undefined;
 		this.#desktopDirs ??= await nestedDirs(root, 2);
 		for (const d of this.#desktopDirs) {
-			const entry = await this.files.json<DesktopEntry>(join(d, `${hostId}.json`));
+			const entry = desktopEntry(await this.files.json<unknown>(join(d, `${hostId}.json`)));
 			if (entry) return entry;
 		}
 		this.#desktopDirs = undefined; // a new account folder may have appeared; look again next time

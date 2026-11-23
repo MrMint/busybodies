@@ -1,8 +1,10 @@
 // The main process: the watcher, the two windows (the full office, and a compact floating one),
-// the tray icon and the compact-mode shortcut. Closing the office window keeps the app in the tray;
-// Quit is in the tray menu.
+// the tray icon and the compact-mode shortcut. Busybodies lives in the menu bar: closing the office
+// window keeps it running there (the Dock icon goes with the window, and comes back with it), and
+// clicking the Dock icon or opening the app again brings the office back. Quitting (the tray's
+// Quit, ⌘Q, the Dock's Quit, SIGTERM) always takes one way out (shutdown.ts).
 import { existsSync } from "node:fs";
-import { BrowserView, BrowserWindow, GlobalShortcut, Updater, Utils } from "electrobun/main";
+import Electrobun, { ApplicationMenu, BrowserView, BrowserWindow, GlobalShortcut, Updater, Utils } from "electrobun/main";
 import { type ThemeId, themeId } from "../scene/theme/id";
 import type { AppStatus, BusybodiesRPC } from "../shared/rpc";
 import type { Snapshot } from "../watcher/model";
@@ -11,6 +13,7 @@ import { compactFrame } from "./compact";
 import { Diarist, diaryFile } from "./diary";
 import { type Settings, readSettings, settingsFile, settingsQuery, writeSettings } from "./settings";
 import { installTray } from "./tray";
+import { shutdown } from "./shutdown";
 import { startUpdates } from "./updates";
 
 const DEV_SERVER_URL = "http://localhost:5173";
@@ -45,7 +48,10 @@ let sound = saved.sound;
 let calm = saved.calm;
 /** The office's diary: counts and kinds only, next to settings.json (diary.ts). */
 const diarist = new Diarist(diaryFile(Utils.paths.userData));
-process.on("exit", () => diarist.flush());
+/** The way out: steps are added below as each part starts, and run once on quit. */
+const exit = shutdown();
+Electrobun.events.on("before-quit", () => void exit.run("quit"));
+process.on("exit", () => exit.run("exit"));
 // A window opens with the saved choices (as ?theme=, &sound, &calm); one already open switches over RPC.
 const urlFor = (compact: boolean) => {
 	const q = [compact ? "compact" : "", ...settingsQuery({ theme, sound, calm }), extra].filter(Boolean).join("&");
@@ -93,6 +99,7 @@ function openOffice(): Shown {
 	});
 	window.on("close", () => {
 		if (office?.window === window) office = undefined;
+		syncDock();
 	});
 	return { window, rpc };
 }
@@ -114,6 +121,7 @@ function openCompact(): Shown {
 		if (compact?.window === window) compact = undefined;
 		compactOn = false;
 		tray.refresh();
+		syncDock();
 	});
 	return { window, rpc };
 }
@@ -125,11 +133,13 @@ function setCompact(on: boolean): void {
 		compact ??= openCompact();
 		compact.window.show();
 		office?.window.hide();
+		officeShown = false;
 	} else {
 		compact?.window.hide();
 		showOffice();
 	}
 	tray.refresh();
+	syncDock();
 }
 
 function showOffice(): void {
@@ -141,6 +151,19 @@ function showOffice(): void {
 	office ??= openOffice();
 	office.window.show();
 	office.window.activate();
+	officeShown = true;
+	syncDock();
+}
+
+/** Whether the office window is up (not closed, not stepped aside for compact mode). */
+let officeShown = false;
+/**
+ * The Dock icon is there exactly while the office window is: with only the menu bar (and maybe the
+ * compact window) left, Busybodies is a menu-bar app, and nothing in the Dock looks stuck open.
+ */
+function syncDock(): void {
+	const want = officeShown && office !== undefined;
+	if (Utils.isDockIconVisible() !== want) Utils.setDockIconVisible(want);
 }
 
 function save(change: Partial<Settings>): void {
@@ -190,8 +213,40 @@ const tray = installTray({
 if (!GlobalShortcut.register(COMPACT_SHORTCUT, () => setCompact(!compactOn))) {
 	console.warn(`[busybodies] couldn't register ${COMPACT_SHORTCUT}; use the tray menu for compact mode`);
 }
+exit.add("shortcut", () => GlobalShortcut.unregisterAll());
+
+// The app menu gives ⌘Q, ⌘W, ⌘H and ⌘M (and copy for the About sheet's text); without one, ⌘Q does nothing.
+ApplicationMenu.setApplicationMenu([
+	{
+		submenu: [
+			{ label: "About Busybodies", action: "about" },
+			{ type: "divider" },
+			{ role: "hide", accelerator: "h" },
+			{ role: "hideOthers" },
+			{ role: "showAll" },
+			{ type: "divider" },
+			{ label: "Quit Busybodies", role: "quit", accelerator: "q" },
+		],
+	},
+	{ label: "Edit", submenu: [{ role: "copy", accelerator: "c" }, { role: "selectAll", accelerator: "a" }] },
+	{
+		label: "Window",
+		submenu: [
+			{ role: "minimize", accelerator: "m" },
+			{ role: "close", accelerator: "w" },
+			{ type: "divider" },
+			{ role: "bringAllToFront" },
+		],
+	},
+]);
+ApplicationMenu.on("application-menu-clicked", (event) => {
+	if ((event as { data?: { action?: string } }).data?.action === "about") about();
+});
+// The Dock icon clicked, or the app opened again while it runs: bring the office back.
+Electrobun.events.on("reopen", () => showOffice());
 
 office = openOffice();
+officeShown = true;
 
 watcher.onChange((snapshot: Snapshot) => {
 	// The diary first, so a window hears the day's counts along with the snapshot that changed them.
@@ -203,6 +258,9 @@ watcher.onChange((snapshot: Snapshot) => {
 	compact?.rpc.send.snapshot(snapshot);
 	tray.refresh();
 });
+// Stop reading first, so no snapshot changes the diary after it is saved.
+exit.add("watcher", () => watcher.stop());
+exit.add("diary", () => diarist.flush());
 await watcher.start();
 tray.refresh();
-void startUpdates();
+exit.add("updates", startUpdates());

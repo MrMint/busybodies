@@ -31,6 +31,7 @@ import { INK } from "./paper";
 import { KITCHEN_WALL, ceilingPanels } from "./propspots";
 import { type AmbientKind, stagingOf } from "./staging";
 import { DOCK_W } from "./layout";
+import { setDepth } from "./depth";
 import { BELT, type Belt, type Fixture, type Rect, type World } from "./world";
 
 /** The belt's speed (world px per second of the life clock) and how fast the other things go. */
@@ -362,7 +363,8 @@ export class Ambient {
 			movers: [
 				(t) => {
 					const u = wrap(t + phase, period) / AMBIENT.sparks.burst;
-					c.visible = u < 1;
+					// On and off by alpha, not visible: a visibility change rebuilds the world (depth.ts).
+					c.alpha = u < 1 ? 1 : 0;
 					if (u >= 1) return;
 					for (const d of dots) {
 						d.g.position.set(d.vx * u, d.vy * u + 26 * u * u);
@@ -389,7 +391,7 @@ export class Ambient {
 		this.#add(g, base.y + 0.5);
 		const period = range(id, "led", blink.period);
 		const phase = unit(id, "led-phase") * period;
-		return { views: [g], movers: [(t) => (g.visible = wrap(t + phase, period) < blink.on)] };
+		return { views: [g], movers: [(t) => (g.alpha = wrap(t + phase, period) < blink.on ? 1 : 0)] };
 	}
 
 	/** A fluorescent tube going on the blink: dark for a moment, back, dark again, back, now and then. */
@@ -397,7 +399,7 @@ export class Ambient {
 		const g = new Graphics();
 		g.roundRect(p.cx - 33, p.y, 66, 3, 1.5).fill(0x8d97ab);
 		g.rect(p.cx - 34, p.y + 4, 68, 5).fill({ color: INK, alpha: 0.12 });
-		g.visible = false;
+		g.alpha = 0;
 		this.#add(g);
 		const period = range(id, "flicker", AMBIENT.flicker.period);
 		const phase = unit(id, "flicker-phase") * period;
@@ -407,7 +409,7 @@ export class Ambient {
 			movers: [
 				(t) => {
 					const u = wrap(t + phase, period);
-					g.visible = u < off1 || (u >= off1 + on && u < off1 + on + off2);
+					g.alpha = u < off1 || (u >= off1 + on && u < off1 + on + off2) ? 1 : 0;
 				},
 			],
 		};
@@ -505,11 +507,13 @@ export class Ambient {
 			movers: [
 				(t) => {
 					const u = wrap(t + phase, period) / (period * AMBIENT.vent.share);
-					c.visible = u < 1.3;
+					c.alpha = u < 1.3 ? 1 : 0;
 					puffs.forEach((g, k) => {
 						const v = u - k * 0.15;
-						g.visible = v > 0 && v < 1;
-						if (!g.visible) return;
+						if (!(v > 0 && v < 1)) {
+							g.alpha = 0;
+							return;
+						}
 						g.position.set((k - 1) * 4 * v, -v * 30);
 						g.scale.set(0.5 + v * 1.1);
 						g.alpha = (1 - v) * 0.75;
@@ -626,11 +630,11 @@ export class Ambient {
 					rosettes.forEach((g, k) => {
 						const a = a0 + (k / rosettes.length) * 2 * Math.PI;
 						g.position.set(Math.cos(a) * (cw / 2 - 4), -ch + Math.sin(a) * 3);
-						g.zIndex = Math.sin(a);
+						setDepth(g, Math.sin(a));
 					});
 					dots.forEach((g, k) => {
 						const a = a0 + (k / dots.length) * 2 * Math.PI;
-						g.visible = Math.sin(a) > 0.05;
+						g.alpha = Math.sin(a) > 0.05 ? 1 : 0;
 						g.position.set(Math.cos(a) * (cw / 2 - 1), -ch * 0.25);
 					});
 				},
@@ -729,6 +733,6 @@ function placeCrate(c: Crate): void {
 	c.view.visible = at.visible;
 	c.view.position.set(at.x, at.y);
 	c.view.scale.set(at.scale);
-	c.view.zIndex = at.y;
+	setDepth(c.view, at.y);
 	c.view.alpha = at.alpha;
 }
