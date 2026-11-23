@@ -6,6 +6,8 @@
 //            one texture per room
 //   clouds   clouds drifting across the windows, on the life clock
 //   shade    the furniture's shadows, stacked offsets from the phase's light
+//   ambient  the staging's floor things and the theme's ambient life under the cast (ambient.ts:
+//            the dock, vents, steam, the fan); its belts, parts, booths and lights sort into depth
 //   depth    desks, furniture and characters, sorted by their feet (zIndex = y)
 //   arms     the factory's robot arms, overhead (theme/arm.ts; none in the office theme)
 //   light    time of day, lamps, focus and rush: a baked light map, multiplied; glow added (light.ts)
@@ -24,6 +26,8 @@ import { DECAL, dressRoom } from "./material";
 import { CLOUD, cloudTexture, glassOf, panesOf, type SunSpot, sunSpot } from "./outlook";
 import { Outside } from "./outside";
 import { FloorPlan } from "./layout";
+import { Ambient, type AmbientFacts } from "./ambient";
+import { stagingOf } from "./staging";
 import { type FurnitureKind, INK, type SignText, grainTexture, label, noise, pill, wobblyRect } from "./paper";
 import { type Placed, Placement, crewOf } from "./placement";
 import type { DeskProps, Metrics } from "../director/metrics";
@@ -171,6 +175,9 @@ export class Office extends Container {
 	#shade = new Container({ label: "shade" });
 	#shadows = new Map<string, Container>();
 	#clouds = new Container({ label: "clouds" });
+	/** The staging's things and the theme's ambient life (ambient.ts). */
+	#ambientLayer = new Container({ label: "ambient" });
+	#ambient: Ambient;
 	#cloudList: Cloud[] = [];
 	#cloudTex?: Texture;
 	#cloudSig = "";
@@ -191,11 +198,12 @@ export class Office extends Container {
 		this.#theme = opts.theme ?? OFFICE_THEME;
 		this.#signs = new Map(Object.entries(this.#theme.words.signs));
 		this.#light = new Light(opts.renderer);
+		this.#ambient = new Ambient(opts.renderer, this.#ambientLayer, this.#depth);
 		this.#hour = opts.hour ?? new Date().getHours();
 		this.#phase = phaseOf(this.#hour);
 		if (opts.outside !== false) this.#outside = new Outside(opts.renderer);
 		if (this.#outside) this.world.addChild(this.#outside);
-		this.world.addChild(this.#slab, this.#floor, this.#clouds, this.#walls, this.#shade, this.#depth, this.#armLayer, this.#light, this.#pulse, this.#tasks, this.#bubbles, this.#labels);
+		this.world.addChild(this.#slab, this.#floor, this.#clouds, this.#walls, this.#shade, this.#ambientLayer, this.#depth, this.#armLayer, this.#light, this.#pulse, this.#tasks, this.#bubbles, this.#labels);
 		this.#signs.set("yours:serving", this.#theme.words.serving(undefined));
 		if (opts.hour === undefined) this.#schedulePhase();
 		this.world.interactiveChildren = false;
@@ -222,6 +230,8 @@ export class Office extends Container {
 	/** True while anything has frames to draw, life included. */
 	get animating(): boolean {
 		if (this.acting) return true;
+		// The theme's ambient life (belts, steam, a fan...) lives on the life clock, like blinks.
+		if (this.#life && this.#ambient.alive) return true;
 		for (const p of this.#people.values()) if (p.animating || (this.#life && p.alive)) return true;
 		return false;
 	}
@@ -232,6 +242,8 @@ export class Office extends Container {
 		if (this.#move) return true;
 		if (this.#pulsing.length) return true;
 		if (this.#bricks.size) return true;
+		// A PR crate riding the hallway's conveyor to the dock.
+		if (this.#ambient.acting) return true;
 		// A room in rush flickers its light at the acting rate, while life is on (never when calm).
 		if (this.#life && this.#light.flickering) return true;
 		for (const a of this.#arms.values()) if (a.arm.moving) return true;
@@ -325,6 +337,7 @@ export class Office extends Container {
 		for (const list of this.#bricks.values()) for (const m of list) moveBrick(m, (m.t = -m.delay));
 		for (const a of this.#arms.values()) a.arm.rewind();
 		this.#lifeMs = 0;
+		this.#ambient.rewind();
 		this.#light.rewind(!this.#life);
 		this.#moveClouds();
 	}
@@ -420,10 +433,12 @@ export class Office extends Container {
 			else this.#bricks.delete(key);
 		}
 		for (const a of this.#arms.values()) if (a.arm.moving) a.arm.step(dt * (1000 / 60));
+		this.#ambient.step(dt * (1000 / 60));
 		// The life clock: clouds drift and rush lights flicker only while life is on.
 		if (this.#life) {
 			this.#lifeMs += dt * (1000 / 60);
 			this.#moveClouds();
+			this.#ambient.tick(this.#lifeMs);
 			this.#light.tick(dt * (1000 / 60));
 		}
 		for (const p of this.#people.values()) p.tick(dt);
@@ -549,6 +564,7 @@ export class Office extends Container {
 		this.#arms.clear();
 		this.#bricks.clear();
 		this.#brickSeen.clear();
+		this.#ambient.clear();
 		this.#slabSig = "";
 		if (this.#res) this.#bake(this.#res);
 		if (this.#snapshot) {
@@ -562,7 +578,7 @@ export class Office extends Container {
 
 	show(snapshot: Snapshot, width: number, height: number): void {
 		this.#snapshot = snapshot;
-		this.#data = this.#plan.update(snapshot);
+		this.#data = this.#plan.update(snapshot, stagingOf(this.#theme));
 		this.#screen = { w: width, h: height };
 		const first = this.#res === 0;
 		if (first) this.#bake(this.#targetRes(viewFor(this.#data, this.#stop, this.#viewport())!.scale));
@@ -615,8 +631,40 @@ export class Office extends Container {
 		this.#drawMetrics(world);
 		this.#drawArms(world);
 		this.#drawFurniture(world, snapshot);
+		this.#drawAmbient(world, snapshot);
 		this.#drawLabels(world, snapshot);
 		this.#drawLight(world, snapshot);
+	}
+
+	/** The staging and the theme's ambient life (ambient.ts), from what the cast holds and runs:
+	 * the kinds of work held at each desk (parts on its line's belt), the bays with a build running
+	 * (the press's beacon), and the crew builds topped by a PR (a crate down the conveyor). */
+	#drawAmbient(world: World, snapshot: Snapshot): void {
+		const held = new Map<string, string[]>();
+		for (const p of this.#placed) {
+			if (!p.desk || !p.work) continue;
+			const list = held.get(p.desk) ?? [];
+			if (!list.includes(p.work)) list.push(p.work);
+			held.set(p.desk, list);
+		}
+		for (const list of held.values()) list.sort();
+		const running = new Set(flat(snapshot.sessions).filter(buildRunning).map((s) => s.id));
+		const building = new Set(world.areas.filter((a) => a.desks.some((d) => running.has(d.id))).map((a) => a.id));
+		const topped = new Map(Object.entries(this.#opts.builds?.() ?? {}).map(([id, b]) => [id, b.topped] as const));
+		const facts: AmbientFacts = { held, building, topped };
+		this.#ambient.update(world, this.#theme, facts);
+		if (this.#ambient.acting) this.#opts.wake();
+	}
+
+	/** What is staged and what moves on its own (for the inspector and tests). */
+	get staging() {
+		const w = this.#data;
+		return {
+			...stagingOf(this.#theme),
+			belts: w?.areas.flatMap((a) => a.belts ?? []) ?? [],
+			conveyor: w?.conveyor,
+			...this.#ambient.info(),
+		};
 	}
 
 	/** The light layer: re-baked only if what it shows changed; the rush rooms' flickers. */
@@ -1149,6 +1197,12 @@ const roomBounds = (r: Rect): Rect => ({ x: r.x, y: r.y - 70, w: r.w, h: r.h + 1
 const differs = (a: View, b: View) => Math.abs(a.scale - b.scale) > 1e-4 || Math.abs(a.x - b.x) > 0.5 || Math.abs(a.y - b.y) > 0.5;
 
 const flat = (list: Session[]): Session[] => list.flatMap((s) => [s, ...flat(s.children)]);
+
+/** A build running in a session: its own shell command, or one of its agents'. */
+const buildRunning = (s: Session): boolean => {
+	const agent = (a: Session["agents"][number]): boolean => a.running?.kind === "build" || a.children.some(agent);
+	return s.running?.kind === "build" || s.agents.some(agent);
+};
 
 function* walk(c: Container): Generator<Container> {
 	yield c;

@@ -444,7 +444,8 @@ export class Puppet extends Container {
 			this.#work.texture = a.get(`work/${f.props.work}`);
 			this.#work.anchor.copyFrom(this.#work.texture.defaultAnchor ?? { x: 0, y: 0 });
 		}
-		this.#back.visible = f.props.back === "chair";
+		this.#back.visible = !!f.props.back;
+		if (f.props.back && f.props.back !== prev.props.back) this.#back.texture = a.get(`prop/${f.props.back}`);
 		// Feet up go on the desk, in front of it, and a kick swings out in front of the body;
 		// otherwise legs stand behind the body.
 		const up = f.feet === "up" || f.feet === "boot";

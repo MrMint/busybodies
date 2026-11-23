@@ -55,6 +55,9 @@ export interface Inspector {
 	setTheme(id: ThemeId): void;
 	/** The factory's robot arms: whether each moves, and its jobs. */
 	arms(): Office["arms"];
+	/** The theme's staging (office/staging.ts): its grammar, the belts and the conveyor, and what
+	 * moves on its own (ambient pieces by kind, parts on the belts, crates riding to the dock). */
+	staging(): Office["staging"];
 	/** Crew-build pieces moving now (or waiting on an arm). */
 	bricks(): Office["bricks"];
 	/** Sound: on or off, the AudioContext's state, the last earcons scheduled (undefined in the
@@ -184,6 +187,7 @@ export function installInspector(
 		theme: () => themes?.current() ?? "office",
 		setTheme: (id) => themes?.set(id),
 		arms: () => office.arms,
+		staging: () => office.staging,
 		bricks: () => office.bricks,
 		sound: () => undefined,
 		setToggles: () => {},

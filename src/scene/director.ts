@@ -61,6 +61,7 @@ export class Director {
 			area: a.area,
 			cue: cueFor(a, now),
 			...(a.kind === "crew" && a.task ? { task: a.task } : {}),
+			...(a.work && a.mood === "busy" && !a.gone ? { work: a.work.kind } : {}),
 		}));
 	};
 

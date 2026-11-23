@@ -275,6 +275,9 @@ export const HELD = [
 	"finger",
 	/** A folder held out flat by its near edge (reach.ts HANDOFF.folder), and tucked under the arm. */
 	"folderOut", "folderTuck",
+	// Wave 3: the factory's habits.
+	/** A hand of playing cards, fanned. */
+	"hand",
 ] as const;
 export type Held = (typeof HELD)[number];
 
@@ -323,11 +326,16 @@ export const WORKS = [
 	/** Copier feud: the start button jabbed while jammed (the red light flashing), and kicked
 	 * with the crumpled corner poking out of the jam door's seam. */
 	"jabbed", "kickSpit",
+	// Wave 3: the factory's habits (theme/factory.ts FACTORY_STAGING).
+	/** Cards on a pallet: the pallet with the game laid out on it, and a card slapped down. */
+	"pallet", "palletSlap",
+	/** The vending machine: standing there, rocked by a kick, and the snack finally dropping. */
+	"vending", "vendingRock", "vendingDrop",
 ] as const;
 export type Work = (typeof WORKS)[number];
 
-/** Things behind the body. */
-export const BACKS = ["chair"] as const;
+/** Things behind the body: a chair to spin on, an oil drum to sit on (the factory's habit). */
+export const BACKS = ["chair", "drum"] as const;
 export type Back = (typeof BACKS)[number];
 
 /** Worn over the face, on top of the costume's own. */
