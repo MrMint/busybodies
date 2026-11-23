@@ -92,6 +92,22 @@ describe("staging", () => {
 		await office.close();
 	}, T);
 
+	test("the bakery stages desks and a pastry conveyor: pastries ride the hall, ovens glow, the cake turns", async () => {
+		const page = await open("demo&frozen&theme=bakery");
+		const s = await page.evaluate(() => {
+			const b = window.__busybodies!;
+			const s = b.staging();
+			return { bay: s.bay, hall: s.hall, ambient: [...s.ambient], belts: s.belts.length, pieces: s.pieces, conveyor: s.conveyor, rooms: b.layout()!.areas.filter((a) => a.kind === "project").length };
+		});
+		expect([s.bay, s.hall]).toEqual(["desks", "conveyor"]);
+		expect(s.belts).toBe(0);
+		expect(s.conveyor).toBeDefined();
+		expect(s.ambient).toEqual(["steam", "ovens", "marquee", "cakeStand", "sprinkles", "parade"]);
+		expect(s.pieces).toMatchObject({ dock: 1, parade: 1, steam: 1, marquee: 1, cake: 1, sprinkles: 1, oven: s.rooms });
+		expect(s.pieces.booth ?? 0).toBe(0);
+		await page.close();
+	}, T);
+
 	test("tool calls ride the belts as parts only while a kind is held; idle, the belts run empty", async () => {
 		const page = await open("demo&settle=600000&theme=factory");
 		const busy = await page.evaluate(() => window.__busybodies!.staging());

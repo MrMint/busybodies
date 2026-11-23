@@ -589,9 +589,10 @@ function crumbBin(load: number): Graphics {
 
 // --- Furniture --------------------------------------------------------------------------------
 
-/** The baker's bench: a marble top dusted with flour behind, a cream front with a scalloped valance
- * and two cupboards below. 150 wide. */
-function bench(g: Graphics, w = 150, flour = true, front = CREAM): void {
+/** The baker's bench: a marble top dusted with flour behind, and a front that is a glass pastry case
+ * crammed with two shelves of croissants, donuts, éclairs, macarons and cupcakes, a scalloped
+ * valance over it. 150 wide. The café's counter keeps plain cupboards (`display` false). */
+function bench(g: Graphics, w = 150, flour = true, front = CREAM, display = true): void {
 	g.rect(-w / 2 + 5, -44 + 6, w, 44).fill(SHADOW);
 	g.roundRect(-w / 2 - 12, -70, w + 24, 32, 4).fill(MARBLE).stroke(line(4));
 	g.moveTo(-w / 2 + 4, -62).quadraticCurveTo(-w / 2 + 40, -54, -w / 2 + 70, -64).moveTo(w / 2 - 50, -50).quadraticCurveTo(w / 2 - 30, -60, w / 2, -56);
@@ -602,9 +603,42 @@ function bench(g: Graphics, w = 150, flour = true, front = CREAM): void {
 		g.fill({ color: 0xffffff, alpha: 0.9 });
 	}
 	g.roundRect(-w / 2, -44, w, 44, 3).fill(front).stroke(line(4));
+	if (display) {
+		const gx = -w / 2 + 6;
+		const gw = w - 12;
+		g.roundRect(gx, -38, gw, 27, 3).fill(GLASS).stroke(thin(2));
+		g.rect(gx + 1, -25, gw - 2, 1.6).fill(0xffffff).stroke({ width: 0.8, color: INK, alpha: 0.4 });
+		const n = Math.floor(gw / 17);
+		const step = gw / n;
+		for (let i = 0; i < n; i++) {
+			const px = gx + step * (i + 0.5);
+			switch (i % 4) {
+				case 0:
+					croissant(g, px, -26, 0.62);
+					donut(g, px, -13, 0.62, CANDY[(i + 1) % CANDY.length]!, i);
+					break;
+				case 1:
+					cupcake(g, px, -26, 0.58, CANDY[i % CANDY.length]!, CANDY[(i + 3) % CANDY.length]!);
+					eclair(g, px, -13, 0.5, i % 2 ? CHOC : PINK);
+					break;
+				case 2:
+					macaron(g, px - 3, -26, 0.5, CANDY[(i + 2) % CANDY.length]!);
+					macaron(g, px + 3, -26, 0.5, CANDY[(i + 4) % CANDY.length]!);
+					painAuChocolat(g, px, -13, 0.62);
+					break;
+				default:
+					donut(g, px, -26, 0.62, CANDY[(i + 3) % CANDY.length]!, i);
+					croissant(g, px, -13, 0.62);
+			}
+		}
+		g.poly([gx + 4, -36, gx + 12, -36, gx + 4, -24]).fill({ color: 0xffffff, alpha: 0.7 });
+		g.rect(-w / 2 + 3, -9, w - 6, 6).fill(mix(front, INK, 0.08));
+		g.circle(-w / 2 + 12, -6, 1.6).circle(w / 2 - 12, -6, 1.6).fill(BRASS);
+	} else {
+		g.roundRect(-w / 2 + 8, -30, w / 2 - 12, 24, 3).roundRect(4, -30, w / 2 - 12, 24, 3).stroke({ width: 2, color: INK, alpha: 0.3 });
+		g.circle(-6, -18, 2.4).circle(10, -18, 2.4).fill(BRASS).stroke(thin(1));
+	}
 	scallops(g, -w / 2 + 2, w / 2 - 2, -44, 6, [PINK, PINK_LIGHT], 1.4);
-	g.roundRect(-w / 2 + 8, -30, w / 2 - 12, 24, 3).roundRect(4, -30, w / 2 - 12, 24, 3).stroke({ width: 2, color: INK, alpha: 0.3 });
-	g.circle(-6, -18, 2.4).circle(10, -18, 2.4).fill(BRASS).stroke(thin(1));
 	g.rect(-w / 2 + 3, -4, w - 6, 4).fill({ color: INK, alpha: 0.15 });
 }
 
@@ -657,7 +691,7 @@ function furniture(kind: FurnitureKind): Graphics {
 		case "counter": {
 			// The café's counter: the espresso machine, a glass dome over a cake, cups and the tip jar.
 			// Its steam (office/ambient.ts `steam`) rises from (-36, -128).
-			bench(g, 130, false, mix(CHOC, CREAM, 0.7));
+			bench(g, 130, false, mix(CHOC, CREAM, 0.7), false);
 			// The machine: a chrome body, a brass dome and its eagle-less crest, two groups, lights.
 			g.rect(-70, -78, 58, 6).fill(SHADOW);
 			g.roundRect(-68, -112, 64, 40, 6).fill(CHROME).stroke(line(3));
