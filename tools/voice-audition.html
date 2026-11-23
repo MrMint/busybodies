@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Voice auditions</title>
+<style>
+	:root { --bg: #faf7f2; --fg: #2b2622; --muted: #8a8079; --line: #e6ded4; --chip: #fff; --keep: #2f8a4c; --maybe: #b98a1b; --no: #c0492f; --hl: #f1e7d8; }
+	@media (prefers-color-scheme: dark) { :root { --bg: #1d1a18; --fg: #eee6dc; --muted: #9c9189; --line: #3a3430; --chip: #2a2623; --keep: #5cc47d; --maybe: #e3b84d; --no: #f0775c; --hl: #322c28; } }
+	* { box-sizing: border-box; }
+	body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.4 -apple-system, system-ui, sans-serif; }
+	header { position: sticky; top: 0; z-index: 2; background: var(--bg); border-bottom: 1px solid var(--line); padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+	h1 { font-size: 16px; margin: 0; }
+	label { color: var(--muted); display: inline-flex; gap: 6px; align-items: center; }
+	select, button, textarea { font: inherit; color: inherit; background: var(--chip); border: 1px solid var(--line); border-radius: 6px; padding: 3px 9px; }
+	button { cursor: pointer; }
+	input[type=range] { width: 140px; }
+	.keys { width: 100%; color: var(--muted); font-size: 12px; }
+	main { padding: 8px 16px 64px; overflow-x: auto; }
+	table { border-collapse: collapse; min-width: 760px; }
+	th, td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: middle; }
+	th { font-weight: 600; font-size: 12px; color: var(--muted); max-width: 150px; }
+	tr.focus td { background: var(--hl); }
+	td.name small { display: block; color: var(--muted); }
+	.play { min-width: 34px; }
+	.play.missing { opacity: 0.3; cursor: default; }
+	.play.on { outline: 2px solid var(--fg); }
+	td.pick { white-space: nowrap; }
+	.pick button { padding: 2px 7px; }
+	.pick button.keep.sel { background: var(--keep); color: #fff; border-color: var(--keep); }
+	.pick button.maybe.sel { background: var(--maybe); color: #fff; border-color: var(--maybe); }
+	.pick button.no.sel { background: var(--no); color: #fff; border-color: var(--no); }
+	tr.babble td { font-style: italic; }
+	#notes { width: 100%; min-height: 56px; margin-top: 12px; }
+	.empty { color: var(--muted); padding: 32px 0; }
+</style>
+</head>
+<body>
+<header>
+	<h1>Voice auditions</h1>
+	<label>Theme <select id="theme"></select></label>
+	<label>Model <select id="model"><option value="">all</option></select></label>
+	<label>Delivery <select id="delivery"><option value="">all</option></select></label>
+	<label>Show <select id="show"><option value="">every voice</option><option value="keep">kept</option><option value="keep,maybe">kept and maybe</option><option value="none">not yet picked</option></select></label>
+	<label>Pitch <input id="pitch" type="range" min="-4" max="8" step="0.5" value="0"><span id="pitchv">0</span> st</label>
+	<label><input id="char" type="checkbox"> per-character pitch</label>
+	<div class="keys">Each row is one voice in one model and delivery; the columns are the sample lines. Keys: <b>↑</b>/<b>↓</b> row, <b>space</b> play the row, <b>1</b>–<b>6</b> one line, <b>y</b> keep, <b>m</b> maybe, <b>x</b> no, <b>0</b> clear. The pitch slider shifts like the app does (speed and pitch together); "per-character" adds the app's ±120 cents for a few sample characters. The babble row is the app's own babble.</div>
+</header>
+<main>
+	<table id="grid"></table>
+	<label style="display:block;margin-top:16px">Notes for this theme (what a mochi should sound like)</label>
+	<textarea id="notes" placeholder="Small, soft, bright... not squeaky..."></textarea>
+</main>
+<script src="/babble.js"></script>
+<script>
+	const $ = (id) => document.getElementById(id);
+	const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+	let data, rows = [], focus = 0, ctx, playing = [], who = 0;
+	const WHO = ["s:demo-1", "s:demo-2", "a:demo-1:x", "s:demo-7"];
+	const buffers = new Map();
+
+	async function load() {
+		data = await (await fetch("/auditions.json")).json();
+		if (!$("theme").options.length) {
+			$("theme").innerHTML = Object.keys(data.lines).map((t) => `<option>${t}</option>`).join("");
+			$("model").innerHTML += data.models.map((m) => `<option>${m}</option>`).join("");
+			$("delivery").innerHTML += Object.keys(data.deliveries).map((d) => `<option>${d}</option>`).join("");
+			const themes = Object.keys(data.lines);
+			const recorded = themes.find((t) => Object.values(data.auditions.takes).some((x) => x.theme === t));
+			if (recorded) $("theme").value = recorded;
+		}
+		render();
+	}
+	const theme = () => $("theme").value;
+	const keyOf = (r) => `${r.model}|${r.voice}|${r.delivery}`;
+
+	function render() {
+		const t = theme(), a = data.auditions, lines = data.lines[t];
+		const pitch = a.pitch[t] ?? 0;
+		$("pitch").value = pitch; $("pitchv").textContent = pitch;
+		$("notes").value = a.notes[t] ?? "";
+		// Rows from what was recorded: model × voice × delivery.
+		const by = new Map();
+		for (const [file, x] of Object.entries(a.takes)) {
+			if (x.theme !== t) continue;
+			const model = file.split("/")[2];
+			const k = `${model}|${x.voice}|${x.delivery}`;
+			if (!by.has(k)) by.set(k, { model, voice: x.voice, delivery: x.delivery, fake: x.model === "fake", files: [] });
+			by.get(k).files[x.n] = file;
+		}
+		const picks = a.picks[t] ?? {};
+		const show = $("show").value;
+		rows = [...by.values()]
+			.filter((r) => !$("model").value || r.model === $("model").value)
+			.filter((r) => !$("delivery").value || r.delivery === $("delivery").value)
+			.filter((r) => !show || (show === "none" ? !picks[keyOf(r)] : show.split(",").includes(picks[keyOf(r)])))
+			.sort((x, y) => x.voice.localeCompare(y.voice) || x.model.localeCompare(y.model) || x.delivery.localeCompare(y.delivery));
+		const head = `<tr><th>Voice</th>${lines.map((l, i) => `<th title="${esc(l)}">${i + 1}. ${esc(l.length > 28 ? l.slice(0, 26) + "…" : l)}</th>`).join("")}<th></th><th>Pick</th></tr>`;
+		const babble = `<tr class="babble"><td class="name">babble<small>the app's, on device</small></td>${lines.map((_, i) => `<td><button class="play" data-babble="${i}">▶</button></td>`).join("")}<td><button data-babble="all">all</button></td><td></td></tr>`;
+		const body = rows.map((r, ri) => `<tr data-row="${ri}" class="${ri === focus ? "focus" : ""}"><td class="name">${esc(r.voice)}<small>${esc(r.model.replace("gemini-", "").replace("-preview", " preview"))} · ${esc(r.delivery)}${r.fake ? " · fake" : ""}</small></td>${lines.map((_, i) => `<td><button class="play ${r.files[i] ? "" : "missing"}" data-row="${ri}" data-n="${i}">▶</button></td>`).join("")}<td><button data-row="${ri}" data-all="1">all</button></td><td class="pick">${["keep", "maybe", "no"].map((p) => `<button class="${p} ${picks[keyOf(r)] === p ? "sel" : ""}" data-row="${ri}" data-pick="${p}">${p === "keep" ? "✓" : p === "maybe" ? "?" : "✗"}</button>`).join("")}</td></tr>`).join("");
+		$("grid").innerHTML = head + babble + (body || `<tr><td colspan="9" class="empty">Nothing recorded for ${esc(t)} yet. Try <code>bun tools/voice.ts audition --fake</code>, or a real run with <code>--yes</code>.</td></tr>`);
+	}
+
+	function audio() {
+		ctx ??= new AudioContext();
+		if (ctx.state !== "running") ctx.resume();
+		return ctx;
+	}
+	function stop() {
+		for (const s of playing) try { s.stop(); } catch {}
+		playing = [];
+		document.querySelectorAll(".play.on").forEach((b) => b.classList.remove("on"));
+	}
+	async function buffer(file) {
+		if (!buffers.has(file)) buffers.set(file, fetch(`/clip/${encodeURIComponent(file)}`).then((r) => r.arrayBuffer()).then((b) => audio().decodeAudioData(b)));
+		return buffers.get(file);
+	}
+	const cents = () => Number($("pitch").value) * 100 + ($("char").checked ? busyBabble.pitchCents(WHO[who++ % WHO.length]) : 0);
+	/** Play files one after another from `at`; returns when the last ends (in context seconds). */
+	async function playFiles(files, buttons) {
+		stop();
+		const c = audio();
+		let at = c.currentTime + 0.05;
+		for (const [i, f] of files.entries()) {
+			if (!f) continue;
+			const buf = await buffer(f);
+			const src = c.createBufferSource();
+			src.buffer = buf;
+			src.detune.value = cents();
+			src.connect(c.destination);
+			src.start(at);
+			const b = buttons[i];
+			if (b) { setTimeout(() => b.classList.add("on"), (at - c.currentTime) * 1000); src.onended = () => b.classList.remove("on"); }
+			playing.push(src);
+			at += buf.duration / 2 ** (src.detune.value / 1200) + 0.35;
+		}
+	}
+	function playBabble(idx) {
+		stop();
+		const c = audio(), lines = data.lines[theme()];
+		const out = c.createGain();
+		out.gain.value = 0.22;
+		out.connect(c.destination);
+		let at = c.currentTime + 0.05;
+		for (const i of idx) at += busyBabble.babble(c, out, at, WHO[who++ % WHO.length], lines[i]) + 0.35;
+	}
+	function row(ri) {
+		const r = rows[ri];
+		const btns = [...document.querySelectorAll(`tr[data-row="${ri}"] .play`)];
+		return { r, btns };
+	}
+	async function pick(ri, value) {
+		const r = rows[ri]; if (!r) return;
+		const t = theme(), k = keyOf(r);
+		await fetch("/audition/pick", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ theme: t, key: k, value }) });
+		const picks = (data.auditions.picks[t] ??= {});
+		if (value) picks[k] = value; else delete picks[k];
+		render();
+	}
+
+	$("grid").addEventListener("click", (e) => {
+		const b = e.target.closest("button"); if (!b) return;
+		if (b.dataset.babble !== undefined) return playBabble(b.dataset.babble === "all" ? data.lines[theme()].map((_, i) => i) : [Number(b.dataset.babble)]);
+		const ri = Number(b.dataset.row);
+		if (!Number.isNaN(ri)) { focus = ri; document.querySelectorAll("tr.focus").forEach((x) => x.classList.remove("focus")); b.closest("tr").classList.add("focus"); }
+		if (b.dataset.pick) return pick(ri, b.dataset.pick);
+		const { r, btns } = row(ri);
+		if (b.dataset.all) return playFiles(r.files, btns);
+		const n = Number(b.dataset.n);
+		if (r.files[n]) playFiles(Object.assign([], { [n]: r.files[n] }), btns);
+	});
+	for (const id of ["theme", "model", "delivery", "show"]) $(id).onchange = () => { focus = 0; render(); };
+	$("pitch").oninput = () => { $("pitchv").textContent = $("pitch").value; };
+	$("pitch").onchange = () => {
+		data.auditions.pitch[theme()] = Number($("pitch").value);
+		fetch("/audition/pick", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ theme: theme(), pitch: Number($("pitch").value) }) });
+	};
+	let notesTimer;
+	$("notes").oninput = () => {
+		clearTimeout(notesTimer);
+		notesTimer = setTimeout(() => {
+			data.auditions.notes[theme()] = $("notes").value;
+			fetch("/audition/pick", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ theme: theme(), notes: $("notes").value }) });
+		}, 400);
+	};
+	document.addEventListener("keydown", (e) => {
+		if (["SELECT", "TEXTAREA", "INPUT"].includes(e.target.tagName) && e.target.type !== "checkbox" && e.target.type !== "range") return;
+		const { r, btns } = row(focus);
+		const move = (d) => { focus = Math.max(0, Math.min(rows.length - 1, focus + d)); render(); document.querySelector("tr.focus")?.scrollIntoView({ block: "nearest" }); };
+		if (e.key === "ArrowDown") { e.preventDefault(); move(1); }
+		else if (e.key === "ArrowUp") { e.preventDefault(); move(-1); }
+		else if (e.key === " " && r) { e.preventDefault(); playFiles(r.files, btns); }
+		else if (/^[1-9]$/.test(e.key) && r) { const n = Number(e.key) - 1; if (r.files[n]) playFiles(Object.assign([], { [n]: r.files[n] }), btns); }
+		else if (e.key === "y") pick(focus, "keep");
+		else if (e.key === "m") pick(focus, "maybe");
+		else if (e.key === "x") pick(focus, "no");
+		else if (e.key === "0") pick(focus, null);
+	});
+	load();
+</script>
+</body>
+</html>

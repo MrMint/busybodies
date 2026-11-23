@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Voice takes</title>
+<style>
+	:root { --bg: #faf7f2; --fg: #2b2622; --muted: #8a8079; --line: #e6ded4; --ok: #2f8a4c; --redo: #c0492f; --new: #b98a1b; --chip: #fff; }
+	@media (prefers-color-scheme: dark) { :root { --bg: #1d1a18; --fg: #eee6dc; --muted: #9c9189; --line: #3a3430; --ok: #5cc47d; --redo: #f0775c; --new: #e3b84d; --chip: #2a2623; } }
+	* { box-sizing: border-box; }
+	body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.4 -apple-system, system-ui, sans-serif; }
+	header { position: sticky; top: 0; background: var(--bg); border-bottom: 1px solid var(--line); padding: 12px 16px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; z-index: 1; }
+	h1 { font-size: 16px; margin: 0 8px 0 0; }
+	select, button { font: inherit; color: inherit; background: var(--chip); border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+	.counts { color: var(--muted); }
+	.keys { color: var(--muted); font-size: 12px; width: 100%; }
+	main { padding: 8px 16px 64px; max-width: 980px; }
+	.line { border-bottom: 1px solid var(--line); padding: 10px 0; }
+	.line.stale .text::after { content: "  (no longer in the bank: won't ship)"; color: var(--muted); font-style: italic; }
+	.text { font-size: 15px; }
+	.meta { color: var(--muted); font-size: 12px; }
+	.takes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+	.take { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; display: flex; gap: 6px; align-items: center; background: var(--chip); }
+	.take.focus { outline: 2px solid var(--fg); }
+	.take .who { min-width: 90px; }
+	.take .who small { display: block; color: var(--muted); }
+	.st { font-size: 12px; font-weight: 600; text-transform: uppercase; }
+	.st.approved { color: var(--ok); } .st.redo { color: var(--redo); } .st.new { color: var(--new); }
+	.empty { color: var(--muted); padding: 32px 0; }
+</style>
+</head>
+<body>
+<header>
+	<h1>Voice takes</h1>
+	<select id="theme"></select>
+	<select id="show"><option value="all">all takes</option><option value="new">to review</option><option value="redo">marked redo</option><option value="approved">approved</option></select>
+	<button id="approveAll" title="Approve every take still to review on this page">Approve all shown "new"</button>
+	<span class="counts" id="counts"></span>
+	<div class="keys">Keys: <b>j</b>/<b>k</b> next/previous take, <b>space</b> play, <b>a</b> approve, <b>r</b> redo, <b>u</b> back to new. Marks save at once to voice-takes/takes.json; then run <code>bun tools/voice.ts ship</code>, and <code>record</code> again for the redos.</div>
+</header>
+<main id="list"></main>
+<script>
+	let data, focus = 0;
+	const $ = (id) => document.getElementById(id);
+	const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+	async function load() {
+		data = await (await fetch("/takes.json")).json();
+		const themes = Object.keys(data.live);
+		if (!$("theme").options.length) $("theme").innerHTML = themes.map((t) => `<option>${t}</option>`).join("");
+		render();
+	}
+	function takesShown() { return [...document.querySelectorAll(".take")]; }
+	function render() {
+		const theme = $("theme").value, show = $("show").value;
+		const lines = data.work.themes[theme] || {};
+		const live = new Set(data.live[theme]);
+		const cast = Object.fromEntries(data.cast[theme].map((v) => [v.id, v]));
+		const all = Object.values(lines).flatMap((l) => l.takes);
+		const n = (s) => all.filter((t) => t.status === s).length;
+		$("counts").textContent = `${Object.keys(lines).length} lines · ${all.length} takes · ${n("approved")} approved · ${n("new")} to review · ${n("redo")} redo`;
+		const html = Object.entries(lines).map(([key, l]) => {
+			const takes = l.takes.filter((t) => show === "all" || t.status === show);
+			if (!takes.length) return "";
+			return `<div class="line ${live.has(key) ? "" : "stale"}"><div class="text">${esc(l.text)}</div><div class="meta">${esc(l.trigger)} · ${esc(l.role)} · ${key}</div><div class="takes">${takes.map((t) => {
+				const v = cast[t.voice] || { voice: "?", style: "" };
+				return `<div class="take" data-key="${key}" data-voice="${t.voice}" title="${esc(v.style)}"><span class="who">${esc(t.voice)}<small>${esc(v.voice)} · ${(t.ms / 1000).toFixed(1)} s${t.model === "fake" ? " · fake" : ""}</small></span><audio preload="none" controls src="/clip/${encodeURIComponent(t.file)}"></audio><span class="st ${t.status}">${t.status}</span><button data-s="approved">✓</button><button data-s="redo">↻</button></div>`;
+			}).join("")}</div></div>`;
+		}).join("");
+		$("list").innerHTML = html || `<div class="empty">Nothing here. Record some takes: <code>bun tools/voice.ts record --fake</code> (or a real run).</div>`;
+		focus = Math.min(focus, Math.max(0, takesShown().length - 1));
+		mark();
+	}
+	function mark() { takesShown().forEach((el, i) => el.classList.toggle("focus", i === focus)); }
+	async function setStatus(el, status) {
+		const theme = $("theme").value;
+		await fetch("/mark", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ theme, key: el.dataset.key, voice: el.dataset.voice, status }) });
+		const t = data.work.themes[theme][el.dataset.key].takes.find((x) => x.voice === el.dataset.voice);
+		t.status = status;
+		render();
+	}
+	$("list").addEventListener("click", (e) => {
+		const b = e.target.closest("button[data-s]");
+		if (b) setStatus(b.closest(".take"), b.dataset.s);
+	});
+	$("theme").onchange = () => { focus = 0; render(); };
+	$("show").onchange = () => { focus = 0; render(); };
+	$("approveAll").onclick = async () => {
+		for (const el of takesShown()) {
+			if (el.querySelector(".st").textContent === "new") await setStatus(el, "approved");
+		}
+	};
+	document.addEventListener("keydown", (e) => {
+		if (e.target.tagName === "SELECT") return;
+		const els = takesShown(), el = els[focus];
+		if (e.key === "j") { focus = Math.min(els.length - 1, focus + 1); mark(); els[focus]?.scrollIntoView({ block: "nearest" }); }
+		else if (e.key === "k") { focus = Math.max(0, focus - 1); mark(); els[focus]?.scrollIntoView({ block: "nearest" }); }
+		else if (e.key === " " && el) { e.preventDefault(); const a = el.querySelector("audio"); a.currentTime = 0; a.play(); }
+		else if (e.key === "a" && el) setStatus(el, "approved");
+		else if (e.key === "r" && el) setStatus(el, "redo");
+		else if (e.key === "u" && el) setStatus(el, "new");
+	});
+	load();
+</script>
+</body>
+</html>

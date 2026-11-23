@@ -61,7 +61,11 @@ rm -rf /Applications/Busybodies.app ~/Library/Application\ Support/app.busybodie
   chime for a PR, and the copier grinding through a long build, over a very quiet room tone. All
   made in code, never more than one of a kind every few seconds, and silent while the window is
   off screen. **Calm office** in the same menu stops the cast's idle fidgeting and the sound
-  (your system's Reduce motion setting does the same).
+  (your system's Reduce motion setting does the same). With sound on, a character also speaks
+  on the beats that matter (waiting on you, done, back to work), at most a few lines a minute: a
+  line with a time or a name in it is cute babble made on your machine, and the rest are voices
+  recorded ahead of time with an AI text-to-speech model and shipped with the app. Nothing is
+  sent anywhere to make them.
 
 ## What it reads, and privacy
 
