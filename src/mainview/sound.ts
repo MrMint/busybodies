@@ -13,7 +13,9 @@
 // Math.random. At most one earcon of a kind every few seconds, and a global cap, so a busy office
 // doesn't chatter. Each is panned by its room's x on screen, and louder while the camera is zoomed
 // into that room (quieter in another). Under them, a very low room tone per theme: the office hums
-// with a keyboard patter whose rate follows the heat; the factory drones with a belt's clatter.
+// with a keyboard patter whose rate follows the heat; the factory drones with a belt's clatter; the
+// bakery has a warm oven hum, now and then the espresso machine's hiss of steam (more often when
+// it's busy) and, once in a while, the little bell over the shop door.
 //
 // The AudioContext is made only once sound is on and the window is on screen; it runs only while
 // visible, and suspends when hidden, in calm mode, or when sound is turned off. Only the full
@@ -366,8 +368,8 @@ export class Sound {
 		out.gain.setTargetAtTime(1, ctx.currentTime, 1.5);
 		out.connect(this.#master!);
 		const k = kit(ctx, out, this.#noise!);
-		const nodes = theme === "factory" ? droneBed(ctx, out) : humBed(ctx, out);
-		const tone = { theme, nodes, out, next: ctx.currentTime + 0.5, n: 0, timer: undefined as unknown as ReturnType<typeof setInterval> };
+		const nodes = theme === "factory" ? droneBed(ctx, out) : theme === "bakery" ? ovenBed(ctx, out, this.#noise!) : humBed(ctx, out);
+		const tone = { theme, nodes, out, next: ctx.currentTime + 0.5, n: 0, quietUntil: 0, timer: undefined as unknown as ReturnType<typeof setInterval> };
 		// Look a quarter second ahead every 200 ms and lay down the patter (or clatter) for it.
 		tone.timer = setInterval(() => {
 			const now = ctx.currentTime;
@@ -375,7 +377,13 @@ export class Sound {
 			const heat = this.#heat;
 			while (tone.next < now + 0.25) {
 				const r = seq(hashId(`${theme}:${tone.n++}`));
-				if (theme === "factory") {
+				if (theme === "bakery") {
+					// The shop: a step every quarter second, and now and then steam or the door.
+					const beat = tone.next >= tone.quietUntil ? bakeryBeat(r(), heat) : undefined;
+					if (beat === "steam") tone.quietUntil = tone.next + steam(k, tone.next, r(), 0.6 + 0.4 * heat);
+					else if (beat === "door") tone.quietUntil = tone.next + doorBell(k, tone.next, 0.97 + r() * 0.06);
+					tone.next += BAKERY_STEP;
+				} else if (theme === "factory") {
 					// The belt: an even clack, quicker as it heats up; silent in an empty factory.
 					if (heat > 0) clack(k, tone.next, 0.6 + 0.4 * heat);
 					tone.next += 1 / (1.2 + heat * 3);
@@ -410,6 +418,8 @@ export class Sound {
 interface Kit {
 	ctx: AudioContext;
 	out: AudioNode;
+	/** The shared second of white noise. */
+	buffer: AudioBuffer;
 	/** A shaped oscillator: attack to `peak`, exponential decay over `decay` seconds. */
 	osc(type: OscillatorType, freq: number, at: number, peak: number, decay: number, opts?: { attack?: number; to?: number; dest?: AudioNode }): void;
 	/** A burst of filtered noise, from `offset` into the shared buffer. */
@@ -420,6 +430,7 @@ function kit(ctx: AudioContext, out: AudioNode, buffer: AudioBuffer): Kit {
 	return {
 		ctx,
 		out,
+		buffer,
 		osc(type, freq, at, peak, decay, opts = {}) {
 			const o = ctx.createOscillator();
 			o.type = type;
@@ -560,6 +571,92 @@ function droneBed(ctx: AudioContext, out: AudioNode): AudioScheduledSourceNode[]
 		o.start();
 		return o;
 	});
+}
+
+/** The bakery's bed: the ovens' warm hum, a muffled rumble of air with a low element tone that
+ * breathes very slowly, like a burner cycling. */
+function ovenBed(ctx: AudioContext, out: AudioNode, noise: AudioBuffer): AudioScheduledSourceNode[] {
+	const lp = ctx.createBiquadFilter();
+	lp.type = "lowpass";
+	lp.frequency.value = 240;
+	lp.Q.value = 0.5;
+	lp.connect(out);
+	const air = ctx.createBufferSource();
+	air.buffer = noise;
+	air.loop = true;
+	const airGain = ctx.createGain();
+	airGain.gain.value = 0.018;
+	air.connect(airGain).connect(lp);
+	const hum = ctx.createOscillator();
+	hum.frequency.value = 68;
+	const humGain = ctx.createGain();
+	humGain.gain.value = 0.006;
+	// The breath: the hum's level swells and settles over about twelve seconds.
+	const lfo = ctx.createOscillator();
+	lfo.frequency.value = 0.08;
+	const depth = ctx.createGain();
+	depth.gain.value = 0.003;
+	lfo.connect(depth).connect(humGain.gain);
+	hum.connect(humGain).connect(lp);
+	for (const n of [air, hum, lfo]) n.start();
+	return [air, hum, lfo];
+}
+
+/** The bakery's room tone looks ahead in quarter-second steps. */
+export const BAKERY_STEP = 0.25;
+
+/**
+ * What the shop does in one step, from a number in [0, 1) and the heat: the espresso machine's
+ * steam about once a minute in a quiet shop and every 15 seconds or so in a busy one, and the bell
+ * over the door about every two minutes. Mostly nothing.
+ */
+export function bakeryBeat(r: number, heat: number): "steam" | "door" | undefined {
+	const steamP = 0.004 + 0.012 * Math.max(0, Math.min(1, heat));
+	if (r < steamP) return "steam";
+	if (r < steamP + 0.002) return "door";
+	return undefined;
+}
+
+/** A sound that swells in, holds and fades: looped noise through a filter. */
+function swell(k: Kit, at: number, attack: number, hold: number, release: number, filter: BiquadFilterType, freq: number, q: number, peak: number, offset: number): void {
+	const { ctx } = k;
+	const src = ctx.createBufferSource();
+	src.buffer = k.buffer;
+	src.loop = true;
+	const f = ctx.createBiquadFilter();
+	f.type = filter;
+	f.frequency.value = freq;
+	f.Q.value = q;
+	const g = ctx.createGain();
+	g.gain.setValueAtTime(0, at);
+	g.gain.linearRampToValueAtTime(peak, at + attack);
+	g.gain.setValueAtTime(peak, at + attack + hold);
+	g.gain.linearRampToValueAtTime(0, at + attack + hold + release);
+	src.connect(f).connect(g).connect(k.out);
+	src.start(at, offset % 0.9);
+	src.stop(at + attack + hold + release + 0.05);
+}
+
+/** The espresso machine: a soft hiss of steam with the milk's lower gurgle under it. Returns its length. */
+function steam(k: Kit, at: number, r: number, level: number): number {
+	const hold = 0.8 + r * 1.4;
+	swell(k, at, 0.25, hold, 0.6, "highpass", 4200, 0.7, 0.006 * level, r);
+	swell(k, at + 0.1, 0.35, hold * 0.8, 0.5, "bandpass", 1100 + r * 500, 2.5, 0.004 * level, r + 0.37);
+	return 0.25 + hold + 0.6 + 2;
+}
+
+/** The little bell over the shop door: two quick strikes as the door swings, then a softer third. */
+function doorBell(k: Kit, at: number, pitch: number): number {
+	const f = 2350 * pitch;
+	[
+		[0, 0.035],
+		[0.13, 0.025],
+		[0.29, 0.012],
+	].forEach(([t, peak]) => {
+		k.osc("sine", f, at + t!, peak!, 0.7);
+		k.osc("sine", f * 2.76, at + t!, peak! * 0.35, 0.25);
+	});
+	return 3;
 }
 
 /** One key of the patter: a tiny high click, its brightness and level varied. */

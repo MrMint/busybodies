@@ -116,6 +116,16 @@ describe("compact: a live camera", () => {
 		await page.close();
 	}, T);
 
+	test("tiles name the common areas in the theme's words, and follow a live switch", async () => {
+		const page = await open("demo&frozen&theme=factory");
+		const names = () => page.evaluate(() => [...document.querySelectorAll<HTMLElement>("#bb-tiles .tile")].map((b) => ({ area: b.dataset.area!, name: b.textContent })));
+		const yours = (await names()).find((t) => t.area === "yours");
+		expect(yours?.name).toBe("foreman's office");
+		await page.evaluate(() => window.__busybodies!.setTheme("office"));
+		await page.waitForFunction(() => document.querySelector<HTMLElement>('#bb-tiles .tile[data-area="yours"]')?.textContent === "your office", undefined, { timeout: 10_000 });
+		await page.close();
+	}, T);
+
 	test("no cuts while hidden; back on screen it cuts straight to the news", async () => {
 		const page = await open("demo=idle&calm");
 		const s = await settle(page);

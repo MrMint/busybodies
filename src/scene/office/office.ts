@@ -39,6 +39,7 @@ import { DecorLayer, type RoomDecor, type StoryView, boardText, regularNames, st
 const BUILD_H = BUILD.brickH;
 import { OFFICE_THEME } from "../theme/office";
 import { FALLEN, buildTop } from "../theme/build";
+import { areaLabel } from "../theme/words";
 import { RobotArm } from "../theme/arm";
 import { type CrewBuild, FURNITURE_KINDS, type SceneTheme } from "../theme/types";
 
@@ -886,7 +887,7 @@ export class Office extends Container {
 		this.#theme.room(g, c, a, (slot) => this.#signs.get(slot));
 		// The paper pass: materials, the view out, grain and the room's name (material.ts).
 		const words = this.#theme.words;
-		const name = a.kind === "project" ? a.name : words.areas[a.kind];
+		const name = areaLabel(a, words);
 		dressRoom(c, a, { light: this.#theme.light, phase: this.#phase, name, sun });
 		return c;
 	}

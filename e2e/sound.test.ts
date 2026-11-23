@@ -107,6 +107,18 @@ describe("sound", () => {
 		await page.close();
 	}, T);
 
+	test("each theme has its own room tone, and it follows a live theme switch", async () => {
+		const page = await open("demo&frozen&sound&theme=bakery");
+		await contextIs(page, "running");
+		const tone = () => page.evaluate(() => window.__busybodies!.sound()!.tone);
+		expect(await tone()).toMatchObject({ theme: "bakery", running: true });
+		await page.evaluate(() => window.__busybodies!.setTheme("factory"));
+		expect(await tone()).toMatchObject({ theme: "factory", running: true });
+		await page.evaluate(() => window.__busybodies!.setTheme("office"));
+		expect(await tone()).toMatchObject({ theme: "office", running: true });
+		await page.close();
+	}, T);
+
 	test("the compact window never plays sound", async () => {
 		const page = await open("demo&frozen&compact&sound");
 		expect(await page.evaluate(() => window.__busybodies!.sound())).toBeUndefined();
