@@ -18,7 +18,7 @@ import { placeholders } from "./placeholder";
 import { Atlas, buildPoseSheet, rigCharacters, rigTheme } from "../scene/rig";
 import { Director, NOTICE, placeholderVoice } from "../scene/director";
 import { Voice } from "../scene/sass";
-import { type Diary, diaryOf, emptyDiary, newMemory, noteSnapshot } from "../shared/diary";
+import { type Diary, diaryOf, newMemory, noteSnapshot } from "../shared/diary";
 
 const params = new URLSearchParams(location.search);
 /** ?compact: the small floating window (transparent, always on top; src/bun/compact.ts). */
@@ -338,12 +338,12 @@ function blank(): void {
 		const beat = name?.match(/^day-(\d)$/);
 		const day = demo(beat ? null : name);
 		for (const [id, sign] of Object.entries(day.signs)) office.setSign(id, sign);
-		// The demo keeps its own diary: an invented week before, today from its own snapshots.
+		// ?demo=story keeps its own diary: an invented week before, today from its own snapshots.
+		// The other demos keep none, so their walls and boards look the same at any hour.
 		const memory = newMemory();
-		let diary: Diary = name === "story" ? demoDiary(day.snapshot) : emptyDiary();
+		let diary: Diary | undefined = name === "story" ? demoDiary(day.snapshot) : undefined;
 		const showDemo = (s: Snapshot) => {
-			diary = noteSnapshot(diary, memory, s);
-			director.diary = diary;
+			if (diary) director.diary = diary = noteSnapshot(diary, memory, s);
 			show(s);
 		};
 		showDemo(day.snapshot);
