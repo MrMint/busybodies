@@ -11,6 +11,7 @@
 //
 // Colours come from the theme (its slab, lawn and light), so the decor draws in any theme; a theme
 // may give its own words and colours in STORY_STYLES, and one without gets the defaults.
+import type { ThemeId } from "../theme/id";
 import { Container, Graphics } from "pixi.js";
 import type { Headlines, StoryKind } from "../director/story";
 import { type Counts, type Diary, daysSeen, localDay, projectKey, weekOf } from "../../shared/diary";
@@ -109,6 +110,26 @@ export const FACTORY_STORY: StoryWords = {
 	quiet: "Nothing off the line.",
 };
 
+export const KITCHEN_STORY: StoryWords = {
+	headlines: "WHILE YOU WERE OUT",
+	ledger: "TONIGHT'S COVERS",
+	lines: {
+		merged: (n) => `${s(n, "plate")} sent out`,
+		opened: (n) => `${s(n, "plate")} at the pass`,
+		redeemed: (n) => `${s(n, "dish", "dishes")} saved`,
+		sendoff: (n) => `${s(n, "long shift")} signed off`,
+		finished: (n) => `${s(n, "station")} cleaned down`,
+	},
+	ledgerLines: [
+		["sessions", (n) => s(n, "station")],
+		["prsOpened", (n) => s(n, "plate")],
+		["prsMerged", (n) => `${n} served`],
+		["testsRed", (n) => `${n} sent back`],
+		["redeemed", (n) => `${n} saved`],
+	],
+	quiet: "No covers tonight.",
+};
+
 /** The story's look in a theme: colours picked from the theme, and its words. */
 export interface StoryStyle {
 	words: StoryWords;
@@ -123,7 +144,7 @@ export interface StoryStyle {
 	pennants: number[];
 }
 
-const STORY_WORDS: Record<string, StoryWords> = { office: OFFICE_STORY, factory: FACTORY_STORY };
+const STORY_WORDS: Record<ThemeId, StoryWords> = { office: OFFICE_STORY, factory: FACTORY_STORY, kitchen: KITCHEN_STORY };
 
 /** The story's look for a theme: its own words if it has them, colours from its paint. */
 export function storyStyle(theme: Pick<SceneTheme, "id" | "slab" | "lawn" | "light">): StoryStyle {
