@@ -532,12 +532,12 @@ export const POSES: Pose[] = [
 		],
 	}),
 	pose({
-		name: "boothLean", title: "Leaning back in the booth", trigger: "idle", rarity: 0, play: "once",
+		name: "boothLean", title: "Hands behind the head", trigger: "idle", rarity: 0, play: "once",
 		lines: ["The line runs itself. I made sure."],
 		frames: [
-			["e-half m-smirk bd-back al-head ar-head", 5],
-			["e-closed m-yawn bd-back al-head ar-head", 3],
-			["e-half l-downR m-small bd-back al-head ar-head", 4],
+			["e-half m-smirk al-head ar-head", 5],
+			["e-closed m-yawn al-head ar-head f-tip", 3],
+			["e-half l-downR m-small al-head ar-head", 4],
 			["e-wide l-downR b-up m-small al-low ar-head", 2],
 		],
 	}),
