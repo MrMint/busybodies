@@ -2,7 +2,8 @@
 import { INK } from "../../scene/office/paper";
 import type { Rect } from "../../scene/world/world";
 import { crewBuild } from "../../scene/theme/build";
-import { NIGHT_WATCH, plannerOf } from "../office/scene";
+import { NIGHT_WATCH } from "../office/scene";
+import { plannerOf } from "../office/desk";
 import { FACTORY_STAGING } from "./staging";
 import type { SceneLight, SceneTheme } from "../../scene/theme/types";
 import { FACTORY_WORDS } from "./words";
