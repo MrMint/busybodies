@@ -6,7 +6,7 @@ import { DODGE, closest, dodges } from "../src/scene/director/dodge";
 import { HANDOFF, MAIL } from "../src/scene/director/handoff";
 import { PACE } from "../src/scene/director/pace";
 import { RUSH, heatOf, nextDash, nextRush } from "../src/scene/director/rush";
-import { STATION_POSE } from "../src/scene/director/stations";
+import { STATION_POSE } from "../src/scene/world/stations";
 import { TRIP } from "../src/scene/director/trips";
 import type { World, WorldEvent } from "../src/scene/director/types";
 import { demo, releaseDay } from "../src/mainview/demo";

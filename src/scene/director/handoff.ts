@@ -10,7 +10,7 @@
 // (`envelopeCarry`), drops it in (`mailDrop`), walks back and celebrates.
 import type { Slot } from "../world/world";
 import { HANDOFF as RIG_HANDOFF, PUPPET_HEIGHT } from "../rig/reach";
-import type { StationKind } from "./stations";
+import type { StationKind } from "../world/stations";
 
 export const HANDOFF = {
 	/** The stations whose errand is a folder that can be passed on. */

@@ -4,10 +4,10 @@
 //
 // A walk has a start, a turn and a stop (plan-alive stream B). The feet stay put for the walk's
 // first moment while the face looks where it is going; the distance eases in and out inside the
-// walk's own ms and corners are rounded (both in director/paths.ts, so the director knows where
+// walk's own ms and corners are rounded (both in world/paths.ts, so the director knows where
 // everyone is); a change of direction is a quick front-facing turn, not a mirror flip; and on
 // arrival the walker plants for a beat, looking ahead, before its eyes go to the job.
-import { along, heading, lookMs } from "../director/paths";
+import { along, heading, lookMs } from "../world/paths";
 import type { Character, CharacterFactory, Slot } from "../office/slot";
 import type { Cue, Mood, Who } from "../contract";
 import { setDepth } from "../office/depth";

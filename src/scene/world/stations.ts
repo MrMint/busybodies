@@ -2,7 +2,7 @@
 // stream C). The director speaks in these theme-neutral kinds; the office theme draws them as a
 // filing cabinet, a card catalogue, a copier and so on, and a later theme draws them as something
 // else. This file is the contract between the director, the office and the rig: names only.
-import type { WorkKind } from "./work";
+import type { WorkKind } from "../director/work";
 
 export type StationKind = "reference" | "search" | "build" | "test" | "web" | "outbox" | "shredder";
 

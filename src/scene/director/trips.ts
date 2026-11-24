@@ -3,7 +3,7 @@
 // ones queue beside it, and anyone who finds every station and queue of its kind full stays at its
 // bench. Pure and deterministic: who goes first is decided by when its kind started, then its key.
 import { type Station, useFor } from "../world/world";
-import type { StationKind } from "./stations";
+import type { StationKind } from "../world/stations";
 
 /** A crew member's trip, kept on the actor between directions. */
 export interface Trip {

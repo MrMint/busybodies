@@ -6,7 +6,7 @@ import type { Atlas } from "./atlas";
 import { parseFrame } from "./frame";
 import { POSES, type Pose, BEAT_MS } from "./poses";
 import { Puppet } from "./puppet";
-import { STATION_POSE, type StationKind } from "../director/stations";
+import { STATION_POSE, type StationKind } from "../world/stations";
 import { BELL, BELL_BASE, HANDOFF, PLANNER, STATION, STICKY } from "./reach";
 import { ROLES, type Role } from "./roles";
 import { FACES } from "./vocab";

@@ -26,8 +26,8 @@ import { NO_METRICS, changesOf, metricsFor, towerBricks, trayFor } from "./metri
 import { type Pace, PACE, RUNS, editRate, paceOf, runCooldown } from "./pace";
 import { RUSH, type Rush, heatOf, nextDash, nextRush, rushWake } from "./rush";
 import { traitOf } from "./traits";
-import { type Point, along, pathBetween, walkMs } from "./paths";
-import { STATION_FOR, STATION_POSE, type StationKind } from "./stations";
+import { type Point, along, pathBetween, walkMs } from "../world/paths";
+import { STATION_FOR, STATION_POSE, type StationKind } from "../world/stations";
 import { TRIP, type Trip, type Want, planTrips, tripPlace } from "./trips";
 import type { Actor, Build, Cue, Run, Seen, World, WorldEvent } from "./types";
 import { WORK, WORK_POSE, type Work, type WorkKind, isEdit, nextWork, tempo, tempoWake, workKind } from "./work";

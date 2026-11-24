@@ -9,7 +9,7 @@ import { BEAT_MS, HABITS, POSE, POSES, duration } from "../src/scene/rig/poses";
 import { ROLES, roleFor } from "../src/scene/rig/roles";
 import { ARMS, FACES, SPOTS, type Arm } from "../src/scene/rig/vocab";
 import { HANDOFF, PUPPET_HEIGHT, REACH, STATION, STATION_CREW_PX, TRAY, WORK, handAt, solveArm } from "../src/scene/rig/reach";
-import { STATION_POSE, STATION_REACH } from "../src/scene/director/stations";
+import { STATION_POSE, STATION_REACH } from "../src/scene/world/stations";
 
 describe("frames", () => {
 	test("tokens parse into a complete frame, everything else at rest", () => {

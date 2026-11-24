@@ -13,8 +13,8 @@ import { type Slot, type Floor, shredderUse } from "../world/world";
 import { poseMs } from "../rig/poses";
 import type { Session } from "../../watcher/model";
 import type { Metrics, Ticket } from "./metrics";
-import { pathBetween, walkMs } from "./paths";
-import { STATION_POSE } from "./stations";
+import { pathBetween, walkMs } from "../world/paths";
+import { STATION_POSE } from "../world/stations";
 import { traitOf } from "./traits";
 import type { Actor } from "./types";
 

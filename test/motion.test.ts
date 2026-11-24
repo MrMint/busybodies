@@ -6,7 +6,7 @@ import { BEATS } from "../src/scene/director/beats";
 import { cueFor, direct } from "../src/scene/director/direct";
 import { WAITING, waitStage } from "../src/scene/director/errands";
 import { HABIT, habitAt } from "../src/scene/director/habits";
-import { GAIT, along, lookMs, pathLength, pointAt, progress, walkMs } from "../src/scene/director/paths";
+import { GAIT, along, lookMs, pathLength, pointAt, progress, walkMs } from "../src/scene/world/paths";
 import { TRAITS } from "../src/scene/director/traits";
 import type { World } from "../src/scene/director/types";
 import { FloorPlan } from "../src/scene/world/layout";

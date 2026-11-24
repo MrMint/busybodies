@@ -24,7 +24,7 @@ import { poseMs } from "../rig/poses";
 import { roleFor } from "../rig/roles";
 import { DIARY, projectKey } from "../../shared/diary";
 import type { Commands, Session, Snapshot } from "../../watcher/model";
-import { pathBetween, walkMs } from "./paths";
+import { pathBetween, walkMs } from "../world/paths";
 import type { View } from "./social";
 import type { Actor, WorldEvent } from "./types";
 import { flatSessions } from "../../watcher/model";

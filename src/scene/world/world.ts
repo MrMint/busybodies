@@ -2,10 +2,10 @@
 // (layout.ts) computes it from a Snapshot; the view (office.ts) draws it. Nothing here knows about
 // PixiJS, so the layout is unit-tested as plain data. Units are world pixels: a room is 400 tall,
 // as on the FloorBusy board, and the camera scales the whole world to the window.
-import type { StationKind } from "../director/stations";
+import type { StationKind } from "./stations";
 import type { Point } from "../contract";
 import type { Staging } from "./staging";
-import { STATION_REACH } from "../director/stations";
+import { STATION_REACH } from "./stations";
 
 export interface Rect {
 	x: number;

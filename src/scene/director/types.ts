@@ -8,7 +8,7 @@ import type { Errand } from "./errands";
 import type { Metrics } from "./metrics";
 import type { PaceName } from "./pace";
 import type { Rush } from "./rush";
-import type { StationKind } from "./stations";
+import type { StationKind } from "../world/stations";
 import type { Story } from "./story";
 import type { Trip } from "./trips";
 import type { Work } from "./work";

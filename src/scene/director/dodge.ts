@@ -6,7 +6,7 @@
 //   closest(a, b)        -> how near two walks come, and when
 //   sidestep(walk, at, away, side) -> the walk with a short detour around the point it reaches at `at`
 //   dodges(walkers, now) -> the new paths, by key, and who each one dodged
-import { type Point, along, pathLength, progress } from "./paths";
+import { type Point, along, pathLength, progress } from "../world/paths";
 
 export const DODGE = {
 	/** Two walkers' feet nearer than this at the same moment would pass through each other. */

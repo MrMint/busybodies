@@ -807,7 +807,7 @@ export const POSES: Pose[] = [
 			["e-happy m-grin ar-hip al-hip", 2],
 		],
 	}),
-	// At the stations (src/scene/director/stations.ts STATION_POSE). The director stands the crew
+	// At the stations (src/scene/world/stations.ts STATION_POSE). The director stands the crew
 	// member STATION_REACH from the station's working point, facing it; the office draws the
 	// furniture's body and the rig the parts the hands move (w-cabinet, w-copier...), so the drawer
 	// opens, the lid lifts and the form takes the mark in the rig's own frames. The working point is

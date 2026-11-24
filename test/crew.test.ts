@@ -4,7 +4,7 @@ import { describe, expect, test } from "bun:test";
 import { COPIER_FEUD, RULES, cueFor, direct, runCooldown } from "../src/scene/director/direct";
 import type { World } from "../src/scene/director/types";
 import { PACE, RUNS, editRate, paceOf } from "../src/scene/director/pace";
-import { STATION_POSE, STATION_REACH } from "../src/scene/director/stations";
+import { STATION_POSE, STATION_REACH } from "../src/scene/world/stations";
 import { TRIP } from "../src/scene/director/trips";
 import { WORK, WORK_POSE, nextWork, tempo, workKind } from "../src/scene/director/work";
 import { FloorPlan } from "../src/scene/world/layout";
