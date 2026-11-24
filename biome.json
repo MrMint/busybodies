@@ -62,7 +62,44 @@
 	},
 	"overrides": [
 		{
-			"includes": ["src/watcher/**", "src/shared/**", "src/scene/director/**", "src/scene/director.ts", "src/scene/sass/**"],
+			"includes": [
+				"src/watcher/**",
+				"src/shared/**",
+				"src/bun/**"
+			],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"paths": {
+									"pixi.js": "This layer is Pixi-free: it is pure data and logic, tested without a browser. See AGENTS.md, Architecture."
+								},
+								"patterns": [
+									{
+										"group": [
+											"**/scene/**"
+										],
+										"message": "The watcher, shared code and the main process sit below the scene and never import it. See AGENTS.md, Architecture."
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": [
+				"src/scene/director/**",
+				"src/scene/director.ts",
+				"src/scene/sass/**",
+				"src/scene/world/**",
+				"src/scene/rig/data/**",
+				"src/scene/contract.ts",
+				"src/themes/ids.ts"
+			],
 			"linter": {
 				"rules": {
 					"style": {
