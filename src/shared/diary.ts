@@ -5,7 +5,7 @@
 // the same thing twice are hashes too. Pure and Pixi-free: the Bun process keeps the real one
 // (src/bun/diary.ts saves it next to settings.json), the webview reads it over RPC, and `?demo`
 // keeps one in memory from its invented snapshots with the same code.
-import { roleFor } from "../scene/rig/roles";
+import { roleFor } from "./roles";
 import type { Agent, Session, Snapshot } from "../watcher/model";
 import { flatSessions } from "../watcher/model";
 
