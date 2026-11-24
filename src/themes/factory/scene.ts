@@ -17,31 +17,7 @@ import type { FurnitureKind, SceneLight, SceneTheme, StagePainters } from "../..
 import type { SignText } from "../../scene/theme/words";
 import { FACTORY_WORDS } from "./words";
 import { mix } from "../../shared/colour";
-
-const STEEL = 0x9aa5b1;
-const STEEL_LIGHT = 0xc7ced6;
-const STEEL_DARK = 0x5d6b7a;
-const CONCRETE = 0xc9c6be;
-const SAFETY = 0xffc928;
-const ORANGE = 0xff8a3d;
-const WOOD = 0xd9a066;
-const WOOD_TOP = 0xf0c48a;
-const GLASS = 0xcfe6f2;
-
-
-/** A strip of hazard stripes: yellow with black diagonals. */
-function hazard(g: Graphics, x: number, y: number, w: number, h: number, step = 14): void {
-	g.rect(x, y, w, h).fill(SAFETY);
-	for (let sx = x - h; sx < x + w; sx += step) {
-		const a = Math.max(x, sx);
-		const b = Math.min(x + w, sx + step / 2);
-		const c = Math.min(x + w, sx + step / 2 + h);
-		const d = Math.max(x, sx + h);
-		if (b <= x || a >= x + w) continue;
-		g.poly([a, y + h - Math.max(0, a - sx), b, y + h - Math.min(h, b - sx), c, y, d, y].map((v, i) => (i % 2 ? v : Math.min(x + w, Math.max(x, v)))));
-	}
-	g.fill({ color: INK, alpha: 0.85 });
-}
+import { CONCRETE, GLASS, ORANGE, SAFETY, STEEL, STEEL_DARK, STEEL_LIGHT, WOOD, WOOD_TOP, hazard } from "./palette";
 
 // --- Rooms ------------------------------------------------------------------------------------
 
@@ -860,7 +836,6 @@ function prCrate(g: Graphics): void {
 	g.moveTo(-12, -9).lineTo(12, -9).moveTo(-10, -16).lineTo(10, -2).stroke({ width: 1.5, color: INK, alpha: 0.5 });
 	g.roundRect(-5, -23, 12, 7, 2).fill(GREEN).stroke(line(1.8));
 }
-
 
 const FACTORY_STAGE: StagePainters = { belt, slats, rollers, part, booth, dock, crate: prCrate };
 
