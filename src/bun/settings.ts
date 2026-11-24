@@ -1,22 +1,20 @@
 // The app's own settings: a small JSON file in its data folder (Electrobun's `Utils.paths.userData`).
-// Only what the user picks in the tray menu lives here: the scene theme, sound (off by default),
-// calm office (off by default: the system's reduced motion still calms it). Reading is forgiving: a
-// missing, torn or hand-edited file gives the defaults, and unknown keys are kept as they are, except
-// `look`: the pixel and night looks are gone, so a saved one is dropped and the scene is drawn
-// as it always is.
+// Only what the user picks in the tray menu lives here: the scene theme and calm office (off by
+// default: the system's reduced motion still calms it). Reading is forgiving: a missing, torn or
+// hand-edited file gives the defaults, and unknown keys are kept as they are, except two retired
+// ones: `look` (the pixel and night looks are gone) and `sound` (sound is gone), dropped so the next
+// save leaves them out of the file.
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { DEFAULT_THEME, type ThemeId, themeId } from "../scene/theme/id";
 
 export interface Settings {
 	theme: ThemeId;
-	/** Earcons and a quiet room tone in the office window (src/mainview/sound.ts). */
-	sound: boolean;
-	/** No life in a quiet office, and no sound (`?calm`). */
+	/** No life in a quiet office (`?calm`). */
 	calm: boolean;
 }
 
-export const DEFAULT_SETTINGS: Settings = { theme: DEFAULT_THEME, sound: false, calm: false };
+export const DEFAULT_SETTINGS: Settings = { theme: DEFAULT_THEME, calm: false };
 
 export const settingsFile = (dataDir: string) => join(dataDir, "settings.json");
 
@@ -28,13 +26,12 @@ export function readSettings(file: string): Settings & Record<string, unknown> {
 	} catch {
 		// No file yet, or one we can't read: the defaults.
 	}
-	// The retired looks setting: dropped, so the next save leaves it out of the file.
-	const { look: _look, ...rest } = raw;
+	// The retired settings (the looks, sound): dropped, so the next save leaves them out of the file.
+	const { look: _look, sound: _sound, ...rest } = raw;
 	return {
 		...rest,
 		theme: typeof raw.theme === "string" ? themeId(raw.theme) : DEFAULT_SETTINGS.theme,
-		// Only a real `true` turns either on: a hand-edited "yes" or 1 keeps the default.
-		sound: raw.sound === true,
+		// Only a real `true` turns it on: a hand-edited "yes" or 1 keeps the default.
 		calm: raw.calm === true,
 	};
 }
@@ -51,7 +48,7 @@ export function writeSettings(file: string, change: Partial<Settings>): Settings
 }
 
 /** The window's query for these settings: the query string is the scene's one entry point, so a
- * window opens as `?theme=factory&sound&calm` and later changes arrive over RPC. */
+ * window opens as `?theme=factory&calm` and later changes arrive over RPC. */
 export function settingsQuery(s: Settings): string[] {
-	return [`theme=${s.theme}`, s.sound ? "sound" : "", s.calm ? "calm" : ""].filter(Boolean);
+	return [`theme=${s.theme}`, s.calm ? "calm" : ""].filter(Boolean);
 }

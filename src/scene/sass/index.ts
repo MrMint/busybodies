@@ -10,4 +10,3 @@ export * from "./scheduler";
 export * from "./signs";
 export * from "./sass";
 export * from "./voice";
-export * from "./voiced";

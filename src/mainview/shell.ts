@@ -17,12 +17,10 @@ export interface Bridge {
 
 /** The settings sheet's switches, as the tray has them too. */
 export interface Toggles {
-	sound?: boolean;
 	calm?: boolean;
 }
 
-const SWITCHES: { key: "sound" | "calm"; name: string; note: string }[] = [
-	{ key: "sound", name: "Sound", note: "Little sounds for real events: a bell when someone waits on you, a chime for a PR." },
+const SWITCHES: { key: "calm"; name: string; note: string }[] = [
 	{ key: "calm", name: "Calm office", note: "No blinking or fidgeting: a quiet office keeps perfectly still." },
 ];
 
@@ -84,7 +82,7 @@ export function installShell(opts: {
 	status?: Partial<AppStatus>;
 	/** The theme showing now, and how to switch it in this window. */
 	theme: { current(): ThemeId; set(id: ThemeId): void };
-	/** Sound and calm office now, and how to switch them in this window. */
+	/** Calm office now, and how to switch it in this window. */
 	toggles: { current(): Required<Toggles>; set(change: Toggles): void };
 }) {
 	const style = document.createElement("style");
@@ -176,7 +174,7 @@ project's GitHub Releases. No analytics, no accounts.</p>
 	}
 	const markToggles = () => {
 		const now = opts.toggles.current();
-		for (const b of switches.querySelectorAll<HTMLElement>(".choice")) b.setAttribute("aria-checked", String(now[b.dataset.toggle as "sound" | "calm"]));
+		for (const b of switches.querySelectorAll<HTMLElement>(".choice")) b.setAttribute("aria-checked", String(now[b.dataset.toggle as "calm"]));
 	};
 	const markTheme = () => {
 		for (const b of choices.querySelectorAll<HTMLElement>(".choice")) b.setAttribute("aria-checked", String(b.dataset.theme === opts.theme.current()));
@@ -235,7 +233,7 @@ Start a coding session there, or point <code>BUSYBODIES_AGENT_HOME</code> at the
 		},
 		/** The theme changed from elsewhere (the tray menu): keep the sheet's mark right. */
 		themeChanged: () => markTheme(),
-		/** Sound or calm changed elsewhere (the tray): show it. */
+		/** Calm changed elsewhere (the tray): show it. */
 		togglesChanged: () => markToggles(),
 		/** Each snapshot: show or hide the empty-state sign. */
 		update(snapshot: Snapshot) {

@@ -1,6 +1,6 @@
 // The menu-bar icon: a mochi face showing the office's overall mood (busy, all idle, or someone
-// waiting on you), and a menu to show the office, toggle compact mode, pick the theme, turn sound
-// and calm office on or off, read About, or quit (the menu itself is data: menu.ts). The faces are
+// waiting on you), and a menu to show the office, toggle compact mode, pick the theme, turn calm
+// office on or off, read About, or quit (the menu itself is data: menu.ts). The faces are
 // template images (black on clear), so macOS tints them for light and dark menu bars. They are
 // drawn by tools/tray-icons.ts into assets/tray/ and copied into the bundle's views.
 import { Tray, Utils } from "electrobun/main";
@@ -12,7 +12,6 @@ export interface TrayHooks {
 	status: () => TrayStatus;
 	showOffice: () => void;
 	toggleCompact: () => void;
-	toggleSound: () => void;
 	toggleCalm: () => void;
 	about: () => void;
 	setTheme: (id: ThemeId) => void;
@@ -32,7 +31,6 @@ export function installTray(hooks: TrayHooks) {
 		if (action.kind === "theme") hooks.setTheme(action.id);
 		else if (action.kind === "office") hooks.showOffice();
 		else if (action.kind === "compact") hooks.toggleCompact();
-		else if (action.kind === "sound") hooks.toggleSound();
 		else if (action.kind === "calm") hooks.toggleCalm();
 		else if (action.kind === "about") hooks.about();
 		else if (action.kind === "quit") Utils.quit();
