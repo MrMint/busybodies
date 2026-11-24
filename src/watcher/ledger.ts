@@ -13,7 +13,7 @@ import type { ApiRetry, Changes, CommandKind, CommandResult, Commands, Compactio
 import { contextWindow, modelFamily } from "./models";
 
 /** A first read starts no further back than this, so one huge transcript can't stall a rebuild. */
-export const FIRST_READ_MAX = 32 * 1024 * 1024;
+const FIRST_READ_MAX = 32 * 1024 * 1024;
 /** A single line longer than this is skipped rather than buffered. */
 const LINE_MAX = 8 * 1024 * 1024;
 const CHUNK = 1024 * 1024;
@@ -415,7 +415,7 @@ function push(list: number[], at: number): void {
 }
 
 /** A 53-bit hash of a path (cyrb53): the path itself is never kept. */
-export function hashPath(path: string): number {
+function hashPath(path: string): number {
 	let h1 = 0xdeadbeef;
 	let h2 = 0x41c6ce57;
 	for (let i = 0; i < path.length; i++) {

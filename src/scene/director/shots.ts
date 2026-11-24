@@ -21,7 +21,7 @@ import type { Build, World, WorldEvent } from "./types";
 
 export type NewsReason = "waiting" | "red" | "pr" | "rush" | "compaction" | "buried" | "feud";
 /** Why the camera is where it is: news, or resting (the busiest room, waiting, all idle), or pinned. */
-export type Reason = NewsReason | "busiest" | "idle" | "pinned";
+type Reason = NewsReason | "busiest" | "idle" | "pinned";
 
 export const SHOTS = {
 	/** News holds its room this long (unless something much more important happens). */
@@ -62,7 +62,7 @@ export interface News {
 	key: string;
 }
 
-export const newsId = (n: News): string => `${n.reason}:${n.key}:${n.at}`;
+const newsId = (n: News): string => `${n.reason}:${n.key}:${n.at}`;
 
 export interface Shot {
 	stop: Stop;
@@ -215,7 +215,7 @@ export function scoreByArea(sessions: Session[], builds: Record<string, Build>, 
 	return score;
 }
 
-export type TileState = "waiting" | "rush" | "busy" | "idle";
+type TileState = "waiting" | "rush" | "busy" | "idle";
 
 export interface Tile {
 	id: string;

@@ -40,7 +40,7 @@ export const METRICS = {
 } as const;
 
 /** How full the context is, 0 to 1; undefined without a window (an unknown model: no pile). */
-export function contextShare(c: Context | undefined): number | undefined {
+function contextShare(c: Context | undefined): number | undefined {
 	if (!c?.window || c.window <= 0) return undefined;
 	return Math.max(0, Math.min(1, c.used / c.window));
 }
@@ -113,7 +113,7 @@ export function lampFor(members: { commands?: Session["commands"] }[], was?: { l
 }
 
 /** A session's agents, every depth. */
-export const agentsOf = (list: Agent[]): Agent[] => list.flatMap((a) => [a, ...agentsOf(a.children)]);
+const agentsOf = (list: Agent[]): Agent[] => list.flatMap((a) => [a, ...agentsOf(a.children)]);
 
 /** What the session and its agents have changed, summed; undefined when nobody reported any. */
 export function changesOf(s: Session): Changes | undefined {
@@ -123,7 +123,7 @@ export function changesOf(s: Session): Changes | undefined {
 }
 
 /** The family word for the desk card: plain text, never a mark ("" for an unknown model). */
-export const familyWord = (f: ModelFamily | undefined): string => traitOf(f).word;
+const familyWord = (f: ModelFamily | undefined): string => traitOf(f).word;
 
 // --- A desk's things, as the office draws them -------------------------------------------------
 
@@ -139,7 +139,7 @@ export interface DeskProps {
 }
 
 /** What the director remembers per desk between snapshots, besides what it shows. */
-export interface DeskState extends DeskProps {
+interface DeskState extends DeskProps {
 	/** Compactions seen: one more is a trip to the shredder. */
 	compactions: number;
 	/** Todos as last seen: a done one more is a note walked to the planner. */
@@ -182,7 +182,7 @@ export interface Metrics {
 export const NO_METRICS: Metrics = { desks: {}, planners: {}, tickets: {}, next: 1 };
 
 /** A desk's things this snapshot. `out`: its lead is off at the shredder with the pile. */
-export function deskState(s: Session, was: DeskState | undefined, out: boolean, rig = false): DeskState {
+function deskState(s: Session, was: DeskState | undefined, out: boolean, rig = false): DeskState {
 	const found = trayFor(s.context);
 	const tray = found && rig ? { ...found, rig: true } : found;
 	const ch = changesOf(s);
@@ -203,7 +203,7 @@ export function deskState(s: Session, was: DeskState | undefined, out: boolean, 
 
 /** Each project room's planner: a row of notes per session with todos, in desk order. A note on
  * its way to the planner (`carried`, by session) isn't up yet: it still shows as active. */
-export function planners(floor: Floor, sessions: Map<string, Session>, carried: Set<string>): Record<string, PlannerRow[]> {
+function planners(floor: Floor, sessions: Map<string, Session>, carried: Set<string>): Record<string, PlannerRow[]> {
 	const out: Record<string, PlannerRow[]> = {};
 	for (const a of floor.areas) {
 		if (a.kind !== "project" || !hasPlanner(a)) continue;

@@ -14,7 +14,7 @@ export const SHADOW = { color: INK, alpha: 0.14 };
 export const SUN = 0xffe500;
 export const RED = 0xff6b6b;
 export const GREEN = 0x2fcf83;
-export const FONT = 'ui-rounded, "SF Pro Rounded", "Nunito", "Varela Round", system-ui, sans-serif';
+const FONT = 'ui-rounded, "SF Pro Rounded", "Nunito", "Varela Round", system-ui, sans-serif';
 
 export const line = (width: number) => ({ width, color: INK, join: "round" as const, cap: "round" as const });
 export const hash = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
@@ -78,7 +78,7 @@ export interface SignStyle {
 
 /** A wall sign's yellow: a sticky note's, softer than SUN, so a sign never pulls the eye before the
  * characters do. */
-export const NOTE_YELLOW = 0xffe66b;
+const NOTE_YELLOW = 0xffe66b;
 
 export const PAPER_SIGNS: SignStyle = { sign: NOTE_YELLOW, signAlt: 0xffd0e4, whiteboard: 0xffffff, frame: 0xffffff };
 
@@ -220,16 +220,5 @@ export function pill(value: string, size: number, fill = 0xffffff): Container {
 		.stroke(line(3));
 	t.position.set(size * 0.7, size * 0.2);
 	c.addChild(g, t);
-	return c;
-}
-
-/** The dark name tab on a room's corner. */
-export function nameTab(value: string): Container {
-	const c = new Container();
-	const t = label(value, 30, "800", 0xffffff);
-	const g = new Graphics().roundRect(0, 0, t.width + 28, t.height + 14, 12).fill(INK);
-	t.position.set(14, 6);
-	c.addChild(g, t);
-	c.rotation = -0.035;
 	return c;
 }

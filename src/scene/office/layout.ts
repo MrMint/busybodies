@@ -200,7 +200,7 @@ export const DOCK_W = 56;
  * width, so the shorter band leaves a block), and outside any room shallower than its band. Strips
  * side by side at the same depth are one gap.
  */
-export function yardsOf(areas: Area[], right: number, top: number, bottom: number): Yard[] {
+function yardsOf(areas: Area[], right: number, top: number, bottom: number): Yard[] {
 	const out: Yard[] = [];
 	for (const band of ["top", "bottom"] as Band[]) {
 		const rooms = areas.filter((a) => a.band === band).sort((a, b) => a.rect.x - b.rect.x);
@@ -310,7 +310,7 @@ const fixture = (kind: Fixture["kind"], x: number, y: number): Fixture => ({ kin
 
 /** Where signs and whiteboards hang on a back wall, down from its top: their foot is clear of
  * head height (a back-row lead's head is ~36 px above the floor line, WALL down). */
-export const SIGN_TOP = 12;
+const SIGN_TOP = 12;
 export const SIGN_FOOT = 64;
 
 /** Back-wall dressing for a project room, from its width alone, so it never shuffles. */
@@ -368,7 +368,7 @@ function lobby(a: Area): void {
  * The ticket machine stands by the way in, the counter with the bell by your door; the queue runs
  * from the counter down and to the left, then back right, in the order of `spots.line`.
  */
-export const YOURS_LINE = 9;
+const YOURS_LINE = 9;
 
 function yours(a: Area): void {
 	const { x, w } = a.rect;

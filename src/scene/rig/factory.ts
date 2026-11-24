@@ -31,7 +31,7 @@ import {
 } from "./theme";
 
 /** Factory colours, on top of the paper palette. */
-export const FACTORY = {
+const FACTORY = {
 	hazard: 0xffc61a,
 	hivis: 0xd4ef3a,
 	orange: 0xff7a1a,
@@ -82,7 +82,7 @@ const mix = (c: number, to: number, t: number) => {
 };
 
 /** Where the mochi's outline is at height `y` (torso space, -70 to 0): its half-width. */
-export function bodyEdge(y: number): number {
+function bodyEdge(y: number): number {
 	const b = 35;
 	const top = y < -b;
 	const ex = top ? 2.25 : 3.4;

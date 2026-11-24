@@ -47,7 +47,7 @@ export interface DetectOptions {
 }
 
 const pad = (n: number) => String(n).padStart(2, "0");
-export const localHour = (ms: number) => new Date(ms).getHours();
+const localHour = (ms: number) => new Date(ms).getHours();
 export const localClock = (ms: number) => {
 	const d = new Date(ms);
 	return `${pad(d.getHours())}:${pad(d.getMinutes())}`;

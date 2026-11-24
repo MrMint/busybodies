@@ -675,7 +675,7 @@ const jobBoard = (r: Rect, rows: Parameters<typeof plannerOf>[1]) => plannerOf(r
 
 /** The factory's light (office/light.ts): cold fluorescent strips over each line, high windows on
  * an industrial skyline, a gravel yard with bollards and pallets. */
-export const FACTORY_LIGHT: SceneLight = {
+const FACTORY_LIGHT: SceneLight = {
 	ambient: { morning: 0xe4e6f0, noon: 0xf8fafc, afternoon: 0xf3eadc, dusk: 0xa7a8bd, night: 0x3e4866 },
 	hall: { morning: 0xeaecf3, noon: 0xffffff, afternoon: 0xf7efe3, dusk: 0xbcbdcc, night: 0x868fac },
 	outside: { morning: 0xeef0f8, noon: 0xffffff, afternoon: 0xfaebd4, dusk: 0xa3a0bd, night: 0x343d5c },
@@ -865,9 +865,8 @@ function prCrate(g: Graphics): void {
 	g.roundRect(-5, -23, 12, 7, 2).fill(GREEN).stroke(line(1.8));
 }
 
-export { FACTORY_STAGING };
 
-export const FACTORY_STAGE: StagePainters = { belt, slats, rollers, part, booth, dock, crate: prCrate };
+const FACTORY_STAGE: StagePainters = { belt, slats, rollers, part, booth, dock, crate: prCrate };
 
 export const FACTORY_THEME: SceneTheme = {
 	id: "factory",

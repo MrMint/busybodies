@@ -191,7 +191,7 @@ export class ArmPlan {
 
 /** A job's pose `t` ms in: eased between its keys. What it holds changes as it leaves a key: it lets go
  * the moment it is past the release. */
-export function poseAt(job: ArmJob, t: number): ArmPose {
+function poseAt(job: ArmJob, t: number): ArmPose {
 	const keys = job.keys;
 	if (t <= keys[0]!.at) return keys[0]!.pose;
 	for (let i = 1; i < keys.length; i++) {

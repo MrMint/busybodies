@@ -14,7 +14,7 @@ import type { Trip } from "./trips";
 import type { Work } from "./work";
 import type { LookAt } from "../rig/gaze";
 
-export type { Cue, Walk };
+export type { Cue };
 
 export interface Actor {
 	key: string;

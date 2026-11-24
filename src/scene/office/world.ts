@@ -120,7 +120,7 @@ export interface Belt {
 
 /** The hallway's conveyor (staging `conveyor`): its belt runs along the hallway's middle, from the
  * left end to the dock at the right, where PR crates go off. */
-export interface Conveyor {
+interface Conveyor {
 	y: number;
 	x0: number;
 	x1: number;
@@ -140,7 +140,7 @@ export const STATION_FURNITURE: Partial<Record<StationKind, StationFurniture>> =
 
 /** The metrics' furniture (office/props.ts): a room's shredder; your office's ticket machine and the
  * counter with the bell by your door. */
-export type PropFixture = "shredder" | "tickets" | "bell";
+type PropFixture = "shredder" | "tickets" | "bell";
 
 /**
  * A shared station in a project room: a filing cabinet, a copier... Its user stands at `use`, facing
@@ -224,7 +224,7 @@ export const STRIP = {
 /** The six every project room gets, from the hallway side (the wave-1 four, then the phone and the
  * outbox); then the extras a big crew earns. */
 export const STATIONS_BASE: StationKind[] = ["build", "test", "reference", "search", "web", "outbox"];
-export const STATIONS_EXTRA: StationKind[] = ["build", "test", "reference", "search"];
+const STATIONS_EXTRA: StationKind[] = ["build", "test", "reference", "search"];
 /** A second station of a kind: one per this many busy crew in the room past the first four. */
 export const STATION_CREW = 4;
 
@@ -239,7 +239,7 @@ export function useFor(st: Pick<Station, "at" | "base">, size: number): Slot {
 }
 
 /** How many stations a room's strip holds: it grows with the room's rows. */
-export function stationRoom(area: Pick<Area, "band" | "rect" | "floorY">): number {
+function stationRoom(area: Pick<Area, "band" | "rect" | "floorY">): number {
 	let n = 0;
 	while (stationBase(area, n) !== undefined) n++;
 	return n;
@@ -287,7 +287,7 @@ export function stationsFor(area: Pick<Area, "id" | "band" | "rect" | "floorY">,
  * Its user stands to its left, facing it (the strip's stand to the right), its feet STATION_REACH
  * (scaled) from the working point.
  */
-export const SHREDDER = { inset: 34, back: 28, reach: -10 } as const;
+const SHREDDER = { inset: 34, back: 28, reach: -10 } as const;
 
 export function shredderFor(area: Pick<Area, "id" | "rect" | "floorY">): Station {
 	const base = { x: area.rect.x + area.rect.w - SHREDDER.inset, y: area.floorY + SHREDDER.back };
@@ -378,7 +378,6 @@ const CREW: [number, number][] = [
 	[100, 10],
 	[0, 70],
 ];
-export const CREW_SLOTS = CREW.length;
 
 /** The i-th crew slot of a desk. Past the fixed pattern, extra crew squeeze into a front row. */
 export function crewSlot(desk: Desk, i: number): Slot {

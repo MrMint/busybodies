@@ -23,9 +23,9 @@ import { crewBuild } from "./build";
 import type { FurnitureKind, SceneLight, SceneTheme } from "./types";
 import { OFFICE_WORDS, type SignText } from "./words";
 
-export const LAWN = 0xbfe8c6;
-export const SLAB = 0x46536f;
-export const HALL_FLOOR = 0xf3efe2;
+const LAWN = 0xbfe8c6;
+const SLAB = 0x46536f;
+const HALL_FLOOR = 0xf3efe2;
 
 /** Wall and floor colours. Projects take them in the order their rooms were built. The back wall
  * carries the project's colour and the floor is only a pale tint of it: the floor is the cast's
@@ -907,7 +907,7 @@ const BINDERS = {
 
 /** The office's light (office/light.ts): warm desk lamps and round ceiling pools, a city skyline,
  * the lawn with trees; night after design/boards/PaperNight. */
-export const OFFICE_LIGHT: SceneLight = {
+const OFFICE_LIGHT: SceneLight = {
 	ambient: { morning: 0xe9e6f5, noon: 0xffffff, afternoon: 0xfbeedb, dusk: 0xb4a9c9, night: 0x464f80 },
 	hall: { morning: 0xeeecf7, noon: 0xffffff, afternoon: 0xfdf2e2, dusk: 0xc6bdd6, night: 0x8b92bd },
 	outside: { morning: 0xf2f0ff, noon: 0xffffff, afternoon: 0xffeed6, dusk: 0xa9a0c8, night: 0x35406e },

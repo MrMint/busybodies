@@ -387,4 +387,3 @@ export const FACES = {
 	crashed: { eyes: "dead", mouth: "wobble", brows: "none" },
 	yawn: { eyes: "closed", mouth: "yawn", brows: "none" },
 } as const satisfies Record<string, { eyes: Eyes; mouth: Mouth; brows: Brows }>;
-export type FaceName = keyof typeof FACES;

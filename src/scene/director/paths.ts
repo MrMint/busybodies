@@ -4,15 +4,15 @@
 // first area (across its open edge, or through its door), along the middle of the hallway, and
 // into the second the same way. A walk inside one area is a straight line. Pure data, no Pixi.
 import type { Point } from "../office/slot";
-import type { Area, Slot, World as Floor } from "../office/world";
+import type { Area, World as Floor } from "../office/world";
 
 export type { Point };
 
 /** World pixels per second: an unhurried stroll, a crossing of a big office is capped at 9 s. */
-export const WALK_SPEED = 170;
+const WALK_SPEED = 170;
 /** Shortest and longest walk the director asks for. */
-export const MIN_WALK_MS = 600;
-export const MAX_WALK_MS = 9_000;
+const MIN_WALK_MS = 600;
+const MAX_WALK_MS = 9_000;
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
@@ -163,6 +163,3 @@ export function heading(points: Point[]): Dir {
 	}
 	return { x: 0, y: 0 };
 }
-
-/** A slot to stand in at a point: depth follows the feet, as everywhere in the office. */
-export const slotAt = (p: Point, facing: 1 | -1 = 1): Slot => ({ x: p.x, y: p.y, depth: p.y, facing });

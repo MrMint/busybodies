@@ -3,7 +3,7 @@
 // a theme says what the floor, walls, furniture, stations and props look like, and what the places
 // are called. Plan: docs/plan-next.md stream D.
 import type { Container, Graphics } from "pixi.js";
-import type { DeskProps, Lamp, PlannerRow, Tray } from "../director/metrics";
+import type { Lamp, PlannerRow, Tray } from "../director/metrics";
 import type { Who } from "../office/slot";
 import type { Phase } from "../office/daylight";
 import type { Area, AreaKind, Band, Fixture, Rect } from "../office/world";
@@ -68,7 +68,7 @@ export interface DrawnBuild {
 }
 
 /** The desk props for the director's metrics (props.ts places and composes them). */
-export interface DeskPainters {
+interface DeskPainters {
 	/** The context pile in front of the lead (the office's in-tray, the factory's hopper). */
 	tray(t: Tray, seed: string): Graphics;
 	mugs(n: number): Graphics;
@@ -139,7 +139,7 @@ export interface StagePainters {
 }
 
 /** A colour per time-of-day phase (office/daylight.ts). */
-export type PerPhase<T> = Record<Phase, T>;
+type PerPhase<T> = Record<Phase, T>;
 
 /**
  * How a theme is lit and what its windows look out on: values only, drawn by the office
@@ -179,4 +179,3 @@ export interface SceneLight {
 	yard: "trees" | "yard";
 }
 
-export type { DeskProps };

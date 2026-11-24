@@ -10,7 +10,7 @@ import type { Agent, Session, Snapshot } from "../watcher/model";
 
 /** What the diary counts. */
 export const DIARY_KINDS = ["sessions", "hires", "prsOpened", "prsMerged", "testsRed", "redeemed", "finished", "longFinished", "compactions"] as const;
-export type DiaryKind = (typeof DIARY_KINDS)[number];
+type DiaryKind = (typeof DIARY_KINDS)[number];
 export type Counts = Partial<Record<DiaryKind, number>>;
 
 export interface DiaryDay {
@@ -45,7 +45,7 @@ export const DIARY = {
 export const emptyDiary = (): Diary => ({ v: 1, days: {} });
 
 /** FNV-1a, 32 bits, as base 36: short, stable, not the name. */
-export function shortHash(s: string): string {
+function shortHash(s: string): string {
 	let h = 0x811c9dc5;
 	for (let i = 0; i < s.length; i++) {
 		h ^= s.charCodeAt(i);
@@ -212,7 +212,7 @@ export function diaryOf(raw: unknown): Diary {
 }
 
 /** The days up to and including `today`, newest first, at most `n`. */
-export function lastDays(diary: Diary | undefined, today: string, n: number): [string, DiaryDay][] {
+function lastDays(diary: Diary | undefined, today: string, n: number): [string, DiaryDay][] {
 	if (!diary) return [];
 	return Object.entries(diary.days)
 		.filter(([k]) => k <= today)

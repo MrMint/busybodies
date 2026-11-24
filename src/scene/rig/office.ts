@@ -28,7 +28,7 @@ import { WORK } from "./reach";
 import { ANCHORS, type Painter, type Palette, PAPER_PALETTE, RED, type Theme, W, line, paperTheme } from "./theme";
 
 /** Office colours, on top of the paper palette. */
-export const OFFICE = {
+const OFFICE = {
 	hairBrown: 0x4a3226,
 	hairLight: 0x7a5a48,
 	hairGrey: 0x9c93ad,

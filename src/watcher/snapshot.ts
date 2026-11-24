@@ -33,7 +33,7 @@ export const ABANDON_MS = 2 * 60 * 60 * 1000;
 /** Tools that stop and wait for the person while they run. */
 const WAITING_TOOLS: Record<string, Waiting["reason"]> = { AskUserQuestion: "question", ExitPlanMode: "plan" };
 
-export function isAlive(pid: number): boolean {
+function isAlive(pid: number): boolean {
 	try {
 		process.kill(pid, 0);
 		return true;

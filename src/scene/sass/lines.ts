@@ -46,7 +46,7 @@ export interface Line {
 	office?: boolean;
 }
 
-export type LineOpts = Partial<Pick<Line, "min" | "max" | "tag" | "needs" | "rare" | "place" | "boardText" | "themed" | "office">>;
+type LineOpts = Partial<Pick<Line, "min" | "max" | "tag" | "needs" | "rare" | "place" | "boardText" | "themed" | "office">>;
 type Opts = LineOpts;
 const K = { s: "said", t: "thought", n: "sign" } as const;
 const line = (board: boolean) => (trigger: TriggerKind, k: keyof typeof K, text: string, role: Speaker, note = "", o: Opts = {}): Line => ({
@@ -321,9 +321,6 @@ export const NEW_LINES: Line[] = [
 ];
 
 export const LINES: Line[] = [...BOARD_LINES, ...NEW_LINES];
-
-/** Lines for one trigger. */
-export const linesFor = (trigger: TriggerKind): Line[] => LINES.filter((l) => l.trigger === trigger);
 
 const inTheme = new Map<ThemeId, Line[]>();
 /** The bank as a scene theme speaks it: every line, in that theme's words where it has its own. */

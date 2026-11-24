@@ -241,6 +241,3 @@ export function atYourDoor(
 	const w = waitStage(t.since, now, behind);
 	return { pose: w.pose, acted: false, ...(w.next !== undefined ? { next: w.next } : {}) };
 }
-
-/** The lead's own room, for the pulse: where its desk is, wherever it stands. */
-export const deskArea = (floor: Floor, session: string): string | undefined => floor.desks.get(session)?.areaId;

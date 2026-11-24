@@ -17,7 +17,7 @@ function star(g: Graphics, x: number, y: number, r: number, fill: number, ink: n
 }
 
 /** A room's decor, drawn. */
-export function drawDecor(d: RoomDecor, style: StoryStyle, seed: number): Graphics {
+function drawDecor(d: RoomDecor, style: StoryStyle, seed: number): Graphics {
 	const g = new Graphics();
 	const { w, h } = DECOR.frame;
 	for (const [i, f] of d.frames.entries()) {

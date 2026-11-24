@@ -64,7 +64,7 @@ export interface SchedulerOptions {
 	settleMs?: number;
 }
 
-export const DEFAULTS: Required<SchedulerOptions> = {
+const DEFAULTS: Required<SchedulerOptions> = {
 	seed: 1,
 	maxBubbles: (zoom) => (zoom < 0.6 ? 2 : zoom < 1.2 ? 3 : 4),
 	cooldownMs: 45_000,
@@ -80,7 +80,7 @@ export const DEFAULTS: Required<SchedulerOptions> = {
 };
 
 /** Which triggers win a slot when there are more than fit. */
-export const PRIORITY: Record<TriggerKind, number> = {
+const PRIORITY: Record<TriggerKind, number> = {
 	waiting: 10,
 	crashed: 9,
 	testFailed: 8,
@@ -141,10 +141,10 @@ export function fitting(t: Trigger, kind: "bubble" | "sign", lines: Line[] = LIN
 }
 
 /** The highest tier a trigger has reached: the largest `min` among its fitting lines. */
-export const tierOf = (t: Trigger, lines: Line[] = LINES) => Math.max(0, ...fitting(t, "bubble", lines).map((l) => l.min ?? 0));
+const tierOf = (t: Trigger, lines: Line[] = LINES) => Math.max(0, ...fitting(t, "bubble", lines).map((l) => l.min ?? 0));
 
 /** A seeded weighted pick from the highest tier on offer; rare lines seldom. */
-export function pick(cands: Line[], _t: Trigger, seedKey: string, rareWeight = DEFAULTS.rareWeight): Line | undefined {
+function pick(cands: Line[], _t: Trigger, seedKey: string, rareWeight = DEFAULTS.rareWeight): Line | undefined {
 	if (!cands.length) return undefined;
 	// Escalation: once a trigger has reached a tier, its lines for that tier come first; lower
 	// ones come back only after those have been said (and so are out of `cands`).

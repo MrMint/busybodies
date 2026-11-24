@@ -15,14 +15,14 @@ export interface GitInfo {
 }
 
 /** `gitdir: <path>` from a worktree's (or submodule's) .git file. */
-export function gitdirOf(text: string, cwd: string): string | undefined {
+function gitdirOf(text: string, cwd: string): string | undefined {
 	const m = /^gitdir:\s*(.+?)\s*$/m.exec(text);
 	if (!m) return undefined;
 	return isAbsolute(m[1]!) ? m[1]! : resolve(cwd, m[1]!);
 }
 
 /** The branch in a HEAD file, "ref: refs/heads/<branch>". */
-export function branchOf(head: string): string | undefined {
+function branchOf(head: string): string | undefined {
 	return /^ref:\s*refs\/heads\/(.+?)\s*$/m.exec(head)?.[1];
 }
 

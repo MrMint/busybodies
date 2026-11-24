@@ -11,7 +11,7 @@ import { type CounterOptions, Counters, slotName } from "./signs";
 import type { Trigger, TriggerKind } from "./types";
 
 /** A sign to set: `sign(slot, text)`. A sign's text may hold a newline between title and body. */
-export interface SignOut {
+interface SignOut {
 	slot: string;
 	text: string;
 }

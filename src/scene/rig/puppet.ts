@@ -5,7 +5,7 @@
 // the app ticker, and it reports `animating` so the owner can stop the ticker once it settles.
 import { Container, Sprite } from "pixi.js";
 import type { Atlas } from "./atlas";
-import { CHANNELS, type ChannelName, type Frame, REST, type TimedFrame, channels, diff } from "./frame";
+import { type ChannelName, type Frame, REST, type TimedFrame, channels, diff } from "./frame";
 import { FEEL, Spring, SpringSet } from "./motion";
 import { type Passes, frameAt, passBeat, unit } from "./player";
 import { POSE, type Pose, duration } from "./poses";
@@ -601,4 +601,3 @@ export class Puppet extends Container {
 	}
 }
 
-export { CHANNELS };

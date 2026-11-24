@@ -51,7 +51,6 @@ import { RobotArm } from "../theme/arm";
 import { type CrewBuild, FURNITURE_KINDS, type SceneTheme } from "../theme/types";
 
 export type { CrewBuild };
-export { NIGHT_WATCH } from "../theme/office";
 
 /** Bake resolutions: the smallest one at or above what the camera needs is used. */
 const STEPS = [0.5, 0.75, 1, 1.5, 2, 3, 4, 6, 8];

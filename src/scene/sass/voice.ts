@@ -15,7 +15,8 @@ export interface Stage {
 	signs(): { id: string }[];
 }
 
-/** The director's key for a character: `s:<session>` for a lead, `a:<session>:<agent>` for crew. */
+/** The director's key for a character: `s:<session>` for a lead, `a:<session>:<agent>` for crew.
+ * @public test/sass.test.ts reads it through `require`, which knip doesn't follow. */
 export const keyFor = (b: Pick<Say, "who" | "session">) => (b.who === b.session ? `s:${b.session}` : `a:${b.session}:${b.who}`);
 
 /**

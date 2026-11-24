@@ -141,7 +141,7 @@ export const STICKY = 12;
 export const HANDOFF = { gap: 160, slot: 160 + SPOTS.s2[0], hand: { x: 70, y: -41 }, folder: { from: 1, to: 19 } } as const;
 
 /** Points on a held prop, from the hand's centre, drawn upright (theme.ts): its business end. */
-export const GRIP = {
+const GRIP = {
 	/** The hand itself (a palm on a handle or a lid). */
 	palm: { x: 0, y: 0 },
 	/** A fingertip: the hand's edge, toward the work. */
@@ -164,7 +164,7 @@ const rot = (x: number, y: number, deg: number) => {
 };
 
 /** The shoulder's place in puppet space for a body pose (`side` 1 is the right arm). */
-export function shoulderAt(body: Body, side: 1 | -1 = 1) {
+function shoulderAt(body: Body, side: 1 | -1 = 1) {
 	const [bx, by, br, sx, sy] = BODIES[body];
 	const p = rot(side * ANCHORS.shoulderX * sx, ANCHORS.shoulderY * sy, br);
 	return { x: bx + p.x, y: by + ANCHORS.base + p.y };
@@ -231,7 +231,7 @@ export function solveArm(target: { x: number; y: number }, opts: { body?: Body; 
 }
 
 /** A station point in puppet space. */
-export const station = (p: { x: number; y: number }) => ({ x: STATION.x + p.x, y: STATION.y + p.y });
+const station = (p: { x: number; y: number }) => ({ x: STATION.x + p.x, y: STATION.y + p.y });
 
 type Point = { readonly x: number; readonly y: number };
 export interface Reach {

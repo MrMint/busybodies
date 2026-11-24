@@ -30,16 +30,16 @@ export interface CounterOptions extends DetectOptions {
 	theme?: ThemeId;
 }
 
-export const localDay = (ms: number) => new Date(ms).toDateString();
+const localDay = (ms: number) => new Date(ms).toDateString();
 export const utcDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
 /** The plant, by how long its room has been idle. */
-export const plantFor = (idleMin: number) => (idleMin >= 30 ? "wilting" : idleMin >= 15 ? "droopy" : "fresh");
+const plantFor = (idleMin: number) => (idleMin >= 30 ? "wilting" : idleMin >= 15 ? "droopy" : "fresh");
 /** The mug pile, by how long its room has been idle: one mug per 10 minutes, up to 6. */
-export const mugsFor = (idleMin: number) => Math.min(6, Math.floor(idleMin / 10));
+const mugsFor = (idleMin: number) => Math.min(6, Math.floor(idleMin / 10));
 
 /** A counter's sign text, checked against the bank it belongs to. */
-export function counterSign(bank: SassBank, text: string): string {
+function counterSign(bank: SassBank, text: string): string {
 	const l = bank.lines.find((x) => x.kind === "sign" && x.text === text);
 	if (!l) throw new Error(`not in the ${bank.theme}'s line bank: ${text}`);
 	return l.text;

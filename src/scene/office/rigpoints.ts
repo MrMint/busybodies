@@ -5,12 +5,12 @@
 import { BELL, BELL_BASE, PLANNER, PUPPET_HEIGHT, TRAY } from "../rig/reach";
 import type { Rect } from "./world";
 
-export const RIG_HEIGHT = PUPPET_HEIGHT;
+const RIG_HEIGHT = PUPPET_HEIGHT;
 
 /** The lead's in-tray in its puppet space (facing right, behind the desk). */
-export const RIG_TRAY = TRAY;
+const RIG_TRAY = TRAY;
 /** The bell's plunger top, in the ringer's puppet space, and how far below it the counter's top is. */
-export const RIG_BELL = { x: BELL.x, y: BELL.y, base: BELL_BASE } as const;
+const RIG_BELL = { x: BELL.x, y: BELL.y, base: BELL_BASE } as const;
 /** A posted sticky note's middle, from the poster's feet: up, and in front. */
 export const RIG_PLANNER = PLANNER;
 

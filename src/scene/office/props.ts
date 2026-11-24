@@ -5,9 +5,7 @@
 import { Container } from "pixi.js";
 import type { DeskProps, PlannerRow } from "../director/metrics";
 import type { SceneTheme } from "../theme/types";
-import { PROPS } from "./propspots";
 
-export { PROPS };
 
 /** Everything a desk's metrics draw, split into what reads at any zoom (the pile, the lamp) and the
  * small things that only show zoomed in (mugs, drawers, skip). */

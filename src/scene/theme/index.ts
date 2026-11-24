@@ -5,7 +5,7 @@ import { BAKERY_THEME } from "./bakery";
 import { OFFICE_THEME } from "./office";
 import type { SceneTheme } from "./types";
 
-export { type ThemeId, THEME_IDS, DEFAULT_THEME, themeId } from "./id";
+export { type ThemeId, themeId } from "./id";
 export type { SceneTheme } from "./types";
 
 const THEMES: Record<ThemeId, SceneTheme> = { office: OFFICE_THEME, factory: FACTORY_THEME, bakery: BAKERY_THEME };

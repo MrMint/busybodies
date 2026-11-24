@@ -27,7 +27,7 @@ import type { Area } from "./world";
 
 /** A regular is recognised (its name shows on its desk card or task tag) once the diary has seen
  * it come in on this many days. */
-export const RECOGNISED_DAYS = 2;
+const RECOGNISED_DAYS = 2;
 
 /** The names of the regulars you'd recognise, by character key. No two on the floor share a name
  * (rig/roles.ts `regularNamesFor`): among them, a clash is settled the same way every time. */

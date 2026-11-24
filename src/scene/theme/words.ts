@@ -11,11 +11,11 @@ export interface SignText {
 	body?: string;
 }
 
-export type CommonKind = Exclude<AreaKind, "project">;
+type CommonKind = Exclude<AreaKind, "project">;
 
 /** A pose as one theme names it, where it differs from the pose's own (rig/poses.ts): the poses are
  * shared and the rig paints the theme's things, so only the words change. */
-export interface PoseWords {
+interface PoseWords {
 	title?: string;
 	/** The lines the sheet lists for it (pose lines with a frame's `say` keep theirs). */
 	lines?: readonly string[];

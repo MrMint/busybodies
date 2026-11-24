@@ -35,7 +35,7 @@ import { setDepth } from "./depth";
 import { BELT, type Belt, type Fixture, type Rect, type World } from "./world";
 
 /** The belt's speed (world px per second of the life clock) and how fast the other things go. */
-export const AMBIENT = {
+const AMBIENT = {
 	beltSpeed: 22,
 	/** Parts per kind of work held at a desk on the line. */
 	partsPerKind: 2,

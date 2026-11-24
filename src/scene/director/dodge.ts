@@ -70,7 +70,7 @@ function pointAt(path: Point[], d: number): { p: Point; dir: Point; i: number } 
  * toward it, with `flip`), then back. The walk keeps its speed, so it takes a little longer.
  * Undefined when the meeting point is too near either end to step aside.
  */
-export function sidestep(w: TimedWalk, at: number, away: Point, side: number = DODGE.side, flip = false, span: number = DODGE.span): TimedWalk | undefined {
+function sidestep(w: TimedWalk, at: number, away: Point, side: number = DODGE.side, flip = false, span: number = DODGE.span): TimedWalk | undefined {
 	const len = pathLength(w.path);
 	// How far along it is then: walks ease in and out (paths.ts progress), so not a straight share.
 	const d = progress(at - w.since, w.ms) * len;

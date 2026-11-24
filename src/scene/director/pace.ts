@@ -45,10 +45,6 @@ export function paceOf(rate: ToolRate | undefined, lastAt: number | undefined, n
 	return { name, speed: PACE.speed[name] };
 }
 
-/** When a pace next changes on its own (a write ages out of hot). */
-export const paceWake = (lastAt: number | undefined, now: number): number | undefined =>
-	lastAt !== undefined && now < lastAt + PACE.hotMs ? lastAt + PACE.hotMs : undefined;
-
 export const RUNS = {
 	/** After a run sets off, the session's next waits at least this long... */
 	everyMs: 20_000,

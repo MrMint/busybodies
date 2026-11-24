@@ -19,16 +19,16 @@ export interface Viewport {
 	h: number;
 }
 
-export const MOVE_MS = 650;
+const MOVE_MS = 650;
 const MAX_SCALE = { office: 1.15, room: 2.4, desk: 4 } as const;
 
-export function fit(r: Rect, vp: Viewport, maxScale: number, pad = 16): View {
+function fit(r: Rect, vp: Viewport, maxScale: number, pad = 16): View {
 	const scale = Math.min((vp.w - pad * 2) / r.w, (vp.h - pad * 2) / r.h, maxScale);
 	return { scale, x: vp.x + vp.w / 2 - scale * (r.x + r.w / 2), y: vp.y + vp.h / 2 - scale * (r.y + r.h / 2) };
 }
 
 /** The world rectangle a stop frames, or undefined if its room or desk is gone. */
-export function frame(world: World, stop: Stop): Rect | undefined {
+function frame(world: World, stop: Stop): Rect | undefined {
 	if (stop.kind === "office") {
 		// The building and the edge of its lawn (the name tabs that stood over the top rooms are gone).
 		const b = world.bounds;

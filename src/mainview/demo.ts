@@ -154,7 +154,7 @@ const floorBusySigns = (theme: ThemeId): Record<string, SignText> => ({
 });
 
 /** The same office after hours: every session idle, every agent finished. */
-export const asleep = (snap: Snapshot): Snapshot => {
+const asleep = (snap: Snapshot): Snapshot => {
 	const rest = (a: Agent): Agent => ({ ...a, status: "finished", activity: undefined, children: a.children.map(rest) });
 	const nap = (s: Session): Session => ({ ...s, state: "idle", activity: undefined, agents: s.agents.map(rest), children: s.children.map(nap) });
 	return { ...snap, sessions: snap.sessions.map(nap) };
@@ -550,6 +550,3 @@ export function demo(name: string | null, theme: ThemeId = DEFAULT_THEME): DemoD
 			return { snapshot: floorBusy(), signs: floorBusySigns(theme) };
 	}
 }
-
-/** The busy demo, for tests that edit it. */
-export const demoSnapshot = floorBusy();

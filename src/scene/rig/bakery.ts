@@ -44,7 +44,7 @@ import { AT, BELL, PLANNER, STATION, STICKY, TRAY, WORK, handAt } from "./reach"
 import { ANCHORS, type Painter, type Palette, PAPER_PALETTE, RED, type Theme, TRAY_FULL, W, burstAt, line, paperTheme, rotRect, sparkle, text } from "./theme";
 
 /** Bakery colours, on top of the paper palette. */
-export const BAKERY = {
+const BAKERY = {
 	whites: 0xfffaf2,
 	whitesShade: 0xf0e2d4,
 	pink: 0xffb3cf,

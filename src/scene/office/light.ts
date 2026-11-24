@@ -14,7 +14,6 @@
 import { Container, Graphics, type Renderer, RenderTexture, Sprite, Texture } from "pixi.js";
 import { LAMPS_ON, type Phase, SUNLIGHT, flicker } from "./daylight";
 
-export { flicker } from "./daylight";
 import { hash } from "./paper";
 import type { SceneLight } from "../theme/types";
 import type { Area, Rect, World } from "./world";
@@ -25,7 +24,7 @@ const MAX_SIDE = 2048;
 /** Around the slab, so its edge and the building's shadow are lit too. */
 const PAD = 40;
 /** At a room or desk stop, the rest of the building is this bright. */
-export const FOCUS_DIM = 0.66;
+const FOCUS_DIM = 0.66;
 
 export interface LightInput {
 	light: SceneLight;
@@ -56,7 +55,7 @@ const clamp = (v: number) => Math.max(0, Math.min(255, Math.round(v)));
 /** a × b, channel by channel (as multiply blending does). */
 export const mul = (a: number, b: number) => rgb((s) => (ch(a, s) * ch(b, s)) / 255);
 /** a scaled by k. */
-export const scale = (a: number, k: number) => rgb((s) => ch(a, s) * k);
+const scale = (a: number, k: number) => rgb((s) => ch(a, s) * k);
 /** From a to b, t of the way. */
 export const mix = (a: number, b: number, t: number) => rgb((s) => ch(a, s) + (ch(b, s) - ch(a, s)) * t);
 /** How far b is above a, per channel (what adding brings a up to b). */

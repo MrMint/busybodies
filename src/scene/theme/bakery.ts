@@ -59,7 +59,7 @@ const HEAT = 0xffb347;
 const CHALK = 0x34584a;
 
 /** Sprinkles, icings, macaron shells, boxes: the bakery's candy colours, in turn. */
-export const CANDY = [PINK, MINT, LEMON, LILAC, BLUEBERRY, ORANGE] as const;
+const CANDY = [PINK, MINT, LEMON, LILAC, BLUEBERRY, ORANGE] as const;
 
 /** The common rooms' wall and floor colours, as the project rooms' (theme/office.ts ROOM_COLOURS):
  * the wall carries the colour, the floor is a pale tint of it. The tasting table pink, the shop
@@ -110,7 +110,7 @@ function oval(cx: number, cy: number, rx: number, ry: number, a = 0, n = 18): nu
 
 // --- Baked goods: small painters, each with its base centre at (x, y), `s` its scale ------------
 
-export function croissant(g: Graphics, x: number, y: number, s = 1): void {
+function croissant(g: Graphics, x: number, y: number, s = 1): void {
 	const lw = Math.max(0.8, 1.2 * s);
 	const seg = (dx: number, dy: number, rx: number, ry: number, a: number, col: number) =>
 		g.poly(oval(x + dx * s, y + dy * s, rx * s, ry * s, a)).fill(col).stroke(thin(lw));
@@ -122,7 +122,7 @@ export function croissant(g: Graphics, x: number, y: number, s = 1): void {
 	g.moveTo(x - 2 * s, y - 8 * s).quadraticCurveTo(x, y - 7 * s, x + 2 * s, y - 8 * s).stroke({ width: lw * 0.8, color: 0xffffff, alpha: 0.7 });
 }
 
-export function donut(g: Graphics, x: number, y: number, s = 1, icing = PINK, seed = 0): void {
+function donut(g: Graphics, x: number, y: number, s = 1, icing = PINK, seed = 0): void {
 	const lw = Math.max(0.8, 1.2 * s);
 	g.ellipse(x, y - 4 * s, 8 * s, 4.4 * s).fill(DOUGH).stroke(thin(lw));
 	g.ellipse(x, y - 4.8 * s, 6.8 * s, 3.4 * s).fill(icing);
@@ -135,7 +135,7 @@ export function donut(g: Graphics, x: number, y: number, s = 1, icing = PINK, se
 	}
 }
 
-export function macaron(g: Graphics, x: number, y: number, s = 1, shell = PINK): void {
+function macaron(g: Graphics, x: number, y: number, s = 1, shell = PINK): void {
 	const lw = Math.max(0.8, 1.1 * s);
 	g.roundRect(x - 6 * s, y - 4 * s, 12 * s, 4 * s, 2 * s).fill(shell).stroke(thin(lw));
 	g.rect(x - 5.4 * s, y - 5.6 * s, 10.8 * s, 1.8 * s).fill(IVORY).stroke({ width: lw * 0.6, color: INK, alpha: 0.5 });
@@ -143,7 +143,7 @@ export function macaron(g: Graphics, x: number, y: number, s = 1, shell = PINK):
 	g.rect(x - 3.4 * s, y - 9.4 * s, 4 * s, 1 * s).fill({ color: 0xffffff, alpha: 0.55 });
 }
 
-export function eclair(g: Graphics, x: number, y: number, s = 1, glaze = CHOC): void {
+function eclair(g: Graphics, x: number, y: number, s = 1, glaze = CHOC): void {
 	const lw = Math.max(0.8, 1.2 * s);
 	g.roundRect(x - 10 * s, y - 6 * s, 20 * s, 6 * s, 3 * s).fill(CRUST_LIGHT).stroke(thin(lw));
 	g.roundRect(x - 9.4 * s, y - 6.8 * s, 18.8 * s, 3.4 * s, 1.7 * s).fill(glaze).stroke(thin(lw * 0.7));
@@ -152,7 +152,7 @@ export function eclair(g: Graphics, x: number, y: number, s = 1, glaze = CHOC): 
 	g.stroke({ width: lw * 0.7, color: 0xffffff, alpha: 0.85 });
 }
 
-export function cupcake(g: Graphics, x: number, y: number, s = 1, frost = PINK, wrap = MINT): void {
+function cupcake(g: Graphics, x: number, y: number, s = 1, frost = PINK, wrap = MINT): void {
 	const lw = Math.max(0.8, 1.2 * s);
 	g.poly([x - 6 * s, y - 7 * s, x + 6 * s, y - 7 * s, x + 4.6 * s, y, x - 4.6 * s, y]).fill(wrap).stroke(thin(lw));
 	for (let k = -2; k <= 2; k++) g.moveTo(x + k * 2.2 * s, y - 6.6 * s).lineTo(x + k * 1.7 * s, y - 0.4 * s);
@@ -163,7 +163,7 @@ export function cupcake(g: Graphics, x: number, y: number, s = 1, frost = PINK, 
 	g.circle(x + 0.6 * s, y - 16 * s, 1.9 * s).fill(CHERRY).stroke(thin(lw * 0.8));
 }
 
-export function loaf(g: Graphics, x: number, y: number, s = 1): void {
+function loaf(g: Graphics, x: number, y: number, s = 1): void {
 	const lw = Math.max(0.8, 1.3 * s);
 	g.ellipse(x, y - 5 * s, 10 * s, 5.4 * s).fill(CRUST).stroke(thin(lw));
 	for (let k = -1; k <= 1; k++) g.moveTo(x + (k * 5 - 2) * s, y - 7.6 * s).lineTo(x + (k * 5 + 2) * s, y - 3.8 * s);
@@ -172,7 +172,7 @@ export function loaf(g: Graphics, x: number, y: number, s = 1): void {
 }
 
 /** A baguette lying at angle `a`, centred at (x, y), `len` long. */
-export function baguette(g: Graphics, x: number, y: number, len: number, a: number, s = 1): void {
+function baguette(g: Graphics, x: number, y: number, len: number, a: number, s = 1): void {
 	g.poly(oval(x, y, len / 2, 3.2 * s, a)).fill(CRUST).stroke(thin(1.3 * s));
 	const c = Math.cos(a);
 	const sn = Math.sin(a);
@@ -185,7 +185,7 @@ export function baguette(g: Graphics, x: number, y: number, len: number, a: numb
 	g.stroke({ width: 1.1 * s, color: CRUST_LIGHT });
 }
 
-export function painAuChocolat(g: Graphics, x: number, y: number, s = 1): void {
+function painAuChocolat(g: Graphics, x: number, y: number, s = 1): void {
 	const lw = Math.max(0.8, 1.2 * s);
 	g.roundRect(x - 7 * s, y - 7 * s, 14 * s, 7 * s, 2.6 * s).fill(CRUST_LIGHT).stroke(thin(lw));
 	g.rect(x - 7 * s, y - 5 * s, 1.8 * s, 2 * s).rect(x + 5.2 * s, y - 5 * s, 1.8 * s, 2 * s).fill(CHOC_DARK);
@@ -194,7 +194,7 @@ export function painAuChocolat(g: Graphics, x: number, y: number, s = 1): void {
 
 /** A layer cake, `w` wide and `h` tall, its base centre at (x, y): sponge and cream in courses, a
  * frosted top, drips, a cherry or three. */
-export function layerCake(g: Graphics, x: number, y: number, w: number, h: number, frost = PINK, sponge = 0xffe0a0, seed = 0): void {
+function layerCake(g: Graphics, x: number, y: number, w: number, h: number, frost = PINK, sponge = 0xffe0a0, seed = 0): void {
 	const lw = Math.max(1, w / 30);
 	g.roundRect(x - w / 2, y - h, w, h, 3).fill(sponge).stroke(thin(lw));
 	const courses = Math.max(2, Math.round(h / 8));
@@ -213,7 +213,7 @@ export function layerCake(g: Graphics, x: number, y: number, w: number, h: numbe
 const k2 = (seed: number) => seed % 3 === 1;
 
 /** A swirl lollipop on its stick: the candy's centre at (x, y), the stick down `stick` from it. */
-export function lollipop(g: Graphics, x: number, y: number, r: number, stick: number, a = PINK, b = 0xffffff): void {
+function lollipop(g: Graphics, x: number, y: number, r: number, stick: number, a = PINK, b = 0xffffff): void {
 	g.rect(x - 1.2, y, 2.4, stick).fill(0xffffff).stroke(thin(1));
 	g.circle(x, y, r).fill(a).stroke(thin(Math.max(1.2, r / 7)));
 	g.moveTo(x, y);
@@ -226,7 +226,7 @@ export function lollipop(g: Graphics, x: number, y: number, r: number, stick: nu
 }
 
 /** A cup of coffee on its saucer, a heart in the foam: its base centre at (x, y). */
-export function cup(g: Graphics, x: number, y: number, s = 1, colour = 0xffffff): void {
+function cup(g: Graphics, x: number, y: number, s = 1, colour = 0xffffff): void {
 	const lw = Math.max(0.8, 1.2 * s);
 	g.ellipse(x, y - 1 * s, 8 * s, 2 * s).fill(colour).stroke(thin(lw));
 	g.poly([x - 5.5 * s, y - 8 * s, x + 5.5 * s, y - 8 * s, x + 4 * s, y - 1.6 * s, x - 4 * s, y - 1.6 * s]).fill(colour).stroke(thin(lw));
@@ -677,7 +677,7 @@ const ST_L = -24;
 const ST_R = 24;
 
 /** The deck oven's window, from the build station's base: office/ambient.ts glows over it. */
-export const OVEN_WINDOW = { x: ST_L + 5, y: -29, w: ST_R - ST_L - 10, h: 15 } as const;
+const OVEN_WINDOW = { x: ST_L + 5, y: -29, w: ST_R - ST_L - 10, h: 15 } as const;
 
 function furniture(kind: FurnitureKind): Graphics {
 	const g = new Graphics();
@@ -1117,7 +1117,7 @@ function orderBoard(r: Rect, rows: PlannerRow[]): Container {
 
 /** The bakery's light (office/light.ts): golden morning light, warm oven-orange halos after dark,
  * round pools under its pendants, a pastel town out of the windows, trees on the street. */
-export const BAKERY_LIGHT: SceneLight = {
+const BAKERY_LIGHT: SceneLight = {
 	ambient: { morning: 0xfff0de, noon: 0xffffff, afternoon: 0xffefdc, dusk: 0xd6b4c4, night: 0x6c5a80 },
 	hall: { morning: 0xfff4e8, noon: 0xffffff, afternoon: 0xfff3e4, dusk: 0xe2c8d2, night: 0xa898b4 },
 	outside: { morning: 0xfff0f0, noon: 0xffffff, afternoon: 0xffeed6, dusk: 0xb4a0c8, night: 0x3a4070 },
@@ -1198,9 +1198,6 @@ function pastry(g: Graphics, kind: string): void {
 	}
 }
 
-/** The kinds of pastry riding the hallway's conveyor, in turn (office/ambient.ts `parade`). */
-export const PARADE = ["read", "web", "search", "edit", "test", "shell", "web", "read", "search"] as const;
-
 /** A kiosk round a bench on a line: two candy-cane posts and a striped canopy (a line bay only). */
 function kiosk(g: Graphics): void {
 	const l = -86;
@@ -1240,7 +1237,7 @@ function cakeBox(g: Graphics): void {
 	g.circle(0, -22, 1.8).fill(RASPBERRY).stroke(thin(1.2));
 }
 
-export const BAKERY_STAGE: StagePainters = { belt, slats, rollers, part: pastry, booth: kiosk, dock: hatch, crate: cakeBox };
+const BAKERY_STAGE: StagePainters = { belt, slats, rollers, part: pastry, booth: kiosk, dock: hatch, crate: cakeBox };
 
 /** The bakery bakes at its benches (desks), and the hallway is a pastry conveyor: pastries ride it
  * all day, a finished PR's cake box rides it to the pick-up hatch. The café's espresso machine
@@ -1248,7 +1245,7 @@ export const BAKERY_STAGE: StagePainters = { belt, slats, rollers, part: pastry,
  * table's cake turns on its stand, sprinkles drift down round the giant cupcake. Idle, the bakers sip
  * at the café's lemonade, put their feet up and nap face down on the bench; first, the bakery's own:
  * a cappuccino, a sneaked macaron, a lick of the cake fork, a nap on a flour sack (rig/poses.ts). */
-export const BAKERY_STAGING: SceneStaging = {
+const BAKERY_STAGING: SceneStaging = {
 	bay: "desks",
 	hall: "conveyor",
 	ambient: ["steam", "ovens", "marquee", "cakeStand", "sprinkles", "parade"],

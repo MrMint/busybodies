@@ -21,7 +21,7 @@ jobs:
       - run: bun test test/
   lint:
     # Biome lint (the formatter isn't enforced until the format-all commit) and knip for unused
-    # files and dependencies. Unused exports are reported, not gated: docs/architecture-review.md.
+    # files, dependencies and exports.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -32,8 +32,7 @@ jobs:
         with:
           prepare: true
       - run: ~/.hutch/bin/hutch pm exec -- biome ci --formatter-enabled=false --reporter=github .
-      - run: ~/.hutch/bin/hutch pm exec -- knip --include files,dependencies,unlisted,binaries,unresolved
-      - run: ~/.hutch/bin/hutch pm exec -- knip --include exports,types --no-exit-code
+      - run: ~/.hutch/bin/hutch pm exec -- knip
   e2e:
     # Frame budgets in headless Chrome (preinstalled on the runner) against the bundled scene.
     runs-on: ubuntu-latest

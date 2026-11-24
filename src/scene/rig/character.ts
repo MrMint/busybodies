@@ -20,7 +20,6 @@ import { ACCENTS } from "./theme";
 import { AT_VIEWER, type Aim, type LookAt, aimAt, eyesOf, isViewer } from "./gaze";
 import { LOOKS } from "./vocab";
 
-export { PUPPET_HEIGHT };
 
 /** Everyone one factory made, by key: so a character told to look at another can find it. */
 type Cast = Map<string, RigCharacter>;
@@ -28,7 +27,7 @@ type Cast = Map<string, RigCharacter>;
 const TRIGGER = { busy: "busy", idle: "idle", stalled: "stalled", done: "finished" } as const;
 const MS_PER_TICK = 1000 / 60;
 
-export const WALKING = {
+const WALKING = {
 	/** A turn: the face comes round to the front, the body flips at the midpoint, the face goes on
 	 * round to the new side. */
 	turnMs: 120,

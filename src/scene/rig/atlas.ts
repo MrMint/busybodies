@@ -10,9 +10,9 @@
 import { Container, Graphics, Rectangle, type Renderer, Texture } from "pixi.js";
 import type { Theme } from "./theme";
 
-import { ATLAS_WIDTH, PAD, type PartBounds, RESOLUTION, type Slot, pack } from "./pack";
+import { type PartBounds, RESOLUTION, type Slot, pack } from "./pack";
 
-export { ATLAS_WIDTH, PAD, RESOLUTION, pack, type PartBounds, type Slot };
+export type { Slot };
 
 export class Atlas {
 	readonly textures = new Map<string, Texture>();

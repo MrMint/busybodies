@@ -51,10 +51,10 @@ export const ACCENTS = [0xff8a1f, 0x19b87a, 0x3d7dff, 0xff5c9a, 0x8c5cff] as con
 
 // The rig's geometry (where limbs attach, where the work and the stations stand) lives in reach.ts,
 // Pixi-free, so the tests can check the arms against it.
-export { ANCHORS, WORK, STATION } from "./reach";
+export { ANCHORS } from "./reach";
 
 /** Station colours: a manila folder, a red mark, the phone's handset, cabinet and copier enamel. */
-export const MANILA = 0xf0cf8a;
+const MANILA = 0xf0cf8a;
 export const RED = 0xff4d5e;
 const HANDSET = 0xff8a7a;
 const CABINET = 0xc3cadb;

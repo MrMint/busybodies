@@ -1,6 +1,6 @@
 // The words the sass module shares between its parts: what sets a line off, who says it, and
 // where a sign goes. Pixi-free, so it runs in unit tests and the text dump.
-import { ROLES, type Role, roleFor } from "../rig/roles";
+import { type Role, roleFor } from "../rig/roles";
 
 /** What sets a line off. Each one has its own detector in `detect.ts` (or `signs.ts`). */
 export const TRIGGERS = [
@@ -33,7 +33,7 @@ export type TriggerKind = (typeof TRIGGERS)[number];
 export type LineKind = "said" | "thought" | "sign";
 
 /** The rig's seven costumes (src/scene/rig/roles.ts), plus "anyone" for a line any character can say and "room" for signs. */
-export { ROLES, roleFor, type Role };
+export { roleFor, type Role };
 export type Speaker = Role | "anyone" | "room";
 
 /**

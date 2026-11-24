@@ -19,16 +19,12 @@ import type { Diary } from "../shared/diary";
 import type { StoryView } from "./office/decor";
 import { regularsOf } from "./director/story";
 
-export { direct, RULES, here, cueFor } from "./director/direct";
 export { NOTICE, type View } from "./director/social";
-export type { Actor, Build, Cue, Run, World, WorldEvent } from "./director/types";
-export { pathBetween, walkMs, WALK_SPEED } from "./director/paths";
+export type { Actor, Build, World, WorldEvent } from "./director/types";
 
-export type SayKind = "said" | "thought";
+type SayKind = "said" | "thought";
 /** Draw a bubble over the character with this key; `undefined` takes it down. */
 export type SayHook = (key: string, text: string | undefined, kind: SayKind) => void;
-/** Write on a named sign slot (`room:<project>:sign`, `meeting:board`, ...). A newline splits title from body. */
-export type SignHook = (slot: string, text: string) => void;
 export type Listener = (events: WorldEvent[], world: World) => void;
 
 /** The built-in voice: each busy lead says the tool it is using; everyone else is quiet. */

@@ -7,7 +7,7 @@ import {
 	type Held, type Look, type Mouth, type Spot, type Wear, type Work,
 } from "./vocab";
 
-export interface Props {
+interface Props {
 	/** Held in the left / right hand. */
 	left?: Held;
 	right?: Held;
