@@ -21,7 +21,7 @@ import { MONITOR, PROPS } from "../world/propspots";
 import type { SceneStaging } from "../world/staging";
 import { type Area, type Band, DESK_TOP, type Rect } from "../world/world";
 import { crewBuild } from "./build";
-import { NIGHT_WATCH, ROOM_COLOURS } from "./office";
+import { NIGHT_WATCH, ROOM_COLOURS } from "../../themes/office/scene";
 import type { FurnitureKind, SceneLight, SceneTheme, StagePainters } from "./types";
 import { BAKERY_WORDS, type SignText } from "./words";
 import { mix } from "../../shared/colour";

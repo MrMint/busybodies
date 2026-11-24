@@ -2,7 +2,7 @@
 import { FACTORY_THEME } from "./factory";
 import type { ThemeId } from "../../themes/ids";
 import { BAKERY_THEME } from "./bakery";
-import { OFFICE_THEME } from "./office";
+import { OFFICE_THEME } from "../../themes/office/scene";
 import type { SceneTheme } from "./types";
 
 export { type ThemeId, themeId } from "../../themes/ids";

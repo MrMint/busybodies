@@ -628,7 +628,7 @@ describe("themes", async () => {
 	});
 
 	describe("the office", async () => {
-		const { officeTheme, OFFICE_REPAINTS, OFFICE_EXTRAS, OFFICE_DROPS } = await import("../src/scene/rig/office");
+		const { officeTheme, OFFICE_REPAINTS, OFFICE_EXTRAS, OFFICE_DROPS } = await import("../src/themes/office/rig");
 		const { rigTheme } = await import("../src/scene/rig/themes");
 		const office = officeTheme();
 		const officeBox = measure(office);

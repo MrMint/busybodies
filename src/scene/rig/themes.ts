@@ -4,7 +4,7 @@
 import type { ThemeId } from "../../themes/ids";
 import { factoryTheme } from "./factory";
 import { bakeryTheme } from "./bakery";
-import { officeTheme } from "./office";
+import { officeTheme } from "../../themes/office/rig";
 import type { Theme } from "./theme";
 
 const RIGS: Record<ThemeId, () => Theme> = { office: officeTheme, factory: factoryTheme, bakery: bakeryTheme };

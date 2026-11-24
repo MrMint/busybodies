@@ -5,6 +5,7 @@
 // tests aim at "kitchen" or "your office" in any theme); the office's tabs show the theme's.
 import type { AreaKind } from "../world/world";
 import type { ThemeId } from "../../themes/ids";
+import { OFFICE_WORDS } from "../../themes/office/words";
 
 export interface SignText {
 	title: string;
@@ -37,30 +38,6 @@ export interface ThemeWords {
 	/** Pose titles and lines in this theme's words, by pose name; the rest keep the pose's own. */
 	poses: Readonly<Record<string, PoseWords>>;
 }
-
-export const OFFICE_WORDS: ThemeWords = {
-	areas: { meeting: "meeting room", lobby: "lobby", yours: "your office", kitchen: "kitchen", vacant: "vacant" },
-	subs: { meeting: "reviews", lobby: "in and out", yours: "waiting on you", kitchen: "idle, finished and sent home", vacant: "for lease" },
-	signs: {
-		"meeting:sign": { title: "THIS MEETING", body: "could have been a diff." },
-		"kitchen:sign": { title: "1 CUP PER GREEN BUILD", body: "Finished? Close your own session." },
-		"lobby:frame": { title: "EMPLOYEE OF THE MONTH", body: "Nobody. Again." },
-	},
-	serving: (n) => ({ title: "NOW SERVING", body: n === undefined ? "Nobody. Yet." : `No. ${n}` }),
-	columns: ["TO DO", "DOING", "DONE"],
-	door: "YOU",
-	// The builder's work is paperwork here (rig/office.ts): the workshop words go with the workshop.
-	poses: {
-		hammer: { title: "Stapling until it compiles" },
-		thumb: { title: "Stapled the thumb" },
-		carry: { title: "Carrying a ream" },
-		place: { title: "Setting a ream on the pile" },
-		blueprint: { title: "Reading the printout", lines: ["Print twice. Read once."] },
-		rummage: { title: "Looking for the tape dispenser" },
-		tinker: { title: "Sharpening while it runs", lines: ["Sharper. Sharper. Gone."] },
-		exploring: { title: "Exploring with a laser pointer" },
-	},
-};
 
 export const FACTORY_WORDS: ThemeWords = {
 	areas: { meeting: "QA booth", lobby: "gatehouse", yours: "foreman's office", kitchen: "break room", vacant: "empty bay" },

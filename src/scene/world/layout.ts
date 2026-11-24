@@ -45,7 +45,7 @@ import {
 } from "./world";
 import { LEAD_SIZE } from "./placement";
 import { bellFrom } from "./rigpoints";
-import { OFFICE_WORDS } from "../theme/words";
+import { OFFICE_WORDS } from "../../themes/office/words";
 import { DEFAULT_STAGING, type Staging } from "./staging";
 
 interface Room {

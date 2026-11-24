@@ -12,16 +12,17 @@
 //   planner     the room's wall planner: sticky notes in TO DO, DOING and DONE, a colour per session
 //   shredder, tickets, bell: furniture bodies (the shredder's slot and pile are the rig's)
 import { Container, Graphics } from "pixi.js";
-import type { Lamp, PlannerRow, Tray } from "../contract";
-import { GREEN, INK, PAPER_SIGNS, RED, SHADOW, SUN, type SignStyle, batched, hash, label, line, noise, signboard, text, wob } from "../office/paper";
-import { rotRect } from "../rig/theme";
-import { mix } from "../office/light";
-import { KITCHEN_WALL, MONITOR, PROPS, ceilingPanels } from "../world/propspots";
-import type { Who } from "../contract";
-import { type Area, type Band, DESK_TOP, type Rect } from "../world/world";
-import { crewBuild } from "./build";
-import type { FurnitureKind, SceneLight, SceneTheme } from "./types";
-import { OFFICE_WORDS, type SignText } from "./words";
+import type { Lamp, PlannerRow, Tray } from "../../scene/contract";
+import { GREEN, INK, PAPER_SIGNS, RED, SHADOW, SUN, type SignStyle, batched, hash, label, line, noise, signboard, text, wob } from "../../scene/office/paper";
+import { rotRect } from "../../scene/rig/theme";
+import { mix } from "../../scene/office/light";
+import { KITCHEN_WALL, MONITOR, PROPS, ceilingPanels } from "../../scene/world/propspots";
+import type { Who } from "../../scene/contract";
+import { type Area, type Band, DESK_TOP, type Rect } from "../../scene/world/world";
+import { crewBuild } from "../../scene/theme/build";
+import type { FurnitureKind, SceneLight, SceneTheme } from "../../scene/theme/types";
+import type { SignText } from "../../scene/theme/words";
+import { OFFICE_WORDS } from "./words";
 
 const LAWN = 0xbfe8c6;
 const SLAB = 0x46536f;

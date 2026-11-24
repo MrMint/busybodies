@@ -45,7 +45,7 @@ const BUILD_H = BUILD.brickH;
 /** How far a buried lead sinks behind its desk: the rig's pile's foot (rigpoints.ts trayOnDesk) to
  * just under the desk top's back edge (DESK_TOP), so it stands on the desk instead of floating. */
 const BURIED_DROP = Math.ceil(DESK_TOP + 2 - trayOnDesk(SEAT, LEAD_SIZE).y);
-import { OFFICE_THEME } from "../theme/office";
+import { OFFICE_THEME } from "../../themes/office/scene";
 import { buildTop } from "../theme/build";
 import { areaLabel } from "../theme/words";
 import { RobotArm } from "../theme/arm";

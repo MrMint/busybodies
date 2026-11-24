@@ -11,7 +11,7 @@ import { GREEN, INK, RED, SHADOW, type SignStyle, batched, hash, label, line, no
 import { MONITOR, PROPS } from "../world/propspots";
 import { type Area, type Band, DESK_TOP, type Rect } from "../world/world";
 import { crewBuild } from "./build";
-import { COMMON_COLOURS, NIGHT_WATCH, plannerOf } from "./office";
+import { COMMON_COLOURS, NIGHT_WATCH, plannerOf } from "../../themes/office/scene";
 import { FACTORY_STAGING } from "./factory-staging";
 import type { FurnitureKind, SceneLight, SceneTheme, StagePainters } from "./types";
 import { FACTORY_WORDS, type SignText } from "./words";
