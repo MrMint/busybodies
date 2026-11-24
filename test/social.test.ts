@@ -2,7 +2,8 @@
 // foreman's round both ways, waiting leads looking at the YOU door, hand-off anticipation, staging,
 // and the cast noticing you when you come back. Every session and number is invented.
 import { describe, expect, test } from "bun:test";
-import { RULES, cueFor, direct } from "../src/scene/director/direct";
+import { RULES, direct } from "../src/scene/director/direct";
+import { cueFor } from "../src/scene/director/direct/cue";
 import { HANDOFF } from "../src/scene/director/handoff";
 import { HANDOFF_LOOK, NOTICE, RIPPLE, type View, freshReturn, pairUp, rippleDelay, waverOf, youDoor } from "../src/scene/director/social";
 import { TRIP } from "../src/scene/director/trips";

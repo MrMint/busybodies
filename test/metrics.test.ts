@@ -3,7 +3,8 @@
 // your office's queue, and each model's personality. Every session and number is invented.
 import { describe, expect, test } from "bun:test";
 import { BEATS } from "../src/scene/director/beats";
-import { cueFor, direct } from "../src/scene/director/direct";
+import { direct } from "../src/scene/director/direct";
+import { cueFor } from "../src/scene/director/direct/cue";
 import { ERRANDS } from "../src/scene/director/errands";
 import { METRICS, drawersFor, lampFor, mugsFor, skipLoad, towerBricks, trayFor } from "../src/scene/director/metrics";
 import { PACE } from "../src/scene/director/pace";

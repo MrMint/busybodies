@@ -10,7 +10,8 @@
 // Until S5 plugs in, `placeholderVoice` bubbles each busy lead's current tool, as the office did.
 import type { Placed } from "./world/placement";
 import type { Floor } from "./world/world";
-import { type Direction, type View, cueFor, direct, here } from "./director/direct";
+import { type Direction, type View, direct } from "./director/direct";
+import { cueFor, here } from "./director/direct/cue";
 import { type Metrics, NO_METRICS } from "./director/metrics";
 import type { Actor, Build, World, WorldEvent } from "./director/types";
 import { roleFor } from "./rig/data/roles";

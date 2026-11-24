@@ -1,7 +1,8 @@
 // A busy room turns hectic (plan-next stream C, wave 2): rush, dodges, hand-offs, the copier feud,
 // the phone and the outbox. Every project, task and person is invented.
 import { describe, expect, test } from "bun:test";
-import { cueFor, direct } from "../src/scene/director/direct";
+import { direct } from "../src/scene/director/direct";
+import { cueFor } from "../src/scene/director/direct/cue";
 import { COPIER_FEUD } from "../src/scene/director/direct/builds";
 import { DODGE, closest, dodges } from "../src/scene/director/dodge";
 import { HANDOFF, MAIL } from "../src/scene/director/handoff";

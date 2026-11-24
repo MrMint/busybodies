@@ -2,7 +2,8 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { type Direction, RULES, direct, here } from "../src/scene/director/direct";
+import { type Direction, RULES, direct } from "../src/scene/director/direct";
+import { here } from "../src/scene/director/direct/cue";
 import { along, pathBetween, pathLength } from "../src/scene/world/paths";
 import type { World } from "../src/scene/director/types";
 import { demo, demoDay, releaseDay, stock } from "../src/mainview/demo";

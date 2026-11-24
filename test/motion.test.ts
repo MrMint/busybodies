@@ -3,7 +3,8 @@
 // traits as acting, and a wait that gets worse. Pure logic only; every session is invented.
 import { describe, expect, test } from "bun:test";
 import { BEATS } from "../src/scene/director/beats";
-import { cueFor, direct } from "../src/scene/director/direct";
+import { direct } from "../src/scene/director/direct";
+import { cueFor } from "../src/scene/director/direct/cue";
 import { WAITING, waitStage } from "../src/scene/director/errands";
 import { HABIT, habitAt } from "../src/scene/director/habits";
 import { GAIT, along, lookMs, pathLength, pointAt, progress, walkMs } from "../src/scene/world/paths";

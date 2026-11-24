@@ -13,7 +13,8 @@ import type { Spec } from "./specs";
 import type { Place } from "./places";
 import type { Choice } from "./choice";
 import { handOffMs } from "./handoff-mail";
-import { RULES, here } from "../direct";
+import { RULES } from "../direct";
+import { here } from "./cue";
 
 /** A long build at the copier: a running feud with it, looped until the build ends (instead of the
  * one-off kick, `STATION_POSE.build.bad`). */
