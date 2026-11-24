@@ -21,6 +21,7 @@ import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "no
 import { join, relative } from "node:path";
 import type { RoomLoop } from "../src/mainview/speech";
 import { THEME_IDS, type ThemeId } from "../src/scene/theme/id";
+import { audioOfStream, musicBody } from "./music";
 
 const ROOT = join(import.meta.dir, "..");
 const OUT = join(ROOT, "src/mainview/public/ambience");
@@ -28,8 +29,7 @@ const SOURCES = join(OUT, "sources.json");
 
 /** Licences a loop may ship under (AGENTS.md: CC0 or our own work). */
 export const LICENCES = ["CC0-1.0", "own"] as const;
-/** Lyria models whose output we may ship, per the terms read on 2026-11-23 (docs/decisions.md). */
-export const LYRIA_OK = ["lyria-3-clip-preview", "lyria-3-pro-preview"] as const;
+import { LYRIA_OK } from "./music";
 
 interface Entry extends RoomLoop {
 	author?: string;
@@ -114,24 +114,21 @@ async function lyria(): Promise<void> {
 	const prompt = opt("prompt", "");
 	if (!prompt) die('--prompt: what to make, e.g. "quiet open-plan office room tone, distant murmur, no melody, no drums"');
 	const model = opt("model", LYRIA_OK[0]);
-	const body = { instances: [{ prompt, negative_prompt: "melody, vocals, drums, music" }], parameters: { sample_count: 1 } };
-	console.log(`ambience: ${theme} from ${model}:predict`);
+	const body = musicBody(model, `${prompt} No melody, no vocals, no drums: a texture.`);
+	console.log(`ambience: ${theme} from ${model} (Interactions API, streamed)`);
 	console.log(JSON.stringify(body, null, 2));
 	if (has("dry-run")) return console.log("dry run: nothing sent");
 	if (!(LYRIA_OK as readonly string[]).includes(model) && !has("terms-checked")) die(`${model} isn't in LYRIA_OK: read Google's terms for it first (docs/decisions.md), then pass --terms-checked`);
 	if (!has("yes")) return console.log("this is a paid run: add --yes");
 	const project = process.env.GOOGLE_CLOUD_PROJECT || (await run(["gcloud", "config", "get-value", "project"]));
-	const loc = process.env.GOOGLE_CLOUD_LOCATION || "us-central1";
-	const host = loc === "global" ? "aiplatform.googleapis.com" : `${loc}-aiplatform.googleapis.com`;
 	const token = await run(["gcloud", "auth", "application-default", "print-access-token"]);
-	const res = await fetch(`https://${host}/v1/projects/${project}/locations/${loc}/publishers/google/models/${model}:predict`, {
+	const res = await fetch(`https://aiplatform.googleapis.com/v1/projects/${project}/locations/global/interactions`, {
 		method: "POST",
 		headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
 		body: JSON.stringify(body),
 	});
 	if (!res.ok) die(`Vertex ${res.status}: ${(await res.text()).slice(0, 300)}`);
-	const json = (await res.json()) as { predictions?: { bytesBase64Encoded?: string; audioContent?: string }[] };
-	const b64 = json.predictions?.[0]?.bytesBase64Encoded ?? json.predictions?.[0]?.audioContent;
+	const b64 = audioOfStream(await res.text())?.data;
 	if (!b64) die("Vertex answered without audio");
 	const tmp = join(ROOT, "voice-takes", `lyria-${theme}.audio`);
 	mkdirSync(join(ROOT, "voice-takes"), { recursive: true });
