@@ -1,5 +1,18 @@
 # busybodies
 
+## 0.7.0
+
+### Minor Changes
+
+- e7c3f5e: Busybodies is silent now: sound is gone, and the menu and Settings no longer have a Sound switch. Calm office stays, and a Sound choice saved by an earlier version is simply ignored.
+- 600c988: The bakery shows its crew again: an empty bakery, or a floor with a wide gap above the hallway, used to draw nobody at all. The Pixel and Night looks are gone (a saved one opens the usual scene), and Settings has a cleaner sliders button in the top bar.
+
+### Patch Changes
+
+- 8c267c8: The scene costs less to run: about a quarter less CPU busy and a third less on a quiet office with life on, with the same pixels. Things that blink or swap no longer make the whole office rebuild its drawing.
+- d39e60b: The factory and bakery demos write their room signs in their own words, not the office's.
+- 24b6c16: Quitting is clean on every path: the tray's Quit, ⌘Q (the app now has a menu), the Dock's Quit and logging out all stop the watcher, save the diary and exit within half a second. Closing the office window keeps Busybodies in the menu bar and takes its Dock icon away; clicking the Dock icon or opening the app again brings the office back. The office no longer freezes when one of the agent's session files holds an unexpected value, and it keeps watching when the agent's folder is removed and comes back.
+
 ## 0.6.0
 
 ### Minor Changes
