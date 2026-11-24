@@ -34,11 +34,11 @@ import { WORK, WORK_POSE, type Work, type WorkKind, isEdit, nextWork, tempo, tem
 import { faceFront, inCrowd } from "../office/world";
 import { HANDOFF_LOOK, NOTICE, NOTICE_POSES, type View, freshReturn, handOffWakes, looksFor, noticeDelay, pairUp, readyAt, rippleDelay, waverOf } from "./social";
 import { STORY, type Story, cheersReply, headlinesFor, logOf, replyChoice, replyPlace, replyWakes, replyWalkPose, repliesFor, sendOffHold, sendOffLooks, sendOffsFor, storyNews } from "./story";
+import { MIN } from "../../shared/time";
 
 export { runCooldown };
 export type { View };
 
-const MIN = 60_000;
 
 /** When signals turn into poses. */
 export const RULES = {

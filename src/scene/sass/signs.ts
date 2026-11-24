@@ -5,9 +5,10 @@
 import type { Snapshot } from "../../watcher/model";
 import type { ThemeId } from "../theme/id";
 import { type SassBank, sassFor } from "./bank";
-import { LIMITS, MIN, allSessions, crewCount, localClock, members, type DetectOptions } from "./detect";
+import { LIMITS, allSessions, crewCount, localClock, members, type DetectOptions } from "./detect";
 import { fill } from "./scheduler";
 import { type LineVars, type Role, type SignPlace, hash } from "./types";
+import { MIN } from "../../shared/time";
 
 /** The office's slot for a place: room places belong to the project's room. */
 export function slotName(place: SignPlace, project: string): string {

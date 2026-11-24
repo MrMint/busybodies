@@ -3,12 +3,13 @@
 // came, a wait crossed its next tier). Neither runs a timer: the caller schedules the next call,
 // and `nextWake` is undefined when nothing is due, so an idle office can sleep.
 import type { Snapshot } from "../../watcher/model";
-import { type DetectOptions, MIN, detect } from "./detect";
+import { type DetectOptions, detect } from "./detect";
 import type { ThemeId } from "../theme/id";
 import { type SassBank, sassFor } from "./bank";
 import { type Say, Scheduler, type SchedulerOptions, type View } from "./scheduler";
 import { type CounterOptions, Counters, slotName } from "./signs";
 import type { Trigger, TriggerKind } from "./types";
+import { MIN } from "../../shared/time";
 
 /** A sign to set: `sign(slot, text)`. A sign's text may hold a newline between title and body. */
 interface SignOut {

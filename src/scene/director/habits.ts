@@ -7,8 +7,8 @@
 // change lands on a 5 s grid of the clock, so a room of idlers wakes the director together.
 import { hash, unit } from "../rig/player";
 import { HABITS } from "../rig/poses";
+import { MIN } from "../../shared/time";
 
-const MIN = 60_000;
 
 export const HABIT = {
 	/** Calm mode: the next habit this often after going idle. */

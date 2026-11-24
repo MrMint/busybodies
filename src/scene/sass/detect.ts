@@ -4,8 +4,8 @@
 // on every call while they hold, with a magnitude the scheduler uses to escalate.
 import type { Agent, Commands, Session, Snapshot } from "../../watcher/model";
 import { type Role, type Trigger, type TriggerKind, hash, roleFor } from "./types";
+import { MIN } from "../../shared/time";
 
-export const MIN = 60_000;
 
 /** The thresholds the detectors use. Exported so tests and the dump can name them. */
 export const LIMITS = {
