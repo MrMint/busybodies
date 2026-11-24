@@ -1,7 +1,8 @@
 // A busy crew, directed: builders act out the tool in hand at their own pace, look up when a
 // teammate's test goes red, the lead walks its rounds, and the crew's build grows on the desk.
 import { describe, expect, test } from "bun:test";
-import { COPIER_FEUD, RULES, cueFor, direct, runCooldown } from "../src/scene/director/direct";
+import { RULES, cueFor, direct, runCooldown } from "../src/scene/director/direct";
+import { COPIER_FEUD } from "../src/scene/director/direct/builds";
 import type { World } from "../src/scene/director/types";
 import { PACE, RUNS, editRate, paceOf } from "../src/scene/director/pace";
 import { STATION_POSE, STATION_REACH } from "../src/scene/world/stations";

@@ -9,7 +9,7 @@ import type { Work, WorkKind } from "../work";
 import type { Spec } from "./specs";
 import type { Place } from "./places";
 import type { Choice } from "./choice";
-import type { Runs } from "../direct";
+import type { Runs } from "./builds";
 
 /** What the director works out about each character before anyone moves. */
 export interface Pre {
