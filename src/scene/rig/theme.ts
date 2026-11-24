@@ -1220,9 +1220,9 @@ export function paperTheme(p: Palette = PAPER_PALETTE): Theme {
 			g.roundRect(-4.5, -96, 9, 6, 1.5).fill(p.steel).stroke({ width: 1.6, color: ink });
 			for (const a of [-2.4, -1.57, -0.74]) line(g, [Math.cos(a) * 13, -104 + Math.sin(a) * 13, Math.cos(a) * 18, -104 + Math.sin(a) * 18], 2, ink);
 		},
-		z1: (g, add) => zs(add, 1, ink),
-		z2: (g, add) => zs(add, 2, ink),
-		z3: (g, add) => zs(add, 3, ink),
+		z1: (_g, add) => zs(add, 1, ink),
+		z2: (_g, add) => zs(add, 2, ink),
+		z3: (_g, add) => zs(add, 3, ink),
 		think1: (g) => think(g, 1, ink),
 		think2: (g) => think(g, 2, ink),
 		think3: (g) => think(g, 3, ink),

@@ -63,11 +63,11 @@ const only = (ts: Trigger[], k: TriggerKind) => ts.filter((t) => t.kind === k);
 describe("the line bank", () => {
 	const html = readFileSync(join(import.meta.dir, "../design/boards/Lines.dc.html"), "utf8");
 	const KIND: Record<string, string> = { "": "said", t: "thought", s: "sign" };
-	const unescape = (s: string) => s.replace(/&quot;/g, '"').replace(/&#x27;|&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+	const unescapeHtml = (s: string) => s.replace(/&quot;/g, '"').replace(/&#x27;|&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
 	const onBoard = [...html.matchAll(/<p class="(t|s|)">(.*?)(?: <small>(.*?)<\/small>)?<\/p>/g)].map((m) => ({
 		kind: KIND[m[1]!]!,
-		text: unescape(m[2]!),
-		note: unescape(m[3] ?? ""),
+		text: unescapeHtml(m[2]!),
+		note: unescapeHtml(m[3] ?? ""),
 	}));
 
 	test("holds every line of the design board, word for word, and no more", () => {

@@ -35,25 +35,25 @@
 			"preset": "recommended",
 			"style": {
 				"noNonNullAssertion": "off",
-				"useImportType": "warn",
-				"useConst": "warn"
+				"useImportType": "error",
+				"useConst": "error"
 			},
 			"complexity": {
 				"noCommaOperator": "off",
-				"noBannedTypes": "warn",
-				"useOptionalChain": "warn",
-				"noUselessLoneBlockStatements": "warn"
+				"noBannedTypes": "error",
+				"useOptionalChain": "error",
+				"noUselessLoneBlockStatements": "error"
 			},
 			"correctness": {
 				"noVoidTypeReturn": "off",
-				"noUnusedImports": "warn",
-				"noUnusedVariables": "warn",
-				"noUnusedFunctionParameters": "warn"
+				"noUnusedImports": "error",
+				"noUnusedVariables": "error",
+				"noUnusedFunctionParameters": "error"
 			},
 			"suspicious": {
 				"noAssignInExpressions": "off",
 				"useIterableCallbackReturn": "off",
-				"noShadowRestrictedNames": "warn"
+				"noShadowRestrictedNames": "error"
 			},
 			"performance": {
 				"useDomNodeTextContent": "off"

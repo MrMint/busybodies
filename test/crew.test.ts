@@ -482,7 +482,7 @@ describe("stations and trips", () => {
 
 	test("a smaller crew member stands closer, so its hands still meet the working point", () => {
 		const s = stage();
-		const small = (t: number) => [builder("b0", "Read", T0, { depth: 3 })];
+		const small = (_t: number) => [builder("b0", "Read", T0, { depth: 3 })];
 		run(s, [T0], small);
 		const [d] = run(s, [T0 + TRIP.holdMs], small);
 		const b0 = d!.world.actors["a:rel:b0"]!;

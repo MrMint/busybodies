@@ -955,11 +955,6 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 	return { world, events, wake: due.length ? Math.min(...due) : undefined };
 }
 
-const lastAtOf = (s: Spec): number | undefined => {
-	const t = Math.max(s.activity?.at ?? -Infinity, s.agent?.lastWriteAt ?? -Infinity);
-	return Number.isFinite(t) ? t : undefined;
-};
-
 /** How long a PR's celebration lasts, the longer of its two parts. */
 const celebrateMs = () => Math.max(poseMs("celebrate", "lead"), poseMs("celebrate", "partner"));
 

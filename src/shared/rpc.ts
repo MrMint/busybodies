@@ -36,11 +36,11 @@ export type BusybodiesRPC = {
 			/** The office's diary (counts and kinds only: src/shared/diary.ts), for a scene that just loaded. */
 			diary: { params: undefined; response: Diary | null };
 		};
-		messages: {};
+		messages: Record<string, never>;
 	}>;
 	/** What the webview listens for. */
 	webview: RPCSchema<{
-		requests: {};
+		requests: Record<string, never>;
 		messages: {
 			/** Sent whenever the snapshot's content changes. */
 			snapshot: Snapshot;

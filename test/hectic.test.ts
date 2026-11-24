@@ -102,7 +102,7 @@ describe("rush", () => {
 	});
 
 	test("in a rush, trips set off sooner and every walk is a run with papers flying", () => {
-		const hot = (t: number) => [builder("b0", "Read", T0, { tools: rate(60), lastWriteAt: T0 - 5 * MIN }), builder("b1", "Edit", T0 - 5 * MIN, { tools: rate(40), lastWriteAt: T0 - 5 * MIN })];
+		const hot = (_t: number) => [builder("b0", "Read", T0, { tools: rate(60), lastWriteAt: T0 - 5 * MIN }), builder("b1", "Edit", T0 - 5 * MIN, { tools: rate(40), lastWriteAt: T0 - 5 * MIN })];
 		const s = stage();
 		s.step(snap(T0, [release(hot(T0))]));
 		const d = s.step(snap(T0 + RUSH.tripHoldMs, [release(hot(T0 + RUSH.tripHoldMs))]));

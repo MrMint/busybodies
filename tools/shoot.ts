@@ -155,14 +155,14 @@ interface Shot {
 	size: [number, number];
 }
 
-const escape = (t: string) => t.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+const escapeHtml = (t: string) => t.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 
 function contactSheet(shots: Shot[], title: string, cols = 3): string {
 	const figs = shots
 		.map((s) =>
 			s.png
 				? `<figure><img src="data:image/png;base64,${s.png.toString("base64")}" style="aspect-ratio:${s.size[0]}/${s.size[1]}"><figcaption>${s.name} · ${s.size[0]}×${s.size[1]}</figcaption></figure>`
-				: `<figure><div class="gap" style="aspect-ratio:${s.size[0]}/${s.size[1]}">didn't come up:<br>${escape(s.error ?? "")}</div><figcaption>${s.name} · ${s.size[0]}×${s.size[1]}</figcaption></figure>`,
+				: `<figure><div class="gap" style="aspect-ratio:${s.size[0]}/${s.size[1]}">didn't come up:<br>${escapeHtml(s.error ?? "")}</div><figcaption>${s.name} · ${s.size[0]}×${s.size[1]}</figcaption></figure>`,
 		)
 		.join("");
 	return `<!doctype html><meta charset="utf-8"><style>

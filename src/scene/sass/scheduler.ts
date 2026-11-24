@@ -144,7 +144,7 @@ export function fitting(t: Trigger, kind: "bubble" | "sign", lines: Line[] = LIN
 export const tierOf = (t: Trigger, lines: Line[] = LINES) => Math.max(0, ...fitting(t, "bubble", lines).map((l) => l.min ?? 0));
 
 /** A seeded weighted pick from the highest tier on offer; rare lines seldom. */
-export function pick(cands: Line[], t: Trigger, seedKey: string, rareWeight = DEFAULTS.rareWeight): Line | undefined {
+export function pick(cands: Line[], _t: Trigger, seedKey: string, rareWeight = DEFAULTS.rareWeight): Line | undefined {
 	if (!cands.length) return undefined;
 	// Escalation: once a trigger has reached a tier, its lines for that tier come first; lower
 	// ones come back only after those have been said (and so are out of `cands`).
