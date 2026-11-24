@@ -4,6 +4,9 @@ import type { Rect, World } from "./world";
 
 export type Stop = { kind: "office" } | { kind: "room"; id: string } | { kind: "desk"; id: string };
 
+/** Whether two stops point the camera at the same place. */
+export const sameStop = (a: Stop, b: Stop) => a.kind === b.kind && (a.kind === "office" || (b.kind !== "office" && a.id === b.id));
+
 /** Screen = world * scale + (x, y). */
 export interface View {
 	scale: number;

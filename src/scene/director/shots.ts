@@ -15,7 +15,7 @@
 // the hold, with no cut); and the rest shot moves to a busier room only after its own hold, when
 // that room is SHOTS.restLead times busier.
 import type { Session } from "../../watcher/model";
-import type { Stop } from "../office/camera";
+import { type Stop, sameStop } from "../office/camera";
 import { heatOf } from "./rush";
 import type { Build, World, WorldEvent } from "./types";
 
@@ -107,7 +107,6 @@ export interface ShotInput {
 
 const cmp = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 const roomStop = (id: string): Stop => ({ kind: "room", id });
-const sameStop = (a: Stop, b: Stop) => a.kind === b.kind && (a.kind === "office" || (b.kind !== "office" && a.id === b.id));
 const priorityOf = (s: Shot) => (s.news ? SHOTS.priority[s.reason as NewsReason] : 0);
 
 /** Where to rest between news: your office while someone waits, else the busiest room, else everything. */
