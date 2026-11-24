@@ -25,9 +25,11 @@ const commandsText = (c?: Commands) => {
 
 const k = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(2)}M` : n >= 1000 ? `${(n / 1000).toFixed(0)}k` : String(n));
 const changesText = (c?: Changes) => (c ? `📝 ${c.files} files +${c.added} −${c.removed}` : "");
-const toolsText = (t?: ToolRate) => (t && (t.calls || t.errors) ? `🔥 ${t.calls} calls${t.errors ? ` ${t.errors} errors` : ""}/${Math.round(t.windowMs / 1000)}s` : "");
+const toolsText = (t?: ToolRate) =>
+	t && (t.calls || t.errors) ? `🔥 ${t.calls} calls${t.errors ? ` ${t.errors} errors` : ""}/${Math.round(t.windowMs / 1000)}s` : "";
 /** The counts an agent carries, on its own line. */
-const countsText = (a: Pick<Agent, "family" | "changes" | "tools">) => [a.family ? `🧠 ${a.family}` : "", changesText(a.changes), toolsText(a.tools)].filter(Boolean).join("  ");
+const countsText = (a: Pick<Agent, "family" | "changes" | "tools">) =>
+	[a.family ? `🧠 ${a.family}` : "", changesText(a.changes), toolsText(a.tools)].filter(Boolean).join("  ");
 
 function signalsLine(now: number, s: Session): string {
 	const bits: string[] = [];
@@ -37,9 +39,12 @@ function signalsLine(now: number, s: Session): string {
 	if (s.compactions?.count) bits.push(`🗜 compacted ${s.compactions.count}× (last ${ago(now, s.compactions.lastAt ?? now)} ago)`);
 	if (s.family) bits.push(`🧠 ${s.family}`);
 	if (s.context)
-		bits.push(`📚 context ${k(s.context.used)}${s.context.window ? ` / ${k(s.context.window)} (${Math.round((100 * s.context.used) / s.context.window)}%)` : ""}`);
+		bits.push(
+			`📚 context ${k(s.context.used)}${s.context.window ? ` / ${k(s.context.window)} (${Math.round((100 * s.context.used) / s.context.window)}%)` : ""}`,
+		);
 	if (s.changes) bits.push(changesText(s.changes));
-	if (s.todos) bits.push(`🗒 todos ${s.todos.done}/${s.todos.pending + s.todos.active + s.todos.done} done${s.todos.active ? `, ${s.todos.active} active` : ""}`);
+	if (s.todos)
+		bits.push(`🗒 todos ${s.todos.done}/${s.todos.pending + s.todos.active + s.todos.done} done${s.todos.active ? `, ${s.todos.active} active` : ""}`);
 	if (toolsText(s.tools)) bits.push(toolsText(s.tools));
 	if (s.cost) bits.push(`💸 ${s.cost.usd !== undefined ? `$${s.cost.usd.toFixed(2)} · ` : ""}${(s.cost.outputTokens / 1000).toFixed(1)}k out`);
 	return bits.join("  ");
@@ -51,7 +56,9 @@ function render(snap: Snapshot, w: Watcher): string {
 	const agentLines = (agents: Agent[], pad: string) => {
 		for (const a of agents) {
 			const doing = a.activity ? ` · ${a.activity.tool} ${ago(now, a.activity.at)} ago` : "";
-			out.push(`${pad}${STATUS[a.status]} ${a.role}: ${a.task}${a.model ? ` (${a.model})` : ""}${doing}${runningText(now, a.running)}${commandsText(a.commands)}`);
+			out.push(
+				`${pad}${STATUS[a.status]} ${a.role}: ${a.task}${a.model ? ` (${a.model})` : ""}${doing}${runningText(now, a.running)}${commandsText(a.commands)}`,
+			);
 			const counts = countsText(a);
 			if (counts) out.push(`${pad}     ${counts}`);
 			agentLines(a.children, `${pad}   `);
@@ -61,7 +68,9 @@ function render(snap: Snapshot, w: Watcher): string {
 		for (const s of list) {
 			const where = [s.project, s.worktree, s.branch].filter(Boolean).join(" · ");
 			const doing = s.activity ? ` · last ${s.activity.tool} ${ago(now, s.activity.at)} ago` : "";
-			out.push(`${pad}${STATE[s.state] ?? "❔"} ${s.title}  [${where}]  ${s.state} ${ago(now, s.stateSince)}${doing}${runningText(now, s.running)}${commandsText(s.commands)}`);
+			out.push(
+				`${pad}${STATE[s.state] ?? "❔"} ${s.title}  [${where}]  ${s.state} ${ago(now, s.stateSince)}${doing}${runningText(now, s.running)}${commandsText(s.commands)}`,
+			);
 			const sig = signalsLine(now, s);
 			if (sig) out.push(`${pad}    ${sig}`);
 			agentLines(s.agents, `${pad}    `);

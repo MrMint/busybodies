@@ -49,137 +49,179 @@ async function measure(page: Page, ms = 2000) {
 }
 
 describe("walks", () => {
-	test("a walk runs at the ambient 30 fps while it lasts, then the idle office goes quiet", async () => {
-		// The voice is held back (?settle) so the quiet window after the walk measures the walk alone;
-		// the voice has its own budget test below.
-		const page = await open("demo=idle&settle=600000&calm");
-		expect((await measure(page, 1000)).animationFrames).toBe(0);
-		// A new session arrives: its lead walks in from the lobby door.
-		await page.evaluate(() => {
-			const b = window.__busybodies!;
-			const s = structuredClone(b.snapshot()!);
-			const first = s.sessions[0]!;
-			s.sessions.push({ ...first, id: "e2e-new", title: "Just arrived", startedAt: s.at, children: [], agents: [] });
-			b.show(s);
-		});
-		const during = await page.evaluate(() => ({
-			c: window.__busybodies!.counters(),
-			walking: window.__busybodies!.entities().filter((e) => e.walk).map((e) => e.key),
-		}));
-		expect(during.walking).toEqual(["s:e2e-new"]);
-		expect(during.c.tickerRunning).toBe(true);
-		expect(during.c.maxFPS).toBe(30);
-		await page.waitForFunction(() => !window.__busybodies!.counters().tickerRunning, undefined, { timeout: 20_000 });
-		const after = await measure(page);
-		expect(after.animationFrames).toBe(0);
-		expect(after.renders).toBe(0);
-		const lead = await page.evaluate(() => window.__busybodies!.entities().find((e) => e.key === "s:e2e-new")!);
-		expect(lead.spot).toBe("desk");
-		expect(lead.walk).toBe("");
-		await page.close();
-	}, T);
+	test(
+		"a walk runs at the ambient 30 fps while it lasts, then the idle office goes quiet",
+		async () => {
+			// The voice is held back (?settle) so the quiet window after the walk measures the walk alone;
+			// the voice has its own budget test below.
+			const page = await open("demo=idle&settle=600000&calm");
+			expect((await measure(page, 1000)).animationFrames).toBe(0);
+			// A new session arrives: its lead walks in from the lobby door.
+			await page.evaluate(() => {
+				const b = window.__busybodies!;
+				const s = structuredClone(b.snapshot()!);
+				const first = s.sessions[0]!;
+				s.sessions.push({ ...first, id: "e2e-new", title: "Just arrived", startedAt: s.at, children: [], agents: [] });
+				b.show(s);
+			});
+			const during = await page.evaluate(() => ({
+				c: window.__busybodies!.counters(),
+				walking: window
+					.__busybodies!.entities()
+					.filter((e) => e.walk)
+					.map((e) => e.key),
+			}));
+			expect(during.walking).toEqual(["s:e2e-new"]);
+			expect(during.c.tickerRunning).toBe(true);
+			expect(during.c.maxFPS).toBe(30);
+			await page.waitForFunction(() => !window.__busybodies!.counters().tickerRunning, undefined, { timeout: 20_000 });
+			const after = await measure(page);
+			expect(after.animationFrames).toBe(0);
+			expect(after.renders).toBe(0);
+			const lead = await page.evaluate(() => window.__busybodies!.entities().find((e) => e.key === "s:e2e-new")!);
+			expect(lead.spot).toBe("desk");
+			expect(lead.walk).toBe("");
+			await page.close();
+		},
+		T,
+	);
 });
 
 describe("trips", () => {
-	test("the release crew walks to the room's stations within the first ten seconds, and queues", async () => {
-		const page = await open("demo=release&settle=600000");
-		await page.waitForFunction(
-			() => {
-				const list = window.__busybodies!.entities();
-				return list.some((e) => String(e.spot).startsWith("station:")) && list.some((e) => String(e.spot).startsWith("queue:"));
-			},
-			undefined,
-			{ timeout: 12_000, polling: 250 },
-		);
-		const at = await page.evaluate(() => window.__busybodies!.entities().filter((e) => /^(station|queue):/.test(String(e.spot))).map((e) => `${e.spot}|${e.cue}`));
-		expect(at.some((s) => s.startsWith("station:room:lanternfish:reference:0|fileFolder"))).toBe(true);
-		expect(at.some((s) => s.startsWith("station:room:lanternfish:build:0|copierFeud"))).toBe(true);
-		const trips = await page.evaluate(() => window.__busybodies!.events().filter((e) => e.type === "trip").length);
-		expect(trips).toBeGreaterThan(2);
-		await page.close();
-	}, T);
+	test(
+		"the release crew walks to the room's stations within the first ten seconds, and queues",
+		async () => {
+			const page = await open("demo=release&settle=600000");
+			await page.waitForFunction(
+				() => {
+					const list = window.__busybodies!.entities();
+					return list.some((e) => String(e.spot).startsWith("station:")) && list.some((e) => String(e.spot).startsWith("queue:"));
+				},
+				undefined,
+				{ timeout: 12_000, polling: 250 },
+			);
+			const at = await page.evaluate(() =>
+				window
+					.__busybodies!.entities()
+					.filter((e) => /^(station|queue):/.test(String(e.spot)))
+					.map((e) => `${e.spot}|${e.cue}`),
+			);
+			expect(at.some((s) => s.startsWith("station:room:lanternfish:reference:0|fileFolder"))).toBe(true);
+			expect(at.some((s) => s.startsWith("station:room:lanternfish:build:0|copierFeud"))).toBe(true);
+			const trips = await page.evaluate(() => window.__busybodies!.events().filter((e) => e.type === "trip").length);
+			expect(trips).toBeGreaterThan(2);
+			await page.close();
+		},
+		T,
+	);
 });
 
 describe("the inspector", () => {
-	test("reports every character's spot, pose and walk, and the director's events", async () => {
-		const page = await open("demo=day-1&frozen");
-		const { list, events, world } = await page.evaluate(() => {
-			const b = window.__busybodies!;
-			b.step(30);
-			return { list: b.entities(), events: b.events(), world: Object.keys(b.world()!.actors).length };
-		});
-		expect(world).toBe(list.length);
-		for (const e of list) {
-			expect(typeof e.spot).toBe("string");
-			expect(String(e.spot).length).toBeGreaterThan(0);
-			expect(typeof e.pose).toBe("string");
-			expect(typeof e.walk).toBe("string");
-		}
-		// The new reviewer, the new session's lead, and a crew member walking a done todo to the planner.
-		const walking = list.filter((e) => e.walk && !String(e.spot).startsWith("planner:"));
-		expect(walking.map((e) => e.key).sort()).toEqual(["a:demo-session-20:demo-agent-hired-1", "s:demo-session-30"]);
-		expect(list.filter((e) => e.walk && String(e.spot) === "planner:demo-session-20")).toHaveLength(1);
-		expect(events.some((e) => e.type === "review" && e.state === "start")).toBe(true);
-		expect(events.some((e) => e.type === "handover")).toBe(true);
-		await page.close();
-	}, T);
-
-	test("waiting on you pulses the room and shows the top pill", async () => {
-		const page = await open("demo=day-2&frozen");
-		const r = await page.evaluate(() => {
-			const b = window.__busybodies!;
-			b.step(5);
-			const pill = document.querySelector("#hud .waiting") as HTMLElement;
-			const lead = b.entities().find((e) => e.key === "s:demo-session-16")!;
-			return { pulsing: b.pulsing().areas, pill: pill.hidden ? "" : pill.textContent, pose: String(lead.pose), cue: String(lead.cue), walk: String(lead.walk) };
-		});
-		expect(r.pulsing).toEqual(["room:lanternfish"]);
-		expect(r.pill).toBe("1 waiting on you");
-		// It takes a ticket to your office: walking there (looking where it is going before its feet
-		// move, so still in its last pose), or holding the ticket in the queue.
-		expect(["ticketPolite", "ticketWait", "bellRing", "waitingPlease"]).toContain(r.cue);
-		if (!r.walk.endsWith(" look")) expect(["walk", r.cue]).toContain(r.pose);
-		await page.close();
-	}, T);
-
-	test("a beat of the demo day steps to the same frame every time", async () => {
-		const frame = async () => {
-			const page = await open("demo=day-3&frozen");
-			const out = await page.evaluate(() => {
+	test(
+		"reports every character's spot, pose and walk, and the director's events",
+		async () => {
+			const page = await open("demo=day-1&frozen");
+			const { list, events, world } = await page.evaluate(() => {
 				const b = window.__busybodies!;
-				b.step(45);
-				return b.entities().map((e) => `${e.key}:${e.spot}:${e.pose}:${e.frame}:${e.walk}:${e.x},${e.y}`);
+				b.step(30);
+				return { list: b.entities(), events: b.events(), world: Object.keys(b.world()!.actors).length };
 			});
+			expect(world).toBe(list.length);
+			for (const e of list) {
+				expect(typeof e.spot).toBe("string");
+				expect(String(e.spot).length).toBeGreaterThan(0);
+				expect(typeof e.pose).toBe("string");
+				expect(typeof e.walk).toBe("string");
+			}
+			// The new reviewer, the new session's lead, and a crew member walking a done todo to the planner.
+			const walking = list.filter((e) => e.walk && !String(e.spot).startsWith("planner:"));
+			expect(walking.map((e) => e.key).sort()).toEqual(["a:demo-session-20:demo-agent-hired-1", "s:demo-session-30"]);
+			expect(list.filter((e) => e.walk && String(e.spot) === "planner:demo-session-20")).toHaveLength(1);
+			expect(events.some((e) => e.type === "review" && e.state === "start")).toBe(true);
+			expect(events.some((e) => e.type === "handover")).toBe(true);
 			await page.close();
-			return out;
-		};
-		expect(await frame()).toEqual(await frame());
-	}, T);
+		},
+		T,
+	);
+
+	test(
+		"waiting on you pulses the room and shows the top pill",
+		async () => {
+			const page = await open("demo=day-2&frozen");
+			const r = await page.evaluate(() => {
+				const b = window.__busybodies!;
+				b.step(5);
+				const pill = document.querySelector("#hud .waiting") as HTMLElement;
+				const lead = b.entities().find((e) => e.key === "s:demo-session-16")!;
+				return {
+					pulsing: b.pulsing().areas,
+					pill: pill.hidden ? "" : pill.textContent,
+					pose: String(lead.pose),
+					cue: String(lead.cue),
+					walk: String(lead.walk),
+				};
+			});
+			expect(r.pulsing).toEqual(["room:lanternfish"]);
+			expect(r.pill).toBe("1 waiting on you");
+			// It takes a ticket to your office: walking there (looking where it is going before its feet
+			// move, so still in its last pose), or holding the ticket in the queue.
+			expect(["ticketPolite", "ticketWait", "bellRing", "waitingPlease"]).toContain(r.cue);
+			if (!r.walk.endsWith(" look")) expect(["walk", r.cue]).toContain(r.pose);
+			await page.close();
+		},
+		T,
+	);
+
+	test(
+		"a beat of the demo day steps to the same frame every time",
+		async () => {
+			const frame = async () => {
+				const page = await open("demo=day-3&frozen");
+				const out = await page.evaluate(() => {
+					const b = window.__busybodies!;
+					b.step(45);
+					return b.entities().map((e) => `${e.key}:${e.spot}:${e.pose}:${e.frame}:${e.walk}:${e.x},${e.y}`);
+				});
+				await page.close();
+				return out;
+			};
+			expect(await frame()).toEqual(await frame());
+		},
+		T,
+	);
 });
 
 describe("the voice", () => {
-	test("an idle office talks in single renders: no frame loop, and bubbles come down", async () => {
-		const page = await open("demo=idle&settle=0&calm");
-		const c = await measure(page, 2500);
-		const sass = await page.evaluate(() => window.__busybodies!.sass()!);
-		// Someone is napping out loud, and the sign slots have their counters.
-		expect(sass.triggers.some((t) => t.kind === "idle")).toBe(true);
-		expect(Object.keys(sass.signs).length).toBeGreaterThan(0);
-		// Bubbles are drawn once each, on demand: no ticker, no animation frames.
-		expect(c.tickerRunning).toBe(false);
-		expect(c.animationFrames).toBe(0);
-		expect(c.renders).toBeLessThanOrEqual(8);
-		// At whole-office zoom, at most two bubbles at once.
-		expect(sass.bubbles.length).toBeLessThanOrEqual(2);
-		await page.close();
-	}, T);
+	test(
+		"an idle office talks in single renders: no frame loop, and bubbles come down",
+		async () => {
+			const page = await open("demo=idle&settle=0&calm");
+			const c = await measure(page, 2500);
+			const sass = await page.evaluate(() => window.__busybodies!.sass()!);
+			// Someone is napping out loud, and the sign slots have their counters.
+			expect(sass.triggers.some((t) => t.kind === "idle")).toBe(true);
+			expect(Object.keys(sass.signs).length).toBeGreaterThan(0);
+			// Bubbles are drawn once each, on demand: no ticker, no animation frames.
+			expect(c.tickerRunning).toBe(false);
+			expect(c.animationFrames).toBe(0);
+			expect(c.renders).toBeLessThanOrEqual(8);
+			// At whole-office zoom, at most two bubbles at once.
+			expect(sass.bubbles.length).toBeLessThanOrEqual(2);
+			await page.close();
+		},
+		T,
+	);
 
-	test("the busy day speaks through the director's seam", async () => {
-		const page = await open("demo=day-2&frozen");
-		const sass = await page.evaluate(() => window.__busybodies!.sass()!);
-		expect(sass.bubbles.length).toBeGreaterThan(0);
-		const keys = await page.evaluate(() => window.__busybodies!.entities().map((e) => e.key));
-		for (const b of sass.bubbles) expect(keys).toContain(b.key);
-		await page.close();
-	}, T);
+	test(
+		"the busy day speaks through the director's seam",
+		async () => {
+			const page = await open("demo=day-2&frozen");
+			const sass = await page.evaluate(() => window.__busybodies!.sass()!);
+			expect(sass.bubbles.length).toBeGreaterThan(0);
+			const keys = await page.evaluate(() => window.__busybodies!.entities().map((e) => e.key));
+			for (const b of sass.bubbles) expect(keys).toContain(b.key);
+			await page.close();
+		},
+		T,
+	);
 });

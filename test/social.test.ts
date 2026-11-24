@@ -2,17 +2,39 @@
 // foreman's round both ways, waiting leads looking at the YOU door, hand-off anticipation, staging,
 // and the cast noticing you when you come back. Every session and number is invented.
 import { describe, expect, test } from "bun:test";
-import { RULES, cueFor, direct } from "../src/scene/director/direct";
+import { RULES, direct } from "../src/scene/director/direct";
+import { cueFor } from "../src/scene/director/direct/cue";
 import { HANDOFF } from "../src/scene/director/handoff";
 import { HANDOFF_LOOK, NOTICE, RIPPLE, type View, freshReturn, pairUp, rippleDelay, waverOf, youDoor } from "../src/scene/director/social";
 import { TRIP } from "../src/scene/director/trips";
 import type { World } from "../src/scene/director/types";
-import { FloorPlan } from "../src/scene/office/layout";
-import { AISLE, BUILD, CELL_W, CROWD, OVERLAP, SQUEEZE, bodyRect, buildSlot, crewPlaces, crewSpot, crewSpots, crowdSlot, endGaps, endPlaces, faceFront, faceZone, floorFoot, meets, restagger, yieldFrom } from "../src/scene/office/world";
-import { CARD } from "../src/scene/office/propspots";
+import { FloorPlan } from "../src/scene/world/layout";
+import {
+	AISLE,
+	BUILD,
+	CELL_W,
+	CROWD,
+	OVERLAP,
+	SQUEEZE,
+	bodyRect,
+	buildSlot,
+	crewPlaces,
+	crewSpot,
+	crewSpots,
+	crowdSlot,
+	endGaps,
+	endPlaces,
+	faceFront,
+	faceZone,
+	floorFoot,
+	meets,
+	restagger,
+	yieldFrom,
+} from "../src/scene/world/world";
+import { CARD } from "../src/scene/world/propspots";
 import { demo } from "../src/mainview/demo";
-import { AT_VIEWER, GAZE, aimAt } from "../src/scene/rig/gaze";
-import { POSE, duration } from "../src/scene/rig/poses";
+import { AT_VIEWER, GAZE, aimAt } from "../src/scene/rig/data/gaze";
+import { POSE, duration } from "../src/scene/rig/data/poses";
 import type { Agent, Session, Snapshot } from "../src/watcher/model";
 
 const T0 = Date.UTC(2026, 10, 19, 14, 0);
@@ -49,7 +71,14 @@ const release = (agents: Agent[], extra: Partial<Session> = {}): Session => ({
 });
 
 const idle = (id: string, extra: Partial<Session> = {}): Session => ({
-	...release([], { id, title: `Invented ${id}`, state: "idle", startedAt: T0 - 60 * MIN + id.length, activity: { tool: "Read", at: T0 - 5 * MIN }, running: undefined }),
+	...release([], {
+		id,
+		title: `Invented ${id}`,
+		state: "idle",
+		startedAt: T0 - 60 * MIN + id.length,
+		activity: { tool: "Read", at: T0 - 5 * MIN },
+		running: undefined,
+	}),
 	...extra,
 });
 
@@ -232,7 +261,10 @@ describe("a front-row desk's crew", () => {
 		const places = crewPlaces(floor, d, 5);
 		expect(places.slice(0, 4)).toEqual(crewSpots(floor, d).slice(0, 4));
 		// The gap's middle, but just left of the neighbour's tower in it (its body clear of the bricks).
-		expect(places[4]!).toMatchObject({ x: Math.min(d.at.x + SQUEEZE.end.dx, Math.floor(d.at.x + CELL_W + BUILD.left - body / 2)), y: d.at.y + SQUEEZE.end.dy });
+		expect(places[4]!).toMatchObject({
+			x: Math.min(d.at.x + SQUEEZE.end.dx, Math.floor(d.at.x + CELL_W + BUILD.left - body / 2)),
+			y: d.at.y + SQUEEZE.end.dy,
+		});
 		// Its end's gap holds its neighbour's build spot: the place is kept all the same (it yields).
 		expect(endGaps(floor, d)[0]!.builder).toBe(floor.desks.get(endGaps(floor, d)[0]!.builder!)!.id);
 		const rel = new FloorPlan().update(demo("release").snapshot);
@@ -315,16 +347,19 @@ describe("staging", () => {
 		expect(r!.facing).toBe(-1);
 		expect(f).toBe(front);
 		// Spaced spots keep their facing.
-		expect(faceFront([{ slot: rear, turn: false }, { slot: front, turn: true }])[0]).toBe(rear);
+		expect(
+			faceFront([
+				{ slot: rear, turn: false },
+				{ slot: front, turn: true },
+			])[0],
+		).toBe(rear);
 	});
 
 	test("finished crew in the kitchen's coffee line pair up facing each other", () => {
 		const { floor } = desk();
 		const kitchen = floor.areas.find((a) => a.kind === "kitchen")!;
 		const line = kitchen.spots.queue!;
-		const places = new Map(
-			[0, 1, 2].map((i) => [`k${i}`, { spot: `${kitchen.id}:queue:${i}`, area: kitchen.id, slot: line[i]! }] as const),
-		);
+		const places = new Map([0, 1, 2].map((i) => [`k${i}`, { spot: `${kitchen.id}:queue:${i}`, area: kitchen.id, slot: line[i]! }] as const));
 		pairUp(places, kitchen);
 		expect(places.get("k0")!.slot.facing).toBe(1);
 		expect(places.get("k1")!.slot.facing).toBe(-1);

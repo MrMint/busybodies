@@ -2,8 +2,8 @@
 // Pixi-free. The director (S4) draws what this returns through its say() and sign() hooks.
 export * from "./types";
 export * from "./lines";
-export * from "./lines-factory";
-export * from "./lines-bakery";
+export * from "../../themes/factory/lines";
+export * from "../../themes/bakery/lines";
 export * from "./bank";
 export * from "./detect";
 export * from "./scheduler";

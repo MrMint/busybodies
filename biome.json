@@ -35,25 +35,25 @@
 			"preset": "recommended",
 			"style": {
 				"noNonNullAssertion": "off",
-				"useImportType": "warn",
-				"useConst": "warn"
+				"useImportType": "error",
+				"useConst": "error"
 			},
 			"complexity": {
 				"noCommaOperator": "off",
-				"noBannedTypes": "warn",
-				"useOptionalChain": "warn",
-				"noUselessLoneBlockStatements": "warn"
+				"noBannedTypes": "error",
+				"useOptionalChain": "error",
+				"noUselessLoneBlockStatements": "error"
 			},
 			"correctness": {
 				"noVoidTypeReturn": "off",
-				"noUnusedImports": "warn",
-				"noUnusedVariables": "warn",
-				"noUnusedFunctionParameters": "warn"
+				"noUnusedImports": "error",
+				"noUnusedVariables": "error",
+				"noUnusedFunctionParameters": "error"
 			},
 			"suspicious": {
 				"noAssignInExpressions": "off",
 				"useIterableCallbackReturn": "off",
-				"noShadowRestrictedNames": "warn"
+				"noShadowRestrictedNames": "error"
 			},
 			"performance": {
 				"useDomNodeTextContent": "off"
@@ -62,7 +62,43 @@
 	},
 	"overrides": [
 		{
-			"includes": ["src/watcher/**", "src/shared/**", "src/scene/director/**", "src/scene/director.ts", "src/scene/sass/**"],
+			"includes": ["src/watcher/**", "src/shared/**", "src/bun/**"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"paths": {
+									"pixi.js": "This layer is Pixi-free: it is pure data and logic, tested without a browser. See AGENTS.md, Architecture."
+								},
+								"patterns": [
+									{
+										"group": ["**/scene/**"],
+										"message": "The watcher, shared code and the main process sit below the scene and never import it. See AGENTS.md, Architecture."
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": [
+				"src/scene/director/**",
+				"src/scene/director.ts",
+				"src/scene/sass/**",
+				"src/scene/world/**",
+				"src/scene/rig/data/**",
+				"src/scene/contract.ts",
+				"src/scene/theme/words.ts",
+				"src/themes/*/words.ts",
+				"src/themes/*/lines.ts",
+				"src/themes/factory/staging.ts",
+				"src/themes/factory/armplan.ts",
+				"src/themes/ids.ts"
+			],
 			"linter": {
 				"rules": {
 					"style": {

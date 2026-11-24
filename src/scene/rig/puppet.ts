@@ -5,15 +5,15 @@
 // the app ticker, and it reports `animating` so the owner can stop the ticker once it settles.
 import { Container, Sprite } from "pixi.js";
 import type { Atlas } from "./atlas";
-import { CHANNELS, type ChannelName, type Frame, REST, type TimedFrame, channels, diff } from "./frame";
-import { FEEL, Spring, SpringSet } from "./motion";
-import { type Passes, frameAt, passBeat, unit } from "./player";
-import { POSE, type Pose, duration } from "./poses";
-import { COSTUMES, type Role } from "./roles";
+import { type ChannelName, type Frame, REST, type TimedFrame, channels, diff } from "./data/frame";
+import { FEEL, Spring, SpringSet } from "./data/motion";
+import { type Passes, frameAt, passBeat, unit } from "./data/player";
+import { POSE, type Pose, duration } from "./data/poses";
+import { COSTUMES, type Role } from "./data/roles";
 import { ANCHORS as A, ACCENTS, PAPER_PALETTE } from "./theme";
-import { CHEEKS, LOOKS } from "./vocab";
-import { type LifeBeat, STILL, lifeAt } from "./life";
-import { type Aim, SIDE_EYES, WORK_LOOKS } from "./gaze";
+import { CHEEKS, LOOKS } from "./data/vocab";
+import { type LifeBeat, STILL, lifeAt } from "./data/life";
+import { type Aim, SIDE_EYES, WORK_LOOKS } from "./data/gaze";
 
 const RAD = Math.PI / 180;
 const MS_PER_TICK = 1000 / 60;
@@ -37,7 +37,7 @@ export interface PuppetOptions {
 	accent?: number;
 	/** Draw the rig's own desk when a pose asks for one. The office turns this off at a real desk. */
 	desk?: boolean;
-	/** Something worn on the face besides the costume's (a regular's accessory, rig/roles.ts): an
+	/** Something worn on the face besides the costume's (a regular's accessory, rig/data/roles.ts): an
 	 * atlas part like `wear/glasses`. */
 	wear?: string;
 }
@@ -85,7 +85,13 @@ export class Puppet extends Container {
 	/** The hand colour, for a prop that is the hand itself (a finger-gun). */
 	#skin: number;
 	#springs: SpringSet<ChannelName>;
-	#pop = { face: new Spring(1, FEEL.pop), heldL: new Spring(1, FEEL.pop), heldR: new Spring(1, FEEL.pop), front: new Spring(1, FEEL.pop), fx: new Spring(1, FEEL.pop) };
+	#pop = {
+		face: new Spring(1, FEEL.pop),
+		heldL: new Spring(1, FEEL.pop),
+		heldR: new Spring(1, FEEL.pop),
+		front: new Spring(1, FEEL.pop),
+		fx: new Spring(1, FEEL.pop),
+	};
 	/** The pops as a list, for the per-frame loops (no array made each frame). */
 	#pops: Spring[] = Object.values(this.#pop);
 	/** The parts that come and go (props, the desk, the work, binoculars, the fx) shown now. They
@@ -600,5 +606,3 @@ export class Puppet extends Container {
 		arm.held.scale.set(heldScale);
 	}
 }
-
-export { CHANNELS };

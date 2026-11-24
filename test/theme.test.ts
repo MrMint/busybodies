@@ -5,10 +5,13 @@ import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { readSettings, settingsFile, writeSettings } from "../src/bun/settings";
-import { ARM, ArmPlan, solve } from "../src/scene/theme/armplan";
-import { THEME_IDS, themeId } from "../src/scene/theme/id";
-import { FACTORY_WORDS, BAKERY_WORDS, OFFICE_WORDS, wordsFor } from "../src/scene/theme/words";
-import { FloorPlan } from "../src/scene/office/layout";
+import { ARM, ArmPlan, solve } from "../src/themes/factory/armplan";
+import { THEME_IDS, themeId } from "../src/themes/ids";
+import { wordsFor } from "../src/scene/theme/words";
+import { BAKERY_WORDS } from "../src/themes/bakery/words";
+import { FACTORY_WORDS } from "../src/themes/factory/words";
+import { OFFICE_WORDS } from "../src/themes/office/words";
+import { FloorPlan } from "../src/scene/world/layout";
 
 describe("theme words", () => {
 	test("?theme= picks a known theme, anything else is the office", () => {

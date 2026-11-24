@@ -2,8 +2,8 @@
 // back to its crew spot when its work changes (plan-next stream C). One user per station; the next
 // ones queue beside it, and anyone who finds every station and queue of its kind full stays at its
 // bench. Pure and deterministic: who goes first is decided by when its kind started, then its key.
-import { type Station, useFor } from "../office/world";
-import type { StationKind } from "./stations";
+import { type Station, useFor } from "../world/world";
+import type { StationKind } from "../world/stations";
 
 /** A crew member's trip, kept on the actor between directions. */
 export interface Trip {
@@ -69,7 +69,9 @@ export function planTrips(wants: Want[], now: number): Map<string, Trip> {
 	}
 	// Then the queue, in the order it formed, then newcomers in the order their work started.
 	const queued = (w: Want) => w.was !== undefined && w.was.queue > 0 && w.was.kind === kindOf(w);
-	const line = rest.filter(queued).sort((a, b) => a.was!.since - b.was!.since || a.was!.queue - b.was!.queue || order({ t: 0, key: a.key }, { t: 0, key: b.key }));
+	const line = rest
+		.filter(queued)
+		.sort((a, b) => a.was!.since - b.was!.since || a.was!.queue - b.was!.queue || order({ t: 0, key: a.key }, { t: 0, key: b.key }));
 	const fresh = rest.filter((w) => !queued(w)).sort((a, b) => order({ t: a.since, key: a.key }, { t: b.since, key: b.key }));
 	for (const w of [...line, ...fresh]) {
 		const kind = kindOf(w)!;
@@ -81,7 +83,9 @@ export function planTrips(wants: Want[], now: number): Map<string, Trip> {
 			continue;
 		}
 		const room = (s: Station) => (queues.get(s.id)?.length ?? 0) < s.queue.length;
-		const shortest = (mine && room(mine) ? mine : undefined) ?? options.filter(room).sort((a, b) => (queues.get(a.id)?.length ?? 0) - (queues.get(b.id)?.length ?? 0))[0];
+		const shortest =
+			(mine && room(mine) ? mine : undefined) ??
+			options.filter(room).sort((a, b) => (queues.get(a.id)?.length ?? 0) - (queues.get(b.id)?.length ?? 0))[0];
 		if (shortest) wait(w, shortest);
 	}
 	return out;

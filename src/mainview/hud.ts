@@ -6,8 +6,9 @@
 // the camera there, click it again (or the pin) to let the camera cut again (mainview/shots.ts).
 import type { Shot, Tile } from "../scene/director/shots";
 import type { Office } from "../scene/office/office";
-import { crewOf } from "../scene/office/placement";
-import type { Session, Snapshot } from "../watcher/model";
+import { crewOf } from "../scene/world/placement";
+import type { Snapshot } from "../watcher/model";
+import { flatSessions } from "../watcher/model";
 
 /** Compact only: the height kept clear under the picture for the room tiles. */
 export const TILES_H = 24;
@@ -69,8 +70,6 @@ export interface HudOptions {
 	/** Compact only: a room tile was clicked to pin it (or unpin: undefined). */
 	pin?: (area: string | undefined) => void;
 }
-
-const flat = (list: Session[]): Session[] => list.flatMap((s) => [s, ...flat(s.children)]);
 
 export function installHud(office: Office, opts: HudOptions = {}) {
 	const style = document.createElement("style");
@@ -176,7 +175,7 @@ export function installHud(office: Office, opts: HudOptions = {}) {
 			if (strip.hidden !== (tiles.length === 0)) strip.hidden = tiles.length === 0;
 		},
 		update(snapshot: Snapshot) {
-			const sessions = flat(snapshot.sessions);
+			const sessions = flatSessions(snapshot.sessions);
 			const out = sessions.reduce((n, s) => n + crewOf(s.agents).filter((a) => a.status === "running").length, 0);
 			const t = new Date(snapshot.at);
 			set(".clock", `${String(t.getHours()).padStart(2, "0")}:${String(t.getMinutes()).padStart(2, "0")}`);

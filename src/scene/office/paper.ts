@@ -4,7 +4,8 @@
 // the signboard that fits its text. Nothing here is per-frame.
 import { BitmapFont, BitmapText, Container, Graphics, Text, type TextStyleOptions, Texture } from "pixi.js";
 import type { SignText } from "../theme/words";
-import type { Rect, WallItem } from "./world";
+import type { Rect, WallItem } from "../world/world";
+import { hash31 } from "../../shared/hash";
 
 export type { SignText } from "../theme/words";
 export type { FurnitureKind } from "../theme/types";
@@ -14,10 +15,10 @@ export const SHADOW = { color: INK, alpha: 0.14 };
 export const SUN = 0xffe500;
 export const RED = 0xff6b6b;
 export const GREEN = 0x2fcf83;
-export const FONT = 'ui-rounded, "SF Pro Rounded", "Nunito", "Varela Round", system-ui, sans-serif';
+const FONT = 'ui-rounded, "SF Pro Rounded", "Nunito", "Varela Round", system-ui, sans-serif';
 
 export const line = (width: number) => ({ width, color: INK, join: "round" as const, cap: "round" as const });
-export const hash = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
+export const hash = hash31;
 /** A small, fixed wobble from a seed: -1 to 1. */
 export const wob = (seed: number, i: number) => (((seed + i * 2654435761) >>> 0) % 1000) / 500 - 1;
 
@@ -78,7 +79,7 @@ export interface SignStyle {
 
 /** A wall sign's yellow: a sticky note's, softer than SUN, so a sign never pulls the eye before the
  * characters do. */
-export const NOTE_YELLOW = 0xffe66b;
+const NOTE_YELLOW = 0xffe66b;
 
 export const PAPER_SIGNS: SignStyle = { sign: NOTE_YELLOW, signAlt: 0xffd0e4, whiteboard: 0xffffff, frame: 0xffffff };
 
@@ -93,9 +94,12 @@ export function signboard(kind: WallItem["kind"], r: Rect, content: SignText | u
 	const x = -r.w / 2;
 	const y = -r.h / 2 + (style.top ?? 0);
 	const h = r.h - (style.top ?? 0);
-	const fill = kind === "sign" ? (seed % 3 === 1 ? style.signAlt : style.sign) : kind === "whiteboard" ? style.whiteboard : kind === "frame" ? style.frame : 0xffffff;
+	const fill =
+		kind === "sign" ? (seed % 3 === 1 ? style.signAlt : style.sign) : kind === "whiteboard" ? style.whiteboard : kind === "frame" ? style.frame : 0xffffff;
 	if (kind === "sign") g.rect(x + 4, -r.h / 2 + 5, r.w, r.h).fill(SHADOW);
-	g.roundRect(x, -r.h / 2, r.w, r.h, kind === "sign" ? 4 : 8).fill(fill).stroke(line(kind === "sign" ? 3 : 5));
+	g.roundRect(x, -r.h / 2, r.w, r.h, kind === "sign" ? 4 : 8)
+		.fill(fill)
+		.stroke(line(kind === "sign" ? 3 : 5));
 	if (kind === "frame") g.roundRect(x + 8, -r.h / 2 + 8, r.w - 16, r.h - 16, 4).stroke({ width: 2, color: INK, alpha: 0.4 });
 	if (style.dress && (kind === "sign" || kind === "whiteboard" || kind === "frame")) style.dress(g, kind, x, -r.h / 2, r.w, r.h);
 	const pad = kind === "sign" ? 8 : 12;
@@ -220,16 +224,5 @@ export function pill(value: string, size: number, fill = 0xffffff): Container {
 		.stroke(line(3));
 	t.position.set(size * 0.7, size * 0.2);
 	c.addChild(g, t);
-	return c;
-}
-
-/** The dark name tab on a room's corner. */
-export function nameTab(value: string): Container {
-	const c = new Container();
-	const t = label(value, 30, "800", 0xffffff);
-	const g = new Graphics().roundRect(0, 0, t.width + 28, t.height + 14, 12).fill(INK);
-	t.position.set(14, 6);
-	c.addChild(g, t);
-	c.rotation = -0.035;
 	return c;
 }

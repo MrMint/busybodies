@@ -4,11 +4,11 @@
 // outline, the view out of each window, faint paper grain, and the room's name painted at its
 // threshold in the hallway (a vinyl decal, or a stencil in the factory) instead of a floating tab.
 import { Container, FillPattern, Graphics } from "pixi.js";
-import { type Phase, SHADOW } from "./daylight";
+import { type Phase, SHADOW } from "../world/daylight";
 import { drawOutlook, type SunSpot } from "./outlook";
 import { INK, grainTexture, hash, noise, text, wobblyRect } from "./paper";
 import type { SceneLight } from "../theme/types";
-import type { Area, Rect } from "./world";
+import type { Area, Rect } from "../world/world";
 
 /** How far a room's name sits from its edge, into the hallway, and how much room it may take. */
 export const DECAL = { gap: 9, pad: 22 } as const;
@@ -40,7 +40,12 @@ export function dressRoom(c: Container, a: Area, d: Dressing): void {
 	if ((a.kind === "project" || a.kind === "vacant") && a.cells.length) {
 		const xs = a.cells.map((r) => r.x);
 		const ys = a.cells.map((r) => r.y);
-		const r = { x: Math.min(...xs) + 10, y: Math.min(...ys) + 10, w: Math.max(...xs) - Math.min(...xs) + a.cells[0]!.w - 20, h: Math.max(...ys) - Math.min(...ys) + a.cells[0]!.h - 20 };
+		const r = {
+			x: Math.min(...xs) + 10,
+			y: Math.min(...ys) + 10,
+			w: Math.max(...xs) - Math.min(...xs) + a.cells[0]!.w - 20,
+			h: Math.max(...ys) - Math.min(...ys) + a.cells[0]!.h - 20,
+		};
 		if (light.cluster === "rug") rug(g, r, seed, d.rug);
 		else zone(g, r);
 	}
@@ -151,10 +156,18 @@ function decal(a: Area, d: Dressing): Container {
 		g.rect(x - 8, y - 3, t.width + 16, t.height + 6).fill(0xd8d5ce);
 		const c = 7;
 		const b = { x: x - 8, y: y - 3, w: t.width + 16, h: t.height + 6 };
-		g.moveTo(b.x, b.y + c).lineTo(b.x, b.y).lineTo(b.x + c, b.y);
-		g.moveTo(b.x + b.w - c, b.y).lineTo(b.x + b.w, b.y).lineTo(b.x + b.w, b.y + c);
-		g.moveTo(b.x + b.w, b.y + b.h - c).lineTo(b.x + b.w, b.y + b.h).lineTo(b.x + b.w - c, b.y + b.h);
-		g.moveTo(b.x + c, b.y + b.h).lineTo(b.x, b.y + b.h).lineTo(b.x, b.y + b.h - c);
+		g.moveTo(b.x, b.y + c)
+			.lineTo(b.x, b.y)
+			.lineTo(b.x + c, b.y);
+		g.moveTo(b.x + b.w - c, b.y)
+			.lineTo(b.x + b.w, b.y)
+			.lineTo(b.x + b.w, b.y + c);
+		g.moveTo(b.x + b.w, b.y + b.h - c)
+			.lineTo(b.x + b.w, b.y + b.h)
+			.lineTo(b.x + b.w - c, b.y + b.h);
+		g.moveTo(b.x + c, b.y + b.h)
+			.lineTo(b.x, b.y + b.h)
+			.lineTo(b.x, b.y + b.h - c);
 		g.stroke({ width: 2.5, color: colour, alpha: 0.7 });
 		t.alpha = 0.82;
 	} else {
@@ -162,7 +175,10 @@ function decal(a: Area, d: Dressing): Container {
 		const ax = a.rect.x + DECAL.pad + size * 0.3;
 		const ay = y + t.height / 2;
 		const s = size * 0.3;
-		g.poly(above ? [ax - s, ay + s * 0.5, ax + s, ay + s * 0.5, ax, ay - s * 0.9] : [ax - s, ay - s * 0.5, ax + s, ay - s * 0.5, ax, ay + s * 0.9]).fill({ color: colour, alpha: 0.75 });
+		g.poly(above ? [ax - s, ay + s * 0.5, ax + s, ay + s * 0.5, ax, ay - s * 0.9] : [ax - s, ay - s * 0.5, ax + s, ay - s * 0.5, ax, ay + s * 0.9]).fill({
+			color: colour,
+			alpha: 0.75,
+		});
 		t.alpha = 0.78;
 	}
 	const c = new Container({ label: "decal" });

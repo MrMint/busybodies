@@ -1,11 +1,26 @@
 // The office floor plan: stable under change, and sane from 1 to 30 sessions. Every project and
 // title here is invented.
 import { describe, expect, test } from "bun:test";
-import { FloorPlan } from "../src/scene/office/layout";
+import { FloorPlan } from "../src/scene/world/layout";
 import { demo } from "../src/mainview/demo";
-import { LEAD_SIZE } from "../src/scene/office/placement";
-import { KITCHEN_WALL, MONITOR, ceilingPanels, deskParts } from "../src/scene/office/propspots";
-import { BUILD, DESK_TOP, SEAT, STATIONS_BASE, STATION_CREW, STRIP, type Rect, type World, bodyRect, crewPlaces, crewSlot, endPlaces, faceZone, meets } from "../src/scene/office/world";
+import { LEAD_SIZE } from "../src/scene/world/placement";
+import { KITCHEN_WALL, MONITOR, ceilingPanels, deskParts } from "../src/scene/world/propspots";
+import {
+	BUILD,
+	DESK_TOP,
+	SEAT,
+	STATIONS_BASE,
+	STATION_CREW,
+	STRIP,
+	type Rect,
+	type Floor,
+	bodyRect,
+	crewPlaces,
+	crewSlot,
+	endPlaces,
+	faceZone,
+	meets,
+} from "../src/scene/world/world";
 import type { Agent } from "../src/watcher/model";
 import type { Session, Snapshot } from "../src/watcher/model";
 
@@ -29,13 +44,13 @@ const session = (project: string, extra: Partial<Session> = {}): Session => ({
 const snap = (sessions: Session[]): Snapshot => ({ at: 0, sessions });
 
 /** A seeded generator, so a failing sequence can be replayed. */
-const rng = (seed: number) => () => ((seed = (seed * 1103515245 + 12345) >>> 0) / 2 ** 32);
+const rng = (seed: number) => () => (seed = (seed * 1103515245 + 12345) >>> 0) / 2 ** 32;
 
 const overlaps = (a: Rect, b: Rect) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 const inside = (a: Rect, b: Rect) => a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h;
 const flat = (list: Session[]): Session[] => list.flatMap((s) => [s, ...flat(s.children)]);
 
-function checkSane(world: World, sessions: Session[]): void {
+function checkSane(world: Floor, sessions: Session[]): void {
 	const ids = flat(sessions).map((s) => s.id);
 	expect([...world.desks.keys()].sort()).toEqual([...ids].sort());
 	for (const [i, a] of world.areas.entries()) {
@@ -64,7 +79,7 @@ function checkSane(world: World, sessions: Session[]): void {
 	for (const s of flat(sessions)) expect(world.areas.find((a) => a.desks.some((d) => d.id === s.id))!.name).toBe(s.project);
 }
 
-const deskCells = (w: World) => new Map([...w.desks].map(([id, d]) => [id, JSON.stringify(d.cell)]));
+const deskCells = (w: Floor) => new Map([...w.desks].map(([id, d]) => [id, JSON.stringify(d.cell)]));
 
 describe("layout stability", () => {
 	test("adding a session moves no other desk", () => {
@@ -131,7 +146,7 @@ describe("layout stability", () => {
 		const b = session("orbit-kit");
 		const c = session("breadbox");
 		const w1 = plan.update(snap([a, b, c]));
-		const xOf = (w: World, name: string) => w.areas.find((r) => r.name === name)!.rect.x;
+		const xOf = (w: Floor, name: string) => w.areas.find((r) => r.name === name)!.rect.x;
 		const w2 = plan.update(snap([a, c]));
 		expect(xOf(w2, "lanternfish")).toBe(xOf(w1, "lanternfish"));
 		expect(xOf(w2, "breadbox")).toBe(xOf(w1, "breadbox"));
@@ -223,8 +238,16 @@ describe("layout scaling", () => {
 
 describe("stations", () => {
 	const crew = (count: number): Agent[] =>
-		Array.from({ length: count }, (_, i) => ({ id: `c${i}`, role: "general-purpose", task: "invented", depth: 1, status: "running", lastWriteAt: 0, children: [] }));
-	const where = (w: World, project: string) =>
+		Array.from({ length: count }, (_, i) => ({
+			id: `c${i}`,
+			role: "general-purpose",
+			task: "invented",
+			depth: 1,
+			status: "running",
+			lastWriteAt: 0,
+			children: [],
+		}));
+	const where = (w: Floor, project: string) =>
 		new Map(w.areas.find((a) => a.name === project)!.stations.map((st) => [st.id, JSON.stringify([st.base, st.use, st.queue])]));
 
 	test("stations never move as sessions come and go, above the hallway or below it", () => {
@@ -251,7 +274,16 @@ describe("stations", () => {
 		expect(small.stations).toHaveLength(STATIONS_BASE.length);
 		list[0] = { ...list[0]!, agents: crew(STATION_CREW * 3) };
 		const big = plan.update(snap(list)).areas.find((a) => a.name === "lanternfish")!;
-		expect(big.stations.map((st) => st.id.split(":").slice(2).join(":"))).toEqual(["build:0", "test:0", "reference:0", "search:0", "web:0", "outbox:0", "build:1", "test:1"]);
+		expect(big.stations.map((st) => st.id.split(":").slice(2).join(":"))).toEqual([
+			"build:0",
+			"test:0",
+			"reference:0",
+			"search:0",
+			"web:0",
+			"outbox:0",
+			"build:1",
+			"test:1",
+		]);
 		// The base six stay put.
 		for (const st of small.stations) expect(big.stations.find((x) => x.id === st.id)!.base).toEqual(st.base);
 		// A two-row room has no space for more, however big the crew.
@@ -368,7 +400,8 @@ describe("the crew's towers stay in view", () => {
 		w: BUILD.wide * BUILD.brickW + 3 + 2,
 		h: courses * BUILD.brickH + 2,
 	});
-	const area = (a: Rect, b: Rect) => Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
+	const area = (a: Rect, b: Rect) =>
+		Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
 
 	test("crew on a desk's end place cover under 15% of any tower, a short one or a tall one, in either staging", () => {
 		let ends = 0;
@@ -387,7 +420,10 @@ describe("the crew's towers stay in view", () => {
 									for (const courses of [1, 3, 10]) {
 										const t = tower(other.at, courses);
 										const covered = area(body, t) / (t.w * t.h);
-										if (covered > 0.15) throw new Error(`${name || "busy"}/${staging ? "line" : "desks"}: ${d.id}'s end place covers ${(covered * 100).toFixed(0)}% of ${other.id}'s tower`);
+										if (covered > 0.15)
+											throw new Error(
+												`${name || "busy"}/${staging ? "line" : "desks"}: ${d.id}'s end place covers ${(covered * 100).toFixed(0)}% of ${other.id}'s tower`,
+											);
 									}
 								}
 							}

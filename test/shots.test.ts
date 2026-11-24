@@ -27,8 +27,14 @@ function run(steps: ShotInput[], from?: ShotState): ShotState[] {
 describe("resting", () => {
 	test("all idle: the whole office; busy: the busiest room; someone waiting: your office", () => {
 		expect(nextShot(undefined, input(T0)).shot).toMatchObject({ stop: { kind: "office" }, reason: "idle" });
-		expect(nextShot(undefined, input(T0, { score: { "room:teapot": 10, "room:kettle": 30 } })).shot).toMatchObject({ stop: { kind: "room", id: "room:kettle" }, reason: "busiest" });
-		expect(nextShot(undefined, input(T0, { score: { "room:kettle": 30 }, waiting: true })).shot).toMatchObject({ stop: { kind: "room", id: "yours" }, reason: "waiting" });
+		expect(nextShot(undefined, input(T0, { score: { "room:teapot": 10, "room:kettle": 30 } })).shot).toMatchObject({
+			stop: { kind: "room", id: "room:kettle" },
+			reason: "busiest",
+		});
+		expect(nextShot(undefined, input(T0, { score: { "room:kettle": 30 }, waiting: true })).shot).toMatchObject({
+			stop: { kind: "room", id: "yours" },
+			reason: "waiting",
+		});
 	});
 
 	test("ties go to the first room in reading order", () => {
@@ -39,7 +45,13 @@ describe("resting", () => {
 		const first = nextShot(undefined, input(T0, { score: { "room:teapot": 20, "room:kettle": 10 } }));
 		expect(first.shot.area).toBe("room:teapot");
 		// Kettle edges ahead: no move during the hold, nor after it while it is less than 1.5× busier.
-		const [a, b] = run([input(T0 + 10_000, { score: { "room:teapot": 20, "room:kettle": 50 } }), input(T0 + SHOTS.holdMs + 1, { score: { "room:teapot": 20, "room:kettle": 25 } })], first);
+		const [a, b] = run(
+			[
+				input(T0 + 10_000, { score: { "room:teapot": 20, "room:kettle": 50 } }),
+				input(T0 + SHOTS.holdMs + 1, { score: { "room:teapot": 20, "room:kettle": 25 } }),
+			],
+			first,
+		);
 		expect(a!.shot.area).toBe("room:teapot");
 		expect(b!.shot.area).toBe("room:teapot");
 		expect(b).toBe(a!); // nothing changed: the same state back
@@ -152,7 +164,11 @@ describe("pinning and starting over", () => {
 	});
 
 	test("deterministic: the same inputs give the same shots", () => {
-		const steps = [input(T0, { score: { "room:teapot": 4 } }), input(T0 + 9000, { news: [news("rush", "room:kettle", T0 + 9000)] }), input(T0 + 40_000, { score: { "room:spoon": 9 } })];
+		const steps = [
+			input(T0, { score: { "room:teapot": 4 } }),
+			input(T0 + 9000, { news: [news("rush", "room:kettle", T0 + 9000)] }),
+			input(T0 + 40_000, { score: { "room:spoon": 9 } }),
+		];
 		expect(run(steps)).toEqual(run(steps));
 	});
 });
@@ -191,10 +207,22 @@ describe("from the director", () => {
 	});
 
 	test("scores add heat and busy sessions by room; tiles show the most pressing state", () => {
-		const s = (id: string, state: string, children: Session[] = []) => ({ id, state, project: "p", origin: "cli", stateSince: T0, startedAt: T0, agents: [], children }) as unknown as Session;
-		const score = scoreByArea([s("a", "busy", [s("c", "busy")]), s("b", "idle")], {}, (id) => ({ a: "room:teapot", c: "room:teapot", b: "room:kettle" })[id], T0);
+		const s = (id: string, state: string, children: Session[] = []) =>
+			({ id, state, project: "p", origin: "cli", stateSince: T0, startedAt: T0, agents: [], children }) as unknown as Session;
+		const score = scoreByArea(
+			[s("a", "busy", [s("c", "busy")]), s("b", "idle")],
+			{},
+			(id) => ({ a: "room:teapot", c: "room:teapot", b: "room:kettle" })[id],
+			T0,
+		);
 		expect(score).toEqual({ "room:teapot": 2 * SHOTS.busyScore, "room:kettle": 0 });
 		const named = AREAS.slice(0, 5).map((a) => ({ ...a, name: a.id }));
-		expect(tilesFor(named, score, new Set(["room:kettle"]), new Set(["room:spoon", "yours"])).map((t) => t.state)).toEqual(["busy", "rush", "waiting", "idle", "waiting"]);
+		expect(tilesFor(named, score, new Set(["room:kettle"]), new Set(["room:spoon", "yours"])).map((t) => t.state)).toEqual([
+			"busy",
+			"rush",
+			"waiting",
+			"idle",
+			"waiting",
+		]);
 	});
 });

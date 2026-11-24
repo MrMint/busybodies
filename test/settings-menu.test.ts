@@ -58,7 +58,8 @@ describe("settings", () => {
 
 describe("tray menu", () => {
 	const status = { snapshot: null, compact: false, theme: "office" as const, calm: false };
-	const item = (menu: ReturnType<typeof trayMenu>, label: string) => menu.find((m) => "label" in m && m.label === label) as { action?: string; checked?: boolean } | undefined;
+	const item = (menu: ReturnType<typeof trayMenu>, label: string) =>
+		menu.find((m) => "label" in m && m.label === label) as { action?: string; checked?: boolean } | undefined;
 
 	test("Calm office is a toggle that shows its state; there is no Sound", () => {
 		const off = trayMenu(status, "CommandOrControl+Alt+B");
@@ -70,7 +71,9 @@ describe("tray menu", () => {
 	});
 
 	test("the Theme menu lists every theme, the Line among them, the saved one checked", () => {
-		const theme = trayMenu({ ...status, theme: "bakery" }, "CommandOrControl+Alt+B").find((m) => "label" in m && m.label === "Theme") as { submenu: { label: string; action: string; checked: boolean }[] };
+		const theme = trayMenu({ ...status, theme: "bakery" }, "CommandOrControl+Alt+B").find((m) => "label" in m && m.label === "Theme") as {
+			submenu: { label: string; action: string; checked: boolean }[];
+		};
 		expect(theme.submenu.map((m) => m.label)).toEqual(["Office", "Factory", "Bakery"]);
 		expect(theme.submenu.find((m) => m.checked)?.action).toBe("theme:bakery");
 	});

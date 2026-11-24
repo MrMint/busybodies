@@ -1,15 +1,15 @@
 // The rig's Pixi-free core: frames, pose timing, springs, interpolation, the atlas layout, and the
 // themes' painters, measured through a stand-in for pixi.js.
 import { describe, expect, mock, test } from "bun:test";
-import { pack } from "../src/scene/rig/pack";
-import { CHANNELS, REST, channels, describe as describeFrame, diff, parseFrame } from "../src/scene/rig/frame";
-import { FEEL, Spring, SpringSet, SUBSTEP_S, Tween, ease, lerp } from "../src/scene/rig/motion";
-import { choosePose, frameAt, hash, unit } from "../src/scene/rig/player";
-import { BEAT_MS, HABITS, POSE, POSES, duration } from "../src/scene/rig/poses";
-import { ROLES, roleFor } from "../src/scene/rig/roles";
-import { ARMS, FACES, SPOTS, type Arm } from "../src/scene/rig/vocab";
-import { HANDOFF, PUPPET_HEIGHT, REACH, STATION, STATION_CREW_PX, TRAY, WORK, handAt, solveArm } from "../src/scene/rig/reach";
-import { STATION_POSE, STATION_REACH } from "../src/scene/director/stations";
+import { pack } from "../src/scene/rig/data/pack";
+import { CHANNELS, REST, channels, describe as describeFrame, diff, parseFrame } from "../src/scene/rig/data/frame";
+import { FEEL, Spring, SpringSet, SUBSTEP_S, Tween, ease, lerp } from "../src/scene/rig/data/motion";
+import { choosePose, frameAt, hash, unit } from "../src/scene/rig/data/player";
+import { BEAT_MS, HABITS, POSE, POSES, duration } from "../src/scene/rig/data/poses";
+import { ROLES, roleFor } from "../src/scene/rig/data/roles";
+import { ARMS, FACES, SPOTS, type Arm } from "../src/scene/rig/data/vocab";
+import { HANDOFF, PUPPET_HEIGHT, REACH, STATION, STATION_CREW_PX, TRAY, WORK, handAt, solveArm } from "../src/scene/rig/data/reach";
+import { STATION_POSE, STATION_REACH } from "../src/scene/world/stations";
 
 describe("frames", () => {
 	test("tokens parse into a complete frame, everything else at rest", () => {
@@ -39,7 +39,20 @@ describe("frames", () => {
 
 describe("poses", () => {
 	test("every brief pose exists", () => {
-		const need = ["typing", "waiting", "waitingPlease", "testFailed", "prOpened", "handover", "asleep", "stalled", "done", "thinking", "celebrate", "grumpy"];
+		const need = [
+			"typing",
+			"waiting",
+			"waitingPlease",
+			"testFailed",
+			"prOpened",
+			"handover",
+			"asleep",
+			"stalled",
+			"done",
+			"thinking",
+			"celebrate",
+			"grumpy",
+		];
 		for (const n of need) expect(POSE[n]).toBeDefined();
 		expect(HABITS.map((p) => p.name)).toEqual(["feetUp", "faceDown", "chairSpin", "scrolling", "waterCooler", "stretch", "slowWalk"]);
 		expect(POSES.filter((p) => p.rarity < 1).length).toBeGreaterThanOrEqual(1);
@@ -111,7 +124,8 @@ describe("stations", () => {
 			expect(ARMS[name as Arm]).toBeDefined();
 			const at = handAt(name as Arm, r.body, r.side ?? 1, r.grip);
 			const miss = Math.hypot(at.x - r.at.x, at.y - r.at.y);
-			if (miss > 1) throw new Error(`ARMS.${name} misses its point by ${miss.toFixed(1)}: re-solve it, solveArm gives ${JSON.stringify(solveArm(r.at, { ...r }))}`);
+			if (miss > 1)
+				throw new Error(`ARMS.${name} misses its point by ${miss.toFixed(1)}: re-solve it, solveArm gives ${JSON.stringify(solveArm(r.at, { ...r }))}`);
 			// Reachable without locking the elbow straight.
 			expect(ARMS[name as Arm][1]).not.toBe(0);
 		}
@@ -120,7 +134,10 @@ describe("stations", () => {
 	test("a station arm is used with the body and the hand it was solved for", () => {
 		for (const p of POSES) {
 			for (const f of p.frames) {
-				for (const [arm, side] of [[f.armR, 1], [f.armL, -1]] as const) {
+				for (const [arm, side] of [
+					[f.armR, 1],
+					[f.armL, -1],
+				] as const) {
 					const r = REACH[arm];
 					if (!r) continue;
 					if (!r.mirror) expect(`${p.name} ${arm} side ${side}`).toBe(`${p.name} ${arm} side ${r.side ?? 1}`);
@@ -156,8 +173,16 @@ describe("wave 2", () => {
 
 	test("the contract holds: names, triggers and play modes the director plays", () => {
 		const want: Record<string, "loop" | "once"> = {
-			buried: "loop", ticketWait: "loop", bellRing: "once", stickyCarry: "loop", stickyPost: "once", rushRun: "loop",
-			envelopeCarry: "loop", copierFeud: "loop", flourish: "once", handOff: "once",
+			buried: "loop",
+			ticketWait: "loop",
+			bellRing: "once",
+			stickyCarry: "loop",
+			stickyPost: "once",
+			rushRun: "loop",
+			envelopeCarry: "loop",
+			copierFeud: "loop",
+			flourish: "once",
+			handOff: "once",
 		};
 		for (const [name, play] of Object.entries(want)) expect(POSE[name]).toMatchObject({ play, trigger: "working" });
 		expect(POSE.handOff!.partner?.role).toBe("builder");
@@ -481,7 +506,10 @@ describe("atlas layout", () => {
 	});
 
 	test("the layout is stable", () => {
-		const parts = [{ name: "b", x: 0, y: 0, width: 5, height: 5 }, { name: "a", x: 0, y: 0, width: 5, height: 5 }];
+		const parts = [
+			{ name: "b", x: 0, y: 0, width: 5, height: 5 },
+			{ name: "a", x: 0, y: 0, width: 5, height: 5 },
+		];
 		expect(pack(parts)).toEqual(pack([...parts].reverse()));
 	});
 });
@@ -525,24 +553,52 @@ class FakeGraphics {
 		this.#m = [A * a + C * b, B * a + D * b, A * c + C * d, B * c + D * d, A * tx + C * ty + TX, B * tx + D * ty + TY];
 		return this;
 	}
-	moveTo(x: number, y: number) { return this.#pt(x, y); }
-	lineTo(x: number, y: number) { return this.#pt(x, y); }
-	quadraticCurveTo(cx: number, cy: number, x: number, y: number) { return this.#pt(cx, cy).#pt(x, y); }
-	bezierCurveTo(ax: number, ay: number, bx: number, by: number, x: number, y: number) { return this.#pt(ax, ay).#pt(bx, by).#pt(x, y); }
-	closePath() { return this; }
+	moveTo(x: number, y: number) {
+		return this.#pt(x, y);
+	}
+	lineTo(x: number, y: number) {
+		return this.#pt(x, y);
+	}
+	quadraticCurveTo(cx: number, cy: number, x: number, y: number) {
+		return this.#pt(cx, cy).#pt(x, y);
+	}
+	bezierCurveTo(ax: number, ay: number, bx: number, by: number, x: number, y: number) {
+		return this.#pt(ax, ay).#pt(bx, by).#pt(x, y);
+	}
+	closePath() {
+		return this;
+	}
 	poly(pts: number[]) {
 		for (let i = 0; i < pts.length; i += 2) this.#pt(pts[i]!, pts[i + 1]!);
 		return this;
 	}
-	rect(x: number, y: number, w: number, h: number) { return this.#boxPts(x, y, x + w, y + h); }
-	roundRect(x: number, y: number, w: number, h: number) { return this.#boxPts(x, y, x + w, y + h); }
-	circle(x: number, y: number, r: number) { return this.#boxPts(x - r, y - r, x + r, y + r); }
-	ellipse(x: number, y: number, rx: number, ry: number) { return this.#boxPts(x - rx, y - ry, x + rx, y + ry); }
-	arc(x: number, y: number, r: number) { return this.#boxPts(x - r, y - r, x + r, y + r); }
-	star(x: number, y: number, _n: number, r: number) { return this.#boxPts(x - r, y - r, x + r, y + r); }
-	regularPoly(x: number, y: number, r: number) { return this.#boxPts(x - r, y - r, x + r, y + r); }
-	fill() { return this.#commit(0); }
-	stroke(s?: { width?: number }) { return this.#commit((s?.width ?? 1) / 2); }
+	rect(x: number, y: number, w: number, h: number) {
+		return this.#boxPts(x, y, x + w, y + h);
+	}
+	roundRect(x: number, y: number, w: number, h: number) {
+		return this.#boxPts(x, y, x + w, y + h);
+	}
+	circle(x: number, y: number, r: number) {
+		return this.#boxPts(x - r, y - r, x + r, y + r);
+	}
+	ellipse(x: number, y: number, rx: number, ry: number) {
+		return this.#boxPts(x - rx, y - ry, x + rx, y + ry);
+	}
+	arc(x: number, y: number, r: number) {
+		return this.#boxPts(x - r, y - r, x + r, y + r);
+	}
+	star(x: number, y: number, _n: number, r: number) {
+		return this.#boxPts(x - r, y - r, x + r, y + r);
+	}
+	regularPoly(x: number, y: number, r: number) {
+		return this.#boxPts(x - r, y - r, x + r, y + r);
+	}
+	fill() {
+		return this.#commit(0);
+	}
+	stroke(s?: { width?: number }) {
+		return this.#commit((s?.width ?? 1) / 2);
+	}
 	save() {
 		this.#stack.push(this.#m);
 		return this;
@@ -551,12 +607,23 @@ class FakeGraphics {
 		this.#m = this.#stack.pop() ?? [1, 0, 0, 1, 0, 0];
 		return this;
 	}
-	translateTransform(x: number, y: number) { return this.#then([1, 0, 0, 1, x, y]); }
-	rotateTransform(a: number) { return this.#then([Math.cos(a), Math.sin(a), -Math.sin(a), Math.cos(a), 0, 0]); }
+	translateTransform(x: number, y: number) {
+		return this.#then([1, 0, 0, 1, x, y]);
+	}
+	rotateTransform(a: number) {
+		return this.#then([Math.cos(a), Math.sin(a), -Math.sin(a), Math.cos(a), 0, 0]);
+	}
 }
 class FakeText {
 	anchor = { set() {} };
-	position = { x: 0, y: 0, set(x: number, y: number) { this.x = x; this.y = y; } };
+	position = {
+		x: 0,
+		y: 0,
+		set(x: number, y: number) {
+			this.x = x;
+			this.y = y;
+		},
+	};
 	rotation = 0;
 	size: number;
 	length: number;
@@ -569,8 +636,8 @@ mock.module("pixi.js", () => ({ Graphics: FakeGraphics, Text: FakeText, Containe
 
 describe("themes", async () => {
 	const { paperTheme } = await import("../src/scene/rig/theme");
-	const { factoryTheme, FACTORY_REPAINTS, FACTORY_EXTRAS } = await import("../src/scene/rig/factory");
-	const { ATLAS_WIDTH, PAD, RESOLUTION } = await import("../src/scene/rig/pack");
+	const { factoryTheme, FACTORY_REPAINTS, FACTORY_EXTRAS } = await import("../src/themes/factory/rig");
+	const { ATLAS_WIDTH, PAD, RESOLUTION } = await import("../src/scene/rig/data/pack");
 	const paper = paperTheme();
 	const factory = factoryTheme();
 	const measure = (t: typeof paper) =>
@@ -603,7 +670,11 @@ describe("themes", async () => {
 		const repainted = new Set<string>(FACTORY_REPAINTS);
 		for (const name of Object.keys(paper.parts)) if (!repainted.has(name)) expect(factoryBox.get(name), name).toEqual(paperBox.get(name)!);
 		// The only new parts are the role leg and arm the puppet looks for.
-		expect(Object.keys(factory.parts).filter((n) => !paper.parts[n]).sort()).toEqual([...FACTORY_EXTRAS].sort());
+		expect(
+			Object.keys(factory.parts)
+				.filter((n) => !paper.parts[n])
+				.sort(),
+		).toEqual([...FACTORY_EXTRAS].sort());
 	});
 
 	test("every factory part draws something, and a repainted station part or prop keeps its size", () => {
@@ -628,7 +699,7 @@ describe("themes", async () => {
 	});
 
 	describe("the office", async () => {
-		const { officeTheme, OFFICE_REPAINTS, OFFICE_EXTRAS, OFFICE_DROPS } = await import("../src/scene/rig/office");
+		const { officeTheme, OFFICE_REPAINTS, OFFICE_EXTRAS, OFFICE_DROPS } = await import("../src/themes/office/rig");
 		const { rigTheme } = await import("../src/scene/rig/themes");
 		const office = officeTheme();
 		const officeBox = measure(office);
@@ -648,14 +719,40 @@ describe("themes", async () => {
 				expect(paper.parts[name], `${name} is a paper part`).toBeDefined();
 				expect(office.parts[name], `${name} is repainted`).not.toBe(paper.parts[name]);
 			}
-			for (const name of Object.keys(paper.parts)) if (!repainted.has(name) && !dropped.has(name)) expect(officeBox.get(name), name).toEqual(paperBox.get(name)!);
-			expect(Object.keys(office.parts).filter((n) => !paper.parts[n]).sort()).toEqual([...OFFICE_EXTRAS].sort());
+			for (const name of Object.keys(paper.parts))
+				if (!repainted.has(name) && !dropped.has(name)) expect(officeBox.get(name), name).toEqual(paperBox.get(name)!);
+			expect(
+				Object.keys(office.parts)
+					.filter((n) => !paper.parts[n])
+					.sort(),
+			).toEqual([...OFFICE_EXTRAS].sort());
 			// No hard hat, apron, kerchief or pith helmet is left in the office: every hat and front piece is its own.
 			for (const n of Object.keys(paper.parts).filter((n) => /^(hat|front)\//.test(n))) expect(repainted.has(n) || dropped.has(n), n).toBe(true);
 		});
 
 		test("every piece of construction gear is repainted, and the factory keeps it", () => {
-			const gear = ["held/hammer", "held/wrench", "held/bolt", "held/gear", "held/brick", "work/nail1", "work/nail2", "work/nail3", "work/bent", "work/nut1", "work/nut2", "work/nut3", "work/crate", "work/stack", "work/stackL", "work/stackR", "work/brick", "prop/plan", "prop/plan2", "prop/roll"];
+			const gear = [
+				"held/hammer",
+				"held/wrench",
+				"held/bolt",
+				"held/gear",
+				"held/brick",
+				"work/nail1",
+				"work/nail2",
+				"work/nail3",
+				"work/bent",
+				"work/nut1",
+				"work/nut2",
+				"work/nut3",
+				"work/crate",
+				"work/stack",
+				"work/stackL",
+				"work/stackR",
+				"work/brick",
+				"prop/plan",
+				"prop/plan2",
+				"prop/roll",
+			];
 			for (const n of gear) expect(repainted.has(n), n).toBe(true);
 			for (const n of ["held/hammer", "work/nail1", "work/stack", "work/brick", "work/nut1"]) expect(factoryBox.get(n), n).toEqual(paperBox.get(n)!);
 		});
@@ -673,7 +770,9 @@ describe("themes", async () => {
 				for (const k of ["x0", "y0", "x1", "y1"] as const) expect(Math.abs(a[k] - b[k]), `${name} ${k}`).toBeLessThan(6);
 			}
 			// The sheaf's top is where the nail's head was at each strike, so the stapler lands on it.
-			(["work/nail1", "work/nail2", "work/nail3"] as const).forEach((n, i) => expect(Math.abs(officeBox.get(n)!.y0 - WORK.nailTop[i]!), n).toBeLessThan(2.5));
+			(["work/nail1", "work/nail2", "work/nail3"] as const).forEach((n, i) =>
+				expect(Math.abs(officeBox.get(n)!.y0 - WORK.nailTop[i]!), n).toBeLessThan(2.5),
+			);
 		});
 
 		test("the office atlas packs within the atlas limits", () => {
@@ -685,9 +784,9 @@ describe("themes", async () => {
 	});
 
 	describe("the bakery", async () => {
-		const { bakeryTheme, BAKERY_REPAINTS } = await import("../src/scene/rig/bakery");
+		const { bakeryTheme, BAKERY_REPAINTS } = await import("../src/themes/bakery/rig");
 		const { rigTheme } = await import("../src/scene/rig/themes");
-		const { THEME_IDS } = await import("../src/scene/theme/id");
+		const { THEME_IDS } = await import("../src/themes/ids");
 		const bakery = bakeryTheme();
 		const bakeryBox = measure(bakery);
 		const repainted = new Set<string>(BAKERY_REPAINTS);
@@ -711,7 +810,20 @@ describe("themes", async () => {
 			for (const n of Object.keys(paper.parts).filter((n) => /^(hat|front)\//.test(n))) expect(repainted.has(n), n).toBe(true);
 			for (const n of Object.keys(paper.parts).filter((n) => n.startsWith("body/"))) expect(repainted.has(n), n).toBe(false);
 			// The construction gear and the office's stations are all bakery kit, and the confetti is sprinkles.
-			for (const n of ["held/hammer", "work/nail1", "work/stack", "work/nut1", "work/copier", "work/forms", "work/outbox", "work/tray4", "work/cabinet", "prop/bigEnvelope", "fx/conf1"]) expect(repainted.has(n), n).toBe(true);
+			for (const n of [
+				"held/hammer",
+				"work/nail1",
+				"work/stack",
+				"work/nut1",
+				"work/copier",
+				"work/forms",
+				"work/outbox",
+				"work/tray4",
+				"work/cabinet",
+				"prop/bigEnvelope",
+				"fx/conf1",
+			])
+				expect(repainted.has(n), n).toBe(true);
 		});
 
 		test("a repainted prop or station part keeps its size and its working ends, so the solved reaches still land", () => {
@@ -722,7 +834,9 @@ describe("themes", async () => {
 				for (const k of ["x0", "y0", "x1", "y1"] as const) expect(Math.abs(a[k] - b[k]), `${name} ${k}`).toBeLessThan(6);
 			}
 			// The dough's top is where the nail's head was at each strike, so the rolling pin lands on it.
-			(["work/nail1", "work/nail2", "work/nail3"] as const).forEach((n, i) => expect(Math.abs(bakeryBox.get(n)!.y0 - WORK.nailTop[i]!), n).toBeLessThan(2.5));
+			(["work/nail1", "work/nail2", "work/nail3"] as const).forEach((n, i) =>
+				expect(Math.abs(bakeryBox.get(n)!.y0 - WORK.nailTop[i]!), n).toBeLessThan(2.5),
+			);
 		});
 
 		test("the bakery atlas packs within the atlas limits", () => {

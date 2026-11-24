@@ -12,12 +12,11 @@
 // rush flickers its overhead light: a sprite over the room, multiplied, its alpha stepping on the
 // acting frames (only while life is on).
 import { Container, Graphics, type Renderer, RenderTexture, Sprite, Texture } from "pixi.js";
-import { LAMPS_ON, type Phase, SUNLIGHT, flicker } from "./daylight";
+import { LAMPS_ON, type Phase, SUNLIGHT, flicker } from "../world/daylight";
 
-export { flicker } from "./daylight";
 import { hash } from "./paper";
 import type { SceneLight } from "../theme/types";
-import type { Area, Rect, World } from "./world";
+import type { Area, Rect, Floor } from "../world/world";
 
 /** Light-map texels per world pixel, at most (a big office gets fewer, to stay under MAX_SIDE). */
 const SCALE = 1 / 6;
@@ -25,12 +24,12 @@ const MAX_SIDE = 2048;
 /** Around the slab, so its edge and the building's shadow are lit too. */
 const PAD = 40;
 /** At a room or desk stop, the rest of the building is this bright. */
-export const FOCUS_DIM = 0.66;
+const FOCUS_DIM = 0.66;
 
 export interface LightInput {
 	light: SceneLight;
 	phase: Phase;
-	world: World;
+	world: Floor;
 	/** The area the camera is on (a room stop, or a desk's room), if any. */
 	focus?: string;
 	/** Each session's desk, and its state ("busy", "idle"). */
@@ -56,7 +55,7 @@ const clamp = (v: number) => Math.max(0, Math.min(255, Math.round(v)));
 /** a × b, channel by channel (as multiply blending does). */
 export const mul = (a: number, b: number) => rgb((s) => (ch(a, s) * ch(b, s)) / 255);
 /** a scaled by k. */
-export const scale = (a: number, k: number) => rgb((s) => ch(a, s) * k);
+const scale = (a: number, k: number) => rgb((s) => ch(a, s) * k);
 /** From a to b, t of the way. */
 export const mix = (a: number, b: number, t: number) => rgb((s) => ch(a, s) + (ch(b, s) - ch(a, s)) * t);
 /** How far b is above a, per channel (what adding brings a up to b). */
@@ -298,7 +297,10 @@ export class Light extends Container {
 					const left = Math.max(a.rect.x + 14, Math.min(x0, x0 + dx));
 					const right = Math.min(a.rect.x + a.rect.w - 14, Math.max(x1, x1 + dx));
 					const clampX = (v: number) => Math.max(left, Math.min(right, v));
-					g.poly([clampX(x0), y0, clampX(x1), y0, clampX(x1 + dx), y0 + len, clampX(x0 + dx), y0 + len]).fill({ color: light.sun, alpha: sun.alpha * fade });
+					g.poly([clampX(x0), y0, clampX(x1), y0, clampX(x1 + dx), y0 + len, clampX(x0 + dx), y0 + len]).fill({
+						color: light.sun,
+						alpha: sun.alpha * fade,
+					});
 					glowed = true;
 				}
 			}

@@ -9,7 +9,7 @@
 //   ambient  the staging's floor things and the theme's ambient life under the cast (ambient.ts:
 //            the dock, vents, steam, the fan); its belts, parts, booths and lights sort into depth
 //   depth    desks, furniture and characters, sorted by their feet (zIndex = y)
-//   arms     the factory's robot arms, overhead (theme/arm.ts; none in the office theme)
+//   arms     the factory's robot arms, overhead (themes/factory/arm.ts; none in the office theme)
 //   light    time of day, lamps, focus and rush: a baked light map, multiplied; glow added (light.ts)
 //   pulse    the outline of a room waiting on you, unlit so it shows at night
 //   bubbles  speech bubbles
@@ -19,24 +19,25 @@
 // the camera's scale when the camera settles at a new stop, so they stay sharp when zoomed in.
 import { Container, FillPattern, Graphics, Rectangle, type Renderer, Sprite, Text, type Texture } from "pixi.js";
 import type { Session, Snapshot } from "../../watcher/model";
-import { CameraMove, type Stop, type View, type Viewport, viewFor } from "./camera";
-import { type Phase, SHADOW, msToNextPhase, phaseOf } from "./daylight";
+import { CameraMove, type Stop, type View, type Viewport, viewFor } from "../world/camera";
+import { type Phase, SHADOW, msToNextPhase, phaseOf } from "../world/daylight";
 import { Light, type LightInfo } from "./light";
 import { DECAL, dressRoom } from "./material";
 import { CLOUD, cloudTexture, glassOf, panesOf, type SunSpot, sunSpot } from "./outlook";
 import { Outside } from "./outside";
-import { FloorPlan } from "./layout";
+import { FloorPlan } from "../world/layout";
 import { Ambient, type AmbientFacts } from "./ambient";
-import { CRATE } from "./crate";
-import { stagingOf } from "./staging";
+import { CRATE } from "../world/crate";
+import { stagingOf } from "../world/staging";
 import { type FurnitureKind, INK, type SignText, grainTexture, label, noise, pill, wobblyRect } from "./paper";
-import { LEAD_SIZE, type Placed, Placement, crewOf } from "./placement";
-import type { DeskProps, Metrics } from "../director/metrics";
+import { LEAD_SIZE, type Placed, Placement, crewOf } from "../world/placement";
+import type { Metrics } from "../director/metrics";
+import type { DeskProps } from "../contract";
 import { deskProps, plannerSig, propsSig } from "./props";
 import type { Character, CharacterFactory } from "./slot";
-import { AISLE, type Area, BUILD, DESK_TOP, type Desk, type Rect, SEAT, type World } from "./world";
-import { trayOnDesk } from "./rigpoints";
-import { CARD, MONITOR } from "./propspots";
+import { AISLE, type Area, BUILD, DESK_TOP, type Desk, type Rect, SEAT, type Floor } from "../world/world";
+import { trayOnDesk } from "../world/rigpoints";
+import { CARD, MONITOR } from "../world/propspots";
 import { DecorLayer, type RoomDecor, type StoryView, boardText, regularNames, storyStyle } from "./decor";
 
 const BUILD_H = BUILD.brickH;
@@ -44,14 +45,14 @@ const BUILD_H = BUILD.brickH;
 /** How far a buried lead sinks behind its desk: the rig's pile's foot (rigpoints.ts trayOnDesk) to
  * just under the desk top's back edge (DESK_TOP), so it stands on the desk instead of floating. */
 const BURIED_DROP = Math.ceil(DESK_TOP + 2 - trayOnDesk(SEAT, LEAD_SIZE).y);
-import { OFFICE_THEME } from "../theme/office";
-import { FALLEN, buildTop } from "../theme/build";
+import { OFFICE_THEME } from "../../themes/office/scene";
+import { buildTop } from "../theme/build";
 import { areaLabel } from "../theme/words";
-import { RobotArm } from "../theme/arm";
+import { RobotArm } from "../../themes/factory/arm";
 import { type CrewBuild, FURNITURE_KINDS, type SceneTheme } from "../theme/types";
+import { flatSessions } from "../../watcher/model";
 
 export type { CrewBuild };
-export { NIGHT_WATCH } from "../theme/office";
 
 /** Bake resolutions: the smallest one at or above what the camera needs is used. */
 const STEPS = [0.5, 0.75, 1, 1.5, 2, 3, 4, 6, 8];
@@ -80,7 +81,7 @@ export interface OfficeOptions {
 	 * Who stands where, and what they do: the director (S4). Without one, the provisional
 	 * placement stands everyone at their spot and the office bubbles busy leads' tool names itself.
 	 */
-	cast?: (snapshot: Snapshot, floor: World, opts: { life: boolean }) => Placed[];
+	cast?: (snapshot: Snapshot, floor: Floor, opts: { life: boolean }) => Placed[];
 	/** Screen pixels kept clear above the office for the top bar (default 64). */
 	top?: number;
 	/** Each session's crew build, drawn on its desk (the director's). */
@@ -154,11 +155,11 @@ export class Office extends Container {
 
 	#plan = new FloorPlan();
 	#placement = new Placement();
-	#data?: World;
+	#data?: Floor;
 	#snapshot?: Snapshot;
 
 	#areas = new Map<string, Item>();
-	/** The footprint's gaps made places (World.yards, the theme's `patio`), by their rect. */
+	/** The footprint's gaps made places (Floor.yards, the theme's `patio`), by their rect. */
 	#yards = new Map<string, Item & { rect: Rect }>();
 	#halls: Container[] = [];
 	#items = new Map<string, Item>();
@@ -174,7 +175,7 @@ export class Office extends Container {
 	/** Bricks moving on crew builds, by desk item; and what each desk's build last moved for. */
 	#bricks = new Map<string, BrickMove[]>();
 	#brickSeen = new Map<string, { added?: number; fell?: number; topped?: boolean }>();
-	/** The factory's robot arms, one per project bay (theme/arm.ts), over everything on the floor. */
+	/** The factory's robot arms, one per project bay (themes/factory/arm.ts), over everything on the floor. */
 	#armLayer = new Container();
 	#arms = new Map<string, { arm: RobotArm; sig: string }>();
 	/** Where an arm just set a PR's crate down, by session, for the conveyor to take it from there. */
@@ -227,7 +228,22 @@ export class Office extends Container {
 		this.#phase = phaseOf(this.#hour);
 		if (opts.outside !== false) this.#outside = new Outside(opts.renderer);
 		if (this.#outside) this.world.addChild(this.#outside);
-		this.world.addChild(this.#slab, this.#floor, this.#clouds, this.#walls, this.#decor, this.#shade, this.#ambientLayer, this.#depth, this.#armLayer, this.#light, this.#pulse, this.#tasks, this.#bubbles, this.#labels);
+		this.world.addChild(
+			this.#slab,
+			this.#floor,
+			this.#clouds,
+			this.#walls,
+			this.#decor,
+			this.#shade,
+			this.#ambientLayer,
+			this.#depth,
+			this.#armLayer,
+			this.#light,
+			this.#pulse,
+			this.#tasks,
+			this.#bubbles,
+			this.#labels,
+		);
 		this.#signs.set("yours:serving", this.#theme.words.serving(undefined));
 		if (opts.hour === undefined) this.#schedulePhase();
 		this.world.interactiveChildren = false;
@@ -291,7 +307,7 @@ export class Office extends Container {
 		return this.#stop;
 	}
 
-	get layoutData(): World | undefined {
+	get layoutData(): Floor | undefined {
 		return this.#data;
 	}
 
@@ -306,7 +322,15 @@ export class Office extends Container {
 	/** The light: the time-of-day phase and the hour it is for (forced by `?hour=` or the clock's),
 	 * and what the light layer shows (lamps, overhead lights, glow, re-bakes, rooms in rush). */
 	get light(): { phase: Phase; hour: number; forced: boolean; focus?: string; clouds: number; lifeMs: number } & LightInfo {
-		return { phase: this.#phase, hour: this.#hour, forced: this.#opts.hour !== undefined, focus: this.#focus(), clouds: this.#cloudList.length, lifeMs: Math.round(this.#lifeMs), ...this.#light.info };
+		return {
+			phase: this.#phase,
+			hour: this.#hour,
+			forced: this.#opts.hour !== undefined,
+			focus: this.#focus(),
+			clouds: this.#cloudList.length,
+			lifeMs: Math.round(this.#lifeMs),
+			...this.#light.info,
+		};
 	}
 
 	/** Force the hour (0 to 23), or undefined to follow the clock again: the inspector's, for tests. */
@@ -645,14 +669,17 @@ export class Office extends Container {
 		this.#outside?.parallax((c.x - v.x) / v.scale, (c.y - v.y) / v.scale);
 	}
 
-	#draw(world: World, snapshot: Snapshot): void {
+	#draw(world: Floor, snapshot: Snapshot): void {
 		const b = world.bounds;
 		const slabRect = { x: b.x - 14, y: b.y - 14, w: b.w + 28, h: b.h + 28 };
 		const slab = JSON.stringify(b);
 		if (slab !== this.#slabSig) {
 			this.#slabSig = slab;
 			// The building's base, its edge cut by hand.
-			this.#slab.clear().poly(wobblyRect(slabRect, 17, 2.2, 60), true).fill(this.#theme.slab);
+			this.#slab
+				.clear()
+				.poly(wobblyRect(slabRect, 17, 2.2, 60), true)
+				.fill(this.#theme.slab);
 		}
 		// The path out starts under the lobby, at the slab's edge.
 		const lobby = world.areas.find((a) => a.kind === "lobby");
@@ -674,7 +701,7 @@ export class Office extends Container {
 	/** The staging and the theme's ambient life (ambient.ts), from what the cast holds and runs:
 	 * the kinds of work held at each desk (parts on its line's belt), the bays with a build running
 	 * (the press's beacon), and the crew builds topped by a PR (a crate down the conveyor). */
-	#drawAmbient(world: World, snapshot: Snapshot): void {
+	#drawAmbient(world: Floor, snapshot: Snapshot): void {
 		const held = new Map<string, string[]>();
 		for (const p of this.#placed) {
 			if (!p.desk || !p.work) continue;
@@ -683,7 +710,11 @@ export class Office extends Container {
 			held.set(p.desk, list);
 		}
 		for (const list of held.values()) list.sort();
-		const running = new Set(flat(snapshot.sessions).filter(buildRunning).map((s) => s.id));
+		const running = new Set(
+			flatSessions(snapshot.sessions)
+				.filter(buildRunning)
+				.map((s) => s.id),
+		);
 		const building = new Set(world.areas.filter((a) => a.desks.some((d) => running.has(d.id))).map((a) => a.id));
 		const topped = new Map(Object.entries(this.#opts.builds?.() ?? {}).map(([id, b]) => [id, b.topped] as const));
 		const facts: AmbientFacts = { held, building, topped, setDown: this.#setDown };
@@ -704,10 +735,10 @@ export class Office extends Container {
 	}
 
 	/** The light layer: re-baked only if what it shows changed; the rush rooms' flickers. */
-	#drawLight(world: World, snapshot = this.#snapshot): void {
+	#drawLight(world: Floor, snapshot = this.#snapshot): void {
 		if (!snapshot) return;
 		const occupied = new Set(this.#placed.map((p) => p.area).filter((a): a is string => !!a));
-		const desks = flat(snapshot.sessions).map((s) => ({ id: s.id, state: s.state }));
+		const desks = flatSessions(snapshot.sessions).map((s) => ({ id: s.id, state: s.state }));
 		this.#light.update({ light: this.#theme.light, phase: this.#phase, world, focus: this.#focus(), desks, occupied });
 		const rushing = new Set(this.#opts.rush?.() ?? []);
 		const rooms = world.areas.filter((a) => a.desks.some((d) => rushing.has(d.id)));
@@ -722,7 +753,7 @@ export class Office extends Container {
 
 	/** A cloud in each pane of each window, tinted for the phase: rebuilt when the windows or the
 	 * phase change, moved by `#moveClouds` on the life clock. */
-	#drawClouds(world: World): void {
+	#drawClouds(world: Floor): void {
 		const light = this.#theme.light;
 		const panes = world.areas.flatMap((a) => a.wall.filter((w) => w.kind === "window").flatMap((w) => panesOf(glassOf(w.rect, light), light)));
 		const sig = `${this.#phase}|${this.#theme.id}|${panes.map((p) => `${p.x},${p.y}`).join(";")}`;
@@ -781,7 +812,7 @@ export class Office extends Container {
 	}
 
 	/** The director's metrics on the walls: each room's planner, and NOW SERVING at your office. */
-	#drawMetrics(world: World): void {
+	#drawMetrics(world: Floor): void {
 		const m = this.#opts.metrics?.();
 		const sign = this.#theme.words.serving(m?.serving);
 		const was = this.#signs.get("yours:serving");
@@ -812,7 +843,7 @@ export class Office extends Container {
 
 	/** Story and continuity (decor.ts): the decor on the walls, and the lobby's board. The board takes
 	 * the story's text while it has some, and gets back what it said before when that ends. */
-	#drawStory(world: World): void {
+	#drawStory(world: Floor): void {
 		const view = this.#opts.story?.();
 		this.#decor.update(world, this.#theme, view);
 		const text = boardText(view, storyStyle(this.#theme).words, this.#phase);
@@ -852,7 +883,7 @@ export class Office extends Container {
 	}
 
 	/** Rooms' floors, walls and wall items: one cached texture per room, rebuilt when it changes. */
-	#drawFloor(world: World): void {
+	#drawFloor(world: Floor): void {
 		const seen = new Set<string>();
 		const sun = sunSpot(
 			world.areas.flatMap((a) => a.wall.filter((w) => w.kind === "window").map((w) => w.rect)),
@@ -939,8 +970,8 @@ export class Office extends Container {
 	}
 
 	/** Desks (with their screens and name cards), chairs and floor furniture: depth-sorted. */
-	#drawFurniture(world: World, snapshot: Snapshot): void {
-		const sessions = new Map(flat(snapshot.sessions).map((s) => [s.id, s]));
+	#drawFurniture(world: Floor, snapshot: Snapshot): void {
+		const sessions = new Map(flatSessions(snapshot.sessions).map((s) => [s.id, s]));
 		const builds = this.#opts.builds?.() ?? {};
 		const metrics = this.#opts.metrics?.().desks ?? {};
 		const seen = new Set<string>();
@@ -999,7 +1030,7 @@ export class Office extends Container {
 	}
 
 	/** A robot arm per project room, when the theme has them; rebuilt (idle) when its room moves. */
-	#drawArms(world: World): void {
+	#drawArms(world: Floor): void {
 		const seen = new Set<string>();
 		if (this.#theme.arms) {
 			for (const a of world.areas) {
@@ -1167,10 +1198,13 @@ export class Office extends Container {
 		for (const item of this.#yards.values()) this.#cache(item.view, item.rect);
 	}
 
-	#drawPeople(world: World, snapshot: Snapshot): void {
+	#drawPeople(world: Floor, snapshot: Snapshot): void {
 		const placed = this.#opts.cast ? this.#opts.cast(snapshot, world, { life: this.#life }) : this.#placement.place(snapshot, world);
 		this.#placed = placed;
-		this.#names = regularNames(placed.map((p) => p.who), this.#opts.story?.());
+		this.#names = regularNames(
+			placed.map((p) => p.who),
+			this.#opts.story?.(),
+		);
 		// An empty office is never a blank one: the night watch naps in the lobby's pod.
 		if (placed.length === 0) {
 			const nap = world.areas.find((a) => a.kind === "lobby")?.spots.nap?.[0];
@@ -1178,7 +1212,7 @@ export class Office extends Container {
 		}
 		const seen = new Set<string>();
 		const bubbles = new Set<string>();
-		const sessions = new Map(flat(snapshot.sessions).map((s) => [s.id, s]));
+		const sessions = new Map(flatSessions(snapshot.sessions).map((s) => [s.id, s]));
 		for (const { who, slot, desk, cue } of placed) {
 			seen.add(who.key);
 			let p = this.#people.get(who.key);
@@ -1251,14 +1285,14 @@ export class Office extends Container {
 	/** The counts for the room the camera is on (a room or desk stop): a pill in the hallway at the
 	 * room's threshold, at the far end from its painted name. At office zoom there are none: the
 	 * names are painted on the rooms (material.ts) and the counts would be clutter. */
-	#drawLabels(world: World, snapshot: Snapshot): void {
+	#drawLabels(world: Floor, snapshot: Snapshot): void {
 		const focus = this.#focus();
 		const a = focus ? world.areas.find((x) => x.id === focus) : undefined;
 		let sub = "";
 		if (a) {
 			sub = a.kind === "project" ? "" : this.#theme.words.subs[a.kind];
 			if (a.kind === "project") {
-				const list = flat(snapshot.sessions).filter((s) => s.project === a.name);
+				const list = flatSessions(snapshot.sessions).filter((s) => s.project === a.name);
 				const out = list.reduce((n, s) => n + crewOf(s.agents).filter((x) => x.status === "running").length, 0);
 				sub = `${list.length} session${list.length === 1 ? "" : "s"}${out ? ` · ${out} agent${out === 1 ? "" : "s"} out` : ""}`;
 			}
@@ -1295,8 +1329,6 @@ function drop(view: Container | undefined): void {
 const roomBounds = (r: Rect): Rect => ({ x: r.x, y: r.y - 70, w: r.w, h: r.h + 140 });
 
 const differs = (a: View, b: View) => Math.abs(a.scale - b.scale) > 1e-4 || Math.abs(a.x - b.x) > 0.5 || Math.abs(a.y - b.y) > 0.5;
-
-const flat = (list: Session[]): Session[] => list.flatMap((s) => [s, ...flat(s.children)]);
 
 /** A build running in a session: its own shell command, or one of its agents'. */
 const buildRunning = (s: Session): boolean => {
@@ -1385,7 +1417,10 @@ function setBubble(c: Container, value: string, kind: "said" | "thought"): void 
 	t.text = value;
 	const w = t.width + 14;
 	const h = 22;
-	g.clear().roundRect(0, -h, w, h, kind === "thought" ? 11 : 9).fill(0xffffff).stroke({ width: 2.5, color: INK });
+	g.clear()
+		.roundRect(0, -h, w, h, kind === "thought" ? 11 : 9)
+		.fill(0xffffff)
+		.stroke({ width: 2.5, color: INK });
 	// A said line has a tail; a thought trails off in two little puffs.
 	if (kind === "said") g.poly([8, -1.5, 18, -1.5, 6, 8]).fill(0xffffff).stroke({ width: 2.5, color: INK });
 	else g.circle(9, 5, 3.5).fill(0xffffff).stroke({ width: 2, color: INK }).circle(4, 12, 2.2).fill(0xffffff).stroke({ width: 1.8, color: INK });

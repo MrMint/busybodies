@@ -3,12 +3,12 @@
 // a theme says what the floor, walls, furniture, stations and props look like, and what the places
 // are called. Plan: docs/plan-next.md stream D.
 import type { Container, Graphics } from "pixi.js";
-import type { DeskProps, Lamp, PlannerRow, Tray } from "../director/metrics";
-import type { Who } from "../office/slot";
-import type { Phase } from "../office/daylight";
-import type { Area, AreaKind, Band, Fixture, Rect } from "../office/world";
-import type { SceneStaging } from "../office/staging";
-import type { ThemeId } from "./id";
+import type { Lamp, PlannerRow, Tray } from "../contract";
+import type { Who } from "../contract";
+import type { Phase } from "../world/daylight";
+import type { Area, AreaKind, Band, Fixture, Rect } from "../world/world";
+import type { SceneStaging } from "../world/staging";
+import type { ThemeId } from "../../themes/ids";
 import type { SignText, ThemeWords } from "./words";
 
 /**
@@ -68,7 +68,7 @@ export interface DrawnBuild {
 }
 
 /** The desk props for the director's metrics (props.ts places and composes them). */
-export interface DeskPainters {
+interface DeskPainters {
 	/** The context pile in front of the lead (the office's in-tray, the factory's hopper). */
 	tray(t: Tray, seed: string): Graphics;
 	mugs(n: number): Graphics;
@@ -105,11 +105,11 @@ export interface SceneTheme {
 	crewBuild(b: CrewBuild, seed: string): DrawnBuild;
 	/** Who keeps an empty office company (napping in the lobby's pod). */
 	nightWatch: Who;
-	/** The factory's robot arms: one per project room, helping with the build (theme/arm.ts). */
+	/** The factory's robot arms: one per project room, helping with the build (themes/factory/arm.ts). */
 	arms: boolean;
 	/** Light, the view out of the windows, floor materials and the room names (office/light.ts). */
 	light: SceneLight;
-	/** How the theme stages the place (office/staging.ts): desks or lines, a corridor or a conveyor,
+	/** How the theme stages the place (world/staging.ts): desks or lines, a corridor or a conveyor,
 	 * what moves on its own, the idle habits. Absent: the office's (`DEFAULT_STAGING`). */
 	staging?: SceneStaging;
 	/** Painters for what a staging adds to the floor (belts, booths, the dock); needed only with a
@@ -138,8 +138,8 @@ export interface StagePainters {
 	crate(g: Graphics): void;
 }
 
-/** A colour per time-of-day phase (office/daylight.ts). */
-export type PerPhase<T> = Record<Phase, T>;
+/** A colour per time-of-day phase (world/daylight.ts). */
+type PerPhase<T> = Record<Phase, T>;
 
 /**
  * How a theme is lit and what its windows look out on: values only, drawn by the office
@@ -178,5 +178,3 @@ export interface SceneLight {
 	/** Outside on the lawn: trees (office) or bollards and pallets (factory). */
 	yard: "trees" | "yard";
 }
-
-export type { DeskProps };

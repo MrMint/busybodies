@@ -3,15 +3,16 @@
 // came, a wait crossed its next tier). Neither runs a timer: the caller schedules the next call,
 // and `nextWake` is undefined when nothing is due, so an idle office can sleep.
 import type { Snapshot } from "../../watcher/model";
-import { type DetectOptions, MIN, detect } from "./detect";
-import type { ThemeId } from "../theme/id";
+import { type DetectOptions, detect } from "./detect";
+import type { ThemeId } from "../../themes/ids";
 import { type SassBank, sassFor } from "./bank";
 import { type Say, Scheduler, type SchedulerOptions, type View } from "./scheduler";
 import { type CounterOptions, Counters, slotName } from "./signs";
 import type { Trigger, TriggerKind } from "./types";
+import { MIN } from "../../shared/time";
 
 /** A sign to set: `sign(slot, text)`. A sign's text may hold a newline between title and body. */
-export interface SignOut {
+interface SignOut {
 	slot: string;
 	text: string;
 }
@@ -113,12 +114,10 @@ export class Sass {
 		};
 		const hold = this.#opts.signHoldMs ?? 2 * MIN;
 		for (const l of lines) put(slotName(l.line.place ?? "sign", l.trigger.project), l.text, now + hold);
-		{
-			for (const [slot, text] of this.#counters.update(this.#last, now)) {
-				const was = this.#slots.get(slot);
-				if (was && was.holdUntil > now) continue;
-				put(slot, text, 0);
-			}
+		for (const [slot, text] of this.#counters.update(this.#last, now)) {
+			const was = this.#slots.get(slot);
+			if (was && was.holdUntil > now) continue;
+			put(slot, text, 0);
 		}
 		return { says, signs };
 	}

@@ -3,6 +3,7 @@
 // record types are ignored.
 import { homedir } from "node:os";
 import { basename, join, sep } from "node:path";
+import { type Raw, num, obj, str } from "./read";
 
 export interface Roots {
 	/** The agent tool's home: sessions/, projects/. Default ~/.claude. */
@@ -16,9 +17,7 @@ export function defaultRoots(env = process.env): Roots {
 		home: env.BUSYBODIES_AGENT_HOME ?? join(homedir(), ".claude"),
 		desktopIndex:
 			env.BUSYBODIES_DESKTOP_INDEX ??
-			(process.platform === "darwin"
-				? join(homedir(), "Library", "Application Support", "Claude", "claude-code-sessions")
-				: undefined),
+			(process.platform === "darwin" ? join(homedir(), "Library", "Application Support", "Claude", "claude-code-sessions") : undefined),
 	};
 }
 
@@ -40,10 +39,6 @@ export interface RegistryEntry {
 // What JSON.parse gives back is whatever the file holds: a field may be missing, null, or a
 // different type after a format change. These keep only the fields with the type we expect, so
 // the snapshot code can trust its interfaces (a number for a cwd must never reach a string method).
-type Raw = Record<string, unknown>;
-const obj = (v: unknown): Raw | undefined => (v && typeof v === "object" && !Array.isArray(v) ? (v as Raw) : undefined);
-const str = (v: unknown) => (typeof v === "string" && v ? v : undefined);
-const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
 const bool = (v: unknown) => (typeof v === "boolean" ? v : undefined);
 function pick<T>(fields: { [K in keyof T]: (v: unknown) => T[K] | undefined }, raw: Raw): T {
 	const out: Record<string, unknown> = {};
@@ -59,7 +54,18 @@ export function registryEntry(raw: unknown): RegistryEntry | undefined {
 	const r = obj(raw);
 	return r
 		? pick<RegistryEntry>(
-				{ pid: num, sessionId: str, cwd: str, startedAt: num, kind: str, entrypoint: str, hostSessionId: str, name: str, status: str, statusUpdatedAt: num },
+				{
+					pid: num,
+					sessionId: str,
+					cwd: str,
+					startedAt: num,
+					kind: str,
+					entrypoint: str,
+					hostSessionId: str,
+					name: str,
+					status: str,
+					statusUpdatedAt: num,
+				},
 				r,
 			)
 		: undefined;
@@ -69,10 +75,7 @@ export function registryEntry(raw: unknown): RegistryEntry | undefined {
 export function agentMeta(raw: unknown): AgentMeta | undefined {
 	const r = obj(raw);
 	return r
-		? pick<AgentMeta>(
-				{ agentType: str, description: str, model: str, spawnDepth: num, parentAgentId: str, finished: bool, stoppedByUser: bool },
-				r,
-			)
+		? pick<AgentMeta>({ agentType: str, description: str, model: str, spawnDepth: num, parentAgentId: str, finished: bool, stoppedByUser: bool }, r)
 		: undefined;
 }
 

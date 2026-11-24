@@ -2,7 +2,7 @@
 // native tray (test/settings-menu.test.ts). tray.ts hands the menu to Electrobun.
 import type { MenuItemConfig } from "electrobun/main";
 import type { Snapshot } from "../watcher/model";
-import { THEME_IDS, type ThemeId } from "../scene/theme/id";
+import { THEME_IDS, type ThemeId } from "../themes/ids";
 import { summaryOf } from "./mood";
 
 /** The Theme submenu's names. */
@@ -15,16 +15,9 @@ export interface TrayStatus {
 	calm: boolean;
 }
 
-export type TrayAction =
-	| { kind: "office" }
-	| { kind: "compact" }
-	| { kind: "calm" }
-	| { kind: "about" }
-	| { kind: "quit" }
-	| { kind: "theme"; id: ThemeId };
+export type TrayAction = { kind: "office" } | { kind: "compact" } | { kind: "calm" } | { kind: "about" } | { kind: "quit" } | { kind: "theme"; id: ThemeId };
 
-const keys = (accelerator: string) =>
-	accelerator.replace("CommandOrControl", "⌘").replace("Alt", "⌥").replace("Shift", "⇧").replaceAll("+", "");
+const keys = (accelerator: string) => accelerator.replace("CommandOrControl", "⌘").replace("Alt", "⌥").replace("Shift", "⇧").replaceAll("+", "");
 
 export function trayMenu(s: TrayStatus, shortcut: string): MenuItemConfig[] {
 	return [

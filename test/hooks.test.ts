@@ -83,7 +83,15 @@ describe("the hook script", () => {
 
 	test("appends one line the watcher reads, with no prompt text", async () => {
 		await setup();
-		run("Notification", JSON.stringify({ session_id: "s-kettle", hook_event_name: "Notification", notification_type: "permission_prompt", message: "needs your permission to use Bash" }));
+		run(
+			"Notification",
+			JSON.stringify({
+				session_id: "s-kettle",
+				hook_event_name: "Notification",
+				notification_type: "permission_prompt",
+				message: "needs your permission to use Bash",
+			}),
+		);
 		run("Notification", JSON.stringify({ session_id: "s-pot", message: "Claude is waiting for your input" }));
 		run("UserPromptSubmit", JSON.stringify({ session_id: "s-pot", prompt: "a secret plan" }));
 		const log = await readFile(join(home, "busybodies", "events.log"), "utf8");

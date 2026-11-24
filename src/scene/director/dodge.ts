@@ -6,7 +6,7 @@
 //   closest(a, b)        -> how near two walks come, and when
 //   sidestep(walk, at, away, side) -> the walk with a short detour around the point it reaches at `at`
 //   dodges(walkers, now) -> the new paths, by key, and who each one dodged
-import { type Point, along, pathLength, progress } from "./paths";
+import { type Point, along, pathLength, progress } from "../world/paths";
 
 export const DODGE = {
 	/** Two walkers' feet nearer than this at the same moment would pass through each other. */
@@ -56,7 +56,11 @@ function pointAt(path: Point[], d: number): { p: Point; dir: Point; i: number } 
 		const seg = Math.hypot(b.x - a.x, b.y - a.y);
 		if (left <= seg || i === path.length - 1) {
 			const t = seg > 0 ? Math.min(1, left / seg) : 0;
-			return { p: { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }, dir: seg > 0 ? { x: (b.x - a.x) / seg, y: (b.y - a.y) / seg } : { x: 1, y: 0 }, i };
+			return {
+				p: { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t },
+				dir: seg > 0 ? { x: (b.x - a.x) / seg, y: (b.y - a.y) / seg } : { x: 1, y: 0 },
+				i,
+			};
 		}
 		left -= seg;
 	}
@@ -70,7 +74,7 @@ function pointAt(path: Point[], d: number): { p: Point; dir: Point; i: number } 
  * toward it, with `flip`), then back. The walk keeps its speed, so it takes a little longer.
  * Undefined when the meeting point is too near either end to step aside.
  */
-export function sidestep(w: TimedWalk, at: number, away: Point, side: number = DODGE.side, flip = false, span: number = DODGE.span): TimedWalk | undefined {
+function sidestep(w: TimedWalk, at: number, away: Point, side: number = DODGE.side, flip = false, span: number = DODGE.span): TimedWalk | undefined {
 	const len = pathLength(w.path);
 	// How far along it is then: walks ease in and out (paths.ts progress), so not a straight share.
 	const d = progress(at - w.since, w.ms) * len;

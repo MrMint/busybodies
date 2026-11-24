@@ -1,15 +1,15 @@
 // The voice in each theme: which lines it says and what its counters write on the walls, keyed by
-// theme the way `ThemeWords` (theme/words.ts) and `StoryWords` (office/decor-plan.ts) are. The
+// theme the way `ThemeWords` (theme/words.ts) and `StoryWords` (world/decor-plan.ts) are. The
 // office's bank is `LINES`. The factory and the bakery keep the office's lines that fit anywhere
 // (everything not marked `office`) and add their own, so "Out of office. In the office." stays in
 // the office. A theme without a bank of its own gets the office's.
-import type { ThemeId } from "../theme/id";
-import { BAKERY_LINES } from "./lines-bakery";
-import { FACTORY_LINES } from "./lines-factory";
+import type { ThemeId } from "../../themes/ids";
+import { BAKERY_LINES } from "../../themes/bakery/lines";
+import { FACTORY_LINES } from "../../themes/factory/lines";
 import { type Line, LINES, linesIn } from "./lines";
 
 /** What the counters write (signs.ts). The first three are sign lines in the bank. */
-export interface CounterWords {
+interface CounterWords {
 	/** The board's tally since the room's last red test: `{n}` days. */
 	daysSince: string;
 	/** The board during a fail streak of 3 or more: `{n}`. */
@@ -33,16 +33,13 @@ const bankOf = (theme: ThemeId, own: Line[]): Line[] => {
 	return [...shared, ...own.filter((l) => !said.has(l.text))];
 };
 
-/** Lines that fit any theme: the office's, less the ones that name its furniture. */
-export const ANYWHERE_LINES: Line[] = LINES.filter((l) => !l.office);
-
 /** The shared lines a theme says, in its words: the office-only ones only where it has its own. */
-export const sharedIn = (theme: ThemeId): Line[] =>
+const sharedIn = (theme: ThemeId): Line[] =>
 	linesIn(theme)
 		.filter((_, i) => theme === "office" || !LINES[i]!.office || LINES[i]!.themed?.[theme])
 		.map((l) => (theme !== "office" && l.office ? { ...l, office: undefined } : l));
 
-export const OFFICE_SASS: SassBank = {
+const OFFICE_SASS: SassBank = {
 	theme: "office",
 	lines: sharedIn("office"),
 	counters: {
@@ -64,7 +61,7 @@ export const FACTORY_SASS: SassBank = {
 	},
 };
 
-export const BAKERY_SASS: SassBank = {
+const BAKERY_SASS: SassBank = {
 	theme: "bakery",
 	lines: bankOf("bakery", BAKERY_LINES),
 	counters: {

@@ -43,8 +43,7 @@ export interface Rush {
 	visited: Record<string, number>;
 }
 
-const agentCalls = (list: Agent[]): number =>
-	list.reduce((n, a) => n + (a.status === "running" ? (perMinute(a.tools) ?? 0) : 0) + agentCalls(a.children), 0);
+const agentCalls = (list: Agent[]): number => list.reduce((n, a) => n + (a.status === "running" ? (perMinute(a.tools) ?? 0) : 0) + agentCalls(a.children), 0);
 
 /** How hot a session's work is: tool calls a minute (its own and its running crew's), plus edits. */
 export function heatOf(session: Session, edits: number[] | undefined, now: number): number {
@@ -78,8 +77,12 @@ export function nextDash(r: Rush, cands: DashCandidate[], present: Set<string>, 
 	if (r.dash && now < r.dash.since + RUSH.dashStayMs && present.has(r.dash.key)) return r;
 	const seen = (k: string) => r.visited[k] ?? -Infinity;
 	const byKey = (a: DashCandidate, b: DashCandidate) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0);
-	const red = cands.filter((c) => c.failAt !== undefined && now - c.failAt < RUSH.redMs && seen(c.key) < c.failAt).sort((a, b) => b.failAt! - a.failAt! || byKey(a, b));
-	const queued = cands.filter((c) => c.queuedSince !== undefined && seen(c.key) < c.queuedSince).sort((a, b) => a.queuedSince! - b.queuedSince! || byKey(a, b));
+	const red = cands
+		.filter((c) => c.failAt !== undefined && now - c.failAt < RUSH.redMs && seen(c.key) < c.failAt)
+		.sort((a, b) => b.failAt! - a.failAt! || byKey(a, b));
+	const queued = cands
+		.filter((c) => c.queuedSince !== undefined && seen(c.key) < c.queuedSince)
+		.sort((a, b) => a.queuedSince! - b.queuedSince! || byKey(a, b));
 	const to = red[0] ?? queued[0];
 	const visited = Object.fromEntries(Object.entries(r.visited).filter(([k]) => present.has(k)));
 	if (!to) return { since: r.since, heat: r.heat, visited };

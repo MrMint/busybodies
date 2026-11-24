@@ -60,94 +60,127 @@ async function settle(page: Page): Promise<Snapshot> {
 }
 
 describe("compact: a live camera", () => {
-	test("an idle office rests on the whole office; news cuts with a 60 fps camera move, then it goes quiet (calm)", async () => {
-		// The voice is held back (?settle): this measures the camera, and a bubble is a render.
-		const page = await open("demo=idle&calm&settle=600000");
-		const first = await shot(page);
-		expect(first.cuts).toBe(0);
-		const s = await settle(page);
-		const rest = await shot(page);
-		expect(rest).toMatchObject({ stop: { kind: "office" }, reason: "idle", pinned: false });
-		expect(rest.tiles.every((t) => t.state === "idle")).toBe(true);
+	test(
+		"an idle office rests on the whole office; news cuts with a 60 fps camera move, then it goes quiet (calm)",
+		async () => {
+			// The voice is held back (?settle): this measures the camera, and a bubble is a render.
+			const page = await open("demo=idle&calm&settle=600000");
+			const first = await shot(page);
+			expect(first.cuts).toBe(0);
+			const s = await settle(page);
+			const rest = await shot(page);
+			expect(rest).toMatchObject({ stop: { kind: "office" }, reason: "idle", pinned: false });
+			expect(rest.tiles.every((t) => t.state === "idle")).toBe(true);
 
-		await page.evaluate((x) => window.__busybodies!.show(x), later(s, 70_000, true));
-		const cut = await shot(page);
-		expect(cut).toMatchObject({ reason: "pr", cuts: rest.cuts + 1, pinned: false });
-		expect(cut.stop.kind).toBe("room");
-		const during = await page.evaluate(() => ({ moving: window.__busybodies!.camera().moving, fps: window.__busybodies!.counters().maxFPS }));
-		expect(during).toEqual({ moving: true, fps: 60 });
+			await page.evaluate((x) => window.__busybodies!.show(x), later(s, 70_000, true));
+			const cut = await shot(page);
+			expect(cut).toMatchObject({ reason: "pr", cuts: rest.cuts + 1, pinned: false });
+			expect(cut.stop.kind).toBe("room");
+			const during = await page.evaluate(() => ({ moving: window.__busybodies!.camera().moving, fps: window.__busybodies!.counters().maxFPS }));
+			expect(during).toEqual({ moving: true, fps: 60 });
 
-		// The move ends, the PR is played out, and the room on camera stops drawing.
-		await page.waitForFunction(() => !window.__busybodies!.camera().moving, undefined, { timeout: 10_000 });
-		expect((await page.evaluate(() => window.__busybodies!.camera())).stop).toEqual(cut.stop);
-		// The lead plays the PR, walks it to the outbox and back (timed wake-ups), then nothing moves:
-		// a whole window with no frames, still on the same shot.
-		const windows: number[] = [];
-		for (let i = 0; i < 12 && windows.at(-1) !== 0; i++) {
-			await page.evaluate(() => window.__busybodies!.resetCounters());
-			await page.waitForTimeout(1500);
-			const c = await page.evaluate(() => window.__busybodies!.counters());
-			windows.push(c.animationFrames + c.renders);
-		}
-		console.log("frames per 1.5 s window after the cut:", windows.join(" "));
-		expect(windows.at(-1)).toBe(0);
-		expect((await shot(page)).stop).toEqual(cut.stop);
-		await page.close();
-	}, T);
+			// The move ends, the PR is played out, and the room on camera stops drawing.
+			await page.waitForFunction(() => !window.__busybodies!.camera().moving, undefined, { timeout: 10_000 });
+			expect((await page.evaluate(() => window.__busybodies!.camera())).stop).toEqual(cut.stop);
+			// The lead plays the PR, walks it to the outbox and back (timed wake-ups), then nothing moves:
+			// a whole window with no frames, still on the same shot.
+			const windows: number[] = [];
+			for (let i = 0; i < 12 && windows.at(-1) !== 0; i++) {
+				await page.evaluate(() => window.__busybodies!.resetCounters());
+				await page.waitForTimeout(1500);
+				const c = await page.evaluate(() => window.__busybodies!.counters());
+				windows.push(c.animationFrames + c.renders);
+			}
+			console.log("frames per 1.5 s window after the cut:", windows.join(" "));
+			expect(windows.at(-1)).toBe(0);
+			expect((await shot(page)).stop).toEqual(cut.stop);
+			await page.close();
+		},
+		T,
+	);
 
-	test("tiles: one per room under the picture; clicking one pins the camera there, clicking again lets it go", async () => {
-		const page = await open("demo&frozen");
-		const tiles = await page.evaluate(() => [...document.querySelectorAll<HTMLElement>("#bb-tiles .tile")].map((b) => ({ area: b.dataset.area, cls: b.className, bottom: b.getBoundingClientRect().bottom })));
-		const layout = await page.evaluate(() => window.__busybodies!.layout()!.areas.map((a) => a.id));
-		expect(tiles.map((t) => t.area)).toEqual(layout);
-		expect(tiles.some((t) => t.cls.includes("busy"))).toBe(true);
-		for (const t of tiles) expect(t.bottom).toBeLessThanOrEqual(340);
-		// The canvas leaves room for the strip.
-		expect(await page.evaluate(() => document.querySelector("canvas")!.getBoundingClientRect().height)).toBeLessThan(340);
+	test(
+		"tiles: one per room under the picture; clicking one pins the camera there, clicking again lets it go",
+		async () => {
+			const page = await open("demo&frozen");
+			const tiles = await page.evaluate(() =>
+				[...document.querySelectorAll<HTMLElement>("#bb-tiles .tile")].map((b) => ({
+					area: b.dataset.area,
+					cls: b.className,
+					bottom: b.getBoundingClientRect().bottom,
+				})),
+			);
+			const layout = await page.evaluate(() => window.__busybodies!.layout()!.areas.map((a) => a.id));
+			expect(tiles.map((t) => t.area)).toEqual(layout);
+			expect(tiles.some((t) => t.cls.includes("busy"))).toBe(true);
+			for (const t of tiles) expect(t.bottom).toBeLessThanOrEqual(340);
+			// The canvas leaves room for the strip.
+			expect(await page.evaluate(() => document.querySelector("canvas")!.getBoundingClientRect().height)).toBeLessThan(340);
 
-		const target = layout.find((id) => id !== (tiles.find((t) => t.cls.includes(" on"))?.area))!;
-		await page.click(`#bb-tiles .tile[data-area="${target}"]`);
-		expect(await shot(page)).toMatchObject({ stop: { kind: "room", id: target }, reason: "pinned", pinned: true, until: null });
-		expect(await page.evaluate(() => !document.querySelector<HTMLElement>("#bb-tiles .unpin")!.hidden)).toBe(true);
-		await page.click(`#bb-tiles .tile[data-area="${target}"]`);
-		const free = await shot(page);
-		expect(free.pinned).toBe(false);
-		expect(await page.evaluate(() => document.querySelector<HTMLElement>("#bb-tiles .unpin")!.hidden)).toBe(true);
-		await page.close();
-	}, T);
+			const target = layout.find((id) => id !== tiles.find((t) => t.cls.includes(" on"))?.area)!;
+			await page.click(`#bb-tiles .tile[data-area="${target}"]`);
+			expect(await shot(page)).toMatchObject({ stop: { kind: "room", id: target }, reason: "pinned", pinned: true, until: null });
+			expect(await page.evaluate(() => !document.querySelector<HTMLElement>("#bb-tiles .unpin")!.hidden)).toBe(true);
+			await page.click(`#bb-tiles .tile[data-area="${target}"]`);
+			const free = await shot(page);
+			expect(free.pinned).toBe(false);
+			expect(await page.evaluate(() => document.querySelector<HTMLElement>("#bb-tiles .unpin")!.hidden)).toBe(true);
+			await page.close();
+		},
+		T,
+	);
 
-	test("tiles name the common areas in the theme's words, and follow a live switch", async () => {
-		const page = await open("demo&frozen&theme=factory");
-		const names = () => page.evaluate(() => [...document.querySelectorAll<HTMLElement>("#bb-tiles .tile")].map((b) => ({ area: b.dataset.area!, name: b.textContent })));
-		const yours = (await names()).find((t) => t.area === "yours");
-		expect(yours?.name).toBe("foreman's office");
-		await page.evaluate(() => window.__busybodies!.setTheme("office"));
-		await page.waitForFunction(() => document.querySelector<HTMLElement>('#bb-tiles .tile[data-area="yours"]')?.textContent === "your office", undefined, { timeout: 10_000 });
-		await page.close();
-	}, T);
+	test(
+		"tiles name the common areas in the theme's words, and follow a live switch",
+		async () => {
+			const page = await open("demo&frozen&theme=factory");
+			const names = () =>
+				page.evaluate(() =>
+					[...document.querySelectorAll<HTMLElement>("#bb-tiles .tile")].map((b) => ({ area: b.dataset.area!, name: b.textContent })),
+				);
+			const yours = (await names()).find((t) => t.area === "yours");
+			expect(yours?.name).toBe("foreman's office");
+			await page.evaluate(() => window.__busybodies!.setTheme("office"));
+			await page.waitForFunction(
+				() => document.querySelector<HTMLElement>('#bb-tiles .tile[data-area="yours"]')?.textContent === "your office",
+				undefined,
+				{ timeout: 10_000 },
+			);
+			await page.close();
+		},
+		T,
+	);
 
-	test("no cuts while hidden; back on screen it cuts straight to the news", async () => {
-		const page = await open("demo=idle&calm");
-		const s = await settle(page);
-		const rest = await shot(page);
-		await page.evaluate(() => window.__busybodies!.setVisible(false));
-		await page.evaluate((x) => window.__busybodies!.show(x), later(s, 70_000, true));
-		expect(await shot(page)).toMatchObject({ stop: { kind: "office" }, cuts: rest.cuts });
-		expect((await page.evaluate(() => window.__busybodies!.camera())).stop).toEqual({ kind: "office" });
-		await page.evaluate(() => window.__busybodies!.setVisible(true));
-		const back = await shot(page);
-		expect(back).toMatchObject({ reason: "pr", cuts: rest.cuts + 1 });
-		expect((await page.evaluate(() => window.__busybodies!.camera())).stop).toEqual(back.stop);
-		await page.close();
-	}, T);
+	test(
+		"no cuts while hidden; back on screen it cuts straight to the news",
+		async () => {
+			const page = await open("demo=idle&calm");
+			const s = await settle(page);
+			const rest = await shot(page);
+			await page.evaluate(() => window.__busybodies!.setVisible(false));
+			await page.evaluate((x) => window.__busybodies!.show(x), later(s, 70_000, true));
+			expect(await shot(page)).toMatchObject({ stop: { kind: "office" }, cuts: rest.cuts });
+			expect((await page.evaluate(() => window.__busybodies!.camera())).stop).toEqual({ kind: "office" });
+			await page.evaluate(() => window.__busybodies!.setVisible(true));
+			const back = await shot(page);
+			expect(back).toMatchObject({ reason: "pr", cuts: rest.cuts + 1 });
+			expect((await page.evaluate(() => window.__busybodies!.camera())).stop).toEqual(back.stop);
+			await page.close();
+		},
+		T,
+	);
 
-	test("the full office doesn't follow unless asked (?follow)", async () => {
-		const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
-		await page.goto(`http://localhost:${server.port}/?inspect&demo&frozen`);
-		await page.waitForFunction(() => window.__busybodies?.ready === true, undefined, { timeout: 15_000 });
-		expect(await page.evaluate(() => window.__busybodies!.shot())).toBeUndefined();
-		expect(await page.evaluate(() => window.__busybodies!.camera().stop)).toEqual({ kind: "office" });
-		expect(await page.evaluate(() => document.getElementById("bb-tiles"))).toBeNull();
-		await page.close();
-	}, T);
+	test(
+		"the full office doesn't follow unless asked (?follow)",
+		async () => {
+			const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+			await page.goto(`http://localhost:${server.port}/?inspect&demo&frozen`);
+			await page.waitForFunction(() => window.__busybodies?.ready === true, undefined, { timeout: 15_000 });
+			expect(await page.evaluate(() => window.__busybodies!.shot())).toBeUndefined();
+			expect(await page.evaluate(() => window.__busybodies!.camera().stop)).toEqual({ kind: "office" });
+			expect(await page.evaluate(() => document.getElementById("bb-tiles"))).toBeNull();
+			await page.close();
+		},
+		T,
+	);
 });

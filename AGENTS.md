@@ -69,23 +69,28 @@ only from the layers before it.
 |---|---|---|
 | snapshot | `src/watcher/model.ts`, the contract | nothing |
 | watcher | `src/watcher/` | the snapshot, `node:*` |
-| shared | `src/shared/`, code both processes run | the snapshot |
-| director | `src/scene/director*`, `src/scene/sass/` | the above, plus the Pixi-free floor plan (`office/world.ts`, `layout.ts`, `placement.ts`, …) and rig data (`rig/poses.ts`, `roles.ts`, `player.ts`, …) |
-| scene | `src/scene/office/`, `theme/`, `rig/` drawing | everything above |
-| app | `src/mainview/` (webview), `src/bun/` (main process; Pixi-free, reads `theme/id.ts`) | everything above |
+| shared | `src/shared/` (code both processes run: hashes, time, colour, roles, the diary), `src/themes/ids.ts` | the snapshot |
+| floor plan, rig data | `src/scene/world/`, `src/scene/rig/data/`, `src/scene/contract.ts` | the above |
+| director | `src/scene/director*`, `src/scene/sass/`; each theme's words and lines | the above |
+| scene | `src/scene/office/`, `theme/`, `rig/`; each theme's painters in `src/themes/<id>/` | everything above |
+| app | `src/mainview/` (webview), `src/bun/` (main process) | everything above; `bun/` never imports `scene/` |
 
-- **Pixi-free layers stay Pixi-free.** Watcher, shared, director and sass are plain data and
-  logic, unit-tested without a browser. Biome fails CI on a `pixi.js` import there. Put new
-  logic in a Pixi-free module that returns data, and keep the drawing side thin.
-- **Drawing reads the director's `World`.** Scene code that needs to know about the snapshot
-  gets it from the director's output.
-- **Themes sit behind `SceneTheme`** (`theme/types.ts`) and the rig's `Theme`. They use the same
-  director and the same cast. Theme-specific behaviour belongs in the theme's painters,
-  `staging`, words or lines, keyed by `ThemeId`.
-- Run `hutch run lint` (Biome) and `hutch run knip` (unused files and dependencies) before a PR.
-  Biome's formatter isn't enforced yet, so leave formatting as you found it.
+- **Pixi-free layers stay Pixi-free.** Everything above "scene" is plain data and logic,
+  unit-tested without a browser; Biome fails CI on a `pixi.js` import there, and on any `scene/`
+  import from `watcher/`, `shared/` or `bun/` (`biome.json` overrides). Put new logic in a
+  Pixi-free module that returns data, and keep the drawing side thin.
+- **The director hands the scene its `World`**, and the types for it live in
+  `scene/contract.ts`. Drawing code takes them from there, not from the director's files.
+- **One folder per theme** (`src/themes/<id>/`): `scene.ts` assembles the `SceneTheme` from its
+  palette, rooms, furniture, stage and outside; `rig.ts` repaints the paper rig; `words.ts` and
+  `lines.ts` are its Pixi-free words. The registries that pick by `ThemeId` are
+  `scene/theme/index.ts`, `rig/themes.ts`, `theme/words.ts` and `sass/bank.ts`.
+- **One home per helper**: `shared/hash.ts`, `shared/time.ts`, `shared/colour.ts`,
+  `watcher/read.ts`, `watcher/model.ts flatSessions`. Import it; don't copy it.
+- `hutch run lint` (Biome lint and format; `hutch run format` fixes formatting) and
+  `hutch run knip` (unused files, dependencies and exports) must pass before a PR.
 
-Known breaks and the planned restructure: [`docs/architecture-review.md`](docs/architecture-review.md)
+Why it is this shape, and what's still open: [`docs/architecture-review.md`](docs/architecture-review.md)
 and [`docs/restructure-plan.md`](docs/restructure-plan.md).
 
 ## Layout
@@ -95,9 +100,12 @@ and [`docs/restructure-plan.md`](docs/restructure-plan.md).
 | `src/bun/` | The Electrobun main process: the office and compact windows, the tray, the app menu, updates, the way out on quit (`shutdown.ts`), the diary on disk (`diary.ts`; its counts-only model is `src/shared/diary.ts`) |
 | `src/watcher/` | Capture: reads the agent tool's files into a `Snapshot` (`model.ts` is the contract) |
 | `src/mainview/` | The webview's entry: app setup, the top bar, the inspector, demo days; on-screen visibility (`visibility.ts`), the compact camera (`shots.ts`) |
-| `src/scene/office/` | The open-floor office: floor plan, camera, cut-paper drawing, the character slot interface; light and time of day (`daylight.ts`, `light.ts`), windows and the yard (`outlook.ts`, `outside.ts`), the paper pass (`material.ts`); a theme's staging (`staging.ts`), ambient life (`ambient.ts`), the walls that remember (`decor.ts`) |
-| `src/scene/theme/` | Scene themes (`?theme=`, the tray's Theme menu): the office's, the factory's and the bakery's (`bakery.ts`: a patisserie, a pastry conveyor down the hallway) look, words and staging behind a `SceneTheme`, and the factory's robot arms |
-| `src/scene/rig/` | The mochi character rig: parts atlas, springs, frames, poses, and the office's character factory (`?sheet`, `?demo=crowd`); life (`life.ts`: blinks and glances), gaze (`gaze.ts`), the office's corporate cast (`office.ts`) and the Line's kitchen brigade (`kitchen.ts`) |
+| `src/scene/office/` | The open-floor office's drawing: cut-paper rooms and desks, the character slot interface, light (`light.ts`), windows and the yard (`outlook.ts`, `outside.ts`), the paper pass (`material.ts`), ambient life (`ambient.ts`), the walls that remember (`decor.ts`) |
+| `src/scene/world/` | The floor plan, Pixi-free: rooms, desks and spots (`world.ts`), layout and placement, the camera's stops (`camera.ts`), time of day (`daylight.ts`), a theme's staging (`staging.ts`), what the walls remember (`decor-plan.ts`) |
+| `src/scene/theme/` | The theme seam: `SceneTheme` (`types.ts`), the stacking every theme uses (`build.ts`), what each theme calls things (`words.ts`), and the registry (`index.ts`, `?theme=`, the tray's Theme menu) |
+| `src/themes/` | The theme ids (`ids.ts`, read by the main process too), and one folder per theme: `office/`, `factory/` and `bakery/` (a patisserie, a pastry conveyor down the hallway), each with its scene painters (`scene.ts`), rig repaints (`rig.ts`), words and sass lines; the factory's staging and robot arms |
+| `src/scene/rig/` | The mochi character rig's drawing: parts atlas (`atlas.ts`), the puppet (`puppet.ts`), the paper painters (`theme.ts`) and each theme's repaints (`office.ts`, `factory.ts`, `bakery.ts`), the character factory (`character.ts`, `?sheet`, `?demo=crowd`) |
+| `src/scene/rig/data/` | The rig as data, Pixi-free: poses, frames, the face and part vocabulary, roles and costumes, gaze, springs (`motion.ts`), reaches, pose choice (`player.ts`), life (`life.ts`: blinks and glances) |
 | `src/scene/director.ts`, `src/scene/director/` | The director: snapshot to world (spots, poses, walks) and events; the sass seam (`say`, `sign`); the story beats (`director/story.ts`) |
 | `test/` | Unit tests (`bun test test/`). Fixtures are built in a temp folder from invented data |
 | `e2e/` | Scene tests in headless Chrome (`bun test e2e/`) |

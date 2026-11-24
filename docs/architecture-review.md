@@ -1,5 +1,9 @@
 # Architecture review (2026-11-23)
 
+> **The restructure has run.** What it did, what changed from this review's proposals, and what's
+> still open are in [`restructure-plan.md`](restructure-plan.md), "Status". The rest of this page
+> describes the code as it was before.
+
 A read of `src/` at `c8f2f81` (0.6.0), brought up to date after every QA PR merged (#30–#35: sound, polish, voice, robustness, theme
 parity, performance). Since then #37 removed sound altogether (`docs/decisions.md`, "sound is
 gone"), so the sound and voice parts are out of the plan below. It covers how the layers really

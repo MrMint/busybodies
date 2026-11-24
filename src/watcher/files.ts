@@ -23,11 +23,7 @@ export class FileCache {
 	 * Reads ever larger tails of a file until `find` returns a value, and caches that value until
 	 * the file changes. Most answers sit in the last few KB, but one record can be megabytes.
 	 */
-	async fromTail<T>(
-		path: string,
-		find: (text: string) => T | undefined,
-		sizes = [64 * 1024, 512 * 1024, 4 * 1024 * 1024],
-	): Promise<T | undefined> {
+	async fromTail<T>(path: string, find: (text: string) => T | undefined, sizes = [64 * 1024, 512 * 1024, 4 * 1024 * 1024]): Promise<T | undefined> {
 		return this.#load(path, async (size) => {
 			const fh = await open(path, "r");
 			try {

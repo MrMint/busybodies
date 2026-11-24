@@ -95,7 +95,7 @@ const { values: o } = parseArgs({
 		check: { type: "boolean", default: false },
 		build: { type: "boolean", default: false },
 		title: { type: "string", default: "Busybodies · tools/shoot.ts" },
-		/** The scene theme (src/scene/theme/id.ts): every state in that theme. Several, comma
+		/** The scene theme (src/themes/ids.ts): every state in that theme. Several, comma
 		 * separated: every state in each, side by side on the sheet (shots in a folder per theme). */
 		theme: { type: "string" },
 	},
@@ -119,7 +119,9 @@ async function shoot(browser: Browser, s: State, dpr: number, theme: string | un
 	const page = await browser.newPage({ viewport: { width: s.size[0], height: s.size[1] }, deviceScaleFactor: dpr });
 	const thrown: string[] = [];
 	page.on("pageerror", (e) => thrown.push(e.message));
-	await page.goto(`http://localhost:${server.port}/?inspect&frozen&demo=${s.demo}&hour=${s.hour ?? 14}${s.query ? `&${s.query}` : ""}${theme ? `&theme=${theme}` : ""}`);
+	await page.goto(
+		`http://localhost:${server.port}/?inspect&frozen&demo=${s.demo}&hour=${s.hour ?? 14}${s.query ? `&${s.query}` : ""}${theme ? `&theme=${theme}` : ""}`,
+	);
 	try {
 		await page.waitForFunction(() => window.__busybodies?.ready === true, undefined, { timeout: 30_000 });
 	} catch (e) {
@@ -130,8 +132,7 @@ async function shoot(browser: Browser, s: State, dpr: number, theme: string | un
 		({ aim, frames }) => {
 			const b = window.__busybodies!;
 			const layout = b.layout()!;
-			const flat = (l: { id: string; title: string; children: never[] }[]): { id: string; title: string }[] =>
-				l.flatMap((x) => [x, ...flat(x.children)]);
+			const flat = (l: { id: string; title: string; children: never[] }[]): { id: string; title: string }[] => l.flatMap((x) => [x, ...flat(x.children)]);
 			let stop: Parameters<typeof b.goTo>[0] = { kind: "office" };
 			if (aim.kind === "room") stop = { kind: "room", id: layout.areas.find((a) => a.name === aim.name)!.id };
 			if (aim.kind === "desk") stop = { kind: "desk", id: flat(b.snapshot()!.sessions as never).find((x) => x.title === aim.title)!.id };
@@ -155,14 +156,14 @@ interface Shot {
 	size: [number, number];
 }
 
-const escape = (t: string) => t.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+const escapeHtml = (t: string) => t.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 
 function contactSheet(shots: Shot[], title: string, cols = 3): string {
 	const figs = shots
 		.map((s) =>
 			s.png
 				? `<figure><img src="data:image/png;base64,${s.png.toString("base64")}" style="aspect-ratio:${s.size[0]}/${s.size[1]}"><figcaption>${s.name} · ${s.size[0]}×${s.size[1]}</figcaption></figure>`
-				: `<figure><div class="gap" style="aspect-ratio:${s.size[0]}/${s.size[1]}">didn't come up:<br>${escape(s.error ?? "")}</div><figcaption>${s.name} · ${s.size[0]}×${s.size[1]}</figcaption></figure>`,
+				: `<figure><div class="gap" style="aspect-ratio:${s.size[0]}/${s.size[1]}">didn't come up:<br>${escapeHtml(s.error ?? "")}</div><figcaption>${s.name} · ${s.size[0]}×${s.size[1]}</figcaption></figure>`,
 		)
 		.join("");
 	return `<!doctype html><meta charset="utf-8"><style>

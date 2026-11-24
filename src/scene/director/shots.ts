@@ -15,13 +15,14 @@
 // the hold, with no cut); and the rest shot moves to a busier room only after its own hold, when
 // that room is SHOTS.restLead times busier.
 import type { Session } from "../../watcher/model";
-import type { Stop } from "../office/camera";
+import { type Stop, sameStop } from "../world/camera";
 import { heatOf } from "./rush";
 import type { Build, World, WorldEvent } from "./types";
+import { flatSessions } from "../../watcher/model";
 
 export type NewsReason = "waiting" | "red" | "pr" | "rush" | "compaction" | "buried" | "feud";
 /** Why the camera is where it is: news, or resting (the busiest room, waiting, all idle), or pinned. */
-export type Reason = NewsReason | "busiest" | "idle" | "pinned";
+type Reason = NewsReason | "busiest" | "idle" | "pinned";
 
 export const SHOTS = {
 	/** News holds its room this long (unless something much more important happens). */
@@ -62,7 +63,7 @@ export interface News {
 	key: string;
 }
 
-export const newsId = (n: News): string => `${n.reason}:${n.key}:${n.at}`;
+const newsId = (n: News): string => `${n.reason}:${n.key}:${n.at}`;
 
 export interface Shot {
 	stop: Stop;
@@ -107,7 +108,6 @@ export interface ShotInput {
 
 const cmp = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 const roomStop = (id: string): Stop => ({ kind: "room", id });
-const sameStop = (a: Stop, b: Stop) => a.kind === b.kind && (a.kind === "office" || (b.kind !== "office" && a.id === b.id));
 const priorityOf = (s: Shot) => (s.news ? SHOTS.priority[s.reason as NewsReason] : 0);
 
 /** Where to rest between news: your office while someone waits, else the busiest room, else everything. */
@@ -150,13 +150,27 @@ export function nextShot(prev: ShotState | undefined, input: ShotInput): ShotSta
 			return { shot: { ...cur, reason, until: now + SHOTS.holdMs, news: newsId(best) }, shown: mark(best.area) };
 		}
 		if (!cur || (settled && (!holding || SHOTS.priority[best.reason] - priorityOf(cur) >= SHOTS.preempt))) {
-			return { shot: { stop: roomStop(best.area), area: best.area, reason: best.reason, since: now, until: now + SHOTS.holdMs, pinned: false, news: newsId(best) }, shown: mark(best.area) };
+			return {
+				shot: {
+					stop: roomStop(best.area),
+					area: best.area,
+					reason: best.reason,
+					since: now,
+					until: now + SHOTS.holdMs,
+					pinned: false,
+					news: newsId(best),
+				},
+				shown: mark(best.area),
+			};
 		}
 	}
 	if (cur && holding) return prev!;
 
 	const rest = restFor(input);
-	const restShot = (): ShotState => ({ shot: { stop: rest.stop, ...(rest.area ? { area: rest.area } : {}), reason: rest.reason, since: now, until: now + SHOTS.holdMs, pinned: false }, shown });
+	const restShot = (): ShotState => ({
+		shot: { stop: rest.stop, ...(rest.area ? { area: rest.area } : {}), reason: rest.reason, since: now, until: now + SHOTS.holdMs, pinned: false },
+		shown,
+	});
 	if (!cur) return restShot();
 	if (sameStop(cur.stop, rest.stop)) {
 		// Same room, maybe a new reason (the wait ended but the room is still the busiest): no cut.
@@ -174,7 +188,7 @@ export function nextShot(prev: ShotState | undefined, input: ShotInput): ShotSta
 
 /** When the shot changes on its own: a news hold ending. (Rest shots change only with new input.) */
 export function shotWake(s: ShotState | undefined, now: number): number | undefined {
-	return s && s.shot.news && Number.isFinite(s.shot.until) && s.shot.until > now ? s.shot.until : undefined;
+	return s?.shot.news && Number.isFinite(s.shot.until) && s.shot.until > now ? s.shot.until : undefined;
 }
 
 /**
@@ -201,12 +215,15 @@ export function newsFrom(events: WorldEvent[], world: World | undefined, areaOf:
 	return out;
 }
 
-const flat = (l: Session[]): Session[] => l.flatMap((s) => [s, ...flat(s.children)]);
-
 /** How busy each project room is: its sessions' heat (rush.ts), plus a little per busy session. */
-export function scoreByArea(sessions: Session[], builds: Record<string, Build>, areaOf: (session: string) => string | undefined, now: number): Record<string, number> {
+export function scoreByArea(
+	sessions: Session[],
+	builds: Record<string, Build>,
+	areaOf: (session: string) => string | undefined,
+	now: number,
+): Record<string, number> {
 	const score: Record<string, number> = {};
-	for (const s of flat(sessions)) {
+	for (const s of flatSessions(sessions)) {
 		const area = areaOf(s.id);
 		if (!area) continue;
 		const n = heatOf(s, builds[s.id]?.edits, now) + (s.state === "busy" ? SHOTS.busyScore : 0);
@@ -215,7 +232,7 @@ export function scoreByArea(sessions: Session[], builds: Record<string, Build>, 
 	return score;
 }
 
-export type TileState = "waiting" | "rush" | "busy" | "idle";
+type TileState = "waiting" | "rush" | "busy" | "idle";
 
 export interface Tile {
 	id: string;

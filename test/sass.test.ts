@@ -63,11 +63,17 @@ const only = (ts: Trigger[], k: TriggerKind) => ts.filter((t) => t.kind === k);
 describe("the line bank", () => {
 	const html = readFileSync(join(import.meta.dir, "../design/boards/Lines.dc.html"), "utf8");
 	const KIND: Record<string, string> = { "": "said", t: "thought", s: "sign" };
-	const unescape = (s: string) => s.replace(/&quot;/g, '"').replace(/&#x27;|&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+	const unescapeHtml = (s: string) =>
+		s
+			.replace(/&quot;/g, '"')
+			.replace(/&#x27;|&#39;/g, "'")
+			.replace(/&lt;/g, "<")
+			.replace(/&gt;/g, ">")
+			.replace(/&amp;/g, "&");
 	const onBoard = [...html.matchAll(/<p class="(t|s|)">(.*?)(?: <small>(.*?)<\/small>)?<\/p>/g)].map((m) => ({
 		kind: KIND[m[1]!]!,
-		text: unescape(m[2]!),
-		note: unescape(m[3] ?? ""),
+		text: unescapeHtml(m[2]!),
+		note: unescapeHtml(m[3] ?? ""),
 	}));
 
 	test("holds every line of the design board, word for word, and no more", () => {
@@ -82,7 +88,11 @@ describe("the line bank", () => {
 	test("a templated board line fills back to the board's wording", () => {
 		for (const l of BOARD_LINES.filter((x) => x.boardText)) {
 			const vars = Object.fromEntries([...l.text.matchAll(/\{(\w+)\}/g)].map((m) => [m[1], "X"]));
-			const pattern = new RegExp(`^${fill(l.text, vars)!.replace(/[.*+?^$()|[\]\\]/g, "\\$&").replace(/X/g, ".+")}$`);
+			const pattern = new RegExp(
+				`^${fill(l.text, vars)!
+					.replace(/[.*+?^$()|[\]\\]/g, "\\$&")
+					.replace(/X/g, ".+")}$`,
+			);
 			expect(l.boardText!).toMatch(pattern);
 		}
 	});
@@ -134,7 +144,18 @@ describe("the line bank in each scene theme", () => {
 	});
 
 	test("a crew in the office talks paperwork, and the factory's talks shop", () => {
-		const chatter = { kind: "chatter", key: "k", who: "a", session: "a", project: "teapot", role: "builder", magnitude: 0, ongoing: true, at: NOW, vars: {} } as unknown as Trigger;
+		const chatter = {
+			kind: "chatter",
+			key: "k",
+			who: "a",
+			session: "a",
+			project: "teapot",
+			role: "builder",
+			magnitude: 0,
+			ongoing: true,
+			at: NOW,
+			vars: {},
+		} as unknown as Trigger;
 		const said = (theme: "office" | "factory") => fitting(chatter, "bubble", linesIn(theme)).map((l) => l.text);
 		expect(said("office")).toContain("Who moved my stapler.");
 		expect(said("factory")).toContain("Who moved my hammer.");
@@ -192,7 +213,10 @@ describe("detect", () => {
 		const s = snap(
 			session("a", {
 				running: { tool: "Bash", since: NOW - 25 * MIN, kind: "build" },
-				agents: [agent("b", { running: { tool: "Bash", since: NOW - 19 * MIN, kind: "test" } }), agent("c", { running: { tool: "Bash", since: NOW - 41 * MIN, kind: "build" } })],
+				agents: [
+					agent("b", { running: { tool: "Bash", since: NOW - 19 * MIN, kind: "test" } }),
+					agent("c", { running: { tool: "Bash", since: NOW - 41 * MIN, kind: "build" } }),
+				],
 			}),
 		);
 		const builds = only(detect(s, s, NOW, OPTS), "longBuild");
@@ -206,7 +230,15 @@ describe("detect", () => {
 	test("a PR opened, with the count, the crew tag and a teammate's eye roll", () => {
 		const crew = [agent("b"), agent("c")];
 		const before = snap(session("a", { prs: [{ number: 7, url: "u7" }], agents: crew }));
-		const after = snap(session("a", { prs: [{ number: 7, url: "u7" }, { number: 8, url: "u8", at: NOW }], agents: crew }));
+		const after = snap(
+			session("a", {
+				prs: [
+					{ number: 7, url: "u7" },
+					{ number: 8, url: "u8", at: NOW },
+				],
+				agents: crew,
+			}),
+		);
 		const ts = detect(before, after, NOW, OPTS);
 		expect(only(ts, "prOpened")).toHaveLength(1);
 		expect(only(ts, "prOpened")[0]).toMatchObject({ magnitude: 2, tag: "crew", vars: { n: 8, count: 2 } });
@@ -256,7 +288,13 @@ describe("detect", () => {
 	});
 
 	test("a stall: busy with no output, or an agent marked stalled", () => {
-		const s = snap(session("a", { activity: { tool: "Edit", at: NOW - 9 * MIN }, stateSince: NOW - 20 * MIN, agents: [agent("b", { status: "stalled", lastWriteAt: NOW - 6 * MIN })] }));
+		const s = snap(
+			session("a", {
+				activity: { tool: "Edit", at: NOW - 9 * MIN },
+				stateSince: NOW - 20 * MIN,
+				agents: [agent("b", { status: "stalled", lastWriteAt: NOW - 6 * MIN })],
+			}),
+		);
 		const ts = only(detect(s, s, NOW, OPTS), "stalled");
 		expect(ts.map((t) => [t.who, t.magnitude])).toEqual([
 			["a", 9],
@@ -331,7 +369,9 @@ describe("the scheduler", () => {
 			const s = new Scheduler({ seed: i });
 			for (const b of s.step(NOW, { zoom: 0.4 }, [t]).says) expect(b.text.length).toBeLessThanOrEqual(30);
 		}
-		const long = [...Array(40).keys()].flatMap((i) => new Scheduler({ seed: i }).step(NOW, { zoom: 0.4, room: "teapot" }, [t]).says).some((b) => b.text.length > 30);
+		const long = [...Array(40).keys()]
+			.flatMap((i) => new Scheduler({ seed: i }).step(NOW, { zoom: 0.4, room: "teapot" }, [t]).says)
+			.some((b) => b.text.length > 30);
 		expect(long).toBe(true);
 	});
 
@@ -354,7 +394,8 @@ describe("the scheduler", () => {
 		expect(texts({ scout: 2, builder: 1 })).toContain("A scout for my scout’s scout.");
 		expect(texts({ builder: 3 }, "sign")).not.toContain("Caution: scouts running");
 		expect(texts({ scout: 1 }, "sign")).toContain("Caution: scouts running");
-		const pr = (crew: Trigger["crew"]) => fitting(trig({ kind: "prOpened", who: "a", tag: "crew", crew, vars: { n: 3, count: 1 } }), "bubble").map((l) => l.text);
+		const pr = (crew: Trigger["crew"]) =>
+			fitting(trig({ kind: "prOpened", who: "a", tag: "crew", crew, vars: { n: 3, count: 1 } }), "bubble").map((l) => l.text);
 		expect(pr({ builder: 4 })).not.toContain("I would like to thank my scout. And my other scout.");
 		expect(pr({ scout: 2, builder: 2 })).toContain("I would like to thank my scout. And my other scout.");
 	});
@@ -363,7 +404,8 @@ describe("the scheduler", () => {
 		const s = new Scheduler({ gapMs: 0, cooldownMs: 0, anyoneRepeatMs: 0 });
 		const said: string[] = [];
 		const n = fitting(trig({ kind: "crashed", who: "a" }), "bubble").length;
-		for (let i = 0; i < n + 3; i++) said.push(...s.step(NOW + i * 10_000, ZOOMED, [trig({ kind: "crashed", who: "a", key: `c${i}` })]).says.map((b) => b.text));
+		for (let i = 0; i < n + 3; i++)
+			said.push(...s.step(NOW + i * 10_000, ZOOMED, [trig({ kind: "crashed", who: "a", key: `c${i}` })]).says.map((b) => b.text));
 		expect(said.length).toBe(n);
 		expect(new Set(said).size).toBe(n);
 	});
@@ -387,7 +429,9 @@ describe("the scheduler", () => {
 	test("is deterministic with a seed", () => {
 		const run = (seed: number) => {
 			const s = new Scheduler({ seed, gapMs: 0 });
-			return ["a", "b", "c"].flatMap((who, i) => s.step(NOW + i * 1000, ZOOMED, [trig({ kind: "idle", who, magnitude: 12, ongoing: true, vars: { min: 12 } })]).says.map((b) => b.text));
+			return ["a", "b", "c"].flatMap((who, i) =>
+				s.step(NOW + i * 1000, ZOOMED, [trig({ kind: "idle", who, magnitude: 12, ongoing: true, vars: { min: 12 } })]).says.map((b) => b.text),
+			);
 		};
 		expect(run(7)).toEqual(run(7));
 		const seeds = new Set([1, 2, 3, 4, 5, 6, 7, 8].map((x) => run(x).join("|")));
@@ -407,19 +451,30 @@ describe("the scheduler", () => {
 		expect(fill("PR #{n}. Frame it.", {})).toBeUndefined();
 		expect(fill("PR #{n}. Frame it.", { n: 12 })).toBe("PR #12. Frame it.");
 		const s = new Scheduler({ gapMs: 0 });
-		for (let i = 0; i < 10; i++) for (const b of s.step(NOW + i * MIN, ZOOMED, [trig({ kind: "prOpened", who: `w${i}`, key: `k${i}`, vars: {} })]).says) expect(b.text).not.toContain("{");
+		for (let i = 0; i < 10; i++)
+			for (const b of s.step(NOW + i * MIN, ZOOMED, [trig({ kind: "prOpened", who: `w${i}`, key: `k${i}`, vars: {} })]).says)
+				expect(b.text).not.toContain("{");
 	});
 });
 
 describe("signs and gags", () => {
 	test("days since a test broke, the fail streak, the PR tally, the coffee count", () => {
 		const c = new Counters(OPTS);
-		const cmd = (exitCode: number, failStreak: number, at: number, kind: "test" | "build" = "test") => ({ last: { kind, exitCode, at }, failStreak, repeats: 1, failed: 0, testsFailed: 0 });
+		const cmd = (exitCode: number, failStreak: number, at: number, kind: "test" | "build" = "test") => ({
+			last: { kind, exitCode, at },
+			failStreak,
+			repeats: 1,
+			failed: 0,
+			testsFailed: 0,
+		});
 		let out = c.update(snap(session("a", { commands: cmd(1, 1, NOW - MIN) })), NOW);
 		expect(out.get("room:teapot:board")).toBe("Days since a test broke: 0");
 		out = c.update(snap(session("a", { commands: cmd(1, 3, NOW) })), NOW);
 		expect(out.get("room:teapot:board")).toBe("Fail streak: 3. New personal best.");
-		out = c.update(snap(session("a", { commands: cmd(0, 0, NOW + 2 * 24 * 60 * MIN), prs: [{ number: 1, url: "u", at: NOW + 2 * 24 * 60 * MIN }] })), NOW + 2 * 24 * 60 * MIN);
+		out = c.update(
+			snap(session("a", { commands: cmd(0, 0, NOW + 2 * 24 * 60 * MIN), prs: [{ number: 1, url: "u", at: NOW + 2 * 24 * 60 * MIN }] })),
+			NOW + 2 * 24 * 60 * MIN,
+		);
 		expect(out.get("room:teapot:board")).toBe("Days since a test broke: 2");
 		expect(out.get("room:teapot:sign")).toBe("PRs today: 1. Humility: 0.");
 		expect(out.get("kitchen:sign")).toBe("One cup per green build. Today: 1.");
@@ -441,13 +496,15 @@ describe("signs and gags", () => {
 
 	test("the fridge note is about whatever most needs a human", () => {
 		const c = new Counters(OPTS);
-		const note = c.update(
-			snap(
-				session("a", { title: "Crumb cache", waiting: { reason: "permission", since: NOW - 12 * MIN, source: "hook" } }),
-				session("b", { title: "Webhook spike", state: "idle", stateSince: NOW - 31 * MIN }),
-			),
-			NOW,
-		).get("fridge");
+		const note = c
+			.update(
+				snap(
+					session("a", { title: "Crumb cache", waiting: { reason: "permission", since: NOW - 12 * MIN, source: "hook" } }),
+					session("b", { title: "Webhook spike", state: "idle", stateSince: NOW - 31 * MIN }),
+				),
+				NOW,
+			)
+			.get("fridge");
 		expect(note).toBe("Crumb cache has had its hand up for 10 minutes. It’s fine. Its arm is tired, but it’s fine.");
 		expect(c.update(snap(session("b", { title: "Webhook spike", state: "idle", stateSince: NOW - 31 * MIN })), NOW).get("fridge")).toBe(
 			"Webhook spike is not asleep. It is “resting its context”. For 30 minutes.",

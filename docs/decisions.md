@@ -1833,3 +1833,32 @@ Lessons kept: synthesised beds and foley read as thin and toy-like; recorded voi
 correction and phrasing to sound intentional; anything always-on has to be judged over minutes, not
 seconds; Lyria 3 on Vertex answers only stateless, streamed interactions; and the terms for Gemini
 TTS and Lyria output are in the AI-generated audio entry above.
+
+## 2026-11-23: the restructure
+
+**The code is laid out by layer, and each theme is one folder.** The architecture review
+(`docs/architecture-review.md`) found the layers right in practice but the folders mixed: the floor
+plan sat with the drawing in `office/`, the rig's data with its painters, theme code in five places,
+and a dozen helpers copied two to eight times. The restructure (`docs/restructure-plan.md`, its
+Status section) moved code without changing it: the floor plan to `scene/world/`, the rig's data to
+`scene/rig/data/`, the director-to-scene types to `scene/contract.ts`, roles and the helpers to
+`shared/`, each theme to `src/themes/<id>/`, and `direct.ts` and each theme's scene into files by
+job. Screenshots of every demo state in all three themes match from before to after. Biome now
+enforces the layers and the formatting, and knip fails CI on unused exports.
+
+**Why there's no single `ThemePack`:** a theme's painters are Pixi; its words and lines are read
+by the Pixi-free director and sass. One object holding both would put Pixi under the director. So a
+theme is one folder, and the registries that pick by `ThemeId` stay apart by layer.
+
+**Adding a fourth theme**, as a checklist:
+
+1. Add its id to `THEME_IDS` in `src/themes/ids.ts`. tsc then lists every registry that needs it.
+2. Make `src/themes/<id>/`: `words.ts` (its `ThemeWords`) and `lines.ts` (its sass lines),
+   Pixi-free; `scene.ts` exporting its `SceneTheme`, built from `palette.ts`, `room.ts`,
+   `furniture.ts`, `stage.ts` and `outside.ts`; `rig.ts` repainting `paperTheme`.
+3. Add it to the four registries: `scene/theme/index.ts` (`THEMES`), `rig/themes.ts` (`RIGS`),
+   `scene/theme/words.ts` (`WORDS`) and `sass/bank.ts` (`BANKS`, with its counter words).
+4. Keep `words.ts` and `lines.ts` free of Pixi: `biome.json`'s `src/themes/*/words.ts` and
+   `lines.ts` globs check it.
+5. Run the theme parity e2e (`e2e/parity.test.ts`) and `tools/shoot.ts --theme <id>`; the tests
+   that loop over `THEME_IDS` pick it up.

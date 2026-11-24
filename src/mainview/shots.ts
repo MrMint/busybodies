@@ -5,9 +5,9 @@
 // the camera until unpinned.
 import type { Director } from "../scene/director";
 import { type News, type ShotState, SHOTS, type Tile, newsFrom, nextShot, scoreByArea, shotWake, tilesFor } from "../scene/director/shots";
-import type { Stop } from "../scene/office/camera";
+import { type Stop, sameStop } from "../scene/world/camera";
 import type { Office } from "../scene/office/office";
-import type { AreaKind } from "../scene/office/world";
+import type { AreaKind } from "../scene/world/world";
 import { type ThemeWords, areaLabel } from "../scene/theme/words";
 import type { Snapshot } from "../watcher/model";
 
@@ -37,11 +37,14 @@ export interface Camerawork {
 }
 
 /** The areas as the compact strip names them: in the theme's words, not always the office's. */
-export const tileAreas = (areas: readonly { id: string; kind: AreaKind; name: string }[], words: ThemeWords) => areas.map((a) => ({ id: a.id, kind: a.kind, name: areaLabel(a, words) }));
+export const tileAreas = (areas: readonly { id: string; kind: AreaKind; name: string }[], words: ThemeWords) =>
+	areas.map((a) => ({ id: a.id, kind: a.kind, name: areaLabel(a, words) }));
 
-const sameStop = (a: Stop, b: Stop) => a.kind === b.kind && (a.kind === "office" || (b.kind !== "office" && a.id === b.id));
-
-export function installCamerawork(office: Office, director: Director, opts: { visible(): boolean; tiles(tiles: Tile[], shot: ShotState["shot"]): void; redraw(): void }): Camerawork {
+export function installCamerawork(
+	office: Office,
+	director: Director,
+	opts: { visible(): boolean; tiles(tiles: Tile[], shot: ShotState["shot"]): void; redraw(): void },
+): Camerawork {
 	let news: News[] = [];
 	let state: ShotState | undefined;
 	let pinned: string | undefined;
@@ -66,7 +69,11 @@ export function installCamerawork(office: Office, director: Director, opts: { vi
 		const waitAreas = new Set(waits.map((w) => w.area));
 		const mine = yours();
 		if (waits.length && mine) waitAreas.add(mine);
-		const rush = new Set(Object.keys(world?.rush ?? {}).map(areaOf).filter((a): a is string => !!a));
+		const rush = new Set(
+			Object.keys(world?.rush ?? {})
+				.map(areaOf)
+				.filter((a): a is string => !!a),
+		);
 		const areas = tileAreas(floor.areas, office.theme.words);
 		if (pinned !== undefined && !areas.some((a) => a.id === pinned)) pinned = undefined;
 		tiles = tilesFor(areas, score, rush, waitAreas);

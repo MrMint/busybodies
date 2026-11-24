@@ -11,11 +11,12 @@
 //   lampFor(members, was)     -> the desk's test lamp, from the last test result seen
 //   deskMetrics(...)          -> all of a desk's things, and the planner's notes, for the office
 import { cups } from "../sass/detect";
-import type { Area, World as Floor } from "../office/world";
+import type { Area, Floor } from "../world/world";
 import type { Agent, Changes, Context, ModelFamily, Session, Todos } from "../../watcher/model";
 import type { Queue } from "./errands";
 import { traitOf } from "./traits";
 import type { Actor } from "./types";
+import type { DeskProps, Drawers, Lamp, PlannerRow, Tray } from "../contract";
 
 export const METRICS = {
 	/** The in-tray: this many sheets when the context is full. */
@@ -40,23 +41,9 @@ export const METRICS = {
 } as const;
 
 /** How full the context is, 0 to 1; undefined without a window (an unknown model: no pile). */
-export function contextShare(c: Context | undefined): number | undefined {
-	if (!c || !c.window || c.window <= 0) return undefined;
+function contextShare(c: Context | undefined): number | undefined {
+	if (!c?.window || c.window <= 0) return undefined;
 	return Math.max(0, Math.min(1, c.used / c.window));
-}
-
-/** The in-tray on the lead's desk. */
-export interface Tray {
-	/** Sheets on the pile: at least one while anything is in context. */
-	sheets: number;
-	/** Sheets slid off the pile onto the desk (0 below 80%). */
-	spill: number;
-	/** Past 95%: the lead is buried to the eyebrows. */
-	buried: boolean;
-	/** The lead has taken the pile to the shredder: the tray is empty until it's back. */
-	out?: boolean;
-	/** The lead is playing `buried`: the rig draws the tray and pile, so the office draws none. */
-	rig?: boolean;
 }
 
 /** The in-tray for a context: a few sheets to a teetering stack; none without a window. */
@@ -72,7 +59,10 @@ export function trayFor(c: Context | undefined): Tray | undefined {
  * doesn't fill the room), capped at `max`. */
 export function towerBricks(added: number, max = 30): number {
 	if (!(added > 0)) return 0;
-	const n = added <= METRICS.linearLines ? Math.floor(added / METRICS.linesPerBrick) : METRICS.linearLines / METRICS.linesPerBrick + Math.floor(METRICS.bricksPerDouble * Math.log2(added / METRICS.linearLines));
+	const n =
+		added <= METRICS.linearLines
+			? Math.floor(added / METRICS.linesPerBrick)
+			: METRICS.linearLines / METRICS.linesPerBrick + Math.floor(METRICS.bricksPerDouble * Math.log2(added / METRICS.linearLines));
 	return Math.min(max, n);
 }
 
@@ -80,14 +70,6 @@ export function towerBricks(added: number, max = 30): number {
 export function skipLoad(removed: number): number {
 	if (!(removed > 0)) return 0;
 	return Math.min(METRICS.skipLoads, Math.max(1, Math.ceil(Math.log2(removed / METRICS.skipLines + 1))));
-}
-
-/** The filing drawers beside the desk. */
-export interface Drawers {
-	/** Drawers in the cabinet: one per ~10 files, at least one once a file is touched. */
-	drawers: number;
-	/** How many of them are full: those bulge open. */
-	full: number;
 }
 
 export function drawersFor(files: number): Drawers | undefined {
@@ -99,21 +81,19 @@ export function drawersFor(files: number): Drawers | undefined {
 /** Mugs on the desk: a whole cup of coffee (sass/detect.ts `cups`, from cost) is a mug. */
 export const mugsFor = (s: Session): number => Math.min(METRICS.maxMugs, Math.floor(cups(s)));
 
-export type Lamp = "green" | "red";
-
 /** The last test result among a session's members: its time and colour, or the last one seen. */
 export function lampFor(members: { commands?: Session["commands"] }[], was?: { lamp?: Lamp; at?: number }): { lamp?: Lamp; at?: number } {
 	let best: { lamp?: Lamp; at?: number } = { lamp: was?.lamp, at: was?.at };
 	for (const m of members) {
 		const last = m.commands?.last;
-		if (!last || last.kind !== "test") continue;
+		if (last?.kind !== "test") continue;
 		if (best.at === undefined || last.at > best.at) best = { lamp: last.exitCode === 0 ? "green" : "red", at: last.at };
 	}
 	return best;
 }
 
 /** A session's agents, every depth. */
-export const agentsOf = (list: Agent[]): Agent[] => list.flatMap((a) => [a, ...agentsOf(a.children)]);
+const agentsOf = (list: Agent[]): Agent[] => list.flatMap((a) => [a, ...agentsOf(a.children)]);
 
 /** What the session and its agents have changed, summed; undefined when nobody reported any. */
 export function changesOf(s: Session): Changes | undefined {
@@ -123,37 +103,18 @@ export function changesOf(s: Session): Changes | undefined {
 }
 
 /** The family word for the desk card: plain text, never a mark ("" for an unknown model). */
-export const familyWord = (f: ModelFamily | undefined): string => traitOf(f).word;
+const familyWord = (f: ModelFamily | undefined): string => traitOf(f).word;
 
 // --- A desk's things, as the office draws them -------------------------------------------------
 
-export interface DeskProps {
-	tray?: Tray;
-	/** The model family, as a word for the name card's last line. */
-	word?: string;
-	drawers?: Drawers;
-	/** The skip of removed lines: 0 (none) to 5. */
-	skip: number;
-	mugs: number;
-	lamp?: Lamp;
-}
-
 /** What the director remembers per desk between snapshots, besides what it shows. */
-export interface DeskState extends DeskProps {
+interface DeskState extends DeskProps {
 	/** Compactions seen: one more is a trip to the shredder. */
 	compactions: number;
 	/** Todos as last seen: a done one more is a note walked to the planner. */
 	todos?: Todos;
 	/** When the lamp's test result came in. */
 	testAt?: number;
-}
-
-/** One session's notes on its room's planner, by column. */
-export interface PlannerRow {
-	session: string;
-	pending: number;
-	active: number;
-	done: number;
 }
 
 /** Your office: who holds which ticket, the next number, and the lowest ticket in the queue. */
@@ -182,7 +143,7 @@ export interface Metrics {
 export const NO_METRICS: Metrics = { desks: {}, planners: {}, tickets: {}, next: 1 };
 
 /** A desk's things this snapshot. `out`: its lead is off at the shredder with the pile. */
-export function deskState(s: Session, was: DeskState | undefined, out: boolean, rig = false): DeskState {
+function deskState(s: Session, was: DeskState | undefined, out: boolean, rig = false): DeskState {
 	const found = trayFor(s.context);
 	const tray = found && rig ? { ...found, rig: true } : found;
 	const ch = changesOf(s);
@@ -203,7 +164,7 @@ export function deskState(s: Session, was: DeskState | undefined, out: boolean, 
 
 /** Each project room's planner: a row of notes per session with todos, in desk order. A note on
  * its way to the planner (`carried`, by session) isn't up yet: it still shows as active. */
-export function planners(floor: Floor, sessions: Map<string, Session>, carried: Set<string>): Record<string, PlannerRow[]> {
+function planners(floor: Floor, sessions: Map<string, Session>, carried: Set<string>): Record<string, PlannerRow[]> {
 	const out: Record<string, PlannerRow[]> = {};
 	for (const a of floor.areas) {
 		if (a.kind !== "project" || !hasPlanner(a)) continue;
@@ -231,5 +192,11 @@ export function metricsFor(sessions: Map<string, Session>, was: Metrics, actors:
 		const e = lead?.errand;
 		desks[id] = deskState(s, was.desks[id], e?.kind === "shred" && now < e.until, lead?.pose === "buried");
 	}
-	return { desks, planners: planners(floor, sessions, carried), tickets: queue.tickets, next: queue.next, ...(queue.serving !== undefined ? { serving: queue.serving } : {}) };
+	return {
+		desks,
+		planners: planners(floor, sessions, carried),
+		tickets: queue.tickets,
+		next: queue.next,
+		...(queue.serving !== undefined ? { serving: queue.serving } : {}),
+	};
 }

@@ -4,7 +4,7 @@
 // template images (black on clear), so macOS tints them for light and dark menu bars. They are
 // drawn by tools/tray-icons.ts into assets/tray/ and copied into the bundle's views.
 import { Tray, Utils } from "electrobun/main";
-import type { ThemeId } from "../scene/theme/id";
+import type { ThemeId } from "../themes/ids";
 import { type TrayStatus, trayAction, trayMenu } from "./menu";
 import { type Mood, moodOf } from "./mood";
 
@@ -23,7 +23,7 @@ const image = (mood: Mood) => `views://tray/${mood}.png`;
 
 export function installTray(hooks: TrayHooks) {
 	const tray = new Tray({ image: image("idle"), template: true, width: 18, height: 18 });
-	let shown = { mood: "" as Mood | "", menu: "" };
+	const shown = { mood: "" as Mood | "", menu: "" };
 
 	tray.on("tray-clicked", (event) => {
 		const action = trayAction((event as { data?: { action?: string } }).data?.action);

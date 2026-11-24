@@ -3,19 +3,22 @@
 // in the hands. Pixi-free, so the layout, the tray, the pose sheet and tests can read it.
 // The layout names areas with the office's words (`Area.name` is the area's identity: tools and
 // tests aim at "kitchen" or "your office" in any theme); the office's tabs show the theme's.
-import type { AreaKind } from "../office/world";
-import type { ThemeId } from "./id";
+import type { AreaKind } from "../world/world";
+import type { ThemeId } from "../../themes/ids";
+import { OFFICE_WORDS } from "../../themes/office/words";
+import { FACTORY_WORDS } from "../../themes/factory/words";
+import { BAKERY_WORDS } from "../../themes/bakery/words";
 
 export interface SignText {
 	title: string;
 	body?: string;
 }
 
-export type CommonKind = Exclude<AreaKind, "project">;
+type CommonKind = Exclude<AreaKind, "project">;
 
-/** A pose as one theme names it, where it differs from the pose's own (rig/poses.ts): the poses are
+/** A pose as one theme names it, where it differs from the pose's own (rig/data/poses.ts): the poses are
  * shared and the rig paints the theme's things, so only the words change. */
-export interface PoseWords {
+interface PoseWords {
 	title?: string;
 	/** The lines the sheet lists for it (pose lines with a frame's `say` keep theirs). */
 	lines?: readonly string[];
@@ -38,103 +41,6 @@ export interface ThemeWords {
 	poses: Readonly<Record<string, PoseWords>>;
 }
 
-export const OFFICE_WORDS: ThemeWords = {
-	areas: { meeting: "meeting room", lobby: "lobby", yours: "your office", kitchen: "kitchen", vacant: "vacant" },
-	subs: { meeting: "reviews", lobby: "in and out", yours: "waiting on you", kitchen: "idle, finished and sent home", vacant: "for lease" },
-	signs: {
-		"meeting:sign": { title: "THIS MEETING", body: "could have been a diff." },
-		"kitchen:sign": { title: "1 CUP PER GREEN BUILD", body: "Finished? Close your own session." },
-		"lobby:frame": { title: "EMPLOYEE OF THE MONTH", body: "Nobody. Again." },
-	},
-	serving: (n) => ({ title: "NOW SERVING", body: n === undefined ? "Nobody. Yet." : `No. ${n}` }),
-	columns: ["TO DO", "DOING", "DONE"],
-	door: "YOU",
-	// The builder's work is paperwork here (rig/office.ts): the workshop words go with the workshop.
-	poses: {
-		hammer: { title: "Stapling until it compiles" },
-		thumb: { title: "Stapled the thumb" },
-		carry: { title: "Carrying a ream" },
-		place: { title: "Setting a ream on the pile" },
-		blueprint: { title: "Reading the printout", lines: ["Print twice. Read once."] },
-		rummage: { title: "Looking for the tape dispenser" },
-		tinker: { title: "Sharpening while it runs", lines: ["Sharper. Sharper. Gone."] },
-		exploring: { title: "Exploring with a laser pointer" },
-	},
-};
-
-export const FACTORY_WORDS: ThemeWords = {
-	areas: { meeting: "QA booth", lobby: "gatehouse", yours: "foreman's office", kitchen: "break room", vacant: "empty bay" },
-	subs: { meeting: "inspections", lobby: "clocking in and out", yours: "waiting on the foreman", kitchen: "idle, finished and clocked off", vacant: "mothballed" },
-	signs: {
-		"meeting:sign": { title: "QUALITY CONTROL", body: "We control it. Mostly." },
-		"kitchen:sign": { title: "1 SNACK PER GREEN BUILD", body: "Finished? Clock yourself out." },
-		"lobby:frame": { title: "DAYS WITHOUT INCIDENT", body: "0. Again." },
-	},
-	serving: (n) => ({ title: "NEXT UP", body: n === undefined ? "Nobody. Yet." : `No. ${n}` }),
-	columns: ["QUEUED", "ON LINE", "SHIPPED"],
-	door: "FOREMAN",
-	// The stations are machines here (rig/factory.ts): the office's furniture words go with it.
-	poses: {
-		fileFolder: { title: "Flipping through the parts bin" },
-		cardThumb: { title: "Thumbing through the bolt bin" },
-		copierFeed: { title: "Feeding the press" },
-		copierKick: { title: "Kicking the jammed press" },
-		copierFeud: { title: "A running feud with the press" },
-		phone: { title: "On the radio" },
-		mailDrop: { title: "Dropping the carton on the pallet" },
-		shred: { title: "Feeding the crusher" },
-		buried: { title: "Buried under the hopper" },
-		bellRing: { title: "Ringing the shift bell on your desk" },
-		stickyCarry: { title: "Carrying a work tag" },
-		stickyPost: { title: "Hanging a work tag on the job board" },
-		envelopeCarry: { title: "Carrying the PR crate" },
-	},
-};
-
-export const BAKERY_WORDS: ThemeWords = {
-	areas: { meeting: "tasting table", lobby: "shop front", yours: "pick-up counter", kitchen: "the café", vacant: "closed for icing" },
-	subs: { meeting: "tasted before it's boxed", lobby: "in and out the door", yours: "Order up! waiting on you", kitchen: "idle, finished and on a coffee break", vacant: "back soon" },
-	signs: {
-		"meeting:sign": { title: "NO CRUMB UNTASTED", body: "Every batch. Every time." },
-		"kitchen:sign": { title: "1 ÉCLAIR PER GREEN BUILD", body: "Finished? Hang up your apron." },
-		"lobby:frame": { title: "TODAY'S SPECIAL", body: "Whatever rises." },
-	},
-	serving: (n) => ({ title: "ORDER UP!", body: n === undefined ? "Nothing waiting. Yet." : `No. ${n}` }),
-	columns: ["ORDERED", "BAKING", "BOXED"],
-	door: "BAKER",
-	// The builder's work is baking and the stations are bakery kit here (rig/bakery.ts): the
-	// workshop's and the office's words go with them.
-	poses: {
-		hammer: { title: "Rolling it out until it compiles", lines: ["It rises in my heart."] },
-		thumb: { title: "Rolled over the thumb" },
-		exploring: { title: "Exploring with a crème brûlée torch" },
-		painting: { title: "Piping it two pixels over" },
-		blueprint: { title: "Reading the recipe", lines: ["Weigh twice. Bake once."] },
-		rummage: { title: "Looking for the right macaron", lines: ["It was in the basket a minute ago."] },
-		tinker: { title: "Cranking the mixer while it runs", lines: ["Whisk. Unwhisk. Whisk."] },
-		poke: { title: "Poking the cake to see if it holds" },
-		carry: { title: "Carrying a cake layer" },
-		place: { title: "Adding a layer to the cake" },
-		faceDown: { title: "Face down on the bench" },
-		waterCooler: { title: "Lemonade at the café" },
-		fileFolder: { title: "Checking the dough in the proofing drawer" },
-		cardThumb: { title: "Thumbing through the recipe cards" },
-		copierFeed: { title: "Sliding croissants into the oven" },
-		copierKick: { title: "Kicking the stuck oven door" },
-		copierFeud: { title: "A running feud with the oven" },
-		stampGreen: { title: "Tasting it: yes" },
-		stampRed: { title: "Tasting it: no" },
-		phone: { title: "Taking an order on the phone" },
-		mailDrop: { title: "Setting a pastry box on the counter" },
-		shred: { title: "Tipping burnt cookies in the crumb bin" },
-		buried: { title: "Buried under a tray of pastries" },
-		bellRing: { title: "Ringing the bell on your counter" },
-		stickyCarry: { title: "Carrying an order slip" },
-		stickyPost: { title: "Pinning an order slip on the order board" },
-		envelopeCarry: { title: "Carrying the PR cake" },
-	},
-};
-
 const WORDS: Record<ThemeId, ThemeWords> = { office: OFFICE_WORDS, factory: FACTORY_WORDS, bakery: BAKERY_WORDS };
 
 export const wordsFor = (id: ThemeId): ThemeWords => WORDS[id] ?? OFFICE_WORDS;
@@ -143,7 +49,8 @@ export const wordsFor = (id: ThemeId): ThemeWords => WORDS[id] ?? OFFICE_WORDS;
  * What a theme calls an area: a project room by its project, a common area by the theme's word for
  * it (the office's tabs, the compact strip's tiles). `Area.name` stays the office's word.
  */
-export const areaLabel = (area: { kind: AreaKind; name: string }, words: ThemeWords): string => (area.kind === "project" ? area.name : (words.areas[area.kind] ?? area.name));
+export const areaLabel = (area: { kind: AreaKind; name: string }, words: ThemeWords): string =>
+	area.kind === "project" ? area.name : (words.areas[area.kind] ?? area.name);
 
 /** A pose's title and lines in a theme's words. */
 export function poseWords(id: ThemeId, pose: { name: string; title: string; lines: readonly string[] }): { title: string; lines: readonly string[] } {

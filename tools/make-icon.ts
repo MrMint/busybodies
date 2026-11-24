@@ -19,12 +19,7 @@ import { deflateSync } from "node:zlib";
 
 type RGBA = [number, number, number, number];
 
-const hex = (h: string, a = 1): RGBA => [
-	Number.parseInt(h.slice(1, 3), 16),
-	Number.parseInt(h.slice(3, 5), 16),
-	Number.parseInt(h.slice(5, 7), 16),
-	a,
-];
+const hex = (h: string, a = 1): RGBA => [Number.parseInt(h.slice(1, 3), 16), Number.parseInt(h.slice(3, 5), 16), Number.parseInt(h.slice(5, 7), 16), a];
 
 const INK = hex("#1f2340");
 const TILE = hex("#d4ecd9");
@@ -146,8 +141,7 @@ const SMALL_MAX = 32;
 
 /** Layers, painted in order, for an icon `size` pixels across: one design, with simpler eyes at
  * 32 px and below and a simpler mouth at 16. */
-const layersFor = (size: number): Layer[] =>
-	size > SMALL_MAX ? [...BASE, ...FULL_FACE] : [...BASE, ...SMALL_EYES, ...CHEEKS, size <= 16 ? DASH : SMILE];
+const layersFor = (size: number): Layer[] => (size > SMALL_MAX ? [...BASE, ...FULL_FACE] : [...BASE, ...SMALL_EYES, ...CHEEKS, size <= 16 ? DASH : SMILE]);
 
 /** Shades one pixel of a `size`-pixel icon by averaging an n×n grid of samples inside it. */
 function shade(layers: Layer[], px: number, py: number, size: number, n: number): RGBA {
@@ -249,7 +243,10 @@ function png(size: number, pixels: Uint8Array): Uint8Array {
 const outDir = process.argv[2] ?? "assets/icon.iconset";
 mkdirSync(outDir, { recursive: true });
 for (const base of [16, 32, 128, 256, 512]) {
-	for (const [suffix, size] of [["", base], ["@2x", base * 2]] as const) {
+	for (const [suffix, size] of [
+		["", base],
+		["@2x", base * 2],
+	] as const) {
 		const file = join(outDir, `icon_${base}x${base}${suffix}.png`);
 		writeFileSync(file, png(size, render(size)));
 		console.info(`wrote ${file}`);

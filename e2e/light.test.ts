@@ -43,75 +43,87 @@ async function open(query: string): Promise<Page> {
 }
 
 describe("light", () => {
-	test("?hour= pins the phase; the light re-bakes when the phase or the stage changes, not per frame", async () => {
-		const page = await open("demo&frozen&hour=23");
-		const night = await page.evaluate(() => window.__busybodies!.light());
-		expect(night).toMatchObject({ phase: "night", hour: 23, forced: true, glow: true });
-		expect(night.lamps).toBeGreaterThan(0);
-		const after = await page.evaluate(() => {
-			const b = window.__busybodies!;
-			const bakes = b.light().bakes;
-			b.step(30);
-			const stepped = b.light().bakes;
-			b.setHour(22); // still night: nothing to re-bake
-			const same = b.light().bakes;
-			b.setHour(12);
-			return { bakes, stepped, same, noon: b.light() };
-		});
-		expect(after.stepped).toBe(after.bakes);
-		expect(after.same).toBe(after.bakes);
-		expect(after.noon.phase).toBe("noon");
-		expect(after.noon.bakes).toBe(after.bakes + 1);
-		expect(after.noon.lamps).toBe(0);
-		expect(after.noon.glow).toBe(false);
-		// The camera's room is the stage; at the office stop nothing is.
-		const focus = await page.evaluate(() => {
-			const b = window.__busybodies!;
-			b.goTo({ kind: "room", id: "room:lanternfish" }, false);
-			const room = b.light().focus;
-			b.goTo({ kind: "office" }, false);
-			return { room, office: b.light().focus ?? null };
-		});
-		expect(focus).toEqual({ room: "room:lanternfish", office: null });
-		await page.close();
-	}, T);
+	test(
+		"?hour= pins the phase; the light re-bakes when the phase or the stage changes, not per frame",
+		async () => {
+			const page = await open("demo&frozen&hour=23");
+			const night = await page.evaluate(() => window.__busybodies!.light());
+			expect(night).toMatchObject({ phase: "night", hour: 23, forced: true, glow: true });
+			expect(night.lamps).toBeGreaterThan(0);
+			const after = await page.evaluate(() => {
+				const b = window.__busybodies!;
+				const bakes = b.light().bakes;
+				b.step(30);
+				const stepped = b.light().bakes;
+				b.setHour(22); // still night: nothing to re-bake
+				const same = b.light().bakes;
+				b.setHour(12);
+				return { bakes, stepped, same, noon: b.light() };
+			});
+			expect(after.stepped).toBe(after.bakes);
+			expect(after.same).toBe(after.bakes);
+			expect(after.noon.phase).toBe("noon");
+			expect(after.noon.bakes).toBe(after.bakes + 1);
+			expect(after.noon.lamps).toBe(0);
+			expect(after.noon.glow).toBe(false);
+			// The camera's room is the stage; at the office stop nothing is.
+			const focus = await page.evaluate(() => {
+				const b = window.__busybodies!;
+				b.goTo({ kind: "room", id: "room:lanternfish" }, false);
+				const room = b.light().focus;
+				b.goTo({ kind: "office" }, false);
+				return { room, office: b.light().focus ?? null };
+			});
+			expect(focus).toEqual({ room: "room:lanternfish", office: null });
+			await page.close();
+		},
+		T,
+	);
 
-	test("an idle office at night in calm mode still makes no frames: the light is baked", async () => {
-		const page = await open("demo=idle&calm&hour=2");
-		await page.waitForTimeout(300);
-		await page.evaluate(() => window.__busybodies!.resetCounters());
-		await page.waitForTimeout(1500);
-		const c = await page.evaluate(() => window.__busybodies!.counters());
-		expect(c.tickerRunning).toBe(false);
-		expect(c.animationFrames).toBe(0);
-		expect(c.renders).toBe(0);
-		await page.close();
-	}, T);
+	test(
+		"an idle office at night in calm mode still makes no frames: the light is baked",
+		async () => {
+			const page = await open("demo=idle&calm&hour=2");
+			await page.waitForTimeout(300);
+			await page.evaluate(() => window.__busybodies!.resetCounters());
+			await page.waitForTimeout(1500);
+			const c = await page.evaluate(() => window.__busybodies!.counters());
+			expect(c.tickerRunning).toBe(false);
+			expect(c.animationFrames).toBe(0);
+			expect(c.renders).toBe(0);
+			await page.close();
+		},
+		T,
+	);
 
 	for (const theme of ["office", "factory", "bakery"])
-		test(`a busy night frame in the ${theme} stays within the draw budget, at a room stop too`, async () => {
-			const page = await open(`demo&frozen&hour=23&theme=${theme}`);
-			const draws = await page.evaluate(() => {
-				const gl = document.querySelector("canvas")!.getContext("webgl2")!;
-				let n = 0;
-				const de = gl.drawElements.bind(gl);
-				const da = gl.drawArrays.bind(gl);
-				gl.drawElements = (...a: Parameters<typeof de>) => (n++, de(...a));
-				gl.drawArrays = (...a: Parameters<typeof da>) => (n++, da(...a));
-				const b = window.__busybodies!;
-				const count = () => {
-					b.step(1);
-					n = 0;
-					b.step(1);
-					return n;
-				};
-				const office = count();
-				b.goTo({ kind: "room", id: "room:lanternfish" }, false);
-				return { office, room: count() };
-			});
-			expect(draws.office).toBeGreaterThan(0);
-			expect(draws.office).toBeLessThanOrEqual(30);
-			expect(draws.room).toBeLessThanOrEqual(30);
-			await page.close();
-		}, T);
+		test(
+			`a busy night frame in the ${theme} stays within the draw budget, at a room stop too`,
+			async () => {
+				const page = await open(`demo&frozen&hour=23&theme=${theme}`);
+				const draws = await page.evaluate(() => {
+					const gl = document.querySelector("canvas")!.getContext("webgl2")!;
+					let n = 0;
+					const de = gl.drawElements.bind(gl);
+					const da = gl.drawArrays.bind(gl);
+					gl.drawElements = (...a: Parameters<typeof de>) => (n++, de(...a));
+					gl.drawArrays = (...a: Parameters<typeof da>) => (n++, da(...a));
+					const b = window.__busybodies!;
+					const count = () => {
+						b.step(1);
+						n = 0;
+						b.step(1);
+						return n;
+					};
+					const office = count();
+					b.goTo({ kind: "room", id: "room:lanternfish" }, false);
+					return { office, room: count() };
+				});
+				expect(draws.office).toBeGreaterThan(0);
+				expect(draws.office).toBeLessThanOrEqual(30);
+				expect(draws.room).toBeLessThanOrEqual(30);
+				await page.close();
+			},
+			T,
+		);
 });

@@ -2,8 +2,9 @@
 // talks to the Bun process through `bridge`; in a browser (?demo) there is no bridge and it shows
 // what it can. Fixtures: ?demo=empty (nobody's in), ?demo=nohome (no coding agent found), ?about.
 import type { AppStatus } from "../shared/rpc";
-import { THEME_IDS, type ThemeId } from "../scene/theme/id";
-import type { Session, Snapshot } from "../watcher/model";
+import { THEME_IDS, type ThemeId } from "../themes/ids";
+import type { Snapshot } from "../watcher/model";
+import { flatSessions } from "../watcher/model";
 
 /** What the shell can ask of the Bun process. */
 export interface Bridge {
@@ -71,8 +72,6 @@ html:has(body.compact),body.compact{background:transparent}
  padding:5px 14px;cursor:pointer;box-shadow:2px 3px 0 #1b2140}
 `;
 
-const flat = (list: Session[]): Session[] => list.flatMap((s) => [s, ...flat(s.children)]);
-
 export function installShell(opts: {
 	bridge: Bridge;
 	/** Connected to the Bun process (not a demo or a replay): the bridge answers. */
@@ -120,12 +119,16 @@ project's GitHub Releases. No analytics, no accounts.</p>
 		else window.open("https://github.com/MrMint/busybodies", "_blank", "noopener");
 	};
 	about.addEventListener("pointerdown", (e) => e.target === about && close());
-	window.addEventListener("keydown", (e) => {
-		if (e.key === "Escape" && !about.hidden) {
-			close();
-			e.stopImmediatePropagation();
-		}
-	}, true);
+	window.addEventListener(
+		"keydown",
+		(e) => {
+			if (e.key === "Escape" && !about.hidden) {
+				close();
+				e.stopImmediatePropagation();
+			}
+		},
+		true,
+	);
 
 	// The settings sheet, behind the cog: every setting the app grows goes here.
 	const settings = document.createElement("div");
@@ -183,12 +186,16 @@ project's GitHub Releases. No analytics, no accounts.</p>
 	const closeSettings = () => (settings.hidden = true);
 	settings.querySelector<HTMLButtonElement>(".close")!.onclick = closeSettings;
 	settings.addEventListener("pointerdown", (e) => e.target === settings && closeSettings());
-	window.addEventListener("keydown", (e) => {
-		if (e.key === "Escape" && !settings.hidden) {
-			closeSettings();
-			e.stopImmediatePropagation();
-		}
-	}, true);
+	window.addEventListener(
+		"keydown",
+		(e) => {
+			if (e.key === "Escape" && !settings.hidden) {
+				closeSettings();
+				e.stopImmediatePropagation();
+			}
+		},
+		true,
+	);
 
 	let status: Partial<AppStatus> = { version: "dev", homeFound: true, ...opts.status };
 	const refreshStatus = async () => {
@@ -237,7 +244,7 @@ Start a coding session there, or point <code>BUSYBODIES_AGENT_HOME</code> at the
 		togglesChanged: () => markToggles(),
 		/** Each snapshot: show or hide the empty-state sign. */
 		update(snapshot: Snapshot) {
-			const n = flat(snapshot.sessions).length;
+			const n = flatSessions(snapshot.sessions).length;
 			if (n === sessions) return;
 			sessions = n;
 			// The agent's folder may have appeared since: ask again whenever the office empties.

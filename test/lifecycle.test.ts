@@ -93,7 +93,10 @@ describe("Watcher over a long run", () => {
 			await mkdir(join(home, "busybodies"), { recursive: true });
 			expect(await until(() => w.watchCount === 3)).toBe(true);
 			// And it reads what the new home holds: a live session (this process) shows up.
-			await writeFile(join(home, "sessions", `${process.pid}.json`), JSON.stringify({ pid: process.pid, sessionId: "s-back", cwd: "/Users/you/code/teapot" }));
+			await writeFile(
+				join(home, "sessions", `${process.pid}.json`),
+				JSON.stringify({ pid: process.pid, sessionId: "s-back", cwd: "/Users/you/code/teapot" }),
+			);
 			expect(await until(() => w.snapshot?.sessions.some((s) => s.id === "s-back") ?? false)).toBe(true);
 		} finally {
 			w.stop();
@@ -109,7 +112,10 @@ describe("Watcher over a long run", () => {
 		await w.start();
 		w.stop();
 		const before = heard;
-		await writeFile(join(home, "sessions", `${process.pid}.json`), JSON.stringify({ pid: process.pid, sessionId: "s-late", cwd: "/Users/you/code/kettle" }));
+		await writeFile(
+			join(home, "sessions", `${process.pid}.json`),
+			JSON.stringify({ pid: process.pid, sessionId: "s-late", cwd: "/Users/you/code/kettle" }),
+		);
 		await Bun.sleep(150);
 		expect(heard).toBe(before);
 	});

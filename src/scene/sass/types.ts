@@ -1,6 +1,7 @@
 // The words the sass module shares between its parts: what sets a line off, who says it, and
 // where a sign goes. Pixi-free, so it runs in unit tests and the text dump.
-import { ROLES, type Role, roleFor } from "../rig/roles";
+import { type Role, roleFor } from "../rig/data/roles";
+import { fnv1a } from "../../shared/hash";
 
 /** What sets a line off. Each one has its own detector in `detect.ts` (or `signs.ts`). */
 export const TRIGGERS = [
@@ -33,7 +34,7 @@ export type TriggerKind = (typeof TRIGGERS)[number];
 export type LineKind = "said" | "thought" | "sign";
 
 /** The rig's seven costumes (src/scene/rig/roles.ts), plus "anyone" for a line any character can say and "room" for signs. */
-export { ROLES, roleFor, type Role };
+export { roleFor, type Role };
 export type Speaker = Role | "anyone" | "room";
 
 /**
@@ -42,17 +43,7 @@ export type Speaker = Role | "anyone" | "room";
  * rest are props the wiring maps to whatever draws them (the fridge dock, the event ticker, the
  * desk note, the plant, the mug pile), or drops.
  */
-export type SignPlace =
-	| "sign"
-	| "board"
-	| "meeting:sign"
-	| "meeting:board"
-	| "kitchen:sign"
-	| "fridge"
-	| "ticker"
-	| "desk"
-	| "plant"
-	| "mugs";
+export type SignPlace = "sign" | "board" | "meeting:sign" | "meeting:board" | "kitchen:sign" | "fridge" | "ticker" | "desk" | "plant" | "mugs";
 
 /** Values a line's `{placeholders}` can take. A line whose placeholder has no value isn't used. */
 export interface LineVars {
@@ -97,14 +88,7 @@ export interface Trigger {
 }
 
 /** A small, fast, seeded hash (FNV-1a) for deterministic choices. */
-export function hash(s: string): number {
-	let h = 0x811c9dc5;
-	for (let i = 0; i < s.length; i++) {
-		h ^= s.charCodeAt(i);
-		h = Math.imul(h, 0x01000193);
-	}
-	return h >>> 0;
-}
+export const hash = fnv1a;
 
 /** A number in [0, 1) from a string, the same every time. */
 export const unit = (s: string): number => hash(s) / 0x1_0000_0000;

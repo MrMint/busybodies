@@ -14,8 +14,7 @@ const BODY = "M18 6 C26 6 31 12 31 20 C31 27 26 31 18 31 C10 31 5 27 5 20 C5 12 
  * (up and to the right) as the highlight; see `dots`. */
 const eyes = (cy: number, rx: number, ry: number) =>
 	`<ellipse cx="12.3" cy="${cy}" rx="${rx}" ry="${ry}"/><ellipse cx="23.7" cy="${cy}" rx="${rx}" ry="${ry}"/>`;
-const dots = (cy: number, r: number) =>
-	`<circle cx="${12.3 + 1.2}" cy="${cy}" r="${r}"/><circle cx="${23.7 + 1.2}" cy="${cy}" r="${r}"/>`;
+const dots = (cy: number, r: number) => `<circle cx="${12.3 + 1.2}" cy="${cy}" r="${r}"/><circle cx="${23.7 + 1.2}" cy="${cy}" r="${r}"/>`;
 
 const FACES: Record<string, { cut: string; dots: string; extra: string }> = {
 	// Wide eyes, a short flat mouth (concentration), and a bead of sweat. The mouth sits low, on the

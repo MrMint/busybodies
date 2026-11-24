@@ -1,6 +1,6 @@
 // Life (src/scene/rig/life.ts): blinks and glances are a pure function of id and time.
 import { describe, expect, test } from "bun:test";
-import { BLINK_MS, LIFE_GRID_MS, blinking, glancing, lifeAt } from "../src/scene/rig/life";
+import { BLINK_MS, LIFE_GRID_MS, blinking, glancing, lifeAt } from "../src/scene/rig/data/life";
 
 const ids = Array.from({ length: 40 }, (_, i) => `s:life-${i}`);
 
@@ -49,10 +49,11 @@ describe("life", () => {
 	});
 
 	test("shut or sleepy eyes don't blink", () => {
-		for (const id of ids) for (let ms = 0; ms < 20_000; ms += 10) {
-			expect(lifeAt(id, ms, "closed").blink).toBe(false);
-			expect(lifeAt(id, ms, "star").blink).toBe(false);
-		}
+		for (const id of ids)
+			for (let ms = 0; ms < 20_000; ms += 10) {
+				expect(lifeAt(id, ms, "closed").blink).toBe(false);
+				expect(lifeAt(id, ms, "star").blink).toBe(false);
+			}
 	});
 
 	test("blinks and glances start on life's beat grid, and a 10 fps frame sees every blink", () => {

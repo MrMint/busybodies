@@ -5,7 +5,7 @@
 // Quit, ⌘Q, the Dock's Quit, SIGTERM) always takes one way out (shutdown.ts).
 import { existsSync } from "node:fs";
 import Electrobun, { ApplicationMenu, BrowserView, BrowserWindow, GlobalShortcut, Updater, Utils } from "electrobun/main";
-import { type ThemeId, themeId } from "../scene/theme/id";
+import { type ThemeId, themeId } from "../themes/ids";
 import type { AppStatus, BusybodiesRPC } from "../shared/rpc";
 import type { Snapshot } from "../watcher/model";
 import { Watcher } from "../watcher/watch";
@@ -225,15 +225,16 @@ ApplicationMenu.setApplicationMenu([
 			{ label: "Quit Busybodies", role: "quit", accelerator: "q" },
 		],
 	},
-	{ label: "Edit", submenu: [{ role: "copy", accelerator: "c" }, { role: "selectAll", accelerator: "a" }] },
+	{
+		label: "Edit",
+		submenu: [
+			{ role: "copy", accelerator: "c" },
+			{ role: "selectAll", accelerator: "a" },
+		],
+	},
 	{
 		label: "Window",
-		submenu: [
-			{ role: "minimize", accelerator: "m" },
-			{ role: "close", accelerator: "w" },
-			{ type: "divider" },
-			{ role: "bringAllToFront" },
-		],
+		submenu: [{ role: "minimize", accelerator: "m" }, { role: "close", accelerator: "w" }, { type: "divider" }, { role: "bringAllToFront" }],
 	},
 ]);
 ApplicationMenu.on("application-menu-clicked", (event) => {

@@ -6,7 +6,7 @@
 // tumbling off) without redrawing anything.
 import { Container, Graphics } from "pixi.js";
 import { hash } from "../office/paper";
-import { BUILD } from "../office/world";
+import { BUILD } from "../world/world";
 import type { CrewBuild, DrawnBuild } from "./types";
 
 export interface BuildPainter {
@@ -17,7 +17,7 @@ export interface BuildPainter {
 }
 
 /** Where a fallen piece comes to rest: lying on the desk top just right of the stack. */
-export const FALLEN = { x: BUILD.left + BUILD.wide * BUILD.brickW + 3 + 4 + BUILD.brickH / 2, y: BUILD.floor - BUILD.brickW / 2 };
+const FALLEN = { x: BUILD.left + BUILD.wide * BUILD.brickW + 3 + 4 + BUILD.brickH / 2, y: BUILD.floor - BUILD.brickW / 2 };
 
 export function crewBuild(b: CrewBuild, seed: string, paint: BuildPainter): DrawnBuild {
 	const view = new Container();

@@ -4,11 +4,11 @@
 import type { Application } from "pixi.js";
 import type { Director, World, WorldEvent } from "../scene/director";
 import type { Trigger, Voice } from "../scene/sass";
-import type { Stop } from "../scene/office/camera";
+import type { Stop } from "../scene/world/camera";
 import type { Office } from "../scene/office/office";
 import type { SignText } from "../scene/office/paper";
 import type { Snapshot } from "../watcher/model";
-import type { ThemeId } from "../scene/theme/id";
+import type { ThemeId } from "../themes/ids";
 import type { Visibility } from "./visibility";
 import type { Camerawork, ShotReport } from "./shots";
 import type { Story } from "../scene/director/story";
@@ -19,7 +19,15 @@ export interface Inspector {
 	/** True once the first snapshot has been drawn. */
 	ready: boolean;
 	/** The sass engine: bubbles up now, the last triggers, signs it wrote and slots it had no place for. */
-	sass(): { bubbles: ReturnType<Voice["bubbles"]>; triggers: readonly Trigger[]; signs: Record<string, string>; dropped: Record<string, string>; nextWake?: number } | undefined;
+	sass():
+		| {
+				bubbles: ReturnType<Voice["bubbles"]>;
+				triggers: readonly Trigger[];
+				signs: Record<string, string>;
+				dropped: Record<string, string>;
+				nextWake?: number;
+		  }
+		| undefined;
 	snapshot(): Snapshot | undefined;
 	/** Every character: key, mood, size, position, how high it is bouncing right now, and from the
 	 * rig its role, pose, frame (of frames) and the frame's non-rest params. */
@@ -57,7 +65,7 @@ export interface Inspector {
 	setTheme(id: ThemeId): void;
 	/** The factory's robot arms: whether each moves, and its jobs. */
 	arms(): Office["arms"];
-	/** The theme's staging (office/staging.ts): its grammar, the belts and the conveyor, and what
+	/** The theme's staging (world/staging.ts): its grammar, the belts and the conveyor, and what
 	 * moves on its own (ambient pieces by kind, parts on the belts, crates riding to the dock). */
 	staging(): Office["staging"];
 	/** Crew-build pieces moving now (or waiting on an arm). */
@@ -153,11 +161,24 @@ export function installInspector(
 			if (!voice) return undefined;
 			const now = voice.now();
 			const v = voice.voice;
-			return { bubbles: v.bubbles(now), triggers: v.sass.triggers, signs: Object.fromEntries(v.written), dropped: Object.fromEntries(v.dropped), nextWake: v.nextWake(now) };
+			return {
+				bubbles: v.bubbles(now),
+				triggers: v.sass.triggers,
+				signs: Object.fromEntries(v.written),
+				dropped: Object.fromEntries(v.dropped),
+				nextWake: v.nextWake(now),
+			};
 		},
 		snapshot: () => scene.current,
 		entities: () => office.entities(),
-		counters: () => ({ renders, animationFrames, tickerRunning: app.ticker.started, maxFPS: app.ticker.maxFPS, visible: visibility?.visible ?? true, life: office.life }),
+		counters: () => ({
+			renders,
+			animationFrames,
+			tickerRunning: app.ticker.started,
+			maxFPS: app.ticker.maxFPS,
+			visible: visibility?.visible ?? true,
+			life: office.life,
+		}),
 		setVisible: (v) => visibility?.force(v),
 		resetCounters: () => {
 			renders = 0;

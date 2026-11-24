@@ -8,13 +8,13 @@
 // An errand is kept on the actor: it sets off at `since` (after the character's pause, traits.ts),
 // arrives `walkMs` later, plays its pose until `until`, then the director walks it home as it
 // would anyone whose spot changed.
-import { plannerNote, posterFor } from "../office/rigpoints";
-import { type Slot, type World as Floor, shredderUse } from "../office/world";
-import { POSE, duration } from "../rig/poses";
+import { plannerNote, posterFor } from "../world/rigpoints";
+import { type Slot, type Floor, shredderUse } from "../world/world";
+import { poseMs } from "../rig/data/poses";
 import type { Session } from "../../watcher/model";
 import type { Metrics, Ticket } from "./metrics";
-import { pathBetween, walkMs } from "./paths";
-import { STATION_POSE } from "./stations";
+import { pathBetween, walkMs } from "../world/paths";
+import { STATION_POSE } from "../world/stations";
 import { traitOf } from "./traits";
 import type { Actor } from "./types";
 
@@ -67,7 +67,6 @@ export interface Member {
 	seen: { waiting?: number };
 }
 
-const poseMs = (name: string) => duration(POSE[name]?.frames ?? []);
 const familyOf = (m: Member) => (m.kind === "lead" ? m.session.family : m.agent?.family);
 export const pauseOf = (m: Member): number => traitOf(familyOf(m)).pauseMs;
 
@@ -127,14 +126,22 @@ export function newErrands(x: NewErrands): Map<string, Errand> {
 		const desk = x.metrics.desks[s.id];
 		const place = x.places.get(lead.key);
 		if (!desk || !place) continue;
-		const atDesk = (m: Member) => x.places.get(m.key)?.spot === "desk" && m.seen.waiting === undefined && still(x.before[m.key], x.now) && !errandFor(m.key);
+		const atDesk = (m: Member) =>
+			x.places.get(m.key)?.spot === "desk" && m.seen.waiting === undefined && still(x.before[m.key], x.now) && !errandFor(m.key);
 
 		// A compaction: the lead takes the in-tray to the shredder.
 		if ((s.compactions?.count ?? 0) > desk.compactions && atDesk(lead)) {
 			const st = x.floor.areas.find((a) => a.id === place.area)?.shredder;
 			if (st && !taken.has(st.id)) {
 				taken.add(st.id);
-				go(lead, "shred", { spot: `station:${st.id}`, area: st.areaId, slot: shredderUse(st, lead.size) }, STATION_POSE.shredder.work, poseMs(STATION_POSE.shredder.work) * ERRANDS.shredLoops, { station: st.id });
+				go(
+					lead,
+					"shred",
+					{ spot: `station:${st.id}`, area: st.areaId, slot: shredderUse(st, lead.size) },
+					STATION_POSE.shredder.work,
+					poseMs(STATION_POSE.shredder.work) * ERRANDS.shredLoops,
+					{ station: st.id },
+				);
 			}
 		}
 
@@ -150,7 +157,15 @@ export function newErrands(x: NewErrands): Map<string, Errand> {
 			const who = crew[0] ?? (atDesk(lead) && !x.busyElsewhere.has(lead.key) ? lead : undefined);
 			// It stands so the note it presses on lands in the DONE column (the rig's PLANNER point).
 			const feet = who && posterFor(plannerNote(board.rect), who.size);
-			if (who && feet) go(who, "sticky", { spot: `planner:${s.id}`, area: place.area, slot: { ...feet, depth: feet.y, facing: 1 } }, ERRANDS.stickyPose, poseMs(ERRANDS.stickyPose), { walkPose: ERRANDS.stickyWalk });
+			if (who && feet)
+				go(
+					who,
+					"sticky",
+					{ spot: `planner:${s.id}`, area: place.area, slot: { ...feet, depth: feet.y, facing: 1 } },
+					ERRANDS.stickyPose,
+					poseMs(ERRANDS.stickyPose),
+					{ walkPose: ERRANDS.stickyWalk },
+				);
 		}
 	}
 	return out;
@@ -241,6 +256,3 @@ export function atYourDoor(
 	const w = waitStage(t.since, now, behind);
 	return { pose: w.pose, acted: false, ...(w.next !== undefined ? { next: w.next } : {}) };
 }
-
-/** The lead's own room, for the pulse: where its desk is, wherever it stands. */
-export const deskArea = (floor: Floor, session: string): string | undefined => floor.desks.get(session)?.areaId;

@@ -7,8 +7,8 @@ export default {
 		"dev:hmr": ["hutch", "pm", "exec", "--", "concurrently", "hutch run hmr", "hutch run start"],
 		hmr: "hutch electrobun prepare && hutch pm exec -- vite --port 5173",
 		build: "hutch electrobun prepare && hutch pm exec -- vite build && hutch electrobun build --env=stable",
-		// Lint (Biome) and dead code (knip). The formatter isn't enforced yet: see docs/architecture-review.md.
-		lint: ["hutch", "pm", "exec", "--", "biome", "ci", "--formatter-enabled=false", "."],
+		// Lint and format check (Biome; `format` fixes the formatting) and dead code (knip).
+		lint: ["hutch", "pm", "exec", "--", "biome", "ci", "."],
 		format: ["hutch", "pm", "exec", "--", "biome", "format", "--write", "."],
 		knip: ["hutch", "pm", "exec", "--", "knip"],
 		"build:canary": "hutch electrobun prepare && hutch pm exec -- vite build && hutch electrobun build --env=canary",

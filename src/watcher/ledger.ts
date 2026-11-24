@@ -9,11 +9,25 @@
 // The record shapes are internal to the agent tool and change between versions. Everything here
 // is optional: a line that doesn't parse, or a record we don't know, is skipped.
 import { open, stat } from "node:fs/promises";
-import type { ApiRetry, Changes, CommandKind, CommandResult, Commands, Compactions, Context, ModelFamily, PullRequest, RunningTool, Todos, ToolRate } from "./model";
+import type {
+	ApiRetry,
+	Changes,
+	CommandKind,
+	CommandResult,
+	Commands,
+	Compactions,
+	Context,
+	ModelFamily,
+	PullRequest,
+	RunningTool,
+	Todos,
+	ToolRate,
+} from "./model";
 import { contextWindow, modelFamily } from "./models";
+import { count, optional } from "./read";
 
 /** A first read starts no further back than this, so one huge transcript can't stall a rebuild. */
-export const FIRST_READ_MAX = 32 * 1024 * 1024;
+const FIRST_READ_MAX = 32 * 1024 * 1024;
 /** A single line longer than this is skipped rather than buffered. */
 const LINE_MAX = 8 * 1024 * 1024;
 const CHUNK = 1024 * 1024;
@@ -23,9 +37,17 @@ export const TOOL_RATE_WINDOW_MS = 60_000;
 /** Tests, builds, installs and git, by the command's text. Anything else is "other". */
 export function commandKind(command: string): CommandKind {
 	const c = command.trim();
-	if (/\b(bun|npm|pnpm|yarn|deno)\s+(run\s+)?test\b|\b(pytest|vitest|jest|mocha|rspec|phpunit|ctest)\b|\b(go|cargo|mix|dotnet|swift)\s+test\b|\bxcodebuild\b.*\btest\b|\bplaywright\s+test\b|\bmake\s+(test|check)\b|\bgradlew?\s+test\b/.test(c))
+	if (
+		/\b(bun|npm|pnpm|yarn|deno)\s+(run\s+)?test\b|\b(pytest|vitest|jest|mocha|rspec|phpunit|ctest)\b|\b(go|cargo|mix|dotnet|swift)\s+test\b|\bxcodebuild\b.*\btest\b|\bplaywright\s+test\b|\bmake\s+(test|check)\b|\bgradlew?\s+test\b/.test(
+			c,
+		)
+	)
 		return "test";
-	if (/\b(bun|npm|pnpm|yarn)\s+(run\s+)?build\b|\b(cargo|go|swift|dotnet|zig)\s+build\b|\btsc\b|\bvite\s+build\b|\bwebpack\b|\bxcodebuild\b|\bgradlew?\s+(build|assemble)|\bmake\b|\bcmake\b|\bdocker\s+build\b|\belectrobun\s+build\b/.test(c))
+	if (
+		/\b(bun|npm|pnpm|yarn)\s+(run\s+)?build\b|\b(cargo|go|swift|dotnet|zig)\s+build\b|\btsc\b|\bvite\s+build\b|\bwebpack\b|\bxcodebuild\b|\bgradlew?\s+(build|assemble)|\bmake\b|\bcmake\b|\bdocker\s+build\b|\belectrobun\s+build\b/.test(
+			c,
+		)
+	)
 		return "build";
 	if (/\b(bun|npm|pnpm|yarn)\s+(install|i|add|ci)\b|\bpip3?\s+install\b|\bbrew\s+install\b|\bcargo\s+(install|fetch)\b|\bgo\s+mod\s+download\b/.test(c))
 		return "install";
@@ -160,7 +182,18 @@ export class TranscriptLedger {
 	line(line: string): void {
 		// Cheap text checks first: most lines are none of these, and some are megabytes.
 		const has = (s: string) => line.includes(s);
-		if (!(has('"tool_use"') || has('"tool_result"') || has('"pr-link"') || has('"cost-state"') || has('"compact_boundary"') || has('"api_error"') || has('"type":"user"') || has('"usage"')))
+		if (
+			!(
+				has('"tool_use"') ||
+				has('"tool_result"') ||
+				has('"pr-link"') ||
+				has('"cost-state"') ||
+				has('"compact_boundary"') ||
+				has('"api_error"') ||
+				has('"type":"user"') ||
+				has('"usage"')
+			)
+		)
 			return;
 		// A plain response record is common and can be large: take its token count without parsing.
 		if (!has('"tool_use"') && has('"type":"assistant"')) return this.#tokens(line);
@@ -212,10 +245,9 @@ export class TranscriptLedger {
 		const req = typeof r.requestId === "string" ? r.requestId : undefined;
 		const u = msg.usage ?? {};
 		this.#count(req, typeof u.output_tokens === "number" ? u.output_tokens : 0);
-		const tok = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : 0);
 		this.#response(
 			typeof msg.model === "string" ? msg.model : undefined,
-			typeof u.input_tokens === "number" ? tok(u.input_tokens) + tok(u.cache_read_input_tokens) + tok(u.cache_creation_input_tokens) : undefined,
+			typeof u.input_tokens === "number" ? count(u.input_tokens) + count(u.cache_read_input_tokens) + count(u.cache_creation_input_tokens) : undefined,
 			at,
 			r.isSidechain === true,
 		);
@@ -266,7 +298,7 @@ export class TranscriptLedger {
 
 	/** The model and context of a response record. A placeholder model (an error record) is not a request. */
 	#response(model: string | undefined, used: number | undefined, at: number, sidechain: boolean): void {
-		if (sidechain || (model !== undefined && model.startsWith("<"))) return;
+		if (sidechain || model?.startsWith("<")) return;
 		if (model) this.#model = model;
 		if (used !== undefined && Number.isFinite(at)) this.context = { used, ...optional("window", contextWindow(this.#model)), at };
 	}
@@ -400,9 +432,6 @@ export class TranscriptLedger {
 	}
 }
 
-const optional = <K extends string, V>(key: K, value: V | undefined) =>
-	(value === undefined ? {} : { [key]: value }) as { [P in K]?: V };
-
 /** Adds a time and drops those older than the rate window before the newest one. */
 function push(list: number[], at: number): void {
 	if (!Number.isFinite(at)) return;
@@ -415,7 +444,7 @@ function push(list: number[], at: number): void {
 }
 
 /** A 53-bit hash of a path (cyrb53): the path itself is never kept. */
-export function hashPath(path: string): number {
+function hashPath(path: string): number {
 	let h1 = 0xdeadbeef;
 	let h2 = 0x41c6ce57;
 	for (let i = 0; i < path.length; i++) {

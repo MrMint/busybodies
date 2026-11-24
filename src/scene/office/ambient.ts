@@ -1,6 +1,6 @@
 // What the theme's staging adds to the floor, and what moves on its own (plan-alive wave 3): a
 // line's belts, the parts riding them and the foreman's booths; the hallway's dock and the PR crates
-// its conveyor carries there; and each theme's ambient life (office/staging.ts `AmbientKind`):
+// its conveyor carries there; and each theme's ambient life (world/staging.ts `AmbientKind`):
 //
 //   steam    off the kitchen's coffee machine            (office)
 //   fan      the kitchen's ceiling fan                   (office)
@@ -24,18 +24,18 @@
 // period and offset comes from a hash of an id (never Math.random). The crates are acting (`step`):
 // they run once, on a PR, and stop.
 import { Container, Graphics, Rectangle, type Renderer, Sprite, type Texture } from "pixi.js";
-import { unit } from "../rig/player";
+import { unit } from "../rig/data/player";
 import type { SceneTheme, StagePainters } from "../theme/types";
-import { type CrateRide, crateAt, crateRide } from "./crate";
+import { type CrateRide, crateAt, crateRide } from "../world/crate";
 import { INK } from "./paper";
-import { KITCHEN_WALL, ceilingPanels } from "./propspots";
-import { type AmbientKind, stagingOf } from "./staging";
-import { DOCK_W } from "./layout";
+import { KITCHEN_WALL, ceilingPanels } from "../world/propspots";
+import { type AmbientKind, stagingOf } from "../world/staging";
+import { DOCK_W } from "../world/layout";
 import { setDepth } from "./depth";
-import { BELT, type Belt, type Fixture, type Rect, type World } from "./world";
+import { BELT, type Belt, type Fixture, type Rect, type Floor } from "../world/world";
 
 /** The belt's speed (world px per second of the life clock) and how fast the other things go. */
-export const AMBIENT = {
+const AMBIENT = {
 	beltSpeed: 22,
 	/** Parts per kind of work held at a desk on the line. */
 	partsPerKind: 2,
@@ -55,7 +55,7 @@ export const AMBIENT = {
 	sparks: { burst: 380, period: [1100, 1900] },
 	/** A vent every this many px of hallway, from its left end. */
 	ventPitch: 640,
-	/** The bakery's deck oven window, from its build station's base (theme/bakery.ts OVEN_WINDOW),
+	/** The bakery's deck oven window, from its build station's base (themes/bakery/scene.ts OVEN_WINDOW),
 	 * and its flicker's period (ms). */
 	oven: { x: -19, y: -29, w: 38, h: 15, period: 1700 },
 	/** Marquee bulbs: this far apart round the sign, this far out from it, a step of the chase (ms),
@@ -149,7 +149,13 @@ export class Ambient {
 	}
 
 	/** For the inspector: what is staged and what moves. */
-	info(): { ambient: readonly AmbientKind[]; pieces: Record<string, number>; parts: number; crates: { t: number; ms: number; x: number; y: number }[]; lifeMs: number } {
+	info(): {
+		ambient: readonly AmbientKind[];
+		pieces: Record<string, number>;
+		parts: number;
+		crates: { t: number; ms: number; x: number; y: number }[];
+		lifeMs: number;
+	} {
 		const pieces: Record<string, number> = {};
 		let parts = 0;
 		for (const [key, p] of this.#pieces) {
@@ -157,11 +163,17 @@ export class Ambient {
 			pieces[kind] = (pieces[kind] ?? 0) + 1;
 			if (kind === "parts") parts += p.views[0]?.children.length ?? 0;
 		}
-		return { ambient: this.#kinds, pieces, parts, crates: this.#crates.map((c) => ({ t: Math.round(c.t), ms: c.ride.delay + c.ride.ms, x: Math.round(c.view.x), y: Math.round(c.view.y) })), lifeMs: Math.round(this.#t) };
+		return {
+			ambient: this.#kinds,
+			pieces,
+			parts,
+			crates: this.#crates.map((c) => ({ t: Math.round(c.t), ms: c.ride.delay + c.ride.ms, x: Math.round(c.view.x), y: Math.round(c.view.y) })),
+			lifeMs: Math.round(this.#t),
+		};
 	}
 
 	/** Bring everything in line with the world: build what is new, drop what went, keep the rest. */
-	update(world: World, theme: SceneTheme, facts: AmbientFacts): void {
+	update(world: Floor, theme: SceneTheme, facts: AmbientFacts): void {
 		const staging = stagingOf(theme);
 		const kinds = staging.ambient;
 		this.#kinds = kinds;
@@ -210,7 +222,10 @@ export class Ambient {
 				const counter = a.fixtures.find((f) => f.kind === "counter");
 				// Off the cup in the machine's hatch, in front of the machine, so it thins out before the
 				// mug wall above (propspots.ts KITCHEN_WALL).
-				if (has("steam") && counter) put(`steam:${a.id}`, `${counter.x},${counter.y}`, () => this.#steam(a.id, counter.x - KITCHEN_WALL.steam.dx, counter.y - KITCHEN_WALL.steam.dy));
+				if (has("steam") && counter)
+					put(`steam:${a.id}`, `${counter.x},${counter.y}`, () =>
+						this.#steam(a.id, counter.x - KITCHEN_WALL.steam.dx, counter.y - KITCHEN_WALL.steam.dy),
+					);
 				if (has("fan")) put(`fan:${a.id}`, `${a.rect.x},${a.floorY}`, () => this.#fan(a.rect.x + 62, a.floorY + 160));
 			}
 			if (a.kind === "yours" && has("marquee")) {
@@ -228,11 +243,13 @@ export class Ambient {
 		}
 		const hall = world.hallway;
 		if (has("vents")) {
-			for (let x = hall.x + 300, i = 0; x < hall.x + hall.w - 120; x += AMBIENT.ventPitch, i++) put(`vent:${i}`, `${x},${hall.y}`, () => this.#vent(`vent:${i}`, x, hall.y + 30));
+			for (let x = hall.x + 300, i = 0; x < hall.x + hall.w - 120; x += AMBIENT.ventPitch, i++)
+				put(`vent:${i}`, `${x},${hall.y}`, () => this.#vent(`vent:${i}`, x, hall.y + 30));
 		}
 		const conveyor = world.conveyor;
 		if (stage && conveyor) put("dock:hall", `${conveyor.x1},${hall.y},${hall.h}`, () => this.#dock(stage, conveyor.x1, hall));
-		if (stage && conveyor && has("parade")) put("parade:hall", `${conveyor.x0},${conveyor.x1},${conveyor.y}`, () => this.#parade(stage, conveyor.x0, conveyor.x1 - DOCK_W, conveyor.y));
+		if (stage && conveyor && has("parade"))
+			put("parade:hall", `${conveyor.x0},${conveyor.x1},${conveyor.y}`, () => this.#parade(stage, conveyor.x0, conveyor.x1 - DOCK_W, conveyor.y));
 
 		for (const [key, p] of this.#pieces) {
 			if (seen.has(key)) continue;
@@ -385,7 +402,12 @@ export class Ambient {
 
 	/** The copier's light: a green blink on its panel, now and then (or, in amber and slower, a
 	 * press's pilot lamp). */
-	#led(id: string, base: { x: number; y: number }, colour = 0x5cff9d, blink: { on: number; period: readonly [number, number] } = AMBIENT.led): Omit<Piece, "sig"> {
+	#led(
+		id: string,
+		base: { x: number; y: number },
+		colour = 0x5cff9d,
+		blink: { on: number; period: readonly [number, number] } = AMBIENT.led,
+	): Omit<Piece, "sig"> {
 		const g = new Graphics().circle(0, 0, 2.6).fill(colour).stroke({ width: 1.2, color: INK });
 		g.position.set(base.x + 15, base.y - 33);
 		this.#add(g, base.y + 0.5);
@@ -473,7 +495,9 @@ export class Ambient {
 			for (let k = 0; k < 4; k++) {
 				const a = (k * Math.PI) / 2;
 				const at = (r: number, s: number) => [Math.cos(a) * r - Math.sin(a) * s, Math.sin(a) * r + Math.cos(a) * s];
-				g.poly([...at(6, -4), ...at(32, -6.5), ...at(34, 0), ...at(32, 6.5), ...at(6, 4)]).fill(0xb98a5a).stroke({ width: 1.6, color: INK, join: "round" });
+				g.poly([...at(6, -4), ...at(32, -6.5), ...at(34, 0), ...at(32, 6.5), ...at(6, 4)])
+					.fill(0xb98a5a)
+					.stroke({ width: 1.6, color: INK, join: "round" });
 			}
 		});
 		const hub = new Graphics().circle(0, 0, 7).fill(0xe8e2d6).stroke({ width: 1.8, color: INK }).circle(0, 0, 2).fill(INK);
@@ -570,7 +594,12 @@ export class Ambient {
 		along(nx, (u) => [x0 + w - u * w, y0 + h]);
 		along(ny, (u) => [x0, y0 + h - u * h]);
 		const bulbs = spots.map(([bx, by]) => {
-			const g = new Graphics().circle(0, 0, 4.6).fill({ color: 0xffffff, alpha: 0.35 }).circle(0, 0, 2.6).fill(0xffffff).stroke({ width: 1.1, color: INK });
+			const g = new Graphics()
+				.circle(0, 0, 4.6)
+				.fill({ color: 0xffffff, alpha: 0.35 })
+				.circle(0, 0, 2.6)
+				.fill(0xffffff)
+				.stroke({ width: 1.1, color: INK });
 			g.position.set(bx, by);
 			c.addChild(g);
 			return g;
@@ -603,14 +632,21 @@ export class Ambient {
 		const cw = 34;
 		const ch = 22;
 		const body = this.#baked("cake-body", (g) => {
-			g.roundRect(-cw / 2, -ch, cw, ch, 4).fill(0xfff0f6).stroke({ width: 2, color: INK });
+			g.roundRect(-cw / 2, -ch, cw, ch, 4)
+				.fill(0xfff0f6)
+				.stroke({ width: 2, color: INK });
 			g.rect(-cw / 2 + 1, -ch * 0.55, cw - 2, 4).fill(0xff9ec4);
-			g.ellipse(0, -ch, cw / 2, 4.4).fill(0xffd3e4).stroke({ width: 2, color: INK });
+			g.ellipse(0, -ch, cw / 2, 4.4)
+				.fill(0xffd3e4)
+				.stroke({ width: 2, color: INK });
 		});
 		c.addChild(body);
 		const ROSE = [0xff9ec4, 0xffffff, 0x9fe3c8, 0xfff08a];
 		const rosettes = Array.from({ length: 8 }, (_, k) => {
-			const g = new Graphics().circle(0, 0, 3).fill(ROSE[k % ROSE.length]!).stroke({ width: 1.1, color: INK });
+			const g = new Graphics()
+				.circle(0, 0, 3)
+				.fill(ROSE[k % ROSE.length]!)
+				.stroke({ width: 1.1, color: INK });
 			c.addChild(g);
 			return g;
 		});
@@ -619,7 +655,10 @@ export class Ambient {
 			c.addChild(g);
 			return g;
 		});
-		const cherry = new Graphics().circle(0, -ch - 4, 3.6).fill(0xe8384f).stroke({ width: 1.2, color: INK });
+		const cherry = new Graphics()
+			.circle(0, -ch - 4, 3.6)
+			.fill(0xe8384f)
+			.stroke({ width: 1.2, color: INK });
 		c.addChild(cherry);
 		this.#add(c, table.depth + 0.5);
 		return {
@@ -650,10 +689,20 @@ export class Ambient {
 		for (const c of [back, front]) c.position.set(pod.x, pod.y);
 		const COLOURS = [0xff9ec4, 0x9fe3c8, 0xfff08a, 0xcdb8ff, 0x6f86ec, 0xffa34d];
 		const bits = Array.from({ length: AMBIENT.sprinkles.n }, (_, k) => {
-			const g = new Graphics().roundRect(-3, -1, 6, 2, 1).fill(COLOURS[k % COLOURS.length]!).stroke({ width: 0.7, color: INK, alpha: 0.6 });
+			const g = new Graphics()
+				.roundRect(-3, -1, 6, 2, 1)
+				.fill(COLOURS[k % COLOURS.length]!)
+				.stroke({ width: 0.7, color: INK, alpha: 0.6 });
 			(k % 2 ? front : back).addChild(g);
 			const key = `${id}|${k}`;
-			return { g, x: (unit(key, "x") - 0.5) * 190, fall: range(key, "fall", AMBIENT.sprinkles.fall), phase: unit(key, "phase"), spin: (unit(key, "spin") - 0.5) * 8, sway: 4 + unit(key, "sway") * 6 };
+			return {
+				g,
+				x: (unit(key, "x") - 0.5) * 190,
+				fall: range(key, "fall", AMBIENT.sprinkles.fall),
+				phase: unit(key, "phase"),
+				spin: (unit(key, "spin") - 0.5) * 8,
+				sway: 4 + unit(key, "sway") * 6,
+			};
 		});
 		this.#add(back, pod.depth - 0.5);
 		this.#add(front, pod.depth + 0.4);

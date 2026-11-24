@@ -54,21 +54,33 @@ export class Busybody extends Container {
 		switch (mood) {
 			case "busy": // wide eyes, a determined little mouth
 				f.circle(-ex, ey, er).circle(ex, ey, er).fill(INK);
-				f.moveTo(-s * 0.08, -s * 0.42).lineTo(s * 0.08, -s * 0.42).stroke(line);
+				f.moveTo(-s * 0.08, -s * 0.42)
+					.lineTo(s * 0.08, -s * 0.42)
+					.stroke(line);
 				break;
 			case "idle": // asleep: eyes shut, a soft smile
-				f.arc(-ex, ey, er * 1.3, 0.2, Math.PI - 0.2).arc(ex, ey, er * 1.3, 0.2, Math.PI - 0.2).stroke(line);
+				f.arc(-ex, ey, er * 1.3, 0.2, Math.PI - 0.2)
+					.arc(ex, ey, er * 1.3, 0.2, Math.PI - 0.2)
+					.stroke(line);
 				break;
 			case "stalled": // heavy lids and a yawn
-				f.moveTo(-ex - er, ey).lineTo(-ex + er, ey).moveTo(ex - er, ey).lineTo(ex + er, ey).stroke(line);
+				f.moveTo(-ex - er, ey)
+					.lineTo(-ex + er, ey)
+					.moveTo(ex - er, ey)
+					.lineTo(ex + er, ey)
+					.stroke(line);
 				f.ellipse(0, -s * 0.4, s * 0.07, s * 0.09).fill(INK);
 				break;
 			case "done": // pleased with itself
-				f.arc(-ex, ey + er, er * 1.3, Math.PI + 0.3, -0.3).arc(ex, ey + er, er * 1.3, Math.PI + 0.3, -0.3).stroke(line);
+				f.arc(-ex, ey + er, er * 1.3, Math.PI + 0.3, -0.3)
+					.arc(ex, ey + er, er * 1.3, Math.PI + 0.3, -0.3)
+					.stroke(line);
 				f.arc(0, -s * 0.46, s * 0.1, 0.2, Math.PI - 0.2).stroke(line);
 				break;
 		}
-		f.circle(-s * 0.27, -s * 0.48, s * 0.05).circle(s * 0.27, -s * 0.48, s * 0.05).fill({ color: CHEEK, alpha: 0.7 });
+		f.circle(-s * 0.27, -s * 0.48, s * 0.05)
+			.circle(s * 0.27, -s * 0.48, s * 0.05)
+			.fill({ color: CHEEK, alpha: 0.7 });
 		this.#zzz.visible = mood === "idle";
 		this.alpha = mood === "done" ? 0.6 : 1;
 		// Lean back when idle, slump when stalled. Rotation is about the feet.

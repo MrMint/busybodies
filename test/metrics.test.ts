@@ -3,18 +3,19 @@
 // your office's queue, and each model's personality. Every session and number is invented.
 import { describe, expect, test } from "bun:test";
 import { BEATS } from "../src/scene/director/beats";
-import { cueFor, direct } from "../src/scene/director/direct";
+import { direct } from "../src/scene/director/direct";
+import { cueFor } from "../src/scene/director/direct/cue";
 import { ERRANDS } from "../src/scene/director/errands";
 import { METRICS, drawersFor, lampFor, mugsFor, skipLoad, towerBricks, trayFor } from "../src/scene/director/metrics";
 import { PACE } from "../src/scene/director/pace";
 import { TRAITS } from "../src/scene/director/traits";
 import type { World } from "../src/scene/director/types";
-import { FloorPlan } from "../src/scene/office/layout";
-import { LEAD_SIZE } from "../src/scene/office/placement";
-import { PROPS } from "../src/scene/office/propspots";
-import { DESK_TOP, SEAT, faceZone } from "../src/scene/office/world";
-import { RIG_PLANNER, bellFrom } from "../src/scene/office/rigpoints";
-import { POSE, duration } from "../src/scene/rig/poses";
+import { FloorPlan } from "../src/scene/world/layout";
+import { LEAD_SIZE } from "../src/scene/world/placement";
+import { PROPS } from "../src/scene/world/propspots";
+import { DESK_TOP, SEAT, faceZone } from "../src/scene/world/world";
+import { RIG_PLANNER, bellFrom } from "../src/scene/world/rigpoints";
+import { POSE, duration } from "../src/scene/rig/data/poses";
 import type { Agent, Session, Snapshot } from "../src/watcher/model";
 
 const T0 = Date.UTC(2026, 10, 19, 14, 0);
@@ -108,7 +109,9 @@ describe("the mappings", () => {
 	});
 
 	test("the test lamp shows the latest test result, and keeps it through other commands", () => {
-		const test = (exitCode: number, at: number) => ({ commands: { failStreak: 0, repeats: 1, failed: 0, testsFailed: 0, last: { kind: "test" as const, exitCode, at } } });
+		const test = (exitCode: number, at: number) => ({
+			commands: { failStreak: 0, repeats: 1, failed: 0, testsFailed: 0, last: { kind: "test" as const, exitCode, at } },
+		});
 		expect(lampFor([{}])).toEqual({});
 		expect(lampFor([test(0, 5), test(1, 9)]).lamp).toBe("red");
 		expect(lampFor([test(1, 5), test(0, 9)]).lamp).toBe("green");
@@ -120,7 +123,10 @@ describe("the mappings", () => {
 describe("on the desk", () => {
 	test("each desk's things, and the family word for the name card", () => {
 		const s = stage();
-		const d = s.step([session("a", { family: "opus", context: ctx(0.5), changes: { files: 12, added: 300, removed: 50 }, cost: { outputTokens: 210_000 } })], T0);
+		const d = s.step(
+			[session("a", { family: "opus", context: ctx(0.5), changes: { files: 12, added: 300, removed: 50 }, cost: { outputTokens: 210_000 } })],
+			T0,
+		);
 		const desk = d.world.metrics!.desks.a!;
 		expect(desk).toMatchObject({ tray: { sheets: 8, spill: 0, buried: false }, word: "opus", drawers: { drawers: 2, full: 1 }, skip: 2, mugs: 2 });
 		// No family, no window: no word, no pile.
@@ -160,7 +166,8 @@ describe("on the desk", () => {
 });
 
 describe("the tower counts lines", () => {
-	const crew = (added: number[], tool = "Edit", at = T0 - SEC) => added.map((n, i) => agent(`b${i}`, { activity: { tool, at }, changes: { files: 1, added: n, removed: 0 } }));
+	const crew = (added: number[], tool = "Edit", at = T0 - SEC) =>
+		added.map((n, i) => agent(`b${i}`, { activity: { tool, at }, changes: { files: 1, added: n, removed: 0 } }));
 
 	test("a brick per ~20 lines across the session and its agents, not one per edit", () => {
 		const s = stage();
@@ -179,7 +186,10 @@ describe("the tower counts lines", () => {
 		const red = { failStreak: 1, repeats: 1, failed: 1, testsFailed: 1, last: { kind: "test" as const, exitCode: 1, at: T0 + SEC } };
 		const fell = s.step([session("rel", { agents: crew([200, 0, 0]).map((a, i) => (i === 1 ? { ...a, commands: red } : a)) })], T0 + 2 * SEC);
 		expect(fell.world.builds.rel!.pieces).toBe(9);
-		const grown = s.step([session("rel", { agents: crew([240, 0, 0], "Edit", T0 + 3 * SEC).map((a, i) => (i === 1 ? { ...a, commands: red } : a)) })], T0 + 4 * SEC);
+		const grown = s.step(
+			[session("rel", { agents: crew([240, 0, 0], "Edit", T0 + 3 * SEC).map((a, i) => (i === 1 ? { ...a, commands: red } : a)) })],
+			T0 + 4 * SEC,
+		);
 		expect(grown.world.builds.rel!.pieces).toBe(towerBricks(240));
 	});
 
@@ -304,7 +314,9 @@ describe("your office", () => {
 });
 
 describe("model personalities", () => {
-	const lone = (family: Session["family"]) => [session("rel", { family, agents: [agent("c0", { family, activity: { tool: "Read", at: T0 - SEC } })], todos: { pending: 1, active: 0, done: 0 } })];
+	const lone = (family: Session["family"]) => [
+		session("rel", { family, agents: [agent("c0", { family, activity: { tool: "Read", at: T0 - SEC } })], todos: { pending: 1, active: 0, done: 0 } }),
+	];
 
 	test("walks and poses run at the family's pace", () => {
 		const walkOf = (family: Session["family"]) => {
@@ -363,7 +375,8 @@ describe("model personalities", () => {
 				const end = lead.poseSince + duration(POSE[lead.pose]!.frames);
 				let flourished = false;
 				// (After the outbox, the celebration holds as long as the two-hander would: celebrateMs.)
-				for (t = Math.max(t, end); t < end + 8 * SEC && !flourished; t += 250) flourished = actor(s.step(withPr, t).world, `s:${id}`).pose === BEATS.flourish;
+				for (t = Math.max(t, end); t < end + 8 * SEC && !flourished; t += 250)
+					flourished = actor(s.step(withPr, t).world, `s:${id}`).pose === BEATS.flourish;
 				if (flourished) family === "fable" ? flourishes++ : others++;
 			}
 		}

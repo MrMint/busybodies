@@ -31,7 +31,8 @@ describe("Anonymizer", () => {
 		const real = snap(T, [session("s1", "Payroll migration", "hush", { children: [session("s2", "Payroll side quest", "hush")] })]);
 		const out = new Anonymizer().snapshot(real);
 		const text = JSON.stringify(out);
-		for (const secret of ["home/me", "private", "hush", "acme", "Payroll", "payroll", "secret", "s1", "a-real", "4242", "777"]) expect(text).not.toContain(secret);
+		for (const secret of ["home/me", "private", "hush", "acme", "Payroll", "payroll", "secret", "s1", "a-real", "4242", "777"])
+			expect(text).not.toContain(secret);
 		expect(out.at).toBe(RECORDING_EPOCH);
 		const s = out.sessions[0]!;
 		expect(s.children[0]!.project).toBe(s.project); // same real project, same invented one
@@ -50,7 +51,20 @@ describe("Anonymizer", () => {
 				changes: { files: 3, added: 120, removed: 40, ...sneaky } as Session["changes"],
 				todos: { pending: 2, active: 1, done: 4, ...sneaky } as Session["todos"],
 				tools: { calls: 18, errors: 2, windowMs: 60_000, ...sneaky } as Session["tools"],
-				agents: [{ id: "a1", role: "Explore", task: "Payroll", depth: 1, status: "running", lastWriteAt: T, family: "claude-opus-5-5-secret" as never, changes: { files: 1, added: 9, removed: 0 }, tools: { calls: 4, errors: 0, windowMs: 60_000 }, children: [] }],
+				agents: [
+					{
+						id: "a1",
+						role: "Explore",
+						task: "Payroll",
+						depth: 1,
+						status: "running",
+						lastWriteAt: T,
+						family: "claude-opus-5-5-secret" as never,
+						changes: { files: 1, added: 9, removed: 0 },
+						tools: { calls: 4, errors: 0, windowMs: 60_000 },
+						children: [],
+					},
+				],
 			}),
 		]);
 		const out = new Anonymizer().snapshot(real);
@@ -67,7 +81,15 @@ describe("Anonymizer", () => {
 	});
 
 	test("round-trips the new fields through a recording", () => {
-		const frame = snap(T, [session("s1", "A", "p", { family: "haiku", context: { used: 9000, at: T - 1000 }, changes: { files: 2, added: 5, removed: 1 }, todos: { pending: 1, active: 0, done: 2 }, tools: { calls: 3, errors: 1, windowMs: 60_000 } })]);
+		const frame = snap(T, [
+			session("s1", "A", "p", {
+				family: "haiku",
+				context: { used: 9000, at: T - 1000 },
+				changes: { files: 2, added: 5, removed: 1 },
+				todos: { pending: 1, active: 0, done: 2 },
+				tools: { calls: 3, errors: 1, windowMs: 60_000 },
+			}),
+		]);
 		const recorded = new Anonymizer().snapshot(frame);
 		const [back] = parseRecording(`${JSON.stringify(recorded)}\n`);
 		expect(back).toEqual(recorded);
@@ -76,7 +98,12 @@ describe("Anonymizer", () => {
 		const s = shown[0]!.sessions[0]!;
 		// The context's time moves with the frame; the counts don't.
 		expect(shown[0]!.at - s.context!.at).toBe(1000);
-		expect(s).toMatchObject({ family: "haiku", changes: { files: 2, added: 5, removed: 1 }, todos: { pending: 1, active: 0, done: 2 }, tools: { calls: 3, errors: 1, windowMs: 60_000 } });
+		expect(s).toMatchObject({
+			family: "haiku",
+			changes: { files: 2, added: 5, removed: 1 },
+			todos: { pending: 1, active: 0, done: 2 },
+			tools: { calls: 3, errors: 1, windowMs: 60_000 },
+		});
 	});
 
 	test("is deterministic, and stable across frames", () => {

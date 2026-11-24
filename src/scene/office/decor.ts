@@ -1,10 +1,10 @@
 // The office remembers: draws what decor-plan.ts says each wall shows (framed PRs, bunting, stars).
 // Pixi lives here only, so the plan's unit tests run without it.
 import { Container, Graphics } from "pixi.js";
-export * from "./decor-plan";
-import { DECOR, type RoomDecor, type StoryStyle, type StoryView, decorFor, storyStyle } from "./decor-plan";
+export * from "../world/decor-plan";
+import { DECOR, type RoomDecor, type StoryStyle, type StoryView, decorFor, storyStyle } from "../world/decor-plan";
 import type { SceneTheme } from "../theme/types";
-import type { World } from "./world";
+import type { Floor } from "../world/world";
 
 function star(g: Graphics, x: number, y: number, r: number, fill: number, ink: number): void {
 	const pts: number[] = [];
@@ -17,7 +17,7 @@ function star(g: Graphics, x: number, y: number, r: number, fill: number, ink: n
 }
 
 /** A room's decor, drawn. */
-export function drawDecor(d: RoomDecor, style: StoryStyle, seed: number): Graphics {
+function drawDecor(d: RoomDecor, style: StoryStyle, seed: number): Graphics {
 	const g = new Graphics();
 	const { w, h } = DECOR.frame;
 	for (const [i, f] of d.frames.entries()) {
@@ -25,19 +25,34 @@ export function drawDecor(d: RoomDecor, style: StoryStyle, seed: number): Graphi
 		const y = f.y + tilt * 0.3;
 		// A gilt edge, a mat, and a merge mark: two branches meeting.
 		g.roundRect(f.x, y, w, h, 2).fill(style.gold).stroke({ width: 1.5, color: style.ink });
-		g.rect(f.x + 3, y + 3, w - 6, h - 6).fill(style.mat).stroke({ width: 0.8, color: style.ink, alpha: 0.5 });
+		g.rect(f.x + 3, y + 3, w - 6, h - 6)
+			.fill(style.mat)
+			.stroke({ width: 0.8, color: style.ink, alpha: 0.5 });
 		const cx = f.x + w / 2;
 		const cy = y + h / 2;
-		g.moveTo(cx - 3, cy + 5).lineTo(cx - 3, cy - 5).moveTo(cx - 3, cy + 2).quadraticCurveTo(cx + 3, cy + 1, cx + 3, cy - 5).stroke({ width: 1.6, color: style.mark });
-		for (const [px, py] of [[cx - 3, cy + 5], [cx + 3, cy - 5], [cx - 3, cy - 5]] as const) g.circle(px, py, 1.8).fill(style.mark);
+		g.moveTo(cx - 3, cy + 5)
+			.lineTo(cx - 3, cy - 5)
+			.moveTo(cx - 3, cy + 2)
+			.quadraticCurveTo(cx + 3, cy + 1, cx + 3, cy - 5)
+			.stroke({ width: 1.6, color: style.mark });
+		for (const [px, py] of [
+			[cx - 3, cy + 5],
+			[cx + 3, cy - 5],
+			[cx - 3, cy - 5],
+		] as const)
+			g.circle(px, py, 1.8).fill(style.mark);
 	}
 	if (d.pennants.length) {
 		const first = d.pennants[0]!;
 		const last = d.pennants[d.pennants.length - 1]!;
-		g.moveTo(first.x - 8, first.y).quadraticCurveTo((first.x + last.x) / 2, first.y + 3, last.x + 8, last.y).stroke({ width: 1, color: style.ink, alpha: 0.6 });
+		g.moveTo(first.x - 8, first.y)
+			.quadraticCurveTo((first.x + last.x) / 2, first.y + 3, last.x + 8, last.y)
+			.stroke({ width: 1, color: style.ink, alpha: 0.6 });
 		for (const [i, p] of d.pennants.entries()) {
 			const pw = DECOR.pennant.w / 2;
-			g.poly([p.x - pw, p.y, p.x + pw, p.y, p.x, p.y + DECOR.pennant.h]).fill(style.pennants[i % style.pennants.length]!).stroke({ width: 0.8, color: style.ink, alpha: 0.5 });
+			g.poly([p.x - pw, p.y, p.x + pw, p.y, p.x, p.y + DECOR.pennant.h])
+				.fill(style.pennants[i % style.pennants.length]!)
+				.stroke({ width: 0.8, color: style.ink, alpha: 0.5 });
 		}
 	}
 	for (const st of d.stars) star(g, st.x, st.y, 6, style.gold, style.ink);
@@ -53,7 +68,7 @@ export class DecorLayer extends Container {
 	}
 
 	/** Bring the decor up to date. True when anything was redrawn. */
-	update(world: World, theme: SceneTheme, view: StoryView | undefined): boolean {
+	update(world: Floor, theme: SceneTheme, view: StoryView | undefined): boolean {
 		const style = storyStyle(theme);
 		const seen = new Set<string>();
 		let changed = false;
@@ -80,7 +95,7 @@ export class DecorLayer extends Container {
 	}
 
 	/** Each decorated room's decor, for the inspector. */
-	info(world: World | undefined, view: StoryView | undefined): RoomDecor[] {
+	info(world: Floor | undefined, view: StoryView | undefined): RoomDecor[] {
 		return (world?.areas ?? []).map((a) => decorFor(a, view)).filter((d): d is RoomDecor => !!d);
 	}
 

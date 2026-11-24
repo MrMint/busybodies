@@ -63,7 +63,7 @@ export interface Compactions {
 	trigger?: string;
 }
 
-export interface Cost {
+interface Cost {
 	/**
 	 * Dollars, from the tool's own cost record. It writes one when a session exits, so a live
 	 * session shows its cost up to its last resume, or nothing.
@@ -117,7 +117,7 @@ export interface ToolRate {
 /** A model family, as plain text: never a full model id, never a logo. */
 export type ModelFamily = "fable" | "opus" | "sonnet" | "haiku" | "other";
 
-export type WaitingReason = "permission" | "question" | "plan" | "other";
+type WaitingReason = "permission" | "question" | "plan" | "other";
 
 /** The session is stopped until the person answers. */
 export interface Waiting {
@@ -191,3 +191,6 @@ export interface Snapshot {
 	at: number;
 	sessions: Session[];
 }
+
+/** Every session in a tree, side sessions included, depth first. */
+export const flatSessions = (list: Session[]): Session[] => list.flatMap((s) => [s, ...flatSessions(s.children)]);

@@ -28,7 +28,7 @@ export interface Trait {
 
 export const TRAITS: Record<ModelFamily, Trait> = {
 	haiku: { walk: 1.2, tempo: 1.2, pauseMs: 0, overlapMs: 160, flourish: false, word: "haiku" },
-	// The beats last as long as their poses (rig/poses.ts nod and consider): 2 and 5 of 130 ms.
+	// The beats last as long as their poses (rig/data/poses.ts nod and consider): 2 and 5 of 130 ms.
 	sonnet: { walk: 1.05, tempo: 1.05, pauseMs: 260, beat: "nod", overlapMs: 0, flourish: false, word: "sonnet" },
 	opus: { walk: 0.9, tempo: 0.9, pauseMs: 650, beat: "consider", overlapMs: 0, flourish: false, word: "opus" },
 	fable: { walk: 1, tempo: 1, pauseMs: 300, overlapMs: 0, flourish: true, word: "fable" },

@@ -10,23 +10,24 @@
 //   send-off   a long session (DIARY.longMs) ends: as its lead walks out, whoever stands in its room
 //              (and in the lobby and kitchen, by the door) waves it off, the nearest first, looking
 //              at it as it goes.
-//   regulars   the same project and role is the same character every day (`regularsOf`; rig/roles.ts
+//   regulars   the same project and role is the same character every day (`regularsOf`; rig/data/roles.ts
 //              says what a regular looks like and is called)
 //   headlines  back on screen after a while away (the director's `view`), the lobby board says what
 //              happened while you were out: counts of the beats above, kept a minute and a half.
 //
 // The memory the beats need between snapshots (merged PRs seen, each one's red tests in a row, which
 // sessions are long) lives in `World.story`, so a replay gives the same story.
-import { LEAD_SIZE } from "../office/placement";
-import type { Slot, World as Floor } from "../office/world";
-import { useFor } from "../office/world";
-import { POSE, duration } from "../rig/poses";
-import { roleFor } from "../rig/roles";
+import { LEAD_SIZE } from "../world/placement";
+import type { Slot, Floor } from "../world/world";
+import { useFor } from "../world/world";
+import { poseMs } from "../rig/data/poses";
+import { roleFor } from "../rig/data/roles";
 import { DIARY, projectKey } from "../../shared/diary";
 import type { Commands, Session, Snapshot } from "../../watcher/model";
-import { pathBetween, walkMs } from "./paths";
+import { pathBetween, walkMs } from "../world/paths";
 import type { View } from "./social";
 import type { Actor, WorldEvent } from "./types";
+import { flatSessions } from "../../watcher/model";
 
 export const STORY = {
 	/** The lead's part at the outbox: reaching in for the reply. */
@@ -131,7 +132,11 @@ export interface StoryNews {
 	entries: StoryEntry[];
 }
 
-const mergedOf = (s: Session) => (s.prs ?? []).filter((p) => p.state?.toUpperCase() === "MERGED").map((p) => p.number).sort((a, b) => a - b);
+const mergedOf = (s: Session) =>
+	(s.prs ?? [])
+		.filter((p) => p.state?.toUpperCase() === "MERGED")
+		.map((p) => p.number)
+		.sort((a, b) => a - b);
 
 /**
  * Read the snapshot's story news. A world with no story yet (the first snapshot, or an older
@@ -185,10 +190,6 @@ export function storyNews(was: Story | undefined, list: Member[], before: Record
 	return out;
 }
 
-const poseMs = (name: string, as: "lead" | "partner" = "lead") => {
-	const p = POSE[name];
-	return p ? duration(as === "partner" && p.partner ? p.partner.frames : p.frames) : 0;
-};
 const cheerMs = () => Math.max(poseMs(STORY.cheer, "lead"), poseMs(STORY.cheer, "partner"), poseMs(STORY.alone));
 
 /** A lead that might fetch a reply. */
@@ -333,13 +334,12 @@ export function sendOffLooks(sendoffs: Record<string, SendOff>, actors: Record<s
 }
 
 /**
- * Who is which regular (rig/roles.ts): `<project key>:<role>:<n>`, the project hashed as the diary
+ * Who is which regular (rig/data/roles.ts): `<project key>:<role>:<n>`, the project hashed as the diary
  * hashes it, the role the costume, and `n` its place among the same costume in that project, in the
  * order of their keys. Characters whose session the snapshot no longer has get none.
  */
 export function regularsOf(actors: Pick<Actor, "key" | "kind" | "role" | "session" | "task">[], snap: Snapshot): Map<string, string> {
-	const flat = (l: Session[]): Session[] => l.flatMap((s) => [s, ...flat(s.children)]);
-	const projects = new Map(flat(snap.sessions).map((s) => [s.id, projectKey(s.project)]));
+	const projects = new Map(flatSessions(snap.sessions).map((s) => [s.id, projectKey(s.project)]));
 	const groups = new Map<string, string[]>();
 	for (const a of [...actors].sort((p, q) => (p.key < q.key ? -1 : p.key > q.key ? 1 : 0))) {
 		const p = projects.get(a.session);
@@ -363,7 +363,13 @@ export function logOf(was: StoryEntry[] | undefined, entries: StoryEntry[], now:
  * log's entries between the two, counted. The last headlines stay up until they run out; a new
  * return replaces them. None when nothing happened.
  */
-export function headlinesFor(was: Headlines | undefined, log: StoryEntry[], view: View | undefined, fresh: number | undefined, now: number): Headlines | undefined {
+export function headlinesFor(
+	was: Headlines | undefined,
+	log: StoryEntry[],
+	view: View | undefined,
+	fresh: number | undefined,
+	now: number,
+): Headlines | undefined {
 	const since = view?.since;
 	if (fresh !== undefined && since !== undefined && was?.at !== fresh) {
 		const counts: Headlines["counts"] = {};

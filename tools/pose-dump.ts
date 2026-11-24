@@ -4,9 +4,9 @@
 //   bun tools/pose-dump.ts            every pose
 //   bun tools/pose-dump.ts waiting    one pose
 // Pixi-free modules only, so this runs under plain Bun.
-import { describe } from "../src/scene/rig/frame";
-import { BEAT_MS, POSES, type Pose, duration } from "../src/scene/rig/poses";
-import { THEME_IDS } from "../src/scene/theme/id";
+import { describe } from "../src/scene/rig/data/frame";
+import { BEAT_MS, POSES, type Pose, duration } from "../src/scene/rig/data/poses";
+import { THEME_IDS } from "../src/themes/ids";
 import { wordsFor } from "../src/scene/theme/words";
 
 const pick = process.argv.slice(2);
@@ -29,7 +29,9 @@ for (const p of poses) {
 	const rare = p.rarity < 1 ? `, rare 1 in ${Math.round(1 / p.rarity)}` : "";
 	const roles = p.roles ? `, roles ${p.roles.join("/")}` : "";
 	console.log(`${p.name}: ${p.title}`);
-	console.log(`  on ${p.trigger}${rare}, ${p.play}${p.habit ? ", slacking habit" : ""}${roles}; ${p.frames.length} frames, ${duration(p.frames)} ms (${duration(p.frames) / BEAT_MS} beats)`);
+	console.log(
+		`  on ${p.trigger}${rare}, ${p.play}${p.habit ? ", slacking habit" : ""}${roles}; ${p.frames.length} frames, ${duration(p.frames)} ms (${duration(p.frames) / BEAT_MS} beats)`,
+	);
 	if (p.lines.length) console.log(`  may say: ${p.lines.map((l) => `"${l}"`).join(" ")}`);
 	// A theme that paints different things in the hands names the pose its own way (theme/words.ts).
 	for (const id of THEME_IDS) {

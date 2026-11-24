@@ -4,23 +4,22 @@
 //
 // A walk has a start, a turn and a stop (plan-alive stream B). The feet stay put for the walk's
 // first moment while the face looks where it is going; the distance eases in and out inside the
-// walk's own ms and corners are rounded (both in director/paths.ts, so the director knows where
+// walk's own ms and corners are rounded (both in world/paths.ts, so the director knows where
 // everyone is); a change of direction is a quick front-facing turn, not a mirror flip; and on
 // arrival the walker plants for a beat, looking ahead, before its eyes go to the job.
-import { along, heading, lookMs } from "../director/paths";
-import type { Character, CharacterFactory, Cue, Mood, Slot, Who } from "../office/slot";
+import { along, heading, lookMs } from "../world/paths";
+import type { Character, CharacterFactory, Slot } from "../office/slot";
+import type { Cue, Mood, Who } from "../contract";
 import { setDepth } from "../office/depth";
 import type { Atlas } from "./atlas";
-import { choosePose, hash } from "./player";
-import { BEAT_MS } from "./poses";
+import { choosePose, hash } from "./data/player";
+import { BEAT_MS } from "./data/poses";
 import { Puppet } from "./puppet";
-import { COSTUMES, type Regular, regularOf, roleFor } from "./roles";
-import { PUPPET_HEIGHT } from "./reach";
+import { COSTUMES, type Regular, regularOf, roleFor } from "./data/roles";
+import { PUPPET_HEIGHT } from "./data/reach";
 import { ACCENTS } from "./theme";
-import { AT_VIEWER, type Aim, type LookAt, aimAt, eyesOf, isViewer } from "./gaze";
-import { LOOKS } from "./vocab";
-
-export { PUPPET_HEIGHT };
+import { AT_VIEWER, type Aim, type LookAt, aimAt, eyesOf, isViewer } from "./data/gaze";
+import { LOOKS } from "./data/vocab";
 
 /** Everyone one factory made, by key: so a character told to look at another can find it. */
 type Cast = Map<string, RigCharacter>;
@@ -28,7 +27,7 @@ type Cast = Map<string, RigCharacter>;
 const TRIGGER = { busy: "busy", idle: "idle", stalled: "stalled", done: "finished" } as const;
 const MS_PER_TICK = 1000 / 60;
 
-export const WALKING = {
+const WALKING = {
 	/** A turn: the face comes round to the front, the body flips at the midpoint, the face goes on
 	 * round to the new side. */
 	turnMs: 120,
@@ -55,7 +54,7 @@ class RigCharacter implements Character {
 	/** The walk pose is on: the feet have started moving. */
 	#stepping = false;
 	#gone = false;
-	// Gaze: what the director's cue says to look at (rig/gaze.ts), and the cast to find it in.
+	// Gaze: what the director's cue says to look at (rig/data/gaze.ts), and the cast to find it in.
 	#lookAt?: LookAt;
 	#cast: Cast;
 	/** A turn under way: the way it is turning to, and ms into it. */
@@ -70,10 +69,16 @@ class RigCharacter implements Character {
 		this.#cast = cast;
 		cast.set(who.key, this);
 		const role = who.kind === "lead" ? "lead" : (who.look ?? roleFor(who.role));
-		// The office draws real desks, so the rig's own stays off. A regular (rig/roles.ts) is the same
+		// The office draws real desks, so the rig's own stays off. A regular (rig/data/roles.ts) is the same
 		// puppet every day: its key is the puppet's id, and it wears its accessory.
 		const regular = who.regular ? regularOf(who.regular) : undefined;
-		this.puppet = new Puppet(atlas, { id: regular?.key ?? who.key, role, accent: ACCENTS[hash(who.tint) % ACCENTS.length], desk: false, ...(regular?.wear ? { wear: regular.wear } : {}) });
+		this.puppet = new Puppet(atlas, {
+			id: regular?.key ?? who.key,
+			role,
+			accent: ACCENTS[hash(who.tint) % ACCENTS.length],
+			desk: false,
+			...(regular?.wear ? { wear: regular.wear } : {}),
+		});
 		this.#regular = regular;
 		this.#size();
 		this.#act(who.mood, true);
@@ -363,5 +368,6 @@ export function rigCharacters(atlas: Atlas): CharacterFactory {
 	return (who) => new RigCharacter(atlas, who, cast);
 }
 
-const lookAtText = (l: LookAt | undefined) => (l === undefined ? "" : typeof l === "string" ? l : isViewer(l) ? "viewer" : `${Math.round(l.x)},${Math.round(l.y)}`);
+const lookAtText = (l: LookAt | undefined) =>
+	l === undefined ? "" : typeof l === "string" ? l : isViewer(l) ? "viewer" : `${Math.round(l.x)},${Math.round(l.y)}`;
 const aimText = (a: Aim | undefined) => (a ? `${a.x},${a.y}${a.side ? " side" : ""}` : "");

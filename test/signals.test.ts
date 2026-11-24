@@ -16,9 +16,19 @@ const MIN = 60_000;
 
 let n = 0;
 const call = (name: string, msAgo: number, input: object = {}, id = `toolu_${++n}`) =>
-	JSON.stringify({ type: "assistant", requestId: `req_${id}`, message: { content: [{ type: "tool_use", id, name, input }], usage: { output_tokens: 10 } }, timestamp: iso(msAgo) });
+	JSON.stringify({
+		type: "assistant",
+		requestId: `req_${id}`,
+		message: { content: [{ type: "tool_use", id, name, input }], usage: { output_tokens: 10 } },
+		timestamp: iso(msAgo),
+	});
 const result = (id: string, msAgo: number, content: string, isError = false, extra: object = {}) =>
-	JSON.stringify({ type: "user", message: { content: [{ type: "tool_result", tool_use_id: id, content, is_error: isError }] }, toolUseResult: { interrupted: false, ...extra }, timestamp: iso(msAgo) });
+	JSON.stringify({
+		type: "user",
+		message: { content: [{ type: "tool_result", tool_use_id: id, content, is_error: isError }] },
+		toolUseResult: { interrupted: false, ...extra },
+		timestamp: iso(msAgo),
+	});
 
 /** A shell command and its result: exit 0 is a success, anything else a failure. */
 const shell = (command: string, exit: number, msAgo: number, tookMs = 1000) => {
@@ -94,14 +104,23 @@ describe("retries", () => {
 		const err = JSON.stringify({ type: "system", subtype: "api_error", retryAttempt: 3, maxRetries: 10, retryInMs: 4000, timestamp: iso(2000) });
 		const l = ledgerOf([err]);
 		expect(l.apiRetry).toEqual({ attempt: 3, max: 10, at: NOW - 2000 });
-		l.feed(`${JSON.stringify({ type: "assistant", requestId: "req_x", message: { content: [{ type: "text", text: "hi" }], usage: { output_tokens: 5 } }, timestamp: iso(0) })}\n`);
+		l.feed(
+			`${JSON.stringify({ type: "assistant", requestId: "req_x", message: { content: [{ type: "text", text: "hi" }], usage: { output_tokens: 5 } }, timestamp: iso(0) })}\n`,
+		);
 		expect(l.apiRetry).toBeUndefined();
 	});
 });
 
 describe("PRs, compaction and cost", () => {
 	test("collects PR links once each", () => {
-		const pr = (num: number) => JSON.stringify({ type: "pr-link", prNumber: num, prUrl: `https://github.com/example/teapot/pull/${num}`, prRepository: "example/teapot", timestamp: iso(num * 1000) });
+		const pr = (num: number) =>
+			JSON.stringify({
+				type: "pr-link",
+				prNumber: num,
+				prUrl: `https://github.com/example/teapot/pull/${num}`,
+				prRepository: "example/teapot",
+				timestamp: iso(num * 1000),
+			});
 		expect(ledgerOf([pr(7), pr(7), pr(9)]).prs).toEqual([
 			{ number: 7, url: "https://github.com/example/teapot/pull/7", repo: "example/teapot", at: NOW - 7000 },
 			{ number: 9, url: "https://github.com/example/teapot/pull/9", repo: "example/teapot", at: NOW - 9000 },
@@ -109,14 +128,21 @@ describe("PRs, compaction and cost", () => {
 	});
 
 	test("counts compactions and drops calls the compaction cut off", () => {
-		const boundary = (msAgo: number) => JSON.stringify({ type: "system", subtype: "compact_boundary", compactMetadata: { trigger: "auto", preTokens: 1 }, timestamp: iso(msAgo) });
+		const boundary = (msAgo: number) =>
+			JSON.stringify({ type: "system", subtype: "compact_boundary", compactMetadata: { trigger: "auto", preTokens: 1 }, timestamp: iso(msAgo) });
 		const l = ledgerOf([boundary(9000), call("Read", 5000), boundary(1000)]);
 		expect(l.compactions).toEqual({ count: 2, lastAt: NOW - 1000, trigger: "auto" });
 		expect(l.running).toBeUndefined();
 	});
 
 	test("takes dollars from the cost record, and counts output tokens once per request", () => {
-		const resp = (req: string, out: number) => JSON.stringify({ type: "assistant", requestId: req, message: { content: [{ type: "text", text: "." }], usage: { output_tokens: out } }, timestamp: iso(0) });
+		const resp = (req: string, out: number) =>
+			JSON.stringify({
+				type: "assistant",
+				requestId: req,
+				message: { content: [{ type: "text", text: "." }], usage: { output_tokens: out } },
+				timestamp: iso(0),
+			});
 		const cost = JSON.stringify({ type: "cost-state", totalCostUSD: 4.25, totalDuration: 1 });
 		const l = ledgerOf([resp("req_a", 3), resp("req_a", 40), resp("req_b", 7), cost]);
 		expect(l.outputTokens).toBe(47);
@@ -177,12 +203,28 @@ describe("waiting on you", () => {
 
 // Round two: model family, context, changes, todos, tool rate.
 const reply = (msAgo: number, model: string, usage: object, extra: object = {}) =>
-	JSON.stringify({ type: "assistant", requestId: `req_${++n}`, message: { model, content: [{ type: "text", text: "Brewing." }], usage }, timestamp: iso(msAgo), ...extra });
-const usage = (input: number, read: number, created: number) => ({ input_tokens: input, cache_read_input_tokens: read, cache_creation_input_tokens: created, output_tokens: 5 });
+	JSON.stringify({
+		type: "assistant",
+		requestId: `req_${++n}`,
+		message: { model, content: [{ type: "text", text: "Brewing." }], usage },
+		timestamp: iso(msAgo),
+		...extra,
+	});
+const usage = (input: number, read: number, created: number) => ({
+	input_tokens: input,
+	cache_read_input_tokens: read,
+	cache_creation_input_tokens: created,
+	output_tokens: 5,
+});
 /** A file-changing call, and a result for it: ok, or an error. */
 const change = (name: string, input: object, msAgo: number, ok = true, toolUseResult: object = {}) => {
 	const id = `toolu_${++n}`;
-	const res = JSON.stringify({ type: "user", message: { content: [{ type: "tool_result", tool_use_id: id, content: ok ? "done" : "String not found", is_error: !ok }] }, toolUseResult, timestamp: iso(msAgo - 10) });
+	const res = JSON.stringify({
+		type: "user",
+		message: { content: [{ type: "tool_result", tool_use_id: id, content: ok ? "done" : "String not found", is_error: !ok }] },
+		toolUseResult,
+		timestamp: iso(msAgo - 10),
+	});
 	return [call(name, msAgo, input, id), res];
 };
 const lines = (k: number, word = "brew") => Array.from({ length: k }, (_, i) => `${word} ${i}`).join("\n");
@@ -204,7 +246,9 @@ describe("model family", () => {
 	test("comes from the newest real response, on the cheap path and the parsed one", () => {
 		const l = ledgerOf([reply(9000, "claude-sonnet-5-5", usage(1, 2, 3)), reply(5000, "<synthetic>", usage(0, 0, 0))]);
 		expect(l.family).toBe("sonnet");
-		l.feed(`${JSON.stringify({ type: "assistant", message: { model: "claude-haiku-5-5", content: [{ type: "tool_use", id: "toolu_h", name: "Read", input: {} }], usage: usage(1, 1, 1) }, timestamp: iso(1000) })}\n`);
+		l.feed(
+			`${JSON.stringify({ type: "assistant", message: { model: "claude-haiku-5-5", content: [{ type: "tool_use", id: "toolu_h", name: "Read", input: {} }], usage: usage(1, 1, 1) }, timestamp: iso(1000) })}\n`,
+		);
 		expect(l.family).toBe("haiku");
 	});
 });
@@ -229,7 +273,16 @@ describe("context", () => {
 	});
 
 	test("finds usage in a long plain response without parsing it", () => {
-		const big = JSON.stringify({ type: "assistant", requestId: "req_big", message: { model: "claude-opus-5-5", content: [{ type: "text", text: `"input_tokens":1 ${"x".repeat(200_000)}` }], usage: { ...usage(7, 70, 700), iterations: [{ input_tokens: 99999 }] } }, timestamp: iso(2000) });
+		const big = JSON.stringify({
+			type: "assistant",
+			requestId: "req_big",
+			message: {
+				model: "claude-opus-5-5",
+				content: [{ type: "text", text: `"input_tokens":1 ${"x".repeat(200_000)}` }],
+				usage: { ...usage(7, 70, 700), iterations: [{ input_tokens: 99999 }] },
+			},
+			timestamp: iso(2000),
+		});
 		const l = ledgerOf([big]);
 		expect(l.context).toEqual({ used: 777, window: 1_000_000, at: NOW - 2000 });
 		expect(l.outputTokens).toBe(5);
@@ -240,12 +293,17 @@ describe("context", () => {
 	});
 
 	test("skips error placeholders and side-chain records", () => {
-		const l = ledgerOf([reply(9000, "claude-opus-5-5", usage(1, 100, 0)), reply(5000, "<synthetic>", usage(0, 0, 0)), reply(3000, "claude-opus-5-5", usage(1, 5, 0), { isSidechain: true })]);
+		const l = ledgerOf([
+			reply(9000, "claude-opus-5-5", usage(1, 100, 0)),
+			reply(5000, "<synthetic>", usage(0, 0, 0)),
+			reply(3000, "claude-opus-5-5", usage(1, 5, 0), { isSidechain: true }),
+		]);
 		expect(l.context?.used).toBe(101);
 	});
 
 	test("a compaction resets it to what is left, or clears it", () => {
-		const boundary = (msAgo: number, meta: object) => JSON.stringify({ type: "system", subtype: "compact_boundary", compactMetadata: { trigger: "auto", ...meta }, timestamp: iso(msAgo) });
+		const boundary = (msAgo: number, meta: object) =>
+			JSON.stringify({ type: "system", subtype: "compact_boundary", compactMetadata: { trigger: "auto", ...meta }, timestamp: iso(msAgo) });
 		const l = ledgerOf([reply(9000, "claude-opus-5-5", usage(1, 800_000, 0)), boundary(5000, { preTokens: 800_001, postTokens: 12_000 })]);
 		expect(l.context).toEqual({ used: 12_000, window: 1_000_000, at: NOW - 5000 });
 		l.feed(`${boundary(3000, {})}\n`);
@@ -275,7 +333,17 @@ describe("changes", () => {
 		const l = ledgerOf([
 			...change("Write", { file_path: "/Users/you/code/teapot/spout.ts", content: lines(30) }, 9000),
 			...change("Edit", { file_path: "/Users/you/code/teapot/spout.ts", old_string: "brew 3", new_string: "brew 3\nsteep 1\nsteep 2" }, 8000),
-			...change("MultiEdit", { file_path: "/Users/you/code/teapot/lid.ts", edits: [{ old_string: lines(4), new_string: lines(1) }, { old_string: "x", new_string: "y" }] }, 7000),
+			...change(
+				"MultiEdit",
+				{
+					file_path: "/Users/you/code/teapot/lid.ts",
+					edits: [
+						{ old_string: lines(4), new_string: lines(1) },
+						{ old_string: "x", new_string: "y" },
+					],
+				},
+				7000,
+			),
 			...change("NotebookEdit", { notebook_path: "/Users/you/code/teapot/brew.ipynb", new_source: lines(5), edit_mode: "insert" }, 6000),
 		]);
 		expect(l.changes).toEqual({ files: 3, added: 30 + 2 + 0 + 1 + 5, removed: 0 + 3 + 1 });
@@ -289,9 +357,16 @@ describe("changes", () => {
 
 	test("prefers the tool's own patch when the result has one for the same file", () => {
 		const f = "/Users/you/code/teapot/kettle.md";
-		const patch = { filePath: f, type: "update", structuredPatch: [{ oldStart: 1, oldLines: 3, newStart: 1, newLines: 3, lines: [" brew 0", "-brew 1", "+steep 1", " brew 2"] }] };
+		const patch = {
+			filePath: f,
+			type: "update",
+			structuredPatch: [{ oldStart: 1, oldLines: 3, newStart: 1, newLines: 3, lines: [" brew 0", "-brew 1", "+steep 1", " brew 2"] }],
+		};
 		const other = { filePath: "/Users/you/code/teapot/other.md", structuredPatch: [{ lines: ["+a", "+b", "+c"] }] };
-		const l = ledgerOf([...change("Write", { file_path: f, content: lines(40) }, 9000, true, patch), ...change("Edit", { file_path: f, old_string: "a", new_string: "b" }, 5000, true, other)]);
+		const l = ledgerOf([
+			...change("Write", { file_path: f, content: lines(40) }, 9000, true, patch),
+			...change("Edit", { file_path: f, old_string: "a", new_string: "b" }, 5000, true, other),
+		]);
 		expect(l.changes).toEqual({ files: 1, added: 2, removed: 2 });
 	});
 
@@ -309,7 +384,8 @@ describe("changes", () => {
 
 describe("todos", () => {
 	test("are counts from the latest TodoWrite", () => {
-		const todo = (statuses: string[], msAgo: number) => call("TodoWrite", msAgo, { todos: statuses.map((status, i) => ({ content: `Invented step ${i}`, status, activeForm: "Brewing" })) });
+		const todo = (statuses: string[], msAgo: number) =>
+			call("TodoWrite", msAgo, { todos: statuses.map((status, i) => ({ content: `Invented step ${i}`, status, activeForm: "Brewing" })) });
 		const l = ledgerOf([todo(["pending", "pending"], 9000), todo(["completed", "in_progress", "pending", "pending", "mystery"], 3000)]);
 		expect(l.todos).toEqual({ pending: 2, active: 1, done: 1 });
 		l.feed(`${call("TodoWrite", 1000, { todos: "not a list" })}\n`);
@@ -319,7 +395,13 @@ describe("todos", () => {
 
 describe("tool rate", () => {
 	test("counts calls and failed results in the trailing window", () => {
-		const l = ledgerOf([call("Read", 5 * MIN), call("Read", 50_000), call("Grep", 20_000), ...shell("bun test", 1, 10_000), result("toolu_nope", 5000, "Permission denied", true)]);
+		const l = ledgerOf([
+			call("Read", 5 * MIN),
+			call("Read", 50_000),
+			call("Grep", 20_000),
+			...shell("bun test", 1, 10_000),
+			result("toolu_nope", 5000, "Permission denied", true),
+		]);
 		expect(TOOL_RATE_WINDOW_MS).toBe(60_000);
 		expect(l.toolRate(NOW)).toEqual({ calls: 3, errors: 2, windowMs: 60_000 });
 		expect(l.toolRate(NOW + 45_000)).toEqual({ calls: 1, errors: 2, windowMs: 60_000 });
@@ -353,17 +435,36 @@ describe("in the snapshot", () => {
 	test("carries every signal for a session and its running agent", async () => {
 		const cwd = "/Users/you/code/teapot";
 		const dir = join(home, "projects", projectSlug(cwd));
-		await write(join(home, "sessions", "501.json"), JSON.stringify({ pid: 501, sessionId: "s-brew", cwd, startedAt: NOW - 3_600_000, status: "busy", hostSessionId: "local_brew" }));
+		await write(
+			join(home, "sessions", "501.json"),
+			JSON.stringify({ pid: 501, sessionId: "s-brew", cwd, startedAt: NOW - 3_600_000, status: "busy", hostSessionId: "local_brew" }),
+		);
 		const pr = JSON.stringify({ type: "pr-link", prNumber: 12, prUrl: "https://github.com/example/teapot/pull/12", timestamp: iso(MIN) });
 		await write(join(dir, "s-brew.jsonl"), `${[...shell("bun test", 1, 5 * MIN), pr, call("AskUserQuestion", 2 * MIN)].join("\n")}\n`, 2 * MIN);
 		const sub = join(dir, "s-brew", "subagents");
 		await write(join(sub, "agent-v1.meta.json"), JSON.stringify({ agentType: "verifier", description: "Walk the brew flow", spawnDepth: 1 }), 1000);
-		await write(join(sub, "agent-v1.jsonl"), `${[...shell("bun test", 1, 9000), ...shell("bun test", 1, 4000), call("Bash", 1000, { command: "bun test" })].join("\n")}\n`, 1000);
-		await write(join(desk, "a", "o", "local_brew.json"), JSON.stringify({ prs: [{ prNumber: 12, url: "https://github.com/example/teapot/pull/12", state: "OPEN" }, { prNumber: 13, url: "https://github.com/example/teapot/pull/13", repo: "example/teapot", state: "MERGED" }] }));
+		await write(
+			join(sub, "agent-v1.jsonl"),
+			`${[...shell("bun test", 1, 9000), ...shell("bun test", 1, 4000), call("Bash", 1000, { command: "bun test" })].join("\n")}\n`,
+			1000,
+		);
+		await write(
+			join(desk, "a", "o", "local_brew.json"),
+			JSON.stringify({
+				prs: [
+					{ prNumber: 12, url: "https://github.com/example/teapot/pull/12", state: "OPEN" },
+					{ prNumber: 13, url: "https://github.com/example/teapot/pull/13", repo: "example/teapot", state: "MERGED" },
+				],
+			}),
+		);
 		// The hook saw a permission prompt after the transcript's last write.
 		await write(join(home, "busybodies", "events.log"), `${Math.floor((NOW - MIN) / 1000)} Notification s-brew permission\n`);
 
-		const snap = await new SnapshotBuilder({ home, desktopIndex: desk }, () => true, () => NOW).build();
+		const snap = await new SnapshotBuilder(
+			{ home, desktopIndex: desk },
+			() => true,
+			() => NOW,
+		).build();
 		const s = snap.sessions[0]!;
 		expect(s.running).toEqual({ tool: "AskUserQuestion", since: NOW - 2 * MIN });
 		expect(s.waiting).toEqual({ reason: "permission", since: NOW - MIN, source: "hook" });
@@ -383,18 +484,43 @@ describe("in the snapshot", () => {
 		const cwd = "/Users/you/code/kettle";
 		const dir = join(home, "projects", projectSlug(cwd));
 		await write(join(home, "sessions", "502.json"), JSON.stringify({ pid: 502, sessionId: "s-kettle", cwd, startedAt: NOW - 3_600_000, status: "busy" }));
-		const todo = call("TodoWrite", 40_000, { todos: [{ content: "Descale the invented kettle", status: "completed" }, { content: "Polish the spout", status: "in_progress" }] });
+		const todo = call("TodoWrite", 40_000, {
+			todos: [
+				{ content: "Descale the invented kettle", status: "completed" },
+				{ content: "Polish the spout", status: "in_progress" },
+			],
+		});
 		await write(
 			join(dir, "s-kettle.jsonl"),
 			`${[reply(50_000, "claude-sonnet-5-5", usage(2, 400_000, 98)), todo, ...change("Write", { file_path: "/Users/you/code/kettle/private-notes.md", content: lines(12) }, 30_000)].join("\n")}\n`,
 		);
 		const sub = join(dir, "s-kettle", "subagents");
-		await write(join(sub, "agent-h1.meta.json"), JSON.stringify({ agentType: "scout", description: "Find the lid", model: "claude-haiku-5-5", spawnDepth: 1 }));
-		await write(join(sub, "agent-h1.jsonl"), `${change("Edit", { file_path: "/Users/you/code/kettle/lid.ts", old_string: "a", new_string: "b\nc" }, 5000).join("\n")}\n`);
-		await write(join(sub, "agent-f1.meta.json"), JSON.stringify({ agentType: "scout", description: "Done already", model: "opus", spawnDepth: 1, finished: true }), 1000);
-		await write(join(sub, "agent-f1.jsonl"), `${change("Write", { file_path: "/Users/you/code/kettle/a.ts", content: lines(3) }, 9000).join("\n")}\n`, 1000);
+		await write(
+			join(sub, "agent-h1.meta.json"),
+			JSON.stringify({ agentType: "scout", description: "Find the lid", model: "claude-haiku-5-5", spawnDepth: 1 }),
+		);
+		await write(
+			join(sub, "agent-h1.jsonl"),
+			`${change("Edit", { file_path: "/Users/you/code/kettle/lid.ts", old_string: "a", new_string: "b\nc" }, 5000).join("\n")}\n`,
+		);
+		await write(
+			join(sub, "agent-f1.meta.json"),
+			JSON.stringify({ agentType: "scout", description: "Done already", model: "opus", spawnDepth: 1, finished: true }),
+			1000,
+		);
+		await write(
+			join(sub, "agent-f1.jsonl"),
+			`${change("Write", { file_path: "/Users/you/code/kettle/a.ts", content: lines(3) }, 9000).join("\n")}\n`,
+			1000,
+		);
 
-		const s = (await new SnapshotBuilder({ home }, () => true, () => NOW).build()).sessions[0]!;
+		const s = (
+			await new SnapshotBuilder(
+				{ home },
+				() => true,
+				() => NOW,
+			).build()
+		).sessions[0]!;
 		expect(s.family).toBe("sonnet");
 		expect(s.context).toEqual({ used: 400_100, window: 1_000_000, at: NOW - 50_000 });
 		expect(s.changes).toEqual({ files: 1, added: 12, removed: 0 });
@@ -427,7 +553,11 @@ describe("narrowed watch", () => {
 			await writeFile(join(home, "sessions", "9.json"), JSON.stringify({ pid: 9, sessionId: "s-9", cwd, hostSessionId: "local_9" }));
 			await mkdir(join(home, "projects", projectSlug(cwd)), { recursive: true });
 			await writeFile(join(home, "projects", projectSlug(cwd), "s-9.jsonl"), "");
-			const b = new SnapshotBuilder({ home }, () => true, () => NOW);
+			const b = new SnapshotBuilder(
+				{ home },
+				() => true,
+				() => NOW,
+			);
 			await b.build();
 			expect([...b.liveProjectDirs]).toEqual([projectSlug(cwd)]);
 			expect([...b.liveHostIds]).toEqual(["local_9"]);

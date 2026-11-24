@@ -81,7 +81,10 @@ for (const theme of themes)
 			await cdp.send("Profiler.setSamplingInterval", { interval: 200 });
 			await cdp.send("Profiler.start");
 		}
-		const metric = async () => Object.fromEntries(((await cdp.send("Performance.getMetrics")) as { metrics: { name: string; value: number }[] }).metrics.map((m) => [m.name, m.value]));
+		const metric = async () =>
+			Object.fromEntries(
+				((await cdp.send("Performance.getMetrics")) as { metrics: { name: string; value: number }[] }).metrics.map((m) => [m.name, m.value]),
+			);
 		await page.evaluate(() => window.__busybodies!.resetCounters());
 		const m0 = await metric();
 		await page.waitForTimeout(secs * 1000);

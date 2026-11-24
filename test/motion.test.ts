@@ -3,16 +3,17 @@
 // traits as acting, and a wait that gets worse. Pure logic only; every session is invented.
 import { describe, expect, test } from "bun:test";
 import { BEATS } from "../src/scene/director/beats";
-import { cueFor, direct } from "../src/scene/director/direct";
+import { direct } from "../src/scene/director/direct";
+import { cueFor } from "../src/scene/director/direct/cue";
 import { WAITING, waitStage } from "../src/scene/director/errands";
 import { HABIT, habitAt } from "../src/scene/director/habits";
-import { GAIT, along, lookMs, pathLength, pointAt, progress, walkMs } from "../src/scene/director/paths";
+import { GAIT, along, lookMs, pathLength, pointAt, progress, walkMs } from "../src/scene/world/paths";
 import { TRAITS } from "../src/scene/director/traits";
 import type { World } from "../src/scene/director/types";
-import { FloorPlan } from "../src/scene/office/layout";
-import { channels } from "../src/scene/rig/frame";
-import { frameAt, passBeat } from "../src/scene/rig/player";
-import { HABITS, POSE, POSES, duration } from "../src/scene/rig/poses";
+import { FloorPlan } from "../src/scene/world/layout";
+import { channels } from "../src/scene/rig/data/frame";
+import { frameAt, passBeat } from "../src/scene/rig/data/player";
+import { HABITS, POSE, POSES, duration } from "../src/scene/rig/data/poses";
 import type { Session, Snapshot } from "../src/watcher/model";
 
 const T0 = Date.UTC(2026, 10, 19, 14, 0);

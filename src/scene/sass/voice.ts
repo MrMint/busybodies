@@ -3,7 +3,7 @@
 // time is up, and drops what the office has no slot for (yet). Pixi-free: the office is passed in
 // as the three methods it needs, so tests drive it with a fake.
 import type { Snapshot } from "../../watcher/model";
-import type { ThemeId } from "../theme/id";
+import type { ThemeId } from "../../themes/ids";
 import { type Output, Sass, type SassOptions } from "./sass";
 import type { Say, View } from "./scheduler";
 
@@ -15,7 +15,8 @@ export interface Stage {
 	signs(): { id: string }[];
 }
 
-/** The director's key for a character: `s:<session>` for a lead, `a:<session>:<agent>` for crew. */
+/** The director's key for a character: `s:<session>` for a lead, `a:<session>:<agent>` for crew.
+ * @public test/sass.test.ts reads it through `require`, which knip doesn't follow. */
 export const keyFor = (b: Pick<Say, "who" | "session">) => (b.who === b.session ? `s:${b.session}` : `a:${b.session}:${b.who}`);
 
 /**
@@ -101,6 +102,8 @@ export class Voice {
 
 	/** The bubbles up now, for the inspector. */
 	bubbles(now: number): { key: string; text: string; kind: string; trigger: string; until: number }[] {
-		return [...this.#up].filter(([, b]) => b.until > now).map(([key, b]) => ({ key, text: b.say.text, kind: b.say.kind, trigger: b.say.trigger, until: b.until }));
+		return [...this.#up]
+			.filter(([, b]) => b.until > now)
+			.map(([key, b]) => ({ key, text: b.say.text, kind: b.say.kind, trigger: b.say.trigger, until: b.until }));
 	}
 }

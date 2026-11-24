@@ -5,12 +5,13 @@
 // the same thing twice are hashes too. Pure and Pixi-free: the Bun process keeps the real one
 // (src/bun/diary.ts saves it next to settings.json), the webview reads it over RPC, and `?demo`
 // keeps one in memory from its invented snapshots with the same code.
-import { roleFor } from "../scene/rig/roles";
+import { roleFor } from "./roles";
 import type { Agent, Session, Snapshot } from "../watcher/model";
+import { flatSessions } from "../watcher/model";
 
 /** What the diary counts. */
 export const DIARY_KINDS = ["sessions", "hires", "prsOpened", "prsMerged", "testsRed", "redeemed", "finished", "longFinished", "compactions"] as const;
-export type DiaryKind = (typeof DIARY_KINDS)[number];
+type DiaryKind = (typeof DIARY_KINDS)[number];
 export type Counts = Partial<Record<DiaryKind, number>>;
 
 export interface DiaryDay {
@@ -45,7 +46,7 @@ export const DIARY = {
 export const emptyDiary = (): Diary => ({ v: 1, days: {} });
 
 /** FNV-1a, 32 bits, as base 36: short, stable, not the name. */
-export function shortHash(s: string): string {
+function shortHash(s: string): string {
 	let h = 0x811c9dc5;
 	for (let i = 0; i < s.length; i++) {
 		h ^= s.charCodeAt(i);
@@ -82,7 +83,6 @@ export interface NoteOptions {
 	day?: (ms: number) => string;
 }
 
-const flat = (l: Session[]): Session[] => l.flatMap((s) => [s, ...flat(s.children)]);
 const agentsOf = (l: Agent[]): Agent[] => l.flatMap((a) => [a, ...agentsOf(a.children)]);
 
 /**
@@ -98,7 +98,9 @@ export function noteSnapshot(diary: Diary, mem: DiaryMemory, snap: Snapshot, opt
 	const today = (): DiaryDay => {
 		if (day) return day;
 		const was = diary.days[key];
-		day = was ? { counts: { ...was.counts }, projects: { ...was.projects }, regulars: [...was.regulars], marks: [...was.marks] } : { counts: {}, projects: {}, regulars: [], marks: [] };
+		day = was
+			? { counts: { ...was.counts }, projects: { ...was.projects }, regulars: [...was.regulars], marks: [...was.marks] }
+			: { counts: {}, projects: {}, regulars: [], marks: [] };
 		return day;
 	};
 	const marks = new Set(diary.days[key]?.marks ?? []);
@@ -124,7 +126,7 @@ export function noteSnapshot(diary: Diary, mem: DiaryMemory, snap: Snapshot, opt
 		changed = true;
 	};
 
-	const sessions = flat(snap.sessions);
+	const sessions = flatSessions(snap.sessions);
 	const live = new Map<string, { project: string; startedAt: number }>();
 	for (const s of sessions) {
 		const p = projectKey(s.project);
@@ -177,7 +179,9 @@ export function noteSnapshot(diary: Diary, mem: DiaryMemory, snap: Snapshot, opt
 
 /** Keep the last `DIARY.keepDays` days, counting back from `today` (`YYYY-MM-DD` sorts as a date). */
 export function prune(diary: Diary, today: string): Diary {
-	const keys = Object.keys(diary.days).filter((k) => k <= today).sort();
+	const keys = Object.keys(diary.days)
+		.filter((k) => k <= today)
+		.sort();
 	const keep = keys.slice(-DIARY.keepDays);
 	if (keep.length === Object.keys(diary.days).length) return diary;
 	return { v: 1, days: Object.fromEntries(keep.map((k) => [k, diary.days[k]!])) };
@@ -205,14 +209,20 @@ export function diaryOf(raw: unknown): Diary {
 		if (!/^\d{4}-\d{2}-\d{2}$/.test(k) || !v || typeof v !== "object") continue;
 		const d = v as Record<string, unknown>;
 		const projects: Record<string, Counts> = {};
-		if (d.projects && typeof d.projects === "object") for (const [p, c] of Object.entries(d.projects as Record<string, unknown>)) if (/^p[0-9a-z]{1,8}$/.test(p)) projects[p] = countsOf(c);
-		out.days[k] = { counts: countsOf(d.counts), projects, regulars: strings(d.regulars, /^p[0-9a-z]{1,8}:[a-z]+$/), marks: strings(d.marks, /^[0-9a-z]{1,8}$/) };
+		if (d.projects && typeof d.projects === "object")
+			for (const [p, c] of Object.entries(d.projects as Record<string, unknown>)) if (/^p[0-9a-z]{1,8}$/.test(p)) projects[p] = countsOf(c);
+		out.days[k] = {
+			counts: countsOf(d.counts),
+			projects,
+			regulars: strings(d.regulars, /^p[0-9a-z]{1,8}:[a-z]+$/),
+			marks: strings(d.marks, /^[0-9a-z]{1,8}$/),
+		};
 	}
 	return out;
 }
 
 /** The days up to and including `today`, newest first, at most `n`. */
-export function lastDays(diary: Diary | undefined, today: string, n: number): [string, DiaryDay][] {
+function lastDays(diary: Diary | undefined, today: string, n: number): [string, DiaryDay][] {
 	if (!diary) return [];
 	return Object.entries(diary.days)
 		.filter(([k]) => k <= today)

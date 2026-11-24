@@ -3,14 +3,14 @@
 // ?sheet to see it live.
 import { Container, Graphics, Text } from "pixi.js";
 import type { Atlas } from "./atlas";
-import { parseFrame } from "./frame";
-import { POSES, type Pose, BEAT_MS } from "./poses";
+import { parseFrame } from "./data/frame";
+import { POSES, type Pose, BEAT_MS } from "./data/poses";
 import { Puppet } from "./puppet";
-import { STATION_POSE, type StationKind } from "../director/stations";
-import { BELL, BELL_BASE, HANDOFF, PLANNER, STATION, STICKY } from "./reach";
-import { ROLES, type Role } from "./roles";
-import { FACES } from "./vocab";
-import { THEME_IDS, type ThemeId } from "../theme/id";
+import { STATION_POSE, type StationKind } from "../world/stations";
+import { BELL, BELL_BASE, HANDOFF, PLANNER, STATION, STICKY } from "./data/reach";
+import { ROLES, type Role } from "./data/roles";
+import { FACES } from "./data/vocab";
+import { THEME_IDS, type ThemeId } from "../../themes/ids";
 import { poseWords } from "../theme/words";
 
 const INK = 0x2b2340;
@@ -35,8 +35,18 @@ const label = (text: string, size: number, weight: "400" | "700" | "800" = "400"
 };
 
 const BG: Record<string, number> = {
-	busy: 0xffe3c2, idle: 0xe6e9f5, "idle-long": 0xe3dcff, waiting: 0xd4f3e4, "test-failed": 0xffe3c2, "pr-opened": 0xd6e8ff,
-	"subagent-spawned": 0xffe3c2, stalled: 0xe8e4dc, finished: 0xd4f3e4, thinking: 0xffe0ec, "subagent-green": 0xd6e8ff, "long-build": 0xffe3c2,
+	busy: 0xffe3c2,
+	idle: 0xe6e9f5,
+	"idle-long": 0xe3dcff,
+	waiting: 0xd4f3e4,
+	"test-failed": 0xffe3c2,
+	"pr-opened": 0xd6e8ff,
+	"subagent-spawned": 0xffe3c2,
+	stalled: 0xe8e4dc,
+	finished: 0xd4f3e4,
+	thinking: 0xffe0ec,
+	"subagent-green": 0xd6e8ff,
+	"long-build": 0xffe3c2,
 };
 
 /** Which station a pose is played at, for the sheet's stand-in furniture. */
@@ -65,7 +75,11 @@ function ghost(kind: StationKind): Graphics {
 		.fill({ color: 0xffffff, alpha: 0.6 })
 		.stroke({ width: 1.5, color: INK, alpha: 0.22 });
 	// The working point the station arms are solved onto.
-	g.moveTo(STATION.x - 4, STATION.y).lineTo(STATION.x + 4, STATION.y).moveTo(STATION.x, STATION.y - 4).lineTo(STATION.x, STATION.y + 4).stroke({ width: 1, color: 0xff4d5e, alpha: 0.5 });
+	g.moveTo(STATION.x - 4, STATION.y)
+		.lineTo(STATION.x + 4, STATION.y)
+		.moveTo(STATION.x, STATION.y - 4)
+		.lineTo(STATION.x, STATION.y + 4)
+		.stroke({ width: 1, color: 0xff4d5e, alpha: 0.5 });
 	g.scale.set(SCALE);
 	return g;
 }
@@ -77,11 +91,18 @@ function propGhost(name: string): Graphics | undefined {
 	const g = new Graphics();
 	if (name === "bellRing") {
 		const top = BELL.y + BELL_BASE + 2;
-		g.roundRect(BELL.x - 22, top, 44, -top, 3).fill({ color: 0xffffff, alpha: 0.6 }).stroke({ width: 1.5, color: INK, alpha: 0.22 });
+		g.roundRect(BELL.x - 22, top, 44, -top, 3)
+			.fill({ color: 0xffffff, alpha: 0.6 })
+			.stroke({ width: 1.5, color: INK, alpha: 0.22 });
 	} else if (name === "stickyPost") {
 		const s = STICKY;
-		g.roundRect(PLANNER.x - s * 0.9, PLANNER.y - s * 1.7, s * 3.6, s * 3, 2).fill({ color: 0xffffff, alpha: 0.6 }).stroke({ width: 1.5, color: INK, alpha: 0.22 });
-		for (let c = 1; c < 3; c++) g.moveTo(PLANNER.x - s * 0.9 + c * s * 1.2, PLANNER.y - s * 1.7).lineTo(PLANNER.x - s * 0.9 + c * s * 1.2, PLANNER.y + s * 1.3).stroke({ width: 1, color: INK, alpha: 0.18 });
+		g.roundRect(PLANNER.x - s * 0.9, PLANNER.y - s * 1.7, s * 3.6, s * 3, 2)
+			.fill({ color: 0xffffff, alpha: 0.6 })
+			.stroke({ width: 1.5, color: INK, alpha: 0.22 });
+		for (let c = 1; c < 3; c++)
+			g.moveTo(PLANNER.x - s * 0.9 + c * s * 1.2, PLANNER.y - s * 1.7)
+				.lineTo(PLANNER.x - s * 0.9 + c * s * 1.2, PLANNER.y + s * 1.3)
+				.stroke({ width: 1, color: INK, alpha: 0.18 });
 	} else return undefined;
 	g.scale.set(SCALE);
 	return g;
@@ -90,8 +111,7 @@ function propGhost(name: string): Graphics | undefined {
 // Crew use the stations, so station poses show on a crew member (the scout: no hat brim in the way).
 // A hand-off is between two crew members.
 const roleOf = (p: Pose): Role =>
-	p.roles?.[0] ??
-	(p.trigger === "subagent-green" || p.name === "handOff" ? "builder" : STATION_OF.has(p.name) || p.name === "queueWait" ? "scout" : "lead");
+	p.roles?.[0] ?? (p.trigger === "subagent-green" || p.name === "handOff" ? "builder" : STATION_OF.has(p.name) || p.name === "queueWait" ? "scout" : "lead");
 
 /** A two-hander whose partner stands apart, facing the lead (the hand-off): the cell shows the
  * real distance (HANDOFF.slot; the partner steps in on its own spot), mirrored, instead of the boards' squeezed spots. */
@@ -114,7 +134,10 @@ const sheetPoses = (id: ThemeId | undefined): Pose[] =>
 	POSES.flatMap((p) => {
 		const w = id ? poseWords(id, p) : p;
 		const q: Pose = { ...p, title: w.title, lines: [...w.lines] };
-		return [q, ...(p.beats?.passes ?? []).map((b): Pose => ({ ...q, title: `${q.title}: a beat, "${b.name}"`, frames: b.frames, beats: undefined, lines: [] }))];
+		return [
+			q,
+			...(p.beats?.passes ?? []).map((b): Pose => ({ ...q, title: `${q.title}: a beat, "${b.name}"`, frames: b.frames, beats: undefined, lines: [] })),
+		];
 	});
 
 export function buildPoseSheet(atlas: Atlas): { sheet: Container; width: number; height: number; puppets: Puppet[] } {
@@ -137,14 +160,21 @@ export function buildPoseSheet(atlas: Atlas): { sheet: Container; width: number;
 
 	let y = head ? 24 : 0;
 	if (head) {
-		const title = label(`Busybodies · mochi pose sheet${atlas.theme.name === "paper" || atlas.theme.name === "office" ? "" : ` · ${atlas.theme.name}`}`, 30, "800");
+		const title = label(
+			`Busybodies · mochi pose sheet${atlas.theme.name === "paper" || atlas.theme.name === "office" ? "" : ` · ${atlas.theme.name}`}`,
+			30,
+			"800",
+		);
 		title.position.set(24, y);
 		sheet.addChild(title);
 		y += 46;
 		const lede = label(
 			"Every pose's frames, each one settled. Under each cell: frame number, length in beats (130 ms), and any line said on it. " +
 				"Frames are parameter objects (src/scene/rig/poses.ts); bun tools/pose-dump.ts prints them as text.",
-			13, "400", 0.8, 1500,
+			13,
+			"400",
+			0.8,
+			1500,
 		);
 		lede.position.set(24, y);
 		sheet.addChild(lede);
@@ -169,18 +199,23 @@ export function buildPoseSheet(atlas: Atlas): { sheet: Container; width: number;
 		});
 		y += ROW;
 	};
-	if (!only && head) strip("The cast", ROLES.map((r) => ({ name: r, make: () => make(`cast-${r}`, r) })));
-	if (!only && head) strip(
-		"Twelve faces",
-		Object.entries(FACES).map(([name, f], i) => ({
-			name,
-			make: () => {
-				const p = make(`face-${name}`, ROLES[i % ROLES.length]!);
-				p.showFrame(parseFrame(`e-${f.eyes} m-${f.mouth} b-${f.brows}`));
-				return p;
-			},
-		})),
-	);
+	if (!only && head)
+		strip(
+			"The cast",
+			ROLES.map((r) => ({ name: r, make: () => make(`cast-${r}`, r) })),
+		);
+	if (!only && head)
+		strip(
+			"Twelve faces",
+			Object.entries(FACES).map(([name, f], i) => ({
+				name,
+				make: () => {
+					const p = make(`face-${name}`, ROLES[i % ROLES.length]!);
+					p.showFrame(parseFrame(`e-${f.eyes} m-${f.mouth} b-${f.brows}`));
+					return p;
+				},
+			})),
+		);
 
 	let widest = LABEL + 12 * CELL;
 	for (const pose of SHEET_POSES) {
@@ -197,8 +232,13 @@ export function buildPoseSheet(atlas: Atlas): { sheet: Container; width: number;
 				pose.rarity < 1 ? `rare: 1 in ${Math.round(1 / pose.rarity)}` : "",
 				`${pose.play}${pose.habit ? " · slacking habit" : ""}${pose.roles ? ` · ${pose.roles.join(", ")}` : ""}`,
 				pose.lines.length ? `“${pose.lines.join("” “")}”` : "",
-			].filter(Boolean).join("\n"),
-			11, "400", 0.75, LABEL - 34,
+			]
+				.filter(Boolean)
+				.join("\n"),
+			11,
+			"400",
+			0.75,
+			LABEL - 34,
 		);
 		meta.position.set(24, y + 10 + h.height);
 		sheet.addChild(h, meta);
