@@ -20,8 +20,7 @@ jobs:
           bun-version: 1.4.4
       - run: bun test test/
   lint:
-    # Biome lint (the formatter isn't enforced until the format-all commit) and knip for unused
-    # files, dependencies and exports.
+    # Biome (lint and format) and knip (unused files, dependencies and exports).
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,7 +30,7 @@ jobs:
       - uses: ./.github/actions/setup-hutch
         with:
           prepare: true
-      - run: ~/.hutch/bin/hutch pm exec -- biome ci --formatter-enabled=false --reporter=github .
+      - run: ~/.hutch/bin/hutch pm exec -- biome ci --reporter=github .
       - run: ~/.hutch/bin/hutch pm exec -- knip
   e2e:
     # Frame budgets in headless Chrome (preinstalled on the runner) against the bundled scene.
