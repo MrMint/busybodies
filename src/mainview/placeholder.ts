@@ -5,7 +5,7 @@
 import { Container, Rectangle, type Renderer, Sprite, type Texture } from "pixi.js";
 import type { Character, CharacterFactory } from "../scene/office/slot";
 import type { Who } from "../scene/contract";
-import type { Slot } from "../scene/office/world";
+import type { Slot } from "../scene/world/world";
 import { Busybody } from "./busybody";
 
 const PALETTE = [0xff8fab, 0x8fd3ff, 0xffd166, 0x9be7a0, 0xc3a6ff, 0xffb38a, 0x7fe0d4, 0xf5a3e0];

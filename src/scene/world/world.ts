@@ -170,7 +170,7 @@ export interface World {
 	/** Every desk by session id. */
 	desks: Map<string, Desk>;
 	signs: SignSlot[];
-	/** How the theme stages it (office/staging.ts); absent is the office's: desks, a corridor. */
+	/** How the theme stages it (world/staging.ts); absent is the office's: desks, a corridor. */
 	staging?: Staging;
 	/** The hallway's conveyor, with a `conveyor` hall. */
 	conveyor?: Conveyor;

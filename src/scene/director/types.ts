@@ -1,7 +1,7 @@
 // The director's words: who is on stage, what each one is doing, and what changed. Pure data, so a
 // world can be compared, logged and replayed.
 import type { Cue, Mood, Walk, Who } from "../contract";
-import type { Slot } from "../office/world";
+import type { Slot } from "../world/world";
 import type { HandOff, Mail } from "./handoff";
 import type { Pending } from "./beats";
 import type { Errand } from "./errands";
@@ -154,7 +154,7 @@ export interface World {
 	metrics?: Metrics;
 	/** Story and continuity: merged PRs' replies, send-offs, the log and its headlines (story.ts). */
 	story?: Story;
-	/** How the floor was staged (office/staging.ts: bay and hallway), so a change of stage (a theme
+	/** How the floor was staged (world/staging.ts: bay and hallway), so a change of stage (a theme
 	 * switched live) puts everyone straight on their new spots rather than walking them over. */
 	stage?: string;
 }

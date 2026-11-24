@@ -8,8 +8,8 @@
 // An errand is kept on the actor: it sets off at `since` (after the character's pause, traits.ts),
 // arrives `walkMs` later, plays its pose until `until`, then the director walks it home as it
 // would anyone whose spot changed.
-import { plannerNote, posterFor } from "../office/rigpoints";
-import { type Slot, type World as Floor, shredderUse } from "../office/world";
+import { plannerNote, posterFor } from "../world/rigpoints";
+import { type Slot, type World as Floor, shredderUse } from "../world/world";
 import { poseMs } from "../rig/poses";
 import type { Session } from "../../watcher/model";
 import type { Metrics, Ticket } from "./metrics";

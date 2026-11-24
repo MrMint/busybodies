@@ -4,11 +4,11 @@
 // outline, the view out of each window, faint paper grain, and the room's name painted at its
 // threshold in the hallway (a vinyl decal, or a stencil in the factory) instead of a floating tab.
 import { Container, FillPattern, Graphics } from "pixi.js";
-import { type Phase, SHADOW } from "./daylight";
+import { type Phase, SHADOW } from "../world/daylight";
 import { drawOutlook, type SunSpot } from "./outlook";
 import { INK, grainTexture, hash, noise, text, wobblyRect } from "./paper";
 import type { SceneLight } from "../theme/types";
-import type { Area, Rect } from "./world";
+import type { Area, Rect } from "../world/world";
 
 /** How far a room's name sits from its edge, into the hallway, and how much room it may take. */
 export const DECAL = { gap: 9, pad: 22 } as const;

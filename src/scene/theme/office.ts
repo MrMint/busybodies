@@ -1,7 +1,7 @@
 // The office theme: the original look (design/boards/FloorBusy), cut paper with pastel rooms. Every
 // painter here draws once per change into a Graphics or Container, never per frame; furniture is
 // drawn around its base point (0, 0), the bottom centre where it meets the floor. Desk props are
-// drawn around the desk front's centre (office/propspots.ts PROPS says where each goes): the desk
+// drawn around the desk front's centre (world/propspots.ts PROPS says where each goes): the desk
 // top is y -70 to -38, the lead stands behind it at x -26, the crew build is on its left end.
 //
 //   inTray      the context pile in front of the lead: a few sheets to buried to the eyebrows
@@ -16,9 +16,9 @@ import type { Lamp, PlannerRow, Tray } from "../contract";
 import { GREEN, INK, PAPER_SIGNS, RED, SHADOW, SUN, type SignStyle, batched, hash, label, line, noise, signboard, text, wob } from "../office/paper";
 import { rotRect } from "../rig/theme";
 import { mix } from "../office/light";
-import { KITCHEN_WALL, MONITOR, PROPS, ceilingPanels } from "../office/propspots";
+import { KITCHEN_WALL, MONITOR, PROPS, ceilingPanels } from "../world/propspots";
 import type { Who } from "../contract";
-import { type Area, type Band, DESK_TOP, type Rect } from "../office/world";
+import { type Area, type Band, DESK_TOP, type Rect } from "../world/world";
 import { crewBuild } from "./build";
 import type { FurnitureKind, SceneLight, SceneTheme } from "./types";
 import { OFFICE_WORDS, type SignText } from "./words";
@@ -234,7 +234,7 @@ function fluorescents(g: Graphics, r: Rect): void {
 
 /** The kitchen's mug wall, between the fridge and the sign, just over the coffee machine: a shelf
  * of novelty mugs under the banner that explains them. Small: it reads zoomed in, and is quiet at
- * office zoom. office/propspots.ts KITCHEN_WALL places it, clear of the machine and its steam. */
+ * office zoom. world/propspots.ts KITCHEN_WALL places it, clear of the machine and its steam. */
 function mugWall(g: Graphics, a: Area): Container {
 	const { x: dx, y: dy, w, h } = KITCHEN_WALL.mugWall;
 	const x = a.rect.x + dx;
@@ -955,7 +955,7 @@ export const OFFICE_THEME: SceneTheme = {
 	light: OFFICE_LIGHT,
 };
 
-// --- Staging (office/staging.ts) ----------------------------------------------------------------
+// --- Staging (world/staging.ts) ----------------------------------------------------------------
 
 /** The office keeps its desks and its corridor; what moves on its own is the steam off the coffee,
  * the kitchen's ceiling fan and the copier's light (office/ambient.ts). */

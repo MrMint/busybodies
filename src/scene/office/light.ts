@@ -12,11 +12,11 @@
 // rush flickers its overhead light: a sprite over the room, multiplied, its alpha stepping on the
 // acting frames (only while life is on).
 import { Container, Graphics, type Renderer, RenderTexture, Sprite, Texture } from "pixi.js";
-import { LAMPS_ON, type Phase, SUNLIGHT, flicker } from "./daylight";
+import { LAMPS_ON, type Phase, SUNLIGHT, flicker } from "../world/daylight";
 
 import { hash } from "./paper";
 import type { SceneLight } from "../theme/types";
-import type { Area, Rect, World } from "./world";
+import type { Area, Rect, World } from "../world/world";
 
 /** Light-map texels per world pixel, at most (a big office gets fewer, to stay under MAX_SIDE). */
 const SCALE = 1 / 6;

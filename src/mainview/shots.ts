@@ -5,9 +5,9 @@
 // the camera until unpinned.
 import type { Director } from "../scene/director";
 import { type News, type ShotState, SHOTS, type Tile, newsFrom, nextShot, scoreByArea, shotWake, tilesFor } from "../scene/director/shots";
-import { type Stop, sameStop } from "../scene/office/camera";
+import { type Stop, sameStop } from "../scene/world/camera";
 import type { Office } from "../scene/office/office";
-import type { AreaKind } from "../scene/office/world";
+import type { AreaKind } from "../scene/world/world";
 import { type ThemeWords, areaLabel } from "../scene/theme/words";
 import type { Snapshot } from "../watcher/model";
 

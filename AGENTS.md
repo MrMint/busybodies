@@ -70,7 +70,7 @@ only from the layers before it.
 | snapshot | `src/watcher/model.ts`, the contract | nothing |
 | watcher | `src/watcher/` | the snapshot, `node:*` |
 | shared | `src/shared/`, code both processes run | the snapshot |
-| director | `src/scene/director*`, `src/scene/sass/` | the above, plus the Pixi-free floor plan (`office/world.ts`, `layout.ts`, `placement.ts`, …) and rig data (`rig/poses.ts`, `roles.ts`, `player.ts`, …) |
+| director | `src/scene/director*`, `src/scene/sass/` | the above, plus the Pixi-free floor plan (`src/scene/world/`) and rig data (`rig/poses.ts`, `roles.ts`, `player.ts`, …) |
 | scene | `src/scene/office/`, `theme/`, `rig/` drawing | everything above |
 | app | `src/mainview/` (webview), `src/bun/` (main process; Pixi-free, reads `src/themes/ids.ts`) | everything above |
 
@@ -95,7 +95,8 @@ and [`docs/restructure-plan.md`](docs/restructure-plan.md).
 | `src/bun/` | The Electrobun main process: the office and compact windows, the tray, the app menu, updates, the way out on quit (`shutdown.ts`), the diary on disk (`diary.ts`; its counts-only model is `src/shared/diary.ts`) |
 | `src/watcher/` | Capture: reads the agent tool's files into a `Snapshot` (`model.ts` is the contract) |
 | `src/mainview/` | The webview's entry: app setup, the top bar, the inspector, demo days; on-screen visibility (`visibility.ts`), the compact camera (`shots.ts`) |
-| `src/scene/office/` | The open-floor office: floor plan, camera, cut-paper drawing, the character slot interface; light and time of day (`daylight.ts`, `light.ts`), windows and the yard (`outlook.ts`, `outside.ts`), the paper pass (`material.ts`); a theme's staging (`staging.ts`), ambient life (`ambient.ts`), the walls that remember (`decor.ts`) |
+| `src/scene/office/` | The open-floor office's drawing: cut-paper rooms and desks, the character slot interface, light (`light.ts`), windows and the yard (`outlook.ts`, `outside.ts`), the paper pass (`material.ts`), ambient life (`ambient.ts`), the walls that remember (`decor.ts`) |
+| `src/scene/world/` | The floor plan, Pixi-free: rooms, desks and spots (`world.ts`), layout and placement, the camera's stops (`camera.ts`), time of day (`daylight.ts`), a theme's staging (`staging.ts`), what the walls remember (`decor-plan.ts`) |
 | `src/scene/theme/` | Scene themes (`?theme=`, the tray's Theme menu): the office's, the factory's and the bakery's (`bakery.ts`: a patisserie, a pastry conveyor down the hallway) look, words and staging behind a `SceneTheme`, and the factory's robot arms |
 | `src/scene/rig/` | The mochi character rig: parts atlas, springs, frames, poses, and the office's character factory (`?sheet`, `?demo=crowd`); life (`life.ts`: blinks and glances), gaze (`gaze.ts`), the office's corporate cast (`office.ts`) and the Line's kitchen brigade (`kitchen.ts`) |
 | `src/scene/director.ts`, `src/scene/director/` | The director: snapshot to world (spots, poses, walks) and events; the sass seam (`say`, `sign`); the story beats (`director/story.ts`) |

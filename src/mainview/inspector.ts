@@ -4,7 +4,7 @@
 import type { Application } from "pixi.js";
 import type { Director, World, WorldEvent } from "../scene/director";
 import type { Trigger, Voice } from "../scene/sass";
-import type { Stop } from "../scene/office/camera";
+import type { Stop } from "../scene/world/camera";
 import type { Office } from "../scene/office/office";
 import type { SignText } from "../scene/office/paper";
 import type { Snapshot } from "../watcher/model";
@@ -57,7 +57,7 @@ export interface Inspector {
 	setTheme(id: ThemeId): void;
 	/** The factory's robot arms: whether each moves, and its jobs. */
 	arms(): Office["arms"];
-	/** The theme's staging (office/staging.ts): its grammar, the belts and the conveyor, and what
+	/** The theme's staging (world/staging.ts): its grammar, the belts and the conveyor, and what
 	 * moves on its own (ambient pieces by kind, parts on the belts, crates riding to the dock). */
 	staging(): Office["staging"];
 	/** Crew-build pieces moving now (or waiting on an arm). */

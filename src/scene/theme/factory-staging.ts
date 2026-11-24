@@ -1,6 +1,6 @@
-// The factory's staging (office/staging.ts), apart from its paint so the director and the unit tests
+// The factory's staging (world/staging.ts), apart from its paint so the director and the unit tests
 // read it without a renderer. theme/factory.ts draws what it names.
-import type { SceneStaging } from "../office/staging";
+import type { SceneStaging } from "../world/staging";
 
 /** The factory stages its bays as lines with a belt across the floor, the crew along it and the
  * foreman up in a booth; the hallway's conveyor carries PR crates to the dock. A beacon turns on a

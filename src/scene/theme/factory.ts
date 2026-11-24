@@ -8,8 +8,8 @@
 import { type Container, Graphics } from "pixi.js";
 import type { Lamp, Tray } from "../contract";
 import { GREEN, INK, RED, SHADOW, type SignStyle, batched, hash, label, line, noise, signboard, wob } from "../office/paper";
-import { MONITOR, PROPS } from "../office/propspots";
-import { type Area, type Band, DESK_TOP, type Rect } from "../office/world";
+import { MONITOR, PROPS } from "../world/propspots";
+import { type Area, type Band, DESK_TOP, type Rect } from "../world/world";
 import { crewBuild } from "./build";
 import { COMMON_COLOURS, NIGHT_WATCH, plannerOf } from "./office";
 import { FACTORY_STAGING } from "./factory-staging";
@@ -751,7 +751,7 @@ function drums(g: Graphics, x: number, y: number, n: number): void {
 	}
 }
 
-// --- Staging (office/staging.ts): lines, booths, the dock -------------------------------------
+// --- Staging (world/staging.ts): lines, booths, the dock -------------------------------------
 
 /** A line's belt: a dark rubber top on a steel frame with a hazard skirt, on short legs. */
 function belt(g: Graphics, w: number): void {

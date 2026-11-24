@@ -1,11 +1,11 @@
 // The office floor plan: stable under change, and sane from 1 to 30 sessions. Every project and
 // title here is invented.
 import { describe, expect, test } from "bun:test";
-import { FloorPlan } from "../src/scene/office/layout";
+import { FloorPlan } from "../src/scene/world/layout";
 import { demo } from "../src/mainview/demo";
-import { LEAD_SIZE } from "../src/scene/office/placement";
-import { KITCHEN_WALL, MONITOR, ceilingPanels, deskParts } from "../src/scene/office/propspots";
-import { BUILD, DESK_TOP, SEAT, STATIONS_BASE, STATION_CREW, STRIP, type Rect, type World, bodyRect, crewPlaces, crewSlot, endPlaces, faceZone, meets } from "../src/scene/office/world";
+import { LEAD_SIZE } from "../src/scene/world/placement";
+import { KITCHEN_WALL, MONITOR, ceilingPanels, deskParts } from "../src/scene/world/propspots";
+import { BUILD, DESK_TOP, SEAT, STATIONS_BASE, STATION_CREW, STRIP, type Rect, type World, bodyRect, crewPlaces, crewSlot, endPlaces, faceZone, meets } from "../src/scene/world/world";
 import type { Agent } from "../src/watcher/model";
 import type { Session, Snapshot } from "../src/watcher/model";
 

@@ -9,11 +9,11 @@ import { METRICS, drawersFor, lampFor, mugsFor, skipLoad, towerBricks, trayFor }
 import { PACE } from "../src/scene/director/pace";
 import { TRAITS } from "../src/scene/director/traits";
 import type { World } from "../src/scene/director/types";
-import { FloorPlan } from "../src/scene/office/layout";
-import { LEAD_SIZE } from "../src/scene/office/placement";
-import { PROPS } from "../src/scene/office/propspots";
-import { DESK_TOP, SEAT, faceZone } from "../src/scene/office/world";
-import { RIG_PLANNER, bellFrom } from "../src/scene/office/rigpoints";
+import { FloorPlan } from "../src/scene/world/layout";
+import { LEAD_SIZE } from "../src/scene/world/placement";
+import { PROPS } from "../src/scene/world/propspots";
+import { DESK_TOP, SEAT, faceZone } from "../src/scene/world/world";
+import { RIG_PLANNER, bellFrom } from "../src/scene/world/rigpoints";
 import { POSE, duration } from "../src/scene/rig/poses";
 import type { Agent, Session, Snapshot } from "../src/watcher/model";
 

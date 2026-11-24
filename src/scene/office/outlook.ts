@@ -3,12 +3,12 @@
 // with the room. The skyline is laid out by world x, so neighbouring windows show one continuous
 // city. Clouds move (office.ts keeps them as sprites on the life clock); everything here is still.
 import { Graphics, type Renderer, Rectangle, type Texture } from "pixi.js";
-import { type Phase, type SunSpot, glassOf } from "./daylight";
+import { type Phase, type SunSpot, glassOf } from "../world/daylight";
 
-export { type SunSpot, glassOf, panesOf, sunSpot } from "./daylight";
+export { type SunSpot, glassOf, panesOf, sunSpot } from "../world/daylight";
 import { INK, noise } from "./paper";
 import type { SceneLight } from "../theme/types";
-import type { Rect } from "./world";
+import type { Rect } from "../world/world";
 
 const SUN_COLOUR = { morning: 0xfff0a6, afternoon: 0xffc867, dusk: 0xff8a5c } as const;
 

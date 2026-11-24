@@ -9,7 +9,7 @@ import { HABIT, habitAt } from "../src/scene/director/habits";
 import { GAIT, along, lookMs, pathLength, pointAt, progress, walkMs } from "../src/scene/director/paths";
 import { TRAITS } from "../src/scene/director/traits";
 import type { World } from "../src/scene/director/types";
-import { FloorPlan } from "../src/scene/office/layout";
+import { FloorPlan } from "../src/scene/world/layout";
 import { channels } from "../src/scene/rig/frame";
 import { frameAt, passBeat } from "../src/scene/rig/player";
 import { HABITS, POSE, POSES, duration } from "../src/scene/rig/poses";

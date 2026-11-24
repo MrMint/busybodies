@@ -1,16 +1,16 @@
-// Themes own their staging (plan-alive wave 3, office/staging.ts): the same floor plan, staged as
+// Themes own their staging (plan-alive wave 3, world/staging.ts): the same floor plan, staged as
 // the theme says. The office's is the default and changes nothing; the factory's turns each row of a
 // bay into a line with a belt, strings the crew along it, and runs the hallway's conveyor to a dock.
 // Every project and title here is invented.
 import { describe, expect, test } from "bun:test";
 import { direct } from "../src/scene/director/direct";
 import { HABIT, habitAt } from "../src/scene/director/habits";
-import { FloorPlan } from "../src/scene/office/layout";
-import { DEFAULT_STAGING, habitsFor, stagingOf } from "../src/scene/office/staging";
+import { FloorPlan } from "../src/scene/world/layout";
+import { DEFAULT_STAGING, habitsFor, stagingOf } from "../src/scene/world/staging";
 import { FACTORY_STAGING } from "../src/scene/theme/factory-staging";
-import { CRATE, crateAt, crateRide } from "../src/scene/office/crate";
-import { AISLE, BELT, DESK_TOP, type Desk, OVERLAP, ROW, type Rect, SQUEEZE, type World, bodyRect, crewPlaces, crewSpots, endPlaces, faceZone, meets, overlapX } from "../src/scene/office/world";
-import { LEAD_SIZE } from "../src/scene/office/placement";
+import { CRATE, crateAt, crateRide } from "../src/scene/world/crate";
+import { AISLE, BELT, DESK_TOP, type Desk, OVERLAP, ROW, type Rect, SQUEEZE, type World, bodyRect, crewPlaces, crewSpots, endPlaces, faceZone, meets, overlapX } from "../src/scene/world/world";
+import { LEAD_SIZE } from "../src/scene/world/placement";
 import { demo } from "../src/mainview/demo";
 import { HABITS, POSE } from "../src/scene/rig/poses";
 import type { Agent, Session, Snapshot } from "../src/watcher/model";

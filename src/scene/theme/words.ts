@@ -3,7 +3,7 @@
 // in the hands. Pixi-free, so the layout, the tray, the pose sheet and tests can read it.
 // The layout names areas with the office's words (`Area.name` is the area's identity: tools and
 // tests aim at "kitchen" or "your office" in any theme); the office's tabs show the theme's.
-import type { AreaKind } from "../office/world";
+import type { AreaKind } from "../world/world";
 import type { ThemeId } from "../../themes/ids";
 
 export interface SignText {

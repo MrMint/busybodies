@@ -1,10 +1,10 @@
 // The office remembers: draws what decor-plan.ts says each wall shows (framed PRs, bunting, stars).
 // Pixi lives here only, so the plan's unit tests run without it.
 import { Container, Graphics } from "pixi.js";
-export * from "./decor-plan";
-import { DECOR, type RoomDecor, type StoryStyle, type StoryView, decorFor, storyStyle } from "./decor-plan";
+export * from "../world/decor-plan";
+import { DECOR, type RoomDecor, type StoryStyle, type StoryView, decorFor, storyStyle } from "../world/decor-plan";
 import type { SceneTheme } from "../theme/types";
-import type { World } from "./world";
+import type { World } from "../world/world";
 
 function star(g: Graphics, x: number, y: number, r: number, fill: number, ink: number): void {
 	const pts: number[] = [];

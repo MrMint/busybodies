@@ -3,7 +3,7 @@
 // The placeholder in src/mainview/placeholder.ts implements this today; the mochi rig (S1) drops in
 // by implementing the same Character and passing its factory to the Office.
 import type { Container } from "pixi.js";
-import type { Slot } from "./world";
+import type { Slot } from "../world/world";
 import type { Cue, Who } from "../contract";
 
 export type { Slot };

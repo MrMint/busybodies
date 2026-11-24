@@ -6,7 +6,7 @@
 // the camera there, click it again (or the pin) to let the camera cut again (mainview/shots.ts).
 import type { Shot, Tile } from "../scene/director/shots";
 import type { Office } from "../scene/office/office";
-import { crewOf } from "../scene/office/placement";
+import { crewOf } from "../scene/world/placement";
 import type { Snapshot } from "../watcher/model";
 import { flatSessions } from "../watcher/model";
 

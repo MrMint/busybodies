@@ -4,7 +4,7 @@
 // the signboard that fits its text. Nothing here is per-frame.
 import { BitmapFont, BitmapText, Container, Graphics, Text, type TextStyleOptions, Texture } from "pixi.js";
 import type { SignText } from "../theme/words";
-import type { Rect, WallItem } from "./world";
+import type { Rect, WallItem } from "../world/world";
 import { hash31 } from "../../shared/hash";
 
 export type { SignText } from "../theme/words";

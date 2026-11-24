@@ -8,7 +8,7 @@ import { readSettings, settingsFile, writeSettings } from "../src/bun/settings";
 import { ARM, ArmPlan, solve } from "../src/scene/theme/armplan";
 import { THEME_IDS, themeId } from "../src/themes/ids";
 import { FACTORY_WORDS, BAKERY_WORDS, OFFICE_WORDS, wordsFor } from "../src/scene/theme/words";
-import { FloorPlan } from "../src/scene/office/layout";
+import { FloorPlan } from "../src/scene/world/layout";
 
 describe("theme words", () => {
 	test("?theme= picks a known theme, anything else is the office", () => {

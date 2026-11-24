@@ -6,9 +6,9 @@ import { type Direction, RULES, direct, here } from "../src/scene/director/direc
 import { along, pathBetween, pathLength } from "../src/scene/director/paths";
 import type { World } from "../src/scene/director/types";
 import { demo, demoDay, releaseDay, stock } from "../src/mainview/demo";
-import { FloorPlan } from "../src/scene/office/layout";
-import { CARD } from "../src/scene/office/propspots";
-import { AISLE, SQUEEZE, bodyRect, crewPlaces, crewSpots, endGaps, faceZone, floorFoot, meets, overlapX, yieldFrom } from "../src/scene/office/world";
+import { FloorPlan } from "../src/scene/world/layout";
+import { CARD } from "../src/scene/world/propspots";
+import { AISLE, SQUEEZE, bodyRect, crewPlaces, crewSpots, endGaps, faceZone, floorFoot, meets, overlapX, yieldFrom } from "../src/scene/world/world";
 import { HABITS, POSE } from "../src/scene/rig/poses";
 import { roleFor } from "../src/scene/rig/roles";
 import { parseRecording } from "../src/watcher/replay";

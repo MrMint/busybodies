@@ -4,12 +4,12 @@ import { describe, expect, test } from "bun:test";
 import { direct } from "../src/scene/director/direct";
 import type { View } from "../src/scene/director/social";
 import { STORY, headlinesFor, regularsOf } from "../src/scene/director/story";
-import { DECOR, FACTORY_STORY, BAKERY_STORY, OFFICE_STORY, boardText, decorFor, framesPending, frameSpots, regularNames, storyStyle } from "../src/scene/office/decor-plan";
+import { DECOR, FACTORY_STORY, BAKERY_STORY, OFFICE_STORY, boardText, decorFor, framesPending, frameSpots, regularNames, storyStyle } from "../src/scene/world/decor-plan";
 import { REGULAR_NAMES, REGULAR_WEAR, regularName, regularNamesFor, regularOf } from "../src/scene/rig/roles";
 import { ACCESSORIES } from "../src/scene/rig/accessories";
 import { type Diary, type DiaryDay, localDay, projectKey } from "../src/shared/diary";
 import type { World } from "../src/scene/director/types";
-import { FloorPlan } from "../src/scene/office/layout";
+import { FloorPlan } from "../src/scene/world/layout";
 import { POSE, duration } from "../src/scene/rig/poses";
 import type { Agent, Session, Snapshot } from "../src/watcher/model";
 

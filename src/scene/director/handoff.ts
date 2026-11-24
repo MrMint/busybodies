@@ -8,7 +8,7 @@
 //
 // The outbox: when a session opens a PR, its lead walks the envelope to the room's outbox
 // (`envelopeCarry`), drops it in (`mailDrop`), walks back and celebrates.
-import type { Slot } from "../office/world";
+import type { Slot } from "../world/world";
 import { HANDOFF as RIG_HANDOFF, PUPPET_HEIGHT } from "../rig/reach";
 import type { StationKind } from "./stations";
 

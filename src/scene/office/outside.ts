@@ -6,11 +6,11 @@
 // yard's things are baked sprites (many small vector shapes on the lawn cost far more to draw each
 // frame than a few textured quads).
 import { Container, Graphics, type Renderer, Rectangle, Sprite, Texture } from "pixi.js";
-import { type Phase, SHADOW } from "./daylight";
+import { type Phase, SHADOW } from "../world/daylight";
 import { mul } from "./light";
 import { INK, line, noise } from "./paper";
 import type { SceneLight } from "../theme/types";
-import type { Rect } from "./world";
+import type { Rect } from "../world/world";
 
 /** Tree tops move this share of the camera's offset from the building's centre. */
 const PARALLAX = 0.035;

@@ -14,7 +14,7 @@
 // (rig/gaze.ts turns it into a look against its facing).
 import type { LookAt } from "../rig/gaze";
 import { hash } from "../rig/player";
-import type { Area, Slot, World as Floor } from "../office/world";
+import type { Area, Slot, World as Floor } from "../world/world";
 import type { HandOff } from "./handoff";
 import type { Actor } from "./types";
 

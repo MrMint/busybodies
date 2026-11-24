@@ -1,6 +1,6 @@
 // What the theme's staging adds to the floor, and what moves on its own (plan-alive wave 3): a
 // line's belts, the parts riding them and the foreman's booths; the hallway's dock and the PR crates
-// its conveyor carries there; and each theme's ambient life (office/staging.ts `AmbientKind`):
+// its conveyor carries there; and each theme's ambient life (world/staging.ts `AmbientKind`):
 //
 //   steam    off the kitchen's coffee machine            (office)
 //   fan      the kitchen's ceiling fan                   (office)
@@ -26,13 +26,13 @@
 import { Container, Graphics, Rectangle, type Renderer, Sprite, type Texture } from "pixi.js";
 import { unit } from "../rig/player";
 import type { SceneTheme, StagePainters } from "../theme/types";
-import { type CrateRide, crateAt, crateRide } from "./crate";
+import { type CrateRide, crateAt, crateRide } from "../world/crate";
 import { INK } from "./paper";
-import { KITCHEN_WALL, ceilingPanels } from "./propspots";
-import { type AmbientKind, stagingOf } from "./staging";
-import { DOCK_W } from "./layout";
+import { KITCHEN_WALL, ceilingPanels } from "../world/propspots";
+import { type AmbientKind, stagingOf } from "../world/staging";
+import { DOCK_W } from "../world/layout";
 import { setDepth } from "./depth";
-import { BELT, type Belt, type Fixture, type Rect, type World } from "./world";
+import { BELT, type Belt, type Fixture, type Rect, type World } from "../world/world";
 
 /** The belt's speed (world px per second of the life clock) and how fast the other things go. */
 const AMBIENT = {

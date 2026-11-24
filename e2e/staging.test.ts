@@ -1,4 +1,4 @@
-// Themes own their staging (office/staging.ts, office/ambient.ts), in headless Chrome: the factory's
+// Themes own their staging (world/staging.ts, office/ambient.ts), in headless Chrome: the factory's
 // lines, booths and conveyor as data, parts on the belts only while a kind of work is held, the belt
 // and the ambient life on the life clock (still when calm), a PR's crate riding to the dock, and the
 // frame budgets with all of it on. Like the other e2e tests, the bundled scene from dist/ with ?demo.

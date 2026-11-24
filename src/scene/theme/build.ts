@@ -6,7 +6,7 @@
 // tumbling off) without redrawing anything.
 import { Container, Graphics } from "pixi.js";
 import { hash } from "../office/paper";
-import { BUILD } from "../office/world";
+import { BUILD } from "../world/world";
 import type { CrewBuild, DrawnBuild } from "./types";
 
 export interface BuildPainter {

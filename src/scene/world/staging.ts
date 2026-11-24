@@ -21,7 +21,7 @@
 /** Things that move on their own, on the life clock (office/ambient.ts draws each). */
 export type AmbientKind = "steam" | "fan" | "printer" | "flicker" | "beacon" | "pilot" | "vents" | "sparks" | "ovens" | "marquee" | "cakeStand" | "sprinkles" | "parade";
 
-/** What the world carries (office/world.ts `World.staging`): the layout reads the bay and the hall,
+/** What the world carries (world/world.ts `World.staging`): the layout reads the bay and the hall,
  * the director the habits. */
 export interface Staging {
 	bay: "desks" | "line";

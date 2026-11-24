@@ -1,4 +1,4 @@
-// A PR crate's ride (the factory's conveyor hall, office/staging.ts): the bay's robot arm lifts the
+// A PR crate's ride (the factory's conveyor hall, world/staging.ts): the bay's robot arm lifts the
 // crate off the crew build and sets it down on the bay's loading dock (theme/armplan.ts `ship`). The
 // moment it lets go, this crate takes over just where it was set down: it sits a beat, drops down the
 // dock's chute, pops up on the hallway's belt in line with the dock and rides the belt to the dock at

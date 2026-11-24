@@ -19,25 +19,25 @@
 // the camera's scale when the camera settles at a new stop, so they stay sharp when zoomed in.
 import { Container, FillPattern, Graphics, Rectangle, type Renderer, Sprite, Text, type Texture } from "pixi.js";
 import type { Session, Snapshot } from "../../watcher/model";
-import { CameraMove, type Stop, type View, type Viewport, viewFor } from "./camera";
-import { type Phase, SHADOW, msToNextPhase, phaseOf } from "./daylight";
+import { CameraMove, type Stop, type View, type Viewport, viewFor } from "../world/camera";
+import { type Phase, SHADOW, msToNextPhase, phaseOf } from "../world/daylight";
 import { Light, type LightInfo } from "./light";
 import { DECAL, dressRoom } from "./material";
 import { CLOUD, cloudTexture, glassOf, panesOf, type SunSpot, sunSpot } from "./outlook";
 import { Outside } from "./outside";
-import { FloorPlan } from "./layout";
+import { FloorPlan } from "../world/layout";
 import { Ambient, type AmbientFacts } from "./ambient";
-import { CRATE } from "./crate";
-import { stagingOf } from "./staging";
+import { CRATE } from "../world/crate";
+import { stagingOf } from "../world/staging";
 import { type FurnitureKind, INK, type SignText, grainTexture, label, noise, pill, wobblyRect } from "./paper";
-import { LEAD_SIZE, type Placed, Placement, crewOf } from "./placement";
+import { LEAD_SIZE, type Placed, Placement, crewOf } from "../world/placement";
 import type { Metrics } from "../director/metrics";
 import type { DeskProps } from "../contract";
 import { deskProps, plannerSig, propsSig } from "./props";
 import type { Character, CharacterFactory } from "./slot";
-import { AISLE, type Area, BUILD, DESK_TOP, type Desk, type Rect, SEAT, type World } from "./world";
-import { trayOnDesk } from "./rigpoints";
-import { CARD, MONITOR } from "./propspots";
+import { AISLE, type Area, BUILD, DESK_TOP, type Desk, type Rect, SEAT, type World } from "../world/world";
+import { trayOnDesk } from "../world/rigpoints";
+import { CARD, MONITOR } from "../world/propspots";
 import { DecorLayer, type RoomDecor, type StoryView, boardText, regularNames, storyStyle } from "./decor";
 
 const BUILD_H = BUILD.brickH;

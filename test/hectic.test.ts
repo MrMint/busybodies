@@ -10,8 +10,8 @@ import { STATION_POSE } from "../src/scene/director/stations";
 import { TRIP } from "../src/scene/director/trips";
 import type { World, WorldEvent } from "../src/scene/director/types";
 import { demo, releaseDay } from "../src/mainview/demo";
-import { FloorPlan } from "../src/scene/office/layout";
-import { STATIONS_BASE } from "../src/scene/office/world";
+import { FloorPlan } from "../src/scene/world/layout";
+import { STATIONS_BASE } from "../src/scene/world/world";
 import { POSE, duration } from "../src/scene/rig/poses";
 import type { Agent, Session, Snapshot } from "../src/watcher/model";
 

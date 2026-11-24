@@ -17,9 +17,9 @@
 import { Container, Graphics } from "pixi.js";
 import type { Lamp, PlannerRow, Tray } from "../contract";
 import { GREEN, INK, RED, SHADOW, type SignStyle, batched, hash, label, line, signboard, wob } from "../office/paper";
-import { MONITOR, PROPS } from "../office/propspots";
-import type { SceneStaging } from "../office/staging";
-import { type Area, type Band, DESK_TOP, type Rect } from "../office/world";
+import { MONITOR, PROPS } from "../world/propspots";
+import type { SceneStaging } from "../world/staging";
+import { type Area, type Band, DESK_TOP, type Rect } from "../world/world";
 import { crewBuild } from "./build";
 import { NIGHT_WATCH, ROOM_COLOURS } from "./office";
 import type { FurnitureKind, SceneLight, SceneTheme, StagePainters } from "./types";
@@ -1142,7 +1142,7 @@ const BAKERY_LIGHT: SceneLight = {
 	yard: "trees",
 };
 
-// --- Staging (office/staging.ts): the pastry conveyor, the pick-up hatch ---------------------
+// --- Staging (world/staging.ts): the pastry conveyor, the pick-up hatch ---------------------
 
 /** A line's belt (should the bakery ever run its benches as lines): a mint belt in a candy frame. */
 function belt(g: Graphics, w: number): void {

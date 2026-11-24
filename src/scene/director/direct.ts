@@ -7,12 +7,12 @@
 // common spots are. The world says who stands where (a named spot and its slot), in which pose,
 // and who is walking; the events say what changed. `wake` is the next time the world changes with
 // no new snapshot (an acted pose ends, a habit rotates, a build turns long): call again then.
-import { seats } from "../office/layout";
-import { LEAD_SIZE, crewSize } from "../office/placement";
-import { habitsFor } from "../office/staging";
+import { seats } from "../world/layout";
+import { LEAD_SIZE, crewSize } from "../world/placement";
+import { habitsFor } from "../world/staging";
 import type { Mood } from "../contract";
-import type { Area, Slot, World as Floor } from "../office/world";
-import { OVERLAP, buildSlot, crewPlaces, crewSlot, crewSpots, endGaps, useFor, yieldFrom } from "../office/world";
+import type { Area, Slot, World as Floor } from "../world/world";
+import { OVERLAP, buildSlot, crewPlaces, crewSlot, crewSpots, endGaps, useFor, yieldFrom } from "../world/world";
 import { choosePose, hash } from "../rig/player";
 import { POSE, poseMs } from "../rig/poses";
 import { type Role, roleFor } from "../rig/roles";
@@ -31,7 +31,7 @@ import { STATION_FOR, STATION_POSE, type StationKind } from "./stations";
 import { TRIP, type Trip, type Want, planTrips, tripPlace } from "./trips";
 import type { Actor, Build, Cue, Run, Seen, World, WorldEvent } from "./types";
 import { WORK, WORK_POSE, type Work, type WorkKind, isEdit, nextWork, tempo, tempoWake, workKind } from "./work";
-import { faceFront, inCrowd } from "../office/world";
+import { faceFront, inCrowd } from "../world/world";
 import { HANDOFF_LOOK, NOTICE, NOTICE_POSES, type View, freshReturn, handOffWakes, looksFor, noticeDelay, pairUp, readyAt, rippleDelay, waverOf } from "./social";
 import { STORY, type Story, cheersReply, headlinesFor, logOf, replyChoice, replyPlace, replyWakes, replyWalkPose, repliesFor, sendOffHold, sendOffLooks, sendOffsFor, storyNews } from "./story";
 import { MIN } from "../../shared/time";
@@ -342,7 +342,7 @@ export interface DirectOptions {
 
 export function direct(prev: World | undefined, snap: Snapshot, now: number, floor: Floor, opts: DirectOptions = {}): Direction {
 	const life = opts.life ?? false;
-	// The theme's idle habits (office/staging.ts), or the rig's seven; a line's lead has the booth's.
+	// The theme's idle habits (world/staging.ts), or the rig's seven; a line's lead has the booth's.
 	const habitsOf = (s: Spec) => habitsFor(floor.staging, s.kind === "lead");
 	const view = opts.view;
 	const before = prev?.actors ?? {};
@@ -1400,7 +1400,7 @@ export function cueFor(a: Actor, now: number): Cue {
 
 /**
  * Staging: crew in a desk's crowd (past the spaced spots) whose spot stands just behind another's
- * turn to face it (office/world.ts `faceFront`); finished crew in the kitchen's coffee line pair up
+ * turn to face it (world/world.ts `faceFront`); finished crew in the kitchen's coffee line pair up
  * facing each other (`pairUp`). Only facing changes, so nobody walks for it.
  */
 function stage(list: Spec[], places: Map<string, Place>, floor: Floor): void {

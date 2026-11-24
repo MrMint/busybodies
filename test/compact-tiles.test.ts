@@ -5,7 +5,7 @@ import { tilesFor } from "../src/scene/director/shots";
 import { THEME_IDS } from "../src/themes/ids";
 import { areaLabel, wordsFor } from "../src/scene/theme/words";
 import { tileAreas } from "../src/mainview/shots";
-import type { AreaKind } from "../src/scene/office/world";
+import type { AreaKind } from "../src/scene/world/world";
 
 // The layout names common areas with the office's words in every theme (`Area.name`).
 const FLOOR: { id: string; kind: AreaKind; name: string }[] = [

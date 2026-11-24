@@ -5,9 +5,9 @@
 import type { Container, Graphics } from "pixi.js";
 import type { Lamp, PlannerRow, Tray } from "../contract";
 import type { Who } from "../contract";
-import type { Phase } from "../office/daylight";
-import type { Area, AreaKind, Band, Fixture, Rect } from "../office/world";
-import type { SceneStaging } from "../office/staging";
+import type { Phase } from "../world/daylight";
+import type { Area, AreaKind, Band, Fixture, Rect } from "../world/world";
+import type { SceneStaging } from "../world/staging";
 import type { ThemeId } from "../../themes/ids";
 import type { SignText, ThemeWords } from "./words";
 
@@ -109,7 +109,7 @@ export interface SceneTheme {
 	arms: boolean;
 	/** Light, the view out of the windows, floor materials and the room names (office/light.ts). */
 	light: SceneLight;
-	/** How the theme stages the place (office/staging.ts): desks or lines, a corridor or a conveyor,
+	/** How the theme stages the place (world/staging.ts): desks or lines, a corridor or a conveyor,
 	 * what moves on its own, the idle habits. Absent: the office's (`DEFAULT_STAGING`). */
 	staging?: SceneStaging;
 	/** Painters for what a staging adds to the floor (belts, booths, the dock); needed only with a
@@ -138,7 +138,7 @@ export interface StagePainters {
 	crate(g: Graphics): void;
 }
 
-/** A colour per time-of-day phase (office/daylight.ts). */
+/** A colour per time-of-day phase (world/daylight.ts). */
 type PerPhase<T> = Record<Phase, T>;
 
 /**

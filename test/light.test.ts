@@ -2,10 +2,10 @@
 // starts, the sun's window, the rush flicker, and the back walls' signs clear of head height.
 import { describe, expect, test } from "bun:test";
 // Pixi-free imports only: rig.test.ts mocks pixi.js for the whole run.
-import { PHASES, PHASE_START, SHADOW, flicker, glassOf, msToNextPhase, panesOf, phaseOf, sunSpot } from "../src/scene/office/daylight";
-import { FloorPlan, SIGN_FOOT } from "../src/scene/office/layout";
-import { WALL } from "../src/scene/office/world";
-import { LEAD_SIZE } from "../src/scene/office/placement";
+import { PHASES, PHASE_START, SHADOW, flicker, glassOf, msToNextPhase, panesOf, phaseOf, sunSpot } from "../src/scene/world/daylight";
+import { FloorPlan, SIGN_FOOT } from "../src/scene/world/layout";
+import { WALL } from "../src/scene/world/world";
+import { LEAD_SIZE } from "../src/scene/world/placement";
 
 /** The two themes' windows (theme/office.ts, theme/factory.ts OFFICE_LIGHT / FACTORY_LIGHT). */
 const WINDOWS = [

@@ -15,7 +15,7 @@
 // the hold, with no cut); and the rest shot moves to a busier room only after its own hold, when
 // that room is SHOTS.restLead times busier.
 import type { Session } from "../../watcher/model";
-import { type Stop, sameStop } from "../office/camera";
+import { type Stop, sameStop } from "../world/camera";
 import { heatOf } from "./rush";
 import type { Build, World, WorldEvent } from "./types";
 import { flatSessions } from "../../watcher/model";
