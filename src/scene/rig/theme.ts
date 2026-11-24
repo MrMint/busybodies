@@ -2,7 +2,7 @@
 // (the body is 100 wide; see vocab.ts) in each part's own space, and the atlas bakes them once. A
 // theme reskins the rig by supplying different painters or colours for the same part names; poses
 // and frames never change. Part names are `<layer>/<variant>`; docs/decisions.md lists them.
-import { Container, Graphics, Text } from "pixi.js";
+import { type Container, type Graphics, Text } from "pixi.js";
 import { EYES, FX, HELD, MOUTHS, WORKS } from "./vocab";
 import { paintAccessories } from "./accessories";
 import { ROLES, type Role } from "./roles";

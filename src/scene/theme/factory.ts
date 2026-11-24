@@ -5,7 +5,7 @@
 // slots, drawn as bodies only, their tops at the rig's working point (the rig draws what the hands
 // work there: the press's ram, the gauge's needle, the bins, the radio's handset). Still cut paper:
 // flat shapes and the same ink, so the cast reads the same in both.
-import { Container, Graphics } from "pixi.js";
+import { type Container, Graphics } from "pixi.js";
 import type { Lamp, Tray } from "../director/metrics";
 import { GREEN, INK, RED, SHADOW, type SignStyle, batched, hash, label, line, noise, signboard, wob } from "../office/paper";
 import { MONITOR, PROPS } from "../office/propspots";

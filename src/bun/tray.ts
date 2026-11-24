@@ -23,7 +23,7 @@ const image = (mood: Mood) => `views://tray/${mood}.png`;
 
 export function installTray(hooks: TrayHooks) {
 	const tray = new Tray({ image: image("idle"), template: true, width: 18, height: 18 });
-	let shown = { mood: "" as Mood | "", menu: "" };
+	const shown = { mood: "" as Mood | "", menu: "" };
 
 	tray.on("tray-clicked", (event) => {
 		const action = trayAction((event as { data?: { action?: string } }).data?.action);

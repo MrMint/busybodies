@@ -113,13 +113,11 @@ export class Sass {
 		};
 		const hold = this.#opts.signHoldMs ?? 2 * MIN;
 		for (const l of lines) put(slotName(l.line.place ?? "sign", l.trigger.project), l.text, now + hold);
-		{
 			for (const [slot, text] of this.#counters.update(this.#last, now)) {
 				const was = this.#slots.get(slot);
 				if (was && was.holdUntil > now) continue;
 				put(slot, text, 0);
 			}
-		}
 		return { says, signs };
 	}
 }
