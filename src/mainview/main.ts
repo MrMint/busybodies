@@ -229,6 +229,7 @@ function blank(): void {
 				cast: () => Object.values(director.world?.actors ?? {}).filter((a) => !a.gone).map((a) => a.key),
 				say: (key, text) => office.say(key, text, "said"),
 				live: () => !!sound?.bus(),
+				setTone: (level) => sound?.setTone(level),
 			}),
 		);
 	/** The tray's Sound and Calm office toggles, live. */

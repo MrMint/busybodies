@@ -383,6 +383,8 @@ export class Sound {
 	#limited = 0;
 	#quiet = 0;
 	#heat = 0;
+	/** The room tone's level: 1, or what the sound lab sets (0 mutes it). */
+	#toneLevel = 1;
 	#tone?: { theme: ThemeId; nodes: AudioScheduledSourceNode[]; out: GainNode; timer: ReturnType<typeof setInterval>; next: number; n: number };
 	#unlock?: () => void;
 	#suspending?: ReturnType<typeof setTimeout>;
@@ -471,6 +473,12 @@ export class Sound {
 		return this.#live && this.#ctx && this.#master && this.#room ? { ctx: this.#ctx, out: this.#master, room: this.#room } : undefined;
 	}
 
+	/** The room tone's level, 0 (off) to 2; 1 is the default (the sound lab turns it). */
+	setTone(level: number): void {
+		this.#toneLevel = level;
+		if (this.#tone && this.#ctx) glide(this.#tone.out.gain, level, this.#ctx.currentTime, 0.2);
+	}
+
 	/** The shared room's level, 0 (dry) to 2; 1 is the default (the sound lab turns it). */
 	setRoom(level: number): void {
 		if (this.#room && this.#ctx) glide(this.#room.gain, level, this.#ctx.currentTime, 0.05);
@@ -481,8 +489,8 @@ export class Sound {
 		const g = this.#tone?.out.gain;
 		if (!g || !this.#ctx) return;
 		g.cancelScheduledValues(this.#ctx.currentTime);
-		g.setTargetAtTime(DUCK, at, 0.08);
-		g.setTargetAtTime(1, at + secs, 0.4);
+		g.setTargetAtTime(DUCK * this.#toneLevel, at, 0.08);
+		g.setTargetAtTime(this.#toneLevel, at + secs, 0.4);
 	}
 
 	state(): SoundState {
@@ -572,7 +580,7 @@ export class Sound {
 		const out = ctx.createGain();
 		out.gain.value = 0;
 		// Fade in over a few seconds, so turning sound on (or coming back on screen) never thumps.
-		out.gain.setTargetAtTime(1, ctx.currentTime, FADE.toneIn);
+		out.gain.setTargetAtTime(this.#toneLevel, ctx.currentTime, FADE.toneIn);
 		out.connect(this.#master!);
 		const k = kit(ctx, out, this.#noise!);
 		const nodes = roomBed(theme, ctx, out, this.#noise!);
