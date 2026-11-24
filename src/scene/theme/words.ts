@@ -13,7 +13,7 @@ export interface SignText {
 
 type CommonKind = Exclude<AreaKind, "project">;
 
-/** A pose as one theme names it, where it differs from the pose's own (rig/poses.ts): the poses are
+/** A pose as one theme names it, where it differs from the pose's own (rig/data/poses.ts): the poses are
  * shared and the rig paints the theme's things, so only the words change. */
 interface PoseWords {
 	title?: string;

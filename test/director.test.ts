@@ -9,8 +9,8 @@ import { demo, demoDay, releaseDay, stock } from "../src/mainview/demo";
 import { FloorPlan } from "../src/scene/world/layout";
 import { CARD } from "../src/scene/world/propspots";
 import { AISLE, SQUEEZE, bodyRect, crewPlaces, crewSpots, endGaps, faceZone, floorFoot, meets, overlapX, yieldFrom } from "../src/scene/world/world";
-import { HABITS, POSE } from "../src/scene/rig/poses";
-import { roleFor } from "../src/scene/rig/roles";
+import { HABITS, POSE } from "../src/scene/rig/data/poses";
+import { roleFor } from "../src/scene/rig/data/roles";
 import { parseRecording } from "../src/watcher/replay";
 import type { Agent, Session, Snapshot } from "../src/watcher/model";
 

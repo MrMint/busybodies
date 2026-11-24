@@ -3,10 +3,10 @@
 // theme reskins the rig by supplying different painters or colours for the same part names; poses
 // and frames never change. Part names are `<layer>/<variant>`; docs/decisions.md lists them.
 import { type Container, type Graphics, Text } from "pixi.js";
-import { EYES, FX, HELD, MOUTHS, WORKS } from "./vocab";
+import { EYES, FX, HELD, MOUTHS, WORKS } from "./data/vocab";
 import { paintAccessories } from "./accessories";
-import { ROLES, type Role } from "./roles";
-import { ANCHORS, AT, BELL, BELL_BASE, HANDOFF, PLANNER, STATION, STICKY, TRAY, WORK, handAt } from "./reach";
+import { ROLES, type Role } from "./data/roles";
+import { ANCHORS, AT, BELL, BELL_BASE, HANDOFF, PLANNER, STATION, STICKY, TRAY, WORK, handAt } from "./data/reach";
 
 export interface Palette {
 	ink: number;
@@ -51,7 +51,7 @@ export const ACCENTS = [0xff8a1f, 0x19b87a, 0x3d7dff, 0xff5c9a, 0x8c5cff] as con
 
 // The rig's geometry (where limbs attach, where the work and the stations stand) lives in reach.ts,
 // Pixi-free, so the tests can check the arms against it.
-export { ANCHORS } from "./reach";
+export { ANCHORS } from "./data/reach";
 
 /** Station colours: a manila folder, a red mark, the phone's handset, cabinet and copier enamel. */
 const MANILA = 0xf0cf8a;

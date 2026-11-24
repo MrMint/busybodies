@@ -347,7 +347,7 @@ export const POSES: Pose[] = [
 	}),
 
 	// Noticing (plan-alive stream A): the director points these at someone with the cue's `lookAt`
-	// (rig/gaze.ts), so the looks below are only what shows without one.
+	// (rig/data/gaze.ts), so the looks below are only what shows without one.
 	pose({
 		// Back on screen after a while away: an idle character looks up at you, pleased.
 		name: "lookUp", title: "Noticing you", trigger: "reacting", rarity: 1, play: "once",

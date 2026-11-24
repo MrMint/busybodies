@@ -322,7 +322,7 @@ export const SEAT = { x: -6, y: -42 } as const;
 /** The desk top's back edge, from the desk front's centre (both themes draw it there). */
 export const DESK_TOP = -60;
 
-/** A standing character's proportions in its own units (rig/reach.ts: 85 to its height, the torso's
+/** A standing character's proportions in its own units (rig/data/reach.ts: 85 to its height, the torso's
  * base 15 up from the feet, the body 90 wide, the face from the brows to the cheeks' foot). */
 const BODY = { unit: 85, base: 15, halfW: 45, faceTop: 52, faceFoot: 18 } as const;
 

@@ -7,7 +7,7 @@ import type { SceneStaging } from "../world/staging";
  * press while a build runs, every press's pilot lamp blinks, the aisle's vents puff steam, a busy
  * line throws weld sparks. Idle, the
  * crew sit on oil drums, play cards on a pallet and kick the vending machine, while the foreman has a
- * brew, watches the line through binoculars and takes calls up in its booth (rig/poses.ts). */
+ * brew, watches the line through binoculars and takes calls up in its booth (rig/data/poses.ts). */
 export const FACTORY_STAGING: SceneStaging = {
 	bay: "line",
 	hall: "conveyor",

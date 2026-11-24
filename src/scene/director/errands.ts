@@ -10,7 +10,7 @@
 // would anyone whose spot changed.
 import { plannerNote, posterFor } from "../world/rigpoints";
 import { type Slot, type Floor, shredderUse } from "../world/world";
-import { poseMs } from "../rig/poses";
+import { poseMs } from "../rig/data/poses";
 import type { Session } from "../../watcher/model";
 import type { Metrics, Ticket } from "./metrics";
 import { pathBetween, walkMs } from "../world/paths";

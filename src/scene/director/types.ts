@@ -12,7 +12,7 @@ import type { StationKind } from "../world/stations";
 import type { Story } from "./story";
 import type { Trip } from "./trips";
 import type { Work } from "./work";
-import type { LookAt } from "../rig/gaze";
+import type { LookAt } from "../rig/data/gaze";
 
 export type { Cue };
 

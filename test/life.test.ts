@@ -1,6 +1,6 @@
 // Life (src/scene/rig/life.ts): blinks and glances are a pure function of id and time.
 import { describe, expect, test } from "bun:test";
-import { BLINK_MS, LIFE_GRID_MS, blinking, glancing, lifeAt } from "../src/scene/rig/life";
+import { BLINK_MS, LIFE_GRID_MS, blinking, glancing, lifeAt } from "../src/scene/rig/data/life";
 
 const ids = Array.from({ length: 40 }, (_, i) => `s:life-${i}`);
 

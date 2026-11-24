@@ -1,6 +1,6 @@
 // The words the sass module shares between its parts: what sets a line off, who says it, and
 // where a sign goes. Pixi-free, so it runs in unit tests and the text dump.
-import { type Role, roleFor } from "../rig/roles";
+import { type Role, roleFor } from "../rig/data/roles";
 import { fnv1a } from "../../shared/hash";
 
 /** What sets a line off. Each one has its own detector in `detect.ts` (or `signs.ts`). */

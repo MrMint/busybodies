@@ -1,7 +1,7 @@
 // Where the rig's hands go: the body's attachment points, the work out front, the station's working
 // point, and the arm's kinematics (forward, to check a pose, and inverse, to solve one). Pixi-free,
 // so the unit tests check that every tool hand lands on what it works on.
-import { STATION_REACH } from "../world/stations";
+import { STATION_REACH } from "../../world/stations";
 import { ARMS, BODIES, SPOTS, type Arm, type Body } from "./vocab";
 
 /** A standing mochi is about this tall in rig units, ground to the top of the body. */

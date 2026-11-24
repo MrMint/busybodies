@@ -24,7 +24,7 @@
 // designer's `front/scarf`, so its belly is bare (the puppet shows a front piece only when the
 // atlas has it).
 import type { Graphics } from "pixi.js";
-import { WORK } from "./reach";
+import { WORK } from "./data/reach";
 import { ANCHORS, type Painter, type Palette, PAPER_PALETTE, RED, type Theme, W, line, paperTheme } from "./theme";
 
 /** Office colours, on top of the paper palette. */

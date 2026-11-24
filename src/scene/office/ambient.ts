@@ -24,7 +24,7 @@
 // period and offset comes from a hash of an id (never Math.random). The crates are acting (`step`):
 // they run once, on a PR, and stop.
 import { Container, Graphics, Rectangle, type Renderer, Sprite, type Texture } from "pixi.js";
-import { unit } from "../rig/player";
+import { unit } from "../rig/data/player";
 import type { SceneTheme, StagePainters } from "../theme/types";
 import { type CrateRide, crateAt, crateRide } from "../world/crate";
 import { INK } from "./paper";

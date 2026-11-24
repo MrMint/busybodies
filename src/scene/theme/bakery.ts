@@ -1239,7 +1239,7 @@ const BAKERY_STAGE: StagePainters = { belt, slats, rollers, part: pastry, booth:
  * steams, the deck ovens' windows flicker, the marquee bulbs round "Order up!" chase, the tasting
  * table's cake turns on its stand, sprinkles drift down round the giant cupcake. Idle, the bakers sip
  * at the café's lemonade, put their feet up and nap face down on the bench; first, the bakery's own:
- * a cappuccino, a sneaked macaron, a lick of the cake fork, a nap on a flour sack (rig/poses.ts). */
+ * a cappuccino, a sneaked macaron, a lick of the cake fork, a nap on a flour sack (rig/data/poses.ts). */
 const BAKERY_STAGING: SceneStaging = {
 	bay: "desks",
 	hall: "conveyor",

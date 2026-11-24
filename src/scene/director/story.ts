@@ -10,7 +10,7 @@
 //   send-off   a long session (DIARY.longMs) ends: as its lead walks out, whoever stands in its room
 //              (and in the lobby and kitchen, by the door) waves it off, the nearest first, looking
 //              at it as it goes.
-//   regulars   the same project and role is the same character every day (`regularsOf`; rig/roles.ts
+//   regulars   the same project and role is the same character every day (`regularsOf`; rig/data/roles.ts
 //              says what a regular looks like and is called)
 //   headlines  back on screen after a while away (the director's `view`), the lobby board says what
 //              happened while you were out: counts of the beats above, kept a minute and a half.
@@ -20,8 +20,8 @@
 import { LEAD_SIZE } from "../world/placement";
 import type { Slot, Floor } from "../world/world";
 import { useFor } from "../world/world";
-import { poseMs } from "../rig/poses";
-import { roleFor } from "../rig/roles";
+import { poseMs } from "../rig/data/poses";
+import { roleFor } from "../rig/data/roles";
 import { DIARY, projectKey } from "../../shared/diary";
 import type { Commands, Session, Snapshot } from "../../watcher/model";
 import { pathBetween, walkMs } from "../world/paths";
@@ -330,7 +330,7 @@ export function sendOffLooks(sendoffs: Record<string, SendOff>, actors: Record<s
 }
 
 /**
- * Who is which regular (rig/roles.ts): `<project key>:<role>:<n>`, the project hashed as the diary
+ * Who is which regular (rig/data/roles.ts): `<project key>:<role>:<n>`, the project hashed as the diary
  * hashes it, the role the costume, and `n` its place among the same costume in that project, in the
  * order of their keys. Characters whose session the snapshot no longer has get none.
  */

@@ -18,7 +18,7 @@
 import type { ThemeId } from "../../themes/ids";
 import type { Headlines, StoryKind } from "../director/story";
 import { type Counts, type Diary, daysSeen, localDay, projectKey, weekOf } from "../../shared/diary";
-import { diaryRegular, regularNamesFor } from "../rig/roles";
+import { diaryRegular, regularNamesFor } from "../rig/data/roles";
 import type { Phase } from "./daylight";
 import type { SignText } from "../theme/words";
 import type { SceneTheme } from "../theme/types";
@@ -30,7 +30,7 @@ import type { Area } from "./world";
 const RECOGNISED_DAYS = 2;
 
 /** The names of the regulars you'd recognise, by character key. No two on the floor share a name
- * (rig/roles.ts `regularNamesFor`): among them, a clash is settled the same way every time. */
+ * (rig/data/roles.ts `regularNamesFor`): among them, a clash is settled the same way every time. */
 export function regularNames(cast: Pick<Who, "key" | "regular">[], view: StoryView | undefined): Map<string, string> {
 	const out = new Map<string, string>();
 	if (!view?.diary) return out;

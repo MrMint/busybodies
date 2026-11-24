@@ -13,7 +13,7 @@ import type { Floor } from "./world/world";
 import { type Direction, type View, cueFor, direct, here } from "./director/direct";
 import { type Metrics, NO_METRICS } from "./director/metrics";
 import type { Actor, Build, World, WorldEvent } from "./director/types";
-import { roleFor } from "./rig/roles";
+import { roleFor } from "./rig/data/roles";
 import type { Snapshot } from "../watcher/model";
 import type { Diary } from "../shared/diary";
 import type { StoryView } from "./office/decor";

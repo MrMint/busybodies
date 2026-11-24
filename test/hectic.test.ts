@@ -12,7 +12,7 @@ import type { World, WorldEvent } from "../src/scene/director/types";
 import { demo, releaseDay } from "../src/mainview/demo";
 import { FloorPlan } from "../src/scene/world/layout";
 import { STATIONS_BASE } from "../src/scene/world/world";
-import { POSE, duration } from "../src/scene/rig/poses";
+import { POSE, duration } from "../src/scene/rig/data/poses";
 import type { Agent, Session, Snapshot } from "../src/watcher/model";
 
 const T0 = Date.UTC(2026, 10, 19, 14, 0);

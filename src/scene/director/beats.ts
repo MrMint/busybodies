@@ -5,7 +5,7 @@
 // the next one starts while the last frame is still settling. A flamboyant one now and then adds a
 // `flourish` after finishing something. Pure and deterministic: whether a flourish happens comes
 // from the actor's key and when the finished pose started.
-import { unit } from "../rig/player";
+import { unit } from "../rig/data/player";
 import type { Trait } from "./traits";
 import type { Actor } from "./types";
 

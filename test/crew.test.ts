@@ -9,7 +9,7 @@ import { TRIP } from "../src/scene/director/trips";
 import { WORK, WORK_POSE, nextWork, tempo, workKind } from "../src/scene/director/work";
 import { FloorPlan } from "../src/scene/world/layout";
 import { AISLE, STATION_CREW_PX, crewSpots } from "../src/scene/world/world";
-import { POSE, duration } from "../src/scene/rig/poses";
+import { POSE, duration } from "../src/scene/rig/data/poses";
 import { detect } from "../src/scene/sass/detect";
 import type { Agent, Session, Snapshot } from "../src/watcher/model";
 

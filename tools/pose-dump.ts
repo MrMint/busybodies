@@ -4,8 +4,8 @@
 //   bun tools/pose-dump.ts            every pose
 //   bun tools/pose-dump.ts waiting    one pose
 // Pixi-free modules only, so this runs under plain Bun.
-import { describe } from "../src/scene/rig/frame";
-import { BEAT_MS, POSES, type Pose, duration } from "../src/scene/rig/poses";
+import { describe } from "../src/scene/rig/data/frame";
+import { BEAT_MS, POSES, type Pose, duration } from "../src/scene/rig/data/poses";
 import { THEME_IDS } from "../src/themes/ids";
 import { wordsFor } from "../src/scene/theme/words";
 

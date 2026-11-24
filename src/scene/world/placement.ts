@@ -7,7 +7,7 @@
 //   cooler, the rest of the queue and the sofas. If all are taken, they wait by their desk.
 // Each agent keeps its crew spot while it stays, so a newcomer doesn't shuffle the others.
 import type { Agent, Session, Snapshot } from "../../watcher/model";
-import { roleFor } from "../rig/roles";
+import { roleFor } from "../rig/data/roles";
 import { seats } from "./layout";
 import type { Cue, Mood, Who } from "../contract";
 import { type Slot, type Floor, crewSlot } from "./world";

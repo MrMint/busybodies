@@ -12,14 +12,14 @@ import type { Character, CharacterFactory, Slot } from "../office/slot";
 import type { Cue, Mood, Who } from "../contract";
 import { setDepth } from "../office/depth";
 import type { Atlas } from "./atlas";
-import { choosePose, hash } from "./player";
-import { BEAT_MS } from "./poses";
+import { choosePose, hash } from "./data/player";
+import { BEAT_MS } from "./data/poses";
 import { Puppet } from "./puppet";
-import { COSTUMES, type Regular, regularOf, roleFor } from "./roles";
-import { PUPPET_HEIGHT } from "./reach";
+import { COSTUMES, type Regular, regularOf, roleFor } from "./data/roles";
+import { PUPPET_HEIGHT } from "./data/reach";
 import { ACCENTS } from "./theme";
-import { AT_VIEWER, type Aim, type LookAt, aimAt, eyesOf, isViewer } from "./gaze";
-import { LOOKS } from "./vocab";
+import { AT_VIEWER, type Aim, type LookAt, aimAt, eyesOf, isViewer } from "./data/gaze";
+import { LOOKS } from "./data/vocab";
 
 
 /** Everyone one factory made, by key: so a character told to look at another can find it. */
@@ -55,7 +55,7 @@ class RigCharacter implements Character {
 	/** The walk pose is on: the feet have started moving. */
 	#stepping = false;
 	#gone = false;
-	// Gaze: what the director's cue says to look at (rig/gaze.ts), and the cast to find it in.
+	// Gaze: what the director's cue says to look at (rig/data/gaze.ts), and the cast to find it in.
 	#lookAt?: LookAt;
 	#cast: Cast;
 	/** A turn under way: the way it is turning to, and ms into it. */
@@ -70,7 +70,7 @@ class RigCharacter implements Character {
 		this.#cast = cast;
 		cast.set(who.key, this);
 		const role = who.kind === "lead" ? "lead" : (who.look ?? roleFor(who.role));
-		// The office draws real desks, so the rig's own stays off. A regular (rig/roles.ts) is the same
+		// The office draws real desks, so the rig's own stays off. A regular (rig/data/roles.ts) is the same
 		// puppet every day: its key is the puppet's id, and it wears its accessory.
 		const regular = who.regular ? regularOf(who.regular) : undefined;
 		this.puppet = new Puppet(atlas, { id: regular?.key ?? who.key, role, accent: ACCENTS[hash(who.tint) % ACCENTS.length], desk: false, ...(regular?.wear ? { wear: regular.wear } : {}) });

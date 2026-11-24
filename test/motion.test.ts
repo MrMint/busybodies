@@ -10,9 +10,9 @@ import { GAIT, along, lookMs, pathLength, pointAt, progress, walkMs } from "../s
 import { TRAITS } from "../src/scene/director/traits";
 import type { World } from "../src/scene/director/types";
 import { FloorPlan } from "../src/scene/world/layout";
-import { channels } from "../src/scene/rig/frame";
-import { frameAt, passBeat } from "../src/scene/rig/player";
-import { HABITS, POSE, POSES, duration } from "../src/scene/rig/poses";
+import { channels } from "../src/scene/rig/data/frame";
+import { frameAt, passBeat } from "../src/scene/rig/data/player";
+import { HABITS, POSE, POSES, duration } from "../src/scene/rig/data/poses";
 import type { Session, Snapshot } from "../src/watcher/model";
 
 const T0 = Date.UTC(2026, 10, 19, 14, 0);

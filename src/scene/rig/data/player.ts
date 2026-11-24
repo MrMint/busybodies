@@ -2,7 +2,7 @@
 // trigger?", and the answers depend only on elapsed time and the character's id.
 import { POSES, type Pose, type Trigger, duration } from "./poses";
 import type { Role } from "./roles";
-import { fnv1a } from "../../shared/hash";
+import { fnv1a } from "../../../shared/hash";
 
 export interface FrameAt {
 	index: number;

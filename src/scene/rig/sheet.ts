@@ -3,13 +3,13 @@
 // ?sheet to see it live.
 import { Container, Graphics, Text } from "pixi.js";
 import type { Atlas } from "./atlas";
-import { parseFrame } from "./frame";
-import { POSES, type Pose, BEAT_MS } from "./poses";
+import { parseFrame } from "./data/frame";
+import { POSES, type Pose, BEAT_MS } from "./data/poses";
 import { Puppet } from "./puppet";
 import { STATION_POSE, type StationKind } from "../world/stations";
-import { BELL, BELL_BASE, HANDOFF, PLANNER, STATION, STICKY } from "./reach";
-import { ROLES, type Role } from "./roles";
-import { FACES } from "./vocab";
+import { BELL, BELL_BASE, HANDOFF, PLANNER, STATION, STICKY } from "./data/reach";
+import { ROLES, type Role } from "./data/roles";
+import { FACES } from "./data/vocab";
 import { THEME_IDS, type ThemeId } from "../../themes/ids";
 import { poseWords } from "../theme/words";
 

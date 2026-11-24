@@ -14,7 +14,7 @@ import { LEAD_SIZE } from "../src/scene/world/placement";
 import { PROPS } from "../src/scene/world/propspots";
 import { DESK_TOP, SEAT, faceZone } from "../src/scene/world/world";
 import { RIG_PLANNER, bellFrom } from "../src/scene/world/rigpoints";
-import { POSE, duration } from "../src/scene/rig/poses";
+import { POSE, duration } from "../src/scene/rig/data/poses";
 import type { Agent, Session, Snapshot } from "../src/watcher/model";
 
 const T0 = Date.UTC(2026, 10, 19, 14, 0);

@@ -70,7 +70,7 @@ only from the layers before it.
 | snapshot | `src/watcher/model.ts`, the contract | nothing |
 | watcher | `src/watcher/` | the snapshot, `node:*` |
 | shared | `src/shared/`, code both processes run | the snapshot |
-| director | `src/scene/director*`, `src/scene/sass/` | the above, plus the Pixi-free floor plan (`src/scene/world/`) and rig data (`rig/poses.ts`, `roles.ts`, `player.ts`, …) |
+| director | `src/scene/director*`, `src/scene/sass/` | the above, plus the Pixi-free floor plan (`src/scene/world/`) and rig data (`src/scene/rig/data/`) |
 | scene | `src/scene/office/`, `theme/`, `rig/` drawing | everything above |
 | app | `src/mainview/` (webview), `src/bun/` (main process; Pixi-free, reads `src/themes/ids.ts`) | everything above |
 
@@ -98,7 +98,8 @@ and [`docs/restructure-plan.md`](docs/restructure-plan.md).
 | `src/scene/office/` | The open-floor office's drawing: cut-paper rooms and desks, the character slot interface, light (`light.ts`), windows and the yard (`outlook.ts`, `outside.ts`), the paper pass (`material.ts`), ambient life (`ambient.ts`), the walls that remember (`decor.ts`) |
 | `src/scene/world/` | The floor plan, Pixi-free: rooms, desks and spots (`world.ts`), layout and placement, the camera's stops (`camera.ts`), time of day (`daylight.ts`), a theme's staging (`staging.ts`), what the walls remember (`decor-plan.ts`) |
 | `src/scene/theme/` | Scene themes (`?theme=`, the tray's Theme menu): the office's, the factory's and the bakery's (`bakery.ts`: a patisserie, a pastry conveyor down the hallway) look, words and staging behind a `SceneTheme`, and the factory's robot arms |
-| `src/scene/rig/` | The mochi character rig: parts atlas, springs, frames, poses, and the office's character factory (`?sheet`, `?demo=crowd`); life (`life.ts`: blinks and glances), gaze (`gaze.ts`), the office's corporate cast (`office.ts`) and the Line's kitchen brigade (`kitchen.ts`) |
+| `src/scene/rig/` | The mochi character rig's drawing: parts atlas (`atlas.ts`), the puppet (`puppet.ts`), the paper painters (`theme.ts`) and each theme's repaints (`office.ts`, `factory.ts`, `bakery.ts`), the character factory (`character.ts`, `?sheet`, `?demo=crowd`) |
+| `src/scene/rig/data/` | The rig as data, Pixi-free: poses, frames, the face and part vocabulary, roles and costumes, gaze, springs (`motion.ts`), reaches, pose choice (`player.ts`), life (`life.ts`: blinks and glances) |
 | `src/scene/director.ts`, `src/scene/director/` | The director: snapshot to world (spots, poses, walks) and events; the sass seam (`say`, `sign`); the story beats (`director/story.ts`) |
 | `test/` | Unit tests (`bun test test/`). Fixtures are built in a temp folder from invented data |
 | `e2e/` | Scene tests in headless Chrome (`bun test e2e/`) |

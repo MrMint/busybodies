@@ -10,8 +10,8 @@
 // `arm/upper/verifier` (a QA armband on one arm). The puppet uses a role's own leg or upper arm
 // when the atlas has one, so the paper atlas, which has neither, draws as before.
 import type { Graphics } from "pixi.js";
-import { ROLES } from "./roles";
-import { AT, BELL, BELL_BASE, PLANNER, STATION, STICKY, TRAY, handAt } from "./reach";
+import { ROLES } from "./data/roles";
+import { AT, BELL, BELL_BASE, PLANNER, STATION, STICKY, TRAY, handAt } from "./data/reach";
 import {
 	ANCHORS,
 	type Painter,

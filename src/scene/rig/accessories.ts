@@ -1,11 +1,11 @@
-// A regular's accessories (rig/roles.ts REGULAR_WEAR): small things worn on the face or pinned to
+// A regular's accessories (rig/data/roles.ts REGULAR_WEAR): small things worn on the face or pinned to
 // the body, so a regular you'd recognise has something of its own besides its name. Painted in the
 // paper rig's style (ink outlines, flat fills) for every theme alike: each is small, sits clear of
 // where the costumes go (the hat on the dome, the front piece down the middle) and keeps to neutral
 // colours, so it reads over the office's suits, the factory's hi-vis and the bakery's whites.
 // Painters draw in the body's space (vocab.ts: 100 wide, the base at y = 0), like `wear/glasses`.
 import type { Graphics } from "pixi.js";
-import { ANCHORS } from "./reach";
+import { ANCHORS } from "./data/reach";
 import type { Painter, Palette } from "./theme";
 
 /** The accessories, by atlas part name. */

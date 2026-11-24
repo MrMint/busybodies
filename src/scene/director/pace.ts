@@ -5,7 +5,7 @@
 //   paceOf(rate, lastAt, now)    -> stroll | jog | run, and its speed (a multiple of WALK_SPEED)
 //   editRate(times, now)         -> edits in the last minute, from a build's recent edit times
 //   runCooldown(session, rate)   -> the wait between brick runs: 20-28 s calm, down to 40% flat out
-import { unit } from "../rig/player";
+import { unit } from "../rig/data/player";
 import type { ToolRate } from "../../watcher/model";
 import { WORK } from "./work";
 

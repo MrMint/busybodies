@@ -11,9 +11,9 @@
 //             at you, one waves, and waiting leads hold their tickets up
 //
 // `looksFor` turns the world into each actor's `lookAt`, which the cue carries to the character
-// (rig/gaze.ts turns it into a look against its facing).
-import type { LookAt } from "../rig/gaze";
-import { hash } from "../rig/player";
+// (rig/data/gaze.ts turns it into a look against its facing).
+import type { LookAt } from "../rig/data/gaze";
+import { hash } from "../rig/data/player";
 import type { Area, Slot, Floor } from "../world/world";
 import type { HandOff } from "./handoff";
 import type { Actor } from "./types";

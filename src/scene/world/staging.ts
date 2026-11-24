@@ -12,7 +12,7 @@
 //          ceiling fan, the printer's light, a fluorescent tube's flicker in every room; a beacon
 //          while a build runs, every press's pilot lamp, steam vents, weld sparks;
 //          the bakery's oven glow, marquee bulbs, a turning cake, sprinkles, pastries on the belt
-//   habits the idle habits the theme's cast rotates through (rig/poses.ts names; director/habits.ts),
+//   habits the idle habits the theme's cast rotates through (rig/data/poses.ts names; director/habits.ts),
 //          and a line's lead its own up in the booth, where only its head and hat show
 //
 // A theme without a staging gets the office's behaviour (`stagingOf`), so a new theme only says
@@ -26,7 +26,7 @@ export type AmbientKind = "steam" | "fan" | "printer" | "flicker" | "beacon" | "
 export interface Staging {
 	bay: "desks" | "line";
 	hall: "corridor" | "conveyor";
-	/** The idle habits, in rotation order (pose names). None: the rig's seven (rig/poses.ts HABITS). */
+	/** The idle habits, in rotation order (pose names). None: the rig's seven (rig/data/poses.ts HABITS). */
 	habits?: readonly string[];
 	/** A line bay's lead stands up in its booth behind its bench (theme/factory.ts booth), which
 	 * comes to its chin: its habits, played at head height, in place of `habits` (which sit on drums

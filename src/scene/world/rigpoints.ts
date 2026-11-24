@@ -2,7 +2,7 @@
 // the rig's own (src/scene/rig/reach.ts: TRAY, BELL, BELL_BASE, PLANNER, in rig units, 85 to a
 // character's height), so the furniture and the hands can't drift apart. A rig unit is
 // `size / RIG_HEIGHT` office px for a character `size` px tall.
-import { BELL, BELL_BASE, PLANNER, PUPPET_HEIGHT, TRAY } from "../rig/reach";
+import { BELL, BELL_BASE, PLANNER, PUPPET_HEIGHT, TRAY } from "../rig/data/reach";
 import type { Rect } from "./world";
 
 const RIG_HEIGHT = PUPPET_HEIGHT;

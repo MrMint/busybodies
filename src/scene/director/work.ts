@@ -6,8 +6,8 @@
 //                                   doesn't flicker the pose
 //   WORK_POSE[role][kind]        -> the pose for it (builders only, for now)
 //   tempo(key, lastAt, now)      -> how fast the loop runs: quick while writing, slow when coasting
-import { unit } from "../rig/player";
-import type { Role } from "../rig/roles";
+import { unit } from "../rig/data/player";
+import type { Role } from "../rig/data/roles";
 import type { Activity, RunningTool } from "../../watcher/model";
 
 export type WorkKind = "read" | "web" | "search" | "edit" | "shell" | "test";

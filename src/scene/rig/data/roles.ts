@@ -21,9 +21,9 @@
 //             belly (the office paints no front/scarf)    bib
 //
 // (`front/apron` is the builder's front piece whatever the theme draws there, and so on.)
-import type { Role } from "../../shared/roles";
+import type { Role } from "../../../shared/roles";
 
-export { ROLES, type Role, roleFor } from "../../shared/roles";
+export { ROLES, type Role, roleFor } from "../../../shared/roles";
 
 export interface Costume {
 	/** Hat texture, `hat/<role>`. */

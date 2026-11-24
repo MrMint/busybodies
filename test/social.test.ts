@@ -11,8 +11,8 @@ import { FloorPlan } from "../src/scene/world/layout";
 import { AISLE, BUILD, CELL_W, CROWD, OVERLAP, SQUEEZE, bodyRect, buildSlot, crewPlaces, crewSpot, crewSpots, crowdSlot, endGaps, endPlaces, faceFront, faceZone, floorFoot, meets, restagger, yieldFrom } from "../src/scene/world/world";
 import { CARD } from "../src/scene/world/propspots";
 import { demo } from "../src/mainview/demo";
-import { AT_VIEWER, GAZE, aimAt } from "../src/scene/rig/gaze";
-import { POSE, duration } from "../src/scene/rig/poses";
+import { AT_VIEWER, GAZE, aimAt } from "../src/scene/rig/data/gaze";
+import { POSE, duration } from "../src/scene/rig/data/poses";
 import type { Agent, Session, Snapshot } from "../src/watcher/model";
 
 const T0 = Date.UTC(2026, 10, 19, 14, 0);

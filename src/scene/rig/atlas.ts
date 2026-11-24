@@ -10,7 +10,7 @@
 import { Container, Graphics, Rectangle, type Renderer, Texture } from "pixi.js";
 import type { Theme } from "./theme";
 
-import { type PartBounds, RESOLUTION, type Slot, pack } from "./pack";
+import { type PartBounds, RESOLUTION, type Slot, pack } from "./data/pack";
 
 export type { Slot };
 

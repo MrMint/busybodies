@@ -9,7 +9,7 @@
 // The outbox: when a session opens a PR, its lead walks the envelope to the room's outbox
 // (`envelopeCarry`), drops it in (`mailDrop`), walks back and celebrates.
 import type { Slot } from "../world/world";
-import { HANDOFF as RIG_HANDOFF, PUPPET_HEIGHT } from "../rig/reach";
+import { HANDOFF as RIG_HANDOFF, PUPPET_HEIGHT } from "../rig/data/reach";
 import type { StationKind } from "../world/stations";
 
 export const HANDOFF = {
@@ -17,7 +17,7 @@ export const HANDOFF = {
 	kinds: ["reference", "search"] as StationKind[],
 	pose: "handOff",
 	/** The giver stands this far in front of the taker, facing it, in rig units: the rig's own
-	 * staging (`HANDOFF.slot` in rig/reach.ts), so the taker's `at-s2` step leaves an arm's-length
+	 * staging (`HANDOFF.slot` in rig/data/reach.ts), so the taker's `at-s2` step leaves an arm's-length
 	 * pass. About 150 px for a 58 px crew member. */
 	gap: RIG_HANDOFF.slot,
 } as const;

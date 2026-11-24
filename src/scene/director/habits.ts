@@ -1,12 +1,12 @@
 // Idle habits (plan-alive stream B). An idle character slacks off in one of the seven habits
-// (rig/poses.ts HABITS), or in the theme's own (world/staging.ts `habits`: the factory's crew sit on
+// (rig/data/poses.ts HABITS), or in the theme's own (world/staging.ts `habits`: the factory's crew sit on
 // oil drums, play cards on a pallet, kick the vending machine), picked from its id. With life on (the window on screen, not calm), the
 // habit rotates every minute or two and plays again every 20 to 30 s, so a quiet office keeps a
 // gentle rhythm: a burst, a rest, a burst. In calm mode it is what it always was: one habit, played
 // once, moving on every ten minutes. Pure: the same key and clock give the same habit, and every
 // change lands on a 5 s grid of the clock, so a room of idlers wakes the director together.
-import { hash, unit } from "../rig/player";
-import { HABITS } from "../rig/poses";
+import { hash, unit } from "../rig/data/player";
+import { HABITS } from "../rig/data/poses";
 import { MIN } from "../../shared/time";
 
 

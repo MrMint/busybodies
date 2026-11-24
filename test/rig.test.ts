@@ -1,14 +1,14 @@
 // The rig's Pixi-free core: frames, pose timing, springs, interpolation, the atlas layout, and the
 // themes' painters, measured through a stand-in for pixi.js.
 import { describe, expect, mock, test } from "bun:test";
-import { pack } from "../src/scene/rig/pack";
-import { CHANNELS, REST, channels, describe as describeFrame, diff, parseFrame } from "../src/scene/rig/frame";
-import { FEEL, Spring, SpringSet, SUBSTEP_S, Tween, ease, lerp } from "../src/scene/rig/motion";
-import { choosePose, frameAt, hash, unit } from "../src/scene/rig/player";
-import { BEAT_MS, HABITS, POSE, POSES, duration } from "../src/scene/rig/poses";
-import { ROLES, roleFor } from "../src/scene/rig/roles";
-import { ARMS, FACES, SPOTS, type Arm } from "../src/scene/rig/vocab";
-import { HANDOFF, PUPPET_HEIGHT, REACH, STATION, STATION_CREW_PX, TRAY, WORK, handAt, solveArm } from "../src/scene/rig/reach";
+import { pack } from "../src/scene/rig/data/pack";
+import { CHANNELS, REST, channels, describe as describeFrame, diff, parseFrame } from "../src/scene/rig/data/frame";
+import { FEEL, Spring, SpringSet, SUBSTEP_S, Tween, ease, lerp } from "../src/scene/rig/data/motion";
+import { choosePose, frameAt, hash, unit } from "../src/scene/rig/data/player";
+import { BEAT_MS, HABITS, POSE, POSES, duration } from "../src/scene/rig/data/poses";
+import { ROLES, roleFor } from "../src/scene/rig/data/roles";
+import { ARMS, FACES, SPOTS, type Arm } from "../src/scene/rig/data/vocab";
+import { HANDOFF, PUPPET_HEIGHT, REACH, STATION, STATION_CREW_PX, TRAY, WORK, handAt, solveArm } from "../src/scene/rig/data/reach";
 import { STATION_POSE, STATION_REACH } from "../src/scene/world/stations";
 
 describe("frames", () => {
@@ -570,7 +570,7 @@ mock.module("pixi.js", () => ({ Graphics: FakeGraphics, Text: FakeText, Containe
 describe("themes", async () => {
 	const { paperTheme } = await import("../src/scene/rig/theme");
 	const { factoryTheme, FACTORY_REPAINTS, FACTORY_EXTRAS } = await import("../src/scene/rig/factory");
-	const { ATLAS_WIDTH, PAD, RESOLUTION } = await import("../src/scene/rig/pack");
+	const { ATLAS_WIDTH, PAD, RESOLUTION } = await import("../src/scene/rig/data/pack");
 	const paper = paperTheme();
 	const factory = factoryTheme();
 	const measure = (t: typeof paper) =>

@@ -2,7 +2,7 @@
 // stands where, in what mood, doing what, and what each desk shows). Types only, so the director
 // stays Pixi-free and drawing code never imports the director's implementation.
 import type { Role } from "../shared/roles";
-import type { LookAt } from "./rig/gaze";
+import type { LookAt } from "./rig/data/gaze";
 
 export type Mood = "busy" | "idle" | "stalled" | "done";
 
@@ -13,14 +13,14 @@ export interface Who {
 	kind: "lead" | "crew";
 	/** The agent's role ("scout", "reviewer", ...), or "lead". */
 	role: string;
-	/** The costume, when whoever placed it already chose one (rig/roles.ts `roleFor`). */
+	/** The costume, when whoever placed it already chose one (rig/data/roles.ts `roleFor`). */
 	look?: Role;
 	mood: Mood;
 	/** Height in world pixels. */
 	size: number;
 	/** A key to pick a colour from, so one project's leads match: the project, or the role. */
 	tint: string;
-	/** Optional: the regular it is (rig/roles.ts `regularOf`): the same face, accessory and name for
+	/** Optional: the regular it is (rig/data/roles.ts `regularOf`): the same face, accessory and name for
 	 * the same project and role, every day. */
 	regular?: string;
 }
@@ -65,7 +65,7 @@ export interface Cue {
 	/** How fast the walk's steps run, matching its pace (a jog 1.3, a run 1.65; pace.ts). The walk's
 	 * `ms` already covers the ground at that pace. */
 	walkTempo?: number;
-	/** What to look at while the pose plays (rig/gaze.ts): another character's key, a world point
+	/** What to look at while the pose plays (rig/data/gaze.ts): another character's key, a world point
 	 * (the YOU door), or `{ viewer: true }`, out of the screen. The character turns it into a look
 	 * against its own facing; a frame with eyes on the work wins. Changing it alone doesn't restart
 	 * the pose. */

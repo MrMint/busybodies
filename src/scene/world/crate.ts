@@ -5,7 +5,7 @@
 // the hallway's end. (The bay's dock is a room's depth from the hallway, through a wall, so it goes
 // by chute rather than sliding across the room.) Pixi-free, so tests can walk it; ambient.ts draws
 // it. Times are acting ms from when the PR was seen.
-import { ease, lerp } from "../rig/motion";
+import { ease, lerp } from "../rig/data/motion";
 
 export const CRATE = {
 	/** No arm to say when (it had too much on): the crate shows up on the belt after this long. */

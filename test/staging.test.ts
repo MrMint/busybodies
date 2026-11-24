@@ -12,7 +12,7 @@ import { CRATE, crateAt, crateRide } from "../src/scene/world/crate";
 import { AISLE, BELT, DESK_TOP, type Desk, OVERLAP, ROW, type Rect, SQUEEZE, type Floor, bodyRect, crewPlaces, crewSpots, endPlaces, faceZone, meets, overlapX } from "../src/scene/world/world";
 import { LEAD_SIZE } from "../src/scene/world/placement";
 import { demo } from "../src/mainview/demo";
-import { HABITS, POSE } from "../src/scene/rig/poses";
+import { HABITS, POSE } from "../src/scene/rig/data/poses";
 import type { Agent, Session, Snapshot } from "../src/watcher/model";
 
 let n = 0;
