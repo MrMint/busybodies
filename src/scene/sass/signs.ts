@@ -3,7 +3,7 @@
 // the mugs pile up), and the one note on the fridge about whatever most needs a human. Pure apart
 // from the counters it keeps between snapshots. The words come from the theme's bank (bank.ts).
 import type { Snapshot } from "../../watcher/model";
-import type { ThemeId } from "../theme/id";
+import type { ThemeId } from "../../themes/ids";
 import { type SassBank, sassFor } from "./bank";
 import { LIMITS, allSessions, crewCount, localClock, members, type DetectOptions } from "./detect";
 import { fill } from "./scheduler";

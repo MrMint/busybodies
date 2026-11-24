@@ -1,5 +1,5 @@
 // Theme parity: every theme in every key state, in the full office and the compact window. A theme
-// is the same cast and the same director in a different place (theme/id.ts), so for each state the
+// is the same cast and the same director in a different place (src/themes/ids.ts), so for each state the
 // test reads the scene as data in the office and in each other theme and checks the essentials: the
 // page comes up without a thrown error, the same characters are on the floor, the rooms are staged
 // (the same areas, the theme's staging, every sign slot written), and nothing is left in the
@@ -9,7 +9,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { join, normalize } from "node:path";
 import { type Browser, type Page, chromium } from "playwright-core";
-import { THEME_IDS, type ThemeId } from "../src/scene/theme/id";
+import { THEME_IDS, type ThemeId } from "../src/themes/ids";
 import { wordsFor } from "../src/scene/theme/words";
 
 const ROOT = join(import.meta.dir, "..");

@@ -3,7 +3,7 @@
 // time is up, and drops what the office has no slot for (yet). Pixi-free: the office is passed in
 // as the three methods it needs, so tests drive it with a fake.
 import type { Snapshot } from "../../watcher/model";
-import type { ThemeId } from "../theme/id";
+import type { ThemeId } from "../../themes/ids";
 import { type Output, Sass, type SassOptions } from "./sass";
 import type { Say, View } from "./scheduler";
 

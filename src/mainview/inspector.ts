@@ -8,7 +8,7 @@ import type { Stop } from "../scene/office/camera";
 import type { Office } from "../scene/office/office";
 import type { SignText } from "../scene/office/paper";
 import type { Snapshot } from "../watcher/model";
-import type { ThemeId } from "../scene/theme/id";
+import type { ThemeId } from "../themes/ids";
 import type { Visibility } from "./visibility";
 import type { Camerawork, ShotReport } from "./shots";
 import type { Story } from "../scene/director/story";

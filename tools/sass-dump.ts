@@ -11,7 +11,7 @@ import { readFileSync } from "node:fs";
 import { parseRecording } from "../src/watcher/replay";
 import { type Output, Sass, allSessions, members, utcClock, utcDay, utcHour } from "../src/scene/sass";
 import type { Snapshot } from "../src/watcher/model";
-import { themeId } from "../src/scene/theme/id";
+import { themeId } from "../src/themes/ids";
 
 const args = process.argv.slice(2);
 const flag = (name: string, dflt: string) => {

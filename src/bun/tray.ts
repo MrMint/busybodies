@@ -4,7 +4,7 @@
 // template images (black on clear), so macOS tints them for light and dark menu bars. They are
 // drawn by tools/tray-icons.ts into assets/tray/ and copied into the bundle's views.
 import { Tray, Utils } from "electrobun/main";
-import type { ThemeId } from "../scene/theme/id";
+import type { ThemeId } from "../themes/ids";
 import { type TrayStatus, trayAction, trayMenu } from "./menu";
 import { type Mood, moodOf } from "./mood";
 

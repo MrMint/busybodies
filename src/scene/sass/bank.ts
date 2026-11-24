@@ -3,7 +3,7 @@
 // office's bank is `LINES`. The factory and the bakery keep the office's lines that fit anywhere
 // (everything not marked `office`) and add their own, so "Out of office. In the office." stays in
 // the office. A theme without a bank of its own gets the office's.
-import type { ThemeId } from "../theme/id";
+import type { ThemeId } from "../../themes/ids";
 import { BAKERY_LINES } from "./lines-bakery";
 import { FACTORY_LINES } from "./lines-factory";
 import { type Line, LINES, linesIn } from "./lines";

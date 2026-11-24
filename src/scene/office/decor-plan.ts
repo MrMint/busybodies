@@ -15,7 +15,7 @@
 // installing Pixi; decor.ts draws it.
 // Colours come from the theme (its slab, lawn and light), so the decor draws in any theme; a theme
 // may give its own words and colours in STORY_STYLES, and one without gets the defaults.
-import type { ThemeId } from "../theme/id";
+import type { ThemeId } from "../../themes/ids";
 import type { Headlines, StoryKind } from "../director/story";
 import { type Counts, type Diary, daysSeen, localDay, projectKey, weekOf } from "../../shared/diary";
 import { diaryRegular, regularNamesFor } from "../rig/roles";

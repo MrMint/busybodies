@@ -6,7 +6,7 @@
 // save leaves them out of the file.
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { DEFAULT_THEME, type ThemeId, themeId } from "../scene/theme/id";
+import { DEFAULT_THEME, type ThemeId, themeId } from "../themes/ids";
 
 export interface Settings {
 	theme: ThemeId;

@@ -4,7 +4,7 @@
 // and `nextWake` is undefined when nothing is due, so an idle office can sleep.
 import type { Snapshot } from "../../watcher/model";
 import { type DetectOptions, detect } from "./detect";
-import type { ThemeId } from "../theme/id";
+import type { ThemeId } from "../../themes/ids";
 import { type SassBank, sassFor } from "./bank";
 import { type Say, Scheduler, type SchedulerOptions, type View } from "./scheduler";
 import { type CounterOptions, Counters, slotName } from "./signs";

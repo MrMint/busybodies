@@ -21,7 +21,7 @@ import { sassFor } from "../scene/sass/bank";
 import { type Line, LINES, linesIn } from "../scene/sass/lines";
 import { fill } from "../scene/sass/scheduler";
 import { signText } from "../scene/sass/voice";
-import { DEFAULT_THEME, type ThemeId } from "../scene/theme/id";
+import { DEFAULT_THEME, type ThemeId } from "../themes/ids";
 import { type Diary, DIARY_KINDS, type DiaryDay, localDay, projectKey } from "../shared/diary";
 import type { Agent, Session, Snapshot } from "../watcher/model";
 

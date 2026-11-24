@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { join, normalize } from "node:path";
 import { type Browser, type Page, chromium } from "playwright-core";
-import { THEME_IDS } from "../src/scene/theme/id";
+import { THEME_IDS } from "../src/themes/ids";
 
 const ROOT = join(import.meta.dir, "..");
 const DIST = join(ROOT, "dist");

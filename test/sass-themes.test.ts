@@ -3,7 +3,7 @@
 // theme switch takes the old theme's signs down. Every project, title and id here is made up.
 import { describe, expect, test } from "bun:test";
 import type { Session, Snapshot } from "../src/watcher/model";
-import { THEME_IDS } from "../src/scene/theme/id";
+import { THEME_IDS } from "../src/themes/ids";
 import { wordsFor } from "../src/scene/theme/words";
 import { BAKERY_LINES, Counters, FACTORY_LINES, LINES, Sass, TRIGGERS, Voice, sassFor, utcClock, utcDay, utcHour } from "../src/scene/sass";
 

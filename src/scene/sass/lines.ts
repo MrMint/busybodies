@@ -10,7 +10,7 @@
 // Themes: a line that names a thing one scene theme doesn't have (a clamp in the office, a copier in
 // the factory) carries that theme's own wording in `themed`, same voice, same trigger and tiers.
 // `linesIn(theme)` is the bank as that theme speaks it; `text` is what every other theme says.
-import type { ThemeId } from "../theme/id";
+import type { ThemeId } from "../../themes/ids";
 import type { LineKind, Role, SignPlace, Speaker, TriggerKind } from "./types";
 
 export interface Line {

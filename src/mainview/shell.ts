@@ -2,7 +2,7 @@
 // talks to the Bun process through `bridge`; in a browser (?demo) there is no bridge and it shows
 // what it can. Fixtures: ?demo=empty (nobody's in), ?demo=nohome (no coding agent found), ?about.
 import type { AppStatus } from "../shared/rpc";
-import { THEME_IDS, type ThemeId } from "../scene/theme/id";
+import { THEME_IDS, type ThemeId } from "../themes/ids";
 import type { Snapshot } from "../watcher/model";
 import { flatSessions } from "../watcher/model";
 

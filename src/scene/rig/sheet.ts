@@ -10,7 +10,7 @@ import { STATION_POSE, type StationKind } from "../director/stations";
 import { BELL, BELL_BASE, HANDOFF, PLANNER, STATION, STICKY } from "./reach";
 import { ROLES, type Role } from "./roles";
 import { FACES } from "./vocab";
-import { THEME_IDS, type ThemeId } from "../theme/id";
+import { THEME_IDS, type ThemeId } from "../../themes/ids";
 import { poseWords } from "../theme/words";
 
 const INK = 0x2b2340;

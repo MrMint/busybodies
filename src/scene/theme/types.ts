@@ -8,7 +8,7 @@ import type { Who } from "../office/slot";
 import type { Phase } from "../office/daylight";
 import type { Area, AreaKind, Band, Fixture, Rect } from "../office/world";
 import type { SceneStaging } from "../office/staging";
-import type { ThemeId } from "./id";
+import type { ThemeId } from "../../themes/ids";
 import type { SignText, ThemeWords } from "./words";
 
 /**

@@ -72,7 +72,7 @@ only from the layers before it.
 | shared | `src/shared/`, code both processes run | the snapshot |
 | director | `src/scene/director*`, `src/scene/sass/` | the above, plus the Pixi-free floor plan (`office/world.ts`, `layout.ts`, `placement.ts`, …) and rig data (`rig/poses.ts`, `roles.ts`, `player.ts`, …) |
 | scene | `src/scene/office/`, `theme/`, `rig/` drawing | everything above |
-| app | `src/mainview/` (webview), `src/bun/` (main process; Pixi-free, reads `theme/id.ts`) | everything above |
+| app | `src/mainview/` (webview), `src/bun/` (main process; Pixi-free, reads `src/themes/ids.ts`) | everything above |
 
 - **Pixi-free layers stay Pixi-free.** Watcher, shared, director and sass are plain data and
   logic, unit-tested without a browser. Biome fails CI on a `pixi.js` import there. Put new

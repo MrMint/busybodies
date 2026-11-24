@@ -2,7 +2,7 @@
 // native tray (test/settings-menu.test.ts). tray.ts hands the menu to Electrobun.
 import type { MenuItemConfig } from "electrobun/main";
 import type { Snapshot } from "../watcher/model";
-import { THEME_IDS, type ThemeId } from "../scene/theme/id";
+import { THEME_IDS, type ThemeId } from "../themes/ids";
 import { summaryOf } from "./mood";
 
 /** The Theme submenu's names. */

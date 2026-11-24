@@ -95,7 +95,7 @@ const { values: o } = parseArgs({
 		check: { type: "boolean", default: false },
 		build: { type: "boolean", default: false },
 		title: { type: "string", default: "Busybodies · tools/shoot.ts" },
-		/** The scene theme (src/scene/theme/id.ts): every state in that theme. Several, comma
+		/** The scene theme (src/themes/ids.ts): every state in that theme. Several, comma
 		 * separated: every state in each, side by side on the sheet (shots in a folder per theme). */
 		theme: { type: "string" },
 	},

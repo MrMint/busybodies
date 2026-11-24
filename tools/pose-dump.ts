@@ -6,7 +6,7 @@
 // Pixi-free modules only, so this runs under plain Bun.
 import { describe } from "../src/scene/rig/frame";
 import { BEAT_MS, POSES, type Pose, duration } from "../src/scene/rig/poses";
-import { THEME_IDS } from "../src/scene/theme/id";
+import { THEME_IDS } from "../src/themes/ids";
 import { wordsFor } from "../src/scene/theme/words";
 
 const pick = process.argv.slice(2);

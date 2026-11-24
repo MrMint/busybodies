@@ -2,7 +2,7 @@
 // project room by its project, a common area by what the theme calls it. Pixi-free.
 import { describe, expect, test } from "bun:test";
 import { tilesFor } from "../src/scene/director/shots";
-import { THEME_IDS } from "../src/scene/theme/id";
+import { THEME_IDS } from "../src/themes/ids";
 import { areaLabel, wordsFor } from "../src/scene/theme/words";
 import { tileAreas } from "../src/mainview/shots";
 import type { AreaKind } from "../src/scene/office/world";

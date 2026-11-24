@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { readSettings, settingsFile, writeSettings } from "../src/bun/settings";
 import { ARM, ArmPlan, solve } from "../src/scene/theme/armplan";
-import { THEME_IDS, themeId } from "../src/scene/theme/id";
+import { THEME_IDS, themeId } from "../src/themes/ids";
 import { FACTORY_WORDS, BAKERY_WORDS, OFFICE_WORDS, wordsFor } from "../src/scene/theme/words";
 import { FloorPlan } from "../src/scene/office/layout";
 
