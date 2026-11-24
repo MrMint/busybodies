@@ -1,6 +1,7 @@
 // The words the sass module shares between its parts: what sets a line off, who says it, and
 // where a sign goes. Pixi-free, so it runs in unit tests and the text dump.
 import { type Role, roleFor } from "../rig/roles";
+import { fnv1a } from "../../shared/hash";
 
 /** What sets a line off. Each one has its own detector in `detect.ts` (or `signs.ts`). */
 export const TRIGGERS = [
@@ -97,14 +98,7 @@ export interface Trigger {
 }
 
 /** A small, fast, seeded hash (FNV-1a) for deterministic choices. */
-export function hash(s: string): number {
-	let h = 0x811c9dc5;
-	for (let i = 0; i < s.length; i++) {
-		h ^= s.charCodeAt(i);
-		h = Math.imul(h, 0x01000193);
-	}
-	return h >>> 0;
-}
+export const hash = fnv1a;
 
 /** A number in [0, 1) from a string, the same every time. */
 export const unit = (s: string): number => hash(s) / 0x1_0000_0000;

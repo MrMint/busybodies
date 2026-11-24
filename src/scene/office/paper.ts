@@ -5,6 +5,7 @@
 import { BitmapFont, BitmapText, Container, Graphics, Text, type TextStyleOptions, Texture } from "pixi.js";
 import type { SignText } from "../theme/words";
 import type { Rect, WallItem } from "./world";
+import { hash31 } from "../../shared/hash";
 
 export type { SignText } from "../theme/words";
 export type { FurnitureKind } from "../theme/types";
@@ -17,7 +18,7 @@ export const GREEN = 0x2fcf83;
 const FONT = 'ui-rounded, "SF Pro Rounded", "Nunito", "Varela Round", system-ui, sans-serif';
 
 export const line = (width: number) => ({ width, color: INK, join: "round" as const, cap: "round" as const });
-export const hash = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
+export const hash = hash31;
 /** A small, fixed wobble from a seed: -1 to 1. */
 export const wob = (seed: number, i: number) => (((seed + i * 2654435761) >>> 0) % 1000) / 500 - 1;
 

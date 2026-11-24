@@ -2,6 +2,7 @@
 // trigger?", and the answers depend only on elapsed time and the character's id.
 import { POSES, type Pose, type Trigger, duration } from "./poses";
 import type { Role } from "./roles";
+import { fnv1a } from "../../shared/hash";
 
 export interface FrameAt {
 	index: number;
@@ -67,14 +68,7 @@ function mix(h: number): number {
 }
 
 /** A stable 32-bit hash of a string (FNV-1a). All variation comes from here, never Math.random. */
-export function hash(s: string): number {
-	let h = 0x811c9dc5;
-	for (let i = 0; i < s.length; i++) {
-		h ^= s.charCodeAt(i);
-		h = Math.imul(h, 0x01000193) >>> 0;
-	}
-	return h >>> 0;
-}
+export const hash = fnv1a;
 
 /** A number in [0, 1) from an id and a salt. */
 export const unit = (id: string, salt = ""): number => hash(`${id}|${salt}`) / 0x1_0000_0000;

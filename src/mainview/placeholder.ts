@@ -8,7 +8,7 @@ import type { Slot } from "../scene/office/world";
 import { Busybody } from "./busybody";
 
 const PALETTE = [0xff8fab, 0x8fd3ff, 0xffd166, 0x9be7a0, 0xc3a6ff, 0xffb38a, 0x7fe0d4, 0xf5a3e0];
-const hash = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
+import { hash31 as hash } from "../shared/hash";
 /** Baked at 4x: sharp from the whole office up to a room, a little soft at the desk stop. */
 const RESOLUTION = 4;
 
