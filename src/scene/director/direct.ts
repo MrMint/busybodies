@@ -1,31 +1,19 @@
-// The director: snapshot in, world and events out. Pure, so it is unit-tested with invented
-// snapshots and replayed fixtures, and the same run always gives the same events.
-//
-//   direct(prev, snap, now, floor) -> { world, events, wake }
-//
-// `floor` is the office's floor plan for this snapshot (S2's layout), which says where desks and
-// common spots are. The world says who stands where (a named spot and its slot), in which pose,
-// and who is walking; the events say what changed. `wake` is the next time the world changes with
-// no new snapshot (an acted pose ends, a habit rotates, a build turns long): call again then.
-import { seats } from "../world/layout";
-import { LEAD_SIZE, crewSize } from "../world/placement";
+
+import { LEAD_SIZE } from "../world/placement";
 import { habitsFor } from "../world/staging";
-import type { Mood } from "../contract";
 import type { Area, Slot, Floor } from "../world/world";
 import { OVERLAP, buildSlot, crewPlaces, crewSlot, crewSpots, endGaps, useFor, yieldFrom } from "../world/world";
 import { choosePose, hash } from "../rig/data/player";
 import { POSE, poseMs } from "../rig/data/poses";
-import { type Role, roleFor } from "../rig/data/roles";
-import type { Activity, Agent, Commands, RunningTool, Session, Snapshot } from "../../watcher/model";
+import type { Snapshot } from "../../watcher/model";
 import { beat, flourishAfter, overlapOf } from "./beats";
 import { habitAt } from "./habits";
 import { dodges } from "./dodge";
 import { atYourDoor, errandPlace, errandUnderWay, newErrands, ongoingErrands, pauseOf, queueUp } from "./errands";
 import { HANDOFF, type HandOff, MAIL, type Mail, handOffSlot, pickTaker } from "./handoff";
 import { NO_METRICS, changesOf, metricsFor, towerBricks, trayFor } from "./metrics";
-import { type Pace, PACE, RUNS, editRate, paceOf, runCooldown } from "./pace";
+import { type Pace, PACE, RUNS, editRate, runCooldown } from "./pace";
 import { RUSH, type Rush, heatOf, nextDash, nextRush, rushWake } from "./rush";
-import { traitOf } from "./traits";
 import { type Point, along, pathBetween, walkMs } from "../world/paths";
 import { STATION_FOR, STATION_POSE, type StationKind } from "../world/stations";
 import { TRIP, type Trip, type Want, planTrips, tripPlace } from "./trips";
@@ -35,10 +23,10 @@ import { faceFront, inCrowd } from "../world/world";
 import { HANDOFF_LOOK, NOTICE, NOTICE_POSES, type View, freshReturn, handOffWakes, looksFor, noticeDelay, pairUp, readyAt, rippleDelay, waverOf } from "./social";
 import { STORY, type Story, cheersReply, headlinesFor, logOf, replyChoice, replyPlace, replyWakes, replyWalkPose, repliesFor, sendOffHold, sendOffLooks, sendOffsFor, storyNews } from "./story";
 import { MIN } from "../../shared/time";
+import { type Spec, gaitBase, specs, traitFor } from "./direct/specs";
 
 export { runCooldown };
 export type { View };
-
 
 /** When signals turn into poses. */
 export const RULES = {
@@ -77,107 +65,6 @@ export interface Direction {
 	events: WorldEvent[];
 	/** When to call again with no new snapshot, or undefined if nothing is due. */
 	wake?: number;
-}
-
-/** Facts about one character from the snapshot, before the director decides anything. */
-interface Spec {
-	key: string;
-	kind: "lead" | "crew";
-	session: Session;
-	agent?: Agent;
-	boss?: string;
-	role: string;
-	rig: Role;
-	mood: Mood;
-	size: number;
-	tint: string;
-	/** Where it belongs: at its desk, around it, in the meeting room, or out (finished). */
-	place: "desk" | "crew" | "meeting" | "out";
-	busy: boolean;
-	since: number;
-	running?: RunningTool;
-	activity?: Activity;
-	commands?: Commands;
-	seen: Seen;
-	task?: string;
-}
-
-/** A character's model personality (traits.ts): crew by their own model, leads by the session's. */
-const traitFor = (s: Spec) => traitOf(s.kind === "lead" ? s.session.family : s.agent?.family);
-/** How fast a character walks now: its heat pace (pace.ts) times its trait. */
-function gaitBase(s: Spec, now: number) {
-	const lastAt = Math.max(s.activity?.at ?? -Infinity, s.agent?.lastWriteAt ?? -Infinity);
-	const g = paceOf(s.agent ? s.agent.tools : s.session.tools, Number.isFinite(lastAt) ? lastAt : undefined, now);
-	return { ...g, speed: g.speed * traitFor(s).walk };
-}
-const agentMood = (a: Agent): Mood => (a.status === "running" ? "busy" : a.status === "stalled" ? "stalled" : "done");
-
-function specs(snap: Snapshot): Spec[] {
-	const out: Spec[] = [];
-	for (const { session: s } of seats(snap.sessions)) {
-		const lead = `s:${s.id}`;
-		const failAt = s.commands?.last && s.commands.last.exitCode !== 0 ? s.commands.last.at : undefined;
-		out.push({
-			key: lead,
-			kind: "lead",
-			session: s,
-			role: "lead",
-			rig: "lead",
-			mood: s.state === "busy" ? "busy" : "idle",
-			size: LEAD_SIZE,
-			tint: s.project,
-			place: "desk",
-			busy: s.state === "busy",
-			since: s.stateSince,
-			running: s.running,
-			activity: s.activity,
-			commands: s.commands,
-			task: s.title,
-			seen: {
-				waiting: s.waiting?.since,
-				failAt,
-				prs: (s.prs ?? []).map((p) => p.number).sort((a, b) => a - b),
-				compactAt: s.compactions?.lastAt,
-				apiRetryAt: s.apiRetry?.at,
-				repeats: s.commands?.repeats,
-				hires: s.agents.map((a) => a.id),
-			},
-		});
-		const visit = (list: Agent[], boss: string) => {
-			for (const a of list) {
-				const key = `a:${s.id}:${a.id}`;
-				const mood = agentMood(a);
-				out.push({
-					key,
-					kind: "crew",
-					session: s,
-					agent: a,
-					boss,
-					role: a.role,
-					rig: roleFor(a.role, a.task),
-					mood,
-					size: crewSize(a.depth),
-					tint: a.role,
-					place: a.status === "running" && roleFor(a.role, a.task) === "reviewer" ? "meeting" : mood === "done" ? "out" : "crew",
-					busy: a.status === "running",
-					since: a.lastWriteAt,
-					running: a.running,
-					activity: a.activity,
-					commands: a.commands,
-					task: a.task,
-					seen: {
-						failAt: a.commands?.last && a.commands.last.exitCode !== 0 ? a.commands.last.at : undefined,
-						prs: [],
-						repeats: a.commands?.repeats,
-						hires: a.children.map((c) => c.id),
-					},
-				});
-				visit(a.children, key);
-			}
-		};
-		visit(s.agents, lead);
-	}
-	return out;
 }
 
 // --- Spots ----------------------------------------------------------------------------------------
@@ -283,7 +170,6 @@ function assign(list: Spec[], floor: Floor, prev: Record<string, Actor>): Map<st
 }
 
 // --- Poses -----------------------------------------------------------------------------------------
-
 
 interface Choice {
 	pose: string;
