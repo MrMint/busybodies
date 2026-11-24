@@ -31,13 +31,13 @@ export interface CounterOptions extends DetectOptions {
 	theme?: ThemeId;
 }
 
-const localDay = (ms: number) => new Date(ms).toDateString();
+const dayLabel = (ms: number) => new Date(ms).toDateString();
 export const utcDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
 /** The plant, by how long its room has been idle. */
 const plantFor = (idleMin: number) => (idleMin >= 30 ? "wilting" : idleMin >= 15 ? "droopy" : "fresh");
 /** The mug pile, by how long its room has been idle: one mug per 10 minutes, up to 6. */
-const mugsFor = (idleMin: number) => Math.min(6, Math.floor(idleMin / 10));
+const mugsForIdle = (idleMin: number) => Math.min(6, Math.floor(idleMin / 10));
 
 /** A counter's sign text, checked against the bank it belongs to. */
 function counterSign(bank: SassBank, text: string): string {
@@ -69,7 +69,7 @@ export class Counters {
 
 	/** Reads a snapshot into the counters, then returns the text every counter slot should show. */
 	update(snap: Snapshot, now: number): Map<string, string> {
-		const day = this.#opts.day ?? localDay;
+		const day = this.#opts.day ?? dayLabel;
 		const clock = this.#opts.clock ?? localClock;
 		const hour = this.#opts.hour ?? ((ms: number) => new Date(ms).getHours());
 		const today = day(now);
@@ -107,7 +107,7 @@ export class Counters {
 			const allIdle = ss.every((s) => s.state === "idle" && !s.waiting);
 			const idleMin = allIdle ? Math.floor((now - Math.max(...ss.map((s) => s.stateSince))) / MIN) : 0;
 			out.set(slotName("plant", p), plantFor(idleMin));
-			out.set(slotName("mugs", p), String(mugsFor(idleMin)));
+			out.set(slotName("mugs", p), String(mugsForIdle(idleMin)));
 		}
 		if (this.#greens.n > 0) out.set("kitchen:sign", fill(words.greens, { n: this.#greens.n })!);
 

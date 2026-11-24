@@ -52,13 +52,13 @@ export function passBeat(id: string, pose: string, pass: number, count: number, 
 	if (count <= 0 || pass < 1) return 0;
 	// Pass numbers run in sequence, and FNV-1a barely moves its top bits for a last digit that
 	// counts up: a finaliser spreads them so the share holds.
-	const rolls = (p: number) => mix(hash(`${id}|${pose}#${p}`)) / 0x1_0000_0000 < share;
+	const rolls = (p: number) => mixHash(hash(`${id}|${pose}#${p}`)) / 0x1_0000_0000 < share;
 	if (!rolls(pass) || (pass > 1 && rolls(pass - 1))) return 0;
-	return 1 + (mix(hash(`${id}|${pose}|${pass}|beat`)) % count);
+	return 1 + (mixHash(hash(`${id}|${pose}|${pass}|beat`)) % count);
 }
 
 /** A 32-bit finaliser (MurmurHash3's fmix32): every input bit moves every output bit. */
-function mix(h: number): number {
+function mixHash(h: number): number {
 	h ^= h >>> 16;
 	h = Math.imul(h, 0x85ebca6b);
 	h ^= h >>> 13;
