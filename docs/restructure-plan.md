@@ -5,6 +5,39 @@ mechanical commits. **Start once #37 (sound removed) has merged.** Every QA PR i
 has no audio steps. Run the steps on one branch, one at a time. Every step
 moves code without changing what it does.
 
+## Status (2026-11-23): run, with these left open
+
+The restructure PR ran the steps below one commit each, with tsc, the unit tests, Biome and knip
+after every one, and e2e plus a three-theme screenshot diff at the end. What changed from the
+plan as written:
+
+- **R0 ran last**, after the moves, so the moves stay readable and the format commit is the one
+  listed in `.git-blame-ignore-revs`. CI now runs `biome ci` with the formatter on.
+- **R5 is narrower.** `watcher/read.ts` holds `obj`, `str`, `num`, `count` and `optional`, and the
+  copies point at it. The other guards in `ledger.ts` are one-offs and stay inline.
+- **R4's `MIN`**: only the three duplicate `MIN = 60_000` constants moved; tuning values written
+  as `60_000` stay in their tuning objects. `office/light.ts mix` clamps, so it stays apart from
+  `shared/colour.ts mix`.
+- **R11**: `world/stations.ts` still imports `WorkKind` from `director/work.ts` (type only).
+- **R15 and R20: no single `ThemePack`.** A pack holding both painters (Pixi) and words and lines
+  (read by the Pixi-free director and sass) would pull Pixi into the Pixi-free layers. Each theme
+  is one folder instead, and the four registries keyed by `ThemeId` stay, each typed
+  `Record<ThemeId, …>` so a missing theme fails tsc.
+- **R22 covered all three themes** (palette, room, furniture, stage, outside per theme), and
+  **R26a–g** split `direct.ts`'s helpers into `director/direct/`.
+
+**Left open**, each needing more than a move, so each is its own PR:
+
+- **R14**: the office stops reading the snapshot (a small logic change, with tests).
+- **R19**: rewordings out of `sass/lines.ts` into each theme's lines (changes how banks are built;
+  snapshot each theme's bank first).
+- **R21**: the theme kit. The duplicated painters differ in literal geometry (`-70`, `-38`, `150`
+  against `DESK_TOP = -60`), so merging them is a pixel-checked change, not a move.
+- **R23 (rest), R24, R25, R26b (the `direct()` phases)**: `bakeryTheme`, `factoryTheme`,
+  `officeTheme`, `paperTheme`, the `Office` class and `direct()` are each one function or class
+  whose parts share closure or instance state. Splitting them means a refactor with its own
+  review, not a cut.
+
 ## Rules for every step
 
 

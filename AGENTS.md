@@ -69,23 +69,28 @@ only from the layers before it.
 |---|---|---|
 | snapshot | `src/watcher/model.ts`, the contract | nothing |
 | watcher | `src/watcher/` | the snapshot, `node:*` |
-| shared | `src/shared/`, code both processes run | the snapshot |
-| director | `src/scene/director*`, `src/scene/sass/` | the above, plus the Pixi-free floor plan (`src/scene/world/`) and rig data (`src/scene/rig/data/`) |
-| scene | `src/scene/office/`, `theme/`, `rig/` drawing | everything above |
-| app | `src/mainview/` (webview), `src/bun/` (main process; Pixi-free, reads `src/themes/ids.ts`) | everything above |
+| shared | `src/shared/` (code both processes run: hashes, time, colour, roles, the diary), `src/themes/ids.ts` | the snapshot |
+| floor plan, rig data | `src/scene/world/`, `src/scene/rig/data/`, `src/scene/contract.ts` | the above |
+| director | `src/scene/director*`, `src/scene/sass/`; each theme's words and lines | the above |
+| scene | `src/scene/office/`, `theme/`, `rig/`; each theme's painters in `src/themes/<id>/` | everything above |
+| app | `src/mainview/` (webview), `src/bun/` (main process) | everything above; `bun/` never imports `scene/` |
 
-- **Pixi-free layers stay Pixi-free.** Watcher, shared, director and sass are plain data and
-  logic, unit-tested without a browser. Biome fails CI on a `pixi.js` import there. Put new
-  logic in a Pixi-free module that returns data, and keep the drawing side thin.
-- **Drawing reads the director's `World`.** Scene code that needs to know about the snapshot
-  gets it from the director's output.
-- **Themes sit behind `SceneTheme`** (`theme/types.ts`) and the rig's `Theme`. They use the same
-  director and the same cast. Theme-specific behaviour belongs in the theme's painters,
-  `staging`, words or lines, keyed by `ThemeId`.
-- Run `hutch run lint` (Biome) and `hutch run knip` (unused files and dependencies) before a PR.
-  Biome's formatter isn't enforced yet, so leave formatting as you found it.
+- **Pixi-free layers stay Pixi-free.** Everything above "scene" is plain data and logic,
+  unit-tested without a browser; Biome fails CI on a `pixi.js` import there, and on any `scene/`
+  import from `watcher/`, `shared/` or `bun/` (`biome.json` overrides). Put new logic in a
+  Pixi-free module that returns data, and keep the drawing side thin.
+- **The director hands the scene its `World`**, and the types for it live in
+  `scene/contract.ts`. Drawing code takes them from there, not from the director's files.
+- **One folder per theme** (`src/themes/<id>/`): `scene.ts` assembles the `SceneTheme` from its
+  palette, rooms, furniture, stage and outside; `rig.ts` repaints the paper rig; `words.ts` and
+  `lines.ts` are its Pixi-free words. The registries that pick by `ThemeId` are
+  `scene/theme/index.ts`, `rig/themes.ts`, `theme/words.ts` and `sass/bank.ts`.
+- **One home per helper**: `shared/hash.ts`, `shared/time.ts`, `shared/colour.ts`,
+  `watcher/read.ts`, `watcher/model.ts flatSessions`. Import it; don't copy it.
+- `hutch run lint` (Biome lint and format; `hutch run format` fixes formatting) and
+  `hutch run knip` (unused files, dependencies and exports) must pass before a PR.
 
-Known breaks and the planned restructure: [`docs/architecture-review.md`](docs/architecture-review.md)
+Why it is this shape, and what's still open: [`docs/architecture-review.md`](docs/architecture-review.md)
 and [`docs/restructure-plan.md`](docs/restructure-plan.md).
 
 ## Layout
