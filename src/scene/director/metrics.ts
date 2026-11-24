@@ -16,6 +16,8 @@ import type { Agent, Changes, Context, ModelFamily, Session, Todos } from "../..
 import type { Queue } from "./errands";
 import { traitOf } from "./traits";
 import type { Actor } from "./types";
+import type { DeskProps, Drawers, Lamp, PlannerRow, Tray } from "../contract";
+export type { DeskProps, Drawers, Lamp, PlannerRow, Tray } from "../contract";
 
 export const METRICS = {
 	/** The in-tray: this many sheets when the context is full. */
@@ -45,20 +47,6 @@ function contextShare(c: Context | undefined): number | undefined {
 	return Math.max(0, Math.min(1, c.used / c.window));
 }
 
-/** The in-tray on the lead's desk. */
-export interface Tray {
-	/** Sheets on the pile: at least one while anything is in context. */
-	sheets: number;
-	/** Sheets slid off the pile onto the desk (0 below 80%). */
-	spill: number;
-	/** Past 95%: the lead is buried to the eyebrows. */
-	buried: boolean;
-	/** The lead has taken the pile to the shredder: the tray is empty until it's back. */
-	out?: boolean;
-	/** The lead is playing `buried`: the rig draws the tray and pile, so the office draws none. */
-	rig?: boolean;
-}
-
 /** The in-tray for a context: a few sheets to a teetering stack; none without a window. */
 export function trayFor(c: Context | undefined): Tray | undefined {
 	const share = contextShare(c);
@@ -82,14 +70,6 @@ export function skipLoad(removed: number): number {
 	return Math.min(METRICS.skipLoads, Math.max(1, Math.ceil(Math.log2(removed / METRICS.skipLines + 1))));
 }
 
-/** The filing drawers beside the desk. */
-export interface Drawers {
-	/** Drawers in the cabinet: one per ~10 files, at least one once a file is touched. */
-	drawers: number;
-	/** How many of them are full: those bulge open. */
-	full: number;
-}
-
 export function drawersFor(files: number): Drawers | undefined {
 	if (!(files > 0)) return undefined;
 	const drawers = Math.min(METRICS.maxDrawers, Math.ceil(files / METRICS.filesPerDrawer));
@@ -98,8 +78,6 @@ export function drawersFor(files: number): Drawers | undefined {
 
 /** Mugs on the desk: a whole cup of coffee (sass/detect.ts `cups`, from cost) is a mug. */
 export const mugsFor = (s: Session): number => Math.min(METRICS.maxMugs, Math.floor(cups(s)));
-
-export type Lamp = "green" | "red";
 
 /** The last test result among a session's members: its time and colour, or the last one seen. */
 export function lampFor(members: { commands?: Session["commands"] }[], was?: { lamp?: Lamp; at?: number }): { lamp?: Lamp; at?: number } {
@@ -127,17 +105,6 @@ const familyWord = (f: ModelFamily | undefined): string => traitOf(f).word;
 
 // --- A desk's things, as the office draws them -------------------------------------------------
 
-export interface DeskProps {
-	tray?: Tray;
-	/** The model family, as a word for the name card's last line. */
-	word?: string;
-	drawers?: Drawers;
-	/** The skip of removed lines: 0 (none) to 5. */
-	skip: number;
-	mugs: number;
-	lamp?: Lamp;
-}
-
 /** What the director remembers per desk between snapshots, besides what it shows. */
 interface DeskState extends DeskProps {
 	/** Compactions seen: one more is a trip to the shredder. */
@@ -146,14 +113,6 @@ interface DeskState extends DeskProps {
 	todos?: Todos;
 	/** When the lamp's test result came in. */
 	testAt?: number;
-}
-
-/** One session's notes on its room's planner, by column. */
-export interface PlannerRow {
-	session: string;
-	pending: number;
-	active: number;
-	done: number;
 }
 
 /** Your office: who holds which ticket, the next number, and the lowest ticket in the queue. */
