@@ -7,7 +7,6 @@ import type { Slot } from "./world";
 import type { Cue, Who } from "../contract";
 
 export type { Slot };
-export type { Cue, Mood, Point, Walk, Who } from "../contract";
 
 export interface Character {
 	/** Added to the office's depth-sorted layer. The office sets its zIndex from the slot's depth. */

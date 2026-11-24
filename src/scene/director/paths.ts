@@ -3,7 +3,7 @@
 // on the hallway and are entered through that wall's door. A walk between two areas is: out of the
 // first area (across its open edge, or through its door), along the middle of the hallway, and
 // into the second the same way. A walk inside one area is a straight line. Pure data, no Pixi.
-import type { Point } from "../office/slot";
+import type { Point } from "../contract";
 import type { Area, World as Floor } from "../office/world";
 
 export type { Point };

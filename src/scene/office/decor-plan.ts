@@ -22,7 +22,7 @@ import { diaryRegular, regularNamesFor } from "../rig/roles";
 import type { Phase } from "./daylight";
 import type { SignText } from "../theme/words";
 import type { SceneTheme } from "../theme/types";
-import type { Who } from "./slot";
+import type { Who } from "../contract";
 import type { Area } from "./world";
 
 /** A regular is recognised (its name shows on its desk card or task tag) once the diary has seen

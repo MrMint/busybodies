@@ -9,7 +9,7 @@
 import type { Agent, Session, Snapshot } from "../../watcher/model";
 import { roleFor } from "../rig/roles";
 import { seats } from "./layout";
-import type { Cue, Mood, Who } from "./slot";
+import type { Cue, Mood, Who } from "../contract";
 import { type Slot, type World, crewSlot } from "./world";
 
 export interface Placed {

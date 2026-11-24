@@ -3,8 +3,8 @@
 // a theme says what the floor, walls, furniture, stations and props look like, and what the places
 // are called. Plan: docs/plan-next.md stream D.
 import type { Container, Graphics } from "pixi.js";
-import type { Lamp, PlannerRow, Tray } from "../director/metrics";
-import type { Who } from "../office/slot";
+import type { Lamp, PlannerRow, Tray } from "../contract";
+import type { Who } from "../contract";
 import type { Phase } from "../office/daylight";
 import type { Area, AreaKind, Band, Fixture, Rect } from "../office/world";
 import type { SceneStaging } from "../office/staging";

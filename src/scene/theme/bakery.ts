@@ -15,7 +15,7 @@
 // tester's stand, web the order phone, the outbox the pick-up shelf of boxes, the shredder the crumb
 // bin. Still cut paper: flat shapes and the same ink, so the cast reads the same as in the office.
 import { Container, Graphics } from "pixi.js";
-import type { Lamp, PlannerRow, Tray } from "../director/metrics";
+import type { Lamp, PlannerRow, Tray } from "../contract";
 import { GREEN, INK, RED, SHADOW, type SignStyle, batched, hash, label, line, signboard, wob } from "../office/paper";
 import { MONITOR, PROPS } from "../office/propspots";
 import type { SceneStaging } from "../office/staging";

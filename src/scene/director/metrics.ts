@@ -17,7 +17,6 @@ import type { Queue } from "./errands";
 import { traitOf } from "./traits";
 import type { Actor } from "./types";
 import type { DeskProps, Drawers, Lamp, PlannerRow, Tray } from "../contract";
-export type { DeskProps, Drawers, Lamp, PlannerRow, Tray } from "../contract";
 
 export const METRICS = {
 	/** The in-tray: this many sheets when the context is full. */

@@ -3,7 +3,8 @@
 // and baked into a texture that every character with that look shares, so a crowd batches into a
 // few draw calls instead of one vector draw per body; the bounce moves the sprite.
 import { Container, Rectangle, type Renderer, Sprite, type Texture } from "pixi.js";
-import type { Character, CharacterFactory, Who } from "../scene/office/slot";
+import type { Character, CharacterFactory } from "../scene/office/slot";
+import type { Who } from "../scene/contract";
 import type { Slot } from "../scene/office/world";
 import { Busybody } from "./busybody";
 

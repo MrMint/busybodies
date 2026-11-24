@@ -1,6 +1,6 @@
 // The director's words: who is on stage, what each one is doing, and what changed. Pure data, so a
 // world can be compared, logged and replayed.
-import type { Cue, Mood, Walk, Who } from "../office/slot";
+import type { Cue, Mood, Walk, Who } from "../contract";
 import type { Slot } from "../office/world";
 import type { HandOff, Mail } from "./handoff";
 import type { Pending } from "./beats";

@@ -3,7 +3,7 @@
 // says when they redraw. Desk props are drawn around the desk front's centre; propspots.ts says
 // where each goes.
 import { Container } from "pixi.js";
-import type { DeskProps, PlannerRow } from "../director/metrics";
+import type { DeskProps, PlannerRow } from "../contract";
 import type { SceneTheme } from "../theme/types";
 
 

@@ -10,7 +10,7 @@
 import { seats } from "../office/layout";
 import { LEAD_SIZE, crewSize } from "../office/placement";
 import { habitsFor } from "../office/staging";
-import type { Mood } from "../office/slot";
+import type { Mood } from "../contract";
 import type { Area, Slot, World as Floor } from "../office/world";
 import { OVERLAP, buildSlot, crewPlaces, crewSlot, crewSpots, endGaps, useFor, yieldFrom } from "../office/world";
 import { choosePose, hash } from "../rig/player";

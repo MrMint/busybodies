@@ -8,7 +8,8 @@
 // everyone is); a change of direction is a quick front-facing turn, not a mirror flip; and on
 // arrival the walker plants for a beat, looking ahead, before its eyes go to the job.
 import { along, heading, lookMs } from "../director/paths";
-import type { Character, CharacterFactory, Cue, Mood, Slot, Who } from "../office/slot";
+import type { Character, CharacterFactory, Slot } from "../office/slot";
+import type { Cue, Mood, Who } from "../contract";
 import { setDepth } from "../office/depth";
 import type { Atlas } from "./atlas";
 import { choosePose, hash } from "./player";
