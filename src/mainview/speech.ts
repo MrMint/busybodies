@@ -42,6 +42,8 @@ export interface SpeechHost {
 	graceMs?: number;
 	/** How characters sound (`?voice=`); "synth" by default. */
 	mode?: VoiceMode;
+	/** A key beat is about to speak from `at` for `secs`: other beds (the music) dip under it. */
+	onFront?(at: number, secs: number): void;
 }
 
 /** What the lab can turn while it plays (mainview/lab.ts). */
@@ -393,6 +395,7 @@ export class Speech {
 		if (layer === "front") {
 			this.#host.sound.duck(at, secs);
 			this.#crowd?.duck(at, secs);
+			this.#host.onFront?.(at, secs);
 			if (this.#room) {
 				const g = this.#room.out.gain;
 				g.cancelScheduledValues(ctx.currentTime);

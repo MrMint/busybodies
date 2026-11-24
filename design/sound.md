@@ -69,6 +69,13 @@ everyone working: intentional, never cut off, never on top of you. So a phrase i
 (stopped at a word, the last syllable trailing off over about 120 ms), key beats sit in the crowd
 rather than over it, and individual babble comes only from the room you're looking at.
 
+**The synth bed is out; a music bed is on trial (owner, 2026-11-23).** The voices worked; the
+room tone, ambience and work rhythm didn't. The candidate is music: a calm and a busy take of one
+piece in the voices' key (C major pentatonic) and tempo (88 bpm), looping together and leaning from
+calm to busy as the office heats up (mainview/musicbed.ts), under the voices. Five styles were
+auditioned with Lyria 3 Clip on Vertex (tools/music.ts; felt piano, music box, chamber, lo-fi,
+ambient); hear them at `/music` on the listen server, or under the office with `&music=<style>`.
+
 ## The sound lab
 
 `?demo&sound&lab` adds a timeline of its own (crew chatter every few seconds, a key beat every 20

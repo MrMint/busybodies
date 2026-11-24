@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Music beds</title>
+<style>
+	:root { --bg: #faf7f2; --fg: #2b2622; --muted: #8a8079; --line: #e6ded4; --chip: #fff; --keep: #2f8a4c; --maybe: #b98a1b; --no: #c0492f; --hl: #f1e7d8; }
+	@media (prefers-color-scheme: dark) { :root { --bg: #1d1a18; --fg: #eee6dc; --muted: #9c9189; --line: #3a3430; --chip: #2a2623; --keep: #5cc47d; --maybe: #e3b84d; --no: #f0775c; --hl: #322c28; } }
+	* { box-sizing: border-box; }
+	body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 -apple-system, system-ui, sans-serif; }
+	header { position: sticky; top: 0; background: var(--bg); border-bottom: 1px solid var(--line); padding: 12px 16px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; z-index: 1; }
+	h1 { font-size: 16px; margin: 0; }
+	.muted { color: var(--muted); font-size: 12px; }
+	main { padding: 8px 16px 48px; max-width: 920px; }
+	.style { border-bottom: 1px solid var(--line); padding: 14px 0; }
+	.style.on { background: var(--hl); }
+	.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+	h2 { font-size: 15px; margin: 0 8px 0 0; }
+	button { font: inherit; color: inherit; background: var(--chip); border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+	button.sel.keep { background: var(--keep); color: #fff; border-color: var(--keep); }
+	button.sel.maybe { background: var(--maybe); color: #fff; border-color: var(--maybe); }
+	button.sel.no { background: var(--no); color: #fff; border-color: var(--no); }
+	.cap { color: var(--muted); font-size: 12px; margin-top: 6px; }
+	input[type=range] { width: 160px; }
+	textarea { width: 100%; min-height: 56px; font: inherit; color: inherit; background: var(--chip); border: 1px solid var(--line); border-radius: 6px; padding: 6px; margin-top: 12px; }
+</style>
+</head>
+<body>
+<header>
+	<h1>Music beds</h1>
+	<label class="muted">Level <input id="level" type="range" min="0" max="1" step="0.01" value="0.5"></label>
+	<label class="muted"><input id="loop" type="checkbox" checked> loop</label>
+	<button id="stop" type="button">stop</button>
+	<span class="muted">Each style comes as a calm and a busy take in one key and tempo. "Calm → busy" fades from one into the other over 6 s, the way the office would as it gets busy.</span>
+</header>
+<main>
+	<div id="list"></div>
+	<label class="muted" for="notes">Notes</label>
+	<textarea id="notes" placeholder="What works, what doesn't..."></textarea>
+</main>
+<script>
+	const $ = (id) => document.getElementById(id);
+	const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+	let data, ctx, master, playing = [], current;
+	const buffers = new Map();
+	const audio = () => {
+		if (!ctx) { ctx = new AudioContext(); master = ctx.createGain(); master.gain.value = Number($("level").value); master.connect(ctx.destination); }
+		if (ctx.state !== "running") ctx.resume();
+		return ctx;
+	};
+	const buffer = (file) => {
+		if (!buffers.has(file)) buffers.set(file, fetch(`/clip/${encodeURIComponent(file)}`).then((r) => r.arrayBuffer()).then((b) => audio().decodeAudioData(b)));
+		return buffers.get(file);
+	};
+	function stop() {
+		for (const p of playing) { try { p.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.15); p.src.stop(ctx.currentTime + 1); } catch {} }
+		playing = [];
+		current = undefined;
+		document.querySelectorAll(".style.on").forEach((e) => e.classList.remove("on"));
+	}
+	async function play(style, mode) {
+		stop();
+		const c = audio();
+		const files = ["calm", "busy"].map((m) => data.clips[`music/${data.theme}/${style}-${m}.mp3`]?.file);
+		const [calm, busy] = await Promise.all(files.map((f) => (f ? buffer(f) : undefined)));
+		const at = c.currentTime + 0.05;
+		const start = (buf, level) => {
+			const src = c.createBufferSource();
+			src.buffer = buf;
+			src.loop = $("loop").checked;
+			const gain = c.createGain();
+			gain.gain.value = level;
+			src.connect(gain).connect(master);
+			src.start(at);
+			playing.push({ src, gain });
+			return gain;
+		};
+		if (mode === "calm" && calm) start(calm, 1);
+		else if (mode === "busy" && busy) start(busy, 1);
+		else if (mode === "fade" && calm && busy) {
+			const a = start(calm, 1), b = start(busy, 0);
+			a.gain.setValueAtTime(1, at + 6); a.gain.linearRampToValueAtTime(0, at + 12);
+			b.gain.setValueAtTime(0, at + 6); b.gain.linearRampToValueAtTime(1, at + 12);
+		}
+		current = style;
+		document.querySelector(`[data-style="${style}"]`)?.classList.add("on");
+	}
+	async function pick(style, value) {
+		data.picks[style] = data.picks[style] === value ? undefined : value;
+		await fetch("/music/pick", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ style, value: data.picks[style] ?? null }) });
+		render();
+	}
+	function render() {
+		const styles = [...new Set(Object.values(data.clips).filter((c) => c.theme === data.theme).map((c) => c.style))];
+		$("list").innerHTML = styles.map((s) => {
+			const calm = data.clips[`music/${data.theme}/${s}-calm.mp3`], busy = data.clips[`music/${data.theme}/${s}-busy.mp3`];
+			const p = data.picks[s];
+			return `<div class="style ${current === s ? "on" : ""}" data-style="${s}"><div class="row"><h2>${esc(s)}</h2>
+				<button type="button" data-play="calm" data-s="${s}" ${calm ? "" : "disabled"}>▶ calm</button>
+				<button type="button" data-play="busy" data-s="${s}" ${busy ? "" : "disabled"}>▶ busy</button>
+				<button type="button" data-play="fade" data-s="${s}" ${calm && busy ? "" : "disabled"}>▶ calm → busy</button>
+				<span style="flex:1"></span>
+				${["keep", "maybe", "no"].map((v) => `<button type="button" class="${v} ${p === v ? "sel" : ""}" data-pick="${v}" data-s="${s}">${v === "keep" ? "✓ keep" : v === "maybe" ? "? maybe" : "✗ no"}</button>`).join("")}</div>
+				<div class="cap">calm: ${esc((calm?.caption ?? "").replace(/^<instrumental>Caption:\s*/, "").slice(0, 220))}</div>
+				<div class="cap">busy: ${esc((busy?.caption ?? "").replace(/^<instrumental>Caption:\s*/, "").slice(0, 220))}</div></div>`;
+		}).join("");
+	}
+	$("list").addEventListener("click", (e) => {
+		const b = e.target.closest("button"); if (!b) return;
+		if (b.dataset.play) play(b.dataset.s, b.dataset.play);
+		if (b.dataset.pick) pick(b.dataset.s, b.dataset.pick);
+	});
+	$("stop").onclick = stop;
+	$("level").oninput = () => master && master.gain.setTargetAtTime(Number($("level").value), ctx.currentTime, 0.05);
+	let t;
+	$("notes").oninput = () => { clearTimeout(t); t = setTimeout(() => fetch("/music/pick", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ notes: $("notes").value }) }), 400); };
+	fetch("/music.json").then((r) => r.json()).then((d) => { data = d; $("notes").value = d.notes ?? ""; render(); });
+</script>
+</body>
+</html>

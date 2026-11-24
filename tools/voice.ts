@@ -34,6 +34,7 @@ import { dirname, join, relative } from "node:path";
 import { type GrainClip, type Take, VOICED, corpus, lineKey, type ThemeVoices, type VoiceLine, type VoiceManifest, voicesFor } from "../src/scene/sass/voiced";
 import type { TriggerKind } from "../src/scene/sass/types";
 import { sliceGrains } from "./voice-grains";
+import { loadMusic, saveMusic } from "./music";
 import { hash } from "../src/scene/sass/types";
 import { THEME_IDS, type ThemeId } from "../src/scene/theme/id";
 import { CAST, type CastVoice, DELIVERIES, MOCHI_SPEAK, PREBUILT, REACTIONS, promptFor } from "./voice-cast";
@@ -607,6 +608,7 @@ function cmdListen(): void {
 	const port = Number(opt("port", "4477"));
 	const page = readFileSync(join(import.meta.dir, "voice-listen.html"), "utf8");
 	const auditionPage = readFileSync(join(import.meta.dir, "voice-audition.html"), "utf8");
+	const musicPage = readFileSync(join(import.meta.dir, "voice-music.html"), "utf8");
 	// The app's own babble, bundled for the audition page, so what you hear there is what the app makes.
 	const babbleJs = Bun.build({ entrypoints: [join(import.meta.dir, "voice-babble.ts")], target: "browser" }).then(async (b) => {
 		if (!b.success) throw new Error(b.logs.join("\n"));
@@ -623,10 +625,30 @@ function cmdListen(): void {
 				const cors = { "access-control-allow-origin": "*" };
 				if (url.pathname === "/lab/voice/manifest.json") return Response.json(await labManifest(), { headers: cors });
 				if (url.pathname === "/lab/ambience/sources.json") return Response.json([], { headers: cors });
+				// The music beds, for the lab's ?music=<style> (mainview/musicbed.ts).
+				if (url.pathname.startsWith("/lab/music/")) {
+					const rel = decodeURIComponent(url.pathname.slice("/lab/".length));
+					if (rel.includes("..")) return new Response("no", { status: 400, headers: cors });
+					const f = Bun.file(join(WORK, rel));
+					return (await f.exists()) ? new Response(f, { headers: { ...cors, "content-type": "audio/mpeg" } }) : new Response("not found", { status: 404, headers: cors });
+				}
 				const rel = decodeURIComponent(url.pathname.slice("/lab/voice/".length));
 				if (!url.pathname.startsWith("/lab/voice/") || rel.includes("..")) return new Response("no", { status: 400, headers: cors });
 				const f = Bun.file(join(WORK, rel));
 				return (await f.exists()) ? new Response(f, { headers: { ...cors, "content-type": "audio/webm" } }) : new Response("not found", { status: 404, headers: cors });
+			}
+			if (url.pathname === "/music") return new Response(musicPage, { headers: { "content-type": "text/html; charset=utf-8" } });
+			if (url.pathname === "/music.json") return Response.json({ theme: url.searchParams.get("theme") ?? "office", ...loadMusic() });
+			if (url.pathname === "/music/pick" && req.method === "POST") {
+				const { style, value, notes } = (await req.json()) as { style?: string; value?: "keep" | "maybe" | "no" | null; notes?: string };
+				const m = loadMusic();
+				if (style) {
+					if (value && ["keep", "maybe", "no"].includes(value)) m.picks[style] = value;
+					else delete m.picks[style];
+				}
+				if (typeof notes === "string") m.notes = notes.slice(0, 2000);
+				saveMusic(m);
+				return Response.json({ ok: true });
 			}
 			if (url.pathname === "/audition") return new Response(auditionPage, { headers: { "content-type": "text/html; charset=utf-8" } });
 			if (url.pathname === "/babble.js") return new Response(await babbleJs, { headers: { "content-type": "text/javascript" } });
@@ -673,7 +695,7 @@ function cmdListen(): void {
 			return new Response("not found", { status: 404 });
 		},
 	});
-	console.log(`voice: takes at http://127.0.0.1:${server.port}/ and auditions at http://127.0.0.1:${server.port}/audition (ctrl-c to stop)`);
+	console.log(`voice: takes at http://127.0.0.1:${server.port}/, auditions at /audition, music beds at /music (ctrl-c to stop)`);
 }
 
 if (import.meta.main) {

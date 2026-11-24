@@ -15,6 +15,7 @@ import { watchVisibility } from "./visibility";
 import { Sound } from "./sound";
 import { Speech } from "./speech";
 import { WorkSound } from "./worksound";
+import { MusicBed } from "./musicbed";
 import { voiceMode } from "../scene/sass/voiced";
 import { type Bridge, installShell } from "./shell";
 import { placeholders } from "./placeholder";
@@ -141,6 +142,7 @@ function blank(): void {
 		sound?.update();
 		speech?.update();
 		work?.update();
+		music?.update();
 		if (!visible) {
 			hiddenAt = performance.now();
 			app.ticker.stop();
@@ -160,6 +162,7 @@ function blank(): void {
 		sound?.update();
 		speech?.update();
 		work?.update();
+		music?.update();
 		// Life on or off changes how idle habits run: direct again, not just redraw.
 		if (scene.current) scene.direct();
 		else scene.redraw();
@@ -182,6 +185,7 @@ function blank(): void {
 		sound?.hear(events, world);
 		// Sound's context starts running a moment after it is made: the work layer joins it then.
 		work?.update();
+		music?.update();
 	});
 	// Voiced lines (src/mainview/speech.ts): clips that shipped, babble for the rest, on key beats
 	// only, through Sound's context; ?voice= picks how characters sound (sass/voiced.ts
@@ -202,8 +206,12 @@ function blank(): void {
 				base: params.get("voicebase") ?? "",
 				graceMs: params.has("speechgrace") ? Number(params.get("speechgrace")) : undefined,
 				mode: voiceMode(params.get("voice")),
+				onFront: (at, secs) => music?.duck(at, secs),
 			})
 		: undefined;
+	// The music bed (src/mainview/musicbed.ts), on trial: ?music=<style> loops that style's calm and
+	// busy takes from ?voicebase (tools/voice.ts listen), leaning toward busy as the office heats up.
+	const music = sound && params.get("music") ? new MusicBed({ sound, theme: () => theme, base: params.get("voicebase") ?? "", style: params.get("music")! }) : undefined;
 	// Work sounds (src/mainview/worksound.ts): every busy character's work, the main body of the
 	// office's sound, through Sound's context like the voices. While the sound design is being
 	// decided (design/sound.md) they play only with ?work, ?lab or a ?voice= other than the synth.
@@ -225,6 +233,7 @@ function blank(): void {
 			startLab({
 				speech,
 				work,
+				music,
 				theme: () => theme,
 				cast: () => Object.values(director.world?.actors ?? {}).filter((a) => !a.gone).map((a) => a.key),
 				say: (key, text) => office.say(key, text, "said"),
@@ -240,6 +249,7 @@ function blank(): void {
 		else sound?.update();
 		speech?.update();
 		work?.update();
+		music?.update();
 		// Life on or off changes how idle habits run: direct again, not just redraw.
 		if (scene.current) scene.direct();
 		else scene.redraw();
@@ -328,6 +338,7 @@ function blank(): void {
 		sound?.themeChanged();
 		speech?.update();
 		work?.update();
+		music?.update();
 		direct();
 		scene.redraw();
 	};

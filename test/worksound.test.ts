@@ -59,3 +59,35 @@ describe("work sounds", () => {
 		for (const t of THEME_IDS) expect(Object.keys(PALETTE[t]).sort()).toEqual(["chirp", "drop", "flip", "machine", "riffle", "shred", "stamp", "type"]);
 	});
 });
+
+describe("the music bed and Lyria's answers", async () => {
+	const { busyShare } = await import("../src/mainview/musicbed");
+	const { audioOfStream, musicBody, promptOf, STYLES } = await import("../tools/music");
+
+	test("the bed leans from calm to busy with the heat, eased and whole by 0.7", () => {
+		expect(busyShare(0)).toBe(0);
+		expect(busyShare(0.7)).toBe(1);
+		expect(busyShare(1)).toBe(1);
+		expect(busyShare(0.35)).toBeCloseTo(0.5, 5);
+		expect(busyShare(0.1)).toBeLessThan(0.1);
+	});
+
+	test("a Lyria request is stateless and streamed, one key and tempo for every style", () => {
+		const b = musicBody("lyria-3-clip-preview", "x");
+		expect(b.store).toBe(false);
+		expect(b.stream).toBe(true);
+		for (const s of Object.keys(STYLES)) for (const m of ["calm", "busy"] as const) expect(promptOf("office", s, m)).toContain("Key of C major");
+	});
+
+	test("the audio and caption come out of a stream of content deltas", () => {
+		const sse = [
+			'data: {"event_type":"interaction.start"}',
+			'data: {"event_type":"content.delta","delta":{"type":"text","text":"<instrumental>Caption: soft"}}',
+			'data: {"event_type":"content.delta","delta":{"type":"audio","mime_type":"audio/mpeg","data":"AAAA"}}',
+			'data: {"event_type":"content.delta","delta":{"type":"audio","data":"BBBB"}}',
+			"data: [DONE]",
+		].join("\n");
+		expect(audioOfStream(sse)).toEqual({ data: "AAAABBBB", mime: "audio/mpeg", caption: "<instrumental>Caption: soft" });
+		expect(audioOfStream('data: {"event_type":"interaction.complete"}')).toBeUndefined();
+	});
+});
