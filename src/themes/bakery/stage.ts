@@ -6,7 +6,8 @@ import type { SceneStaging } from "../../scene/world/staging";
 import type { StagePainters } from "../../scene/theme/types";
 import { BRASS, CANDY, CHERRY, CHOC, HEAT, IVORY, LEMON, LILAC, MINT, MINT_LIGHT, PINK, PINK_LIGHT, RASPBERRY } from "./palette";
 import { croissant, cupcake, donut, eclair, loaf, macaron } from "./pastries";
-import { awning, thin } from "./scene";
+import { thin } from "./scene";
+import { awning } from "./room";
 
 // --- The crew build -------------------------------------------------------------------------------
 

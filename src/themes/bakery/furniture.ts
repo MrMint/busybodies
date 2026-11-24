@@ -9,7 +9,8 @@ import type { FurnitureKind } from "../../scene/theme/types";
 import { mix } from "../../shared/colour";
 import { BRASS, BRICK, BRICK_DARK, CANDY, CHERRY, CHOC, CHOC_DARK, CHROME, CHROME_DARK, COPPER, CREAM, CRUST_LIGHT, DOUGH, GLASS, HEAT, IVORY, LEMON, LILAC, MARBLE, MINT, MINT_LIGHT, PINK, PINK_LIGHT, RASPBERRY, WOOD, WOOD_DARK } from "./palette";
 import { baguette, croissant, cup, cupcake, donut, eclair, layerCake, loaf, lollipop, macaron, oval, painAuChocolat } from "./pastries";
-import { awning, candyJar, scallops, thin } from "./scene";
+import { thin } from "./scene";
+import { awning, candyJar, scallops } from "./room";
 
 // --- Desk props ---------------------------------------------------------------------------------
 

@@ -6,7 +6,8 @@ import type { Band, Rect } from "../../scene/world/world";
 import { mix } from "../../shared/colour";
 import { CANDY, CHALK, CHERRY, MARBLE, RASPBERRY, WOOD, WOOD_DARK } from "./palette";
 import { cup, cupcake, lollipop } from "./pastries";
-import { scallops, thin } from "./scene";
+import { thin } from "./scene";
+import { scallops } from "./room";
 
 // --- The café terrace -------------------------------------------------------------------------
 
