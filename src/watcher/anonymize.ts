@@ -5,6 +5,7 @@
 // count-only fields (context, changes, todos, tool rate) are rebuilt field by field, so nothing
 // but their numbers and a known model family can ride along.
 import type { Agent, Changes, Context, ModelFamily, PullRequest, RunningTool, Session, Snapshot, Todos, ToolRate } from "./model";
+import { count } from "./read";
 
 /** Recordings start at this instant, whatever day they were made. */
 export const RECORDING_EPOCH = Date.parse("2030-01-07T09:00:00Z");
@@ -19,7 +20,7 @@ const MODELS = /^(opus|sonnet|haiku|fable|claude-[a-z0-9.-]+|inherit)$/i;
 const FAMILIES = new Set<ModelFamily>(["fable", "opus", "sonnet", "haiku", "other"]);
 
 /** A count: a finite, non-negative whole number, or 0. */
-const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? Math.round(v) : 0);
+const n = (v: unknown) => Math.round(count(v));
 const family = (f: unknown) => (FAMILIES.has(f as ModelFamily) ? { family: f as ModelFamily } : {});
 const changes = (c: Changes): Changes => ({ files: n(c.files), added: n(c.added), removed: n(c.removed) });
 const todos = (t: Todos): Todos => ({ pending: n(t.pending), active: n(t.active), done: n(t.done) });

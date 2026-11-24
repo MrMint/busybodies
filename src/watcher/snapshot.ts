@@ -22,6 +22,7 @@ import {
 	projectOf,
 	projectSlug,
 } from "./sources";
+import { optional } from "./read";
 
 /** An unfinished agent whose transcript has been quiet this long is shown as stalled. */
 export const STALL_MS = 30 * 60 * 1000;
@@ -270,8 +271,6 @@ async function nestedDirs(root: string, depth: number): Promise<string[]> {
 	return level;
 }
 
-const optional = <K extends string, V>(key: K, value: V | undefined) =>
-	(value === undefined ? {} : { [key]: value }) as { [P in K]?: V };
 
 /**
  * Waiting on the person: the hook's last word for this session was a prompt that nothing has

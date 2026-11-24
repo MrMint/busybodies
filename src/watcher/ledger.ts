@@ -11,6 +11,7 @@
 import { open, stat } from "node:fs/promises";
 import type { ApiRetry, Changes, CommandKind, CommandResult, Commands, Compactions, Context, ModelFamily, PullRequest, RunningTool, Todos, ToolRate } from "./model";
 import { contextWindow, modelFamily } from "./models";
+import { count, optional } from "./read";
 
 /** A first read starts no further back than this, so one huge transcript can't stall a rebuild. */
 const FIRST_READ_MAX = 32 * 1024 * 1024;
@@ -212,10 +213,9 @@ export class TranscriptLedger {
 		const req = typeof r.requestId === "string" ? r.requestId : undefined;
 		const u = msg.usage ?? {};
 		this.#count(req, typeof u.output_tokens === "number" ? u.output_tokens : 0);
-		const tok = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : 0);
 		this.#response(
 			typeof msg.model === "string" ? msg.model : undefined,
-			typeof u.input_tokens === "number" ? tok(u.input_tokens) + tok(u.cache_read_input_tokens) + tok(u.cache_creation_input_tokens) : undefined,
+			typeof u.input_tokens === "number" ? count(u.input_tokens) + count(u.cache_read_input_tokens) + count(u.cache_creation_input_tokens) : undefined,
 			at,
 			r.isSidechain === true,
 		);
@@ -400,8 +400,6 @@ export class TranscriptLedger {
 	}
 }
 
-const optional = <K extends string, V>(key: K, value: V | undefined) =>
-	(value === undefined ? {} : { [key]: value }) as { [P in K]?: V };
 
 /** Adds a time and drops those older than the rate window before the newest one. */
 function push(list: number[], at: number): void {
