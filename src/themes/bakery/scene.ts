@@ -21,63 +21,12 @@ import { MONITOR, PROPS } from "../../scene/world/propspots";
 import type { SceneStaging } from "../../scene/world/staging";
 import { type Area, type Band, DESK_TOP, type Rect } from "../../scene/world/world";
 import { crewBuild } from "../../scene/theme/build";
-import { NIGHT_WATCH, ROOM_COLOURS } from "../office/scene";
+import { NIGHT_WATCH } from "../office/scene";
 import type { FurnitureKind, SceneLight, SceneTheme, StagePainters } from "../../scene/theme/types";
 import type { SignText } from "../../scene/theme/words";
 import { BAKERY_WORDS } from "./words";
 import { mix } from "../../shared/colour";
-
-// --- Paint ------------------------------------------------------------------------------------
-
-const CREAM = 0xfff6e6;
-const IVORY = 0xfffaf0;
-const PINK = 0xff9ec4;
-const PINK_LIGHT = 0xffd3e4;
-const RASPBERRY = 0xe8507a;
-const MINT = 0x9fe3c8;
-const MINT_LIGHT = 0xd5f5e8;
-const LILAC = 0xcdb8ff;
-const LEMON = 0xfff08a;
-const BLUEBERRY = 0x6f86ec;
-const ORANGE = 0xffa34d;
-const CHOC = 0x7a4a33;
-const CHOC_DARK = 0x4f2e22;
-const CRUST = 0xe09a48;
-const CRUST_LIGHT = 0xf4c27a;
-const CRUST_DARK = 0xb06a2e;
-const DOUGH = 0xf0c48a;
-const CHERRY = 0xe8384f;
-const CHROME = 0xe3e8f0;
-const CHROME_DARK = 0x8d97a8;
-const BRASS = 0xe8b84a;
-const COPPER = 0xd9824a;
-const BRICK = 0xc96a4f;
-const BRICK_DARK = 0x9c4b38;
-const WOOD = 0xd9a066;
-const WOOD_DARK = 0xa8703f;
-const MARBLE = 0xf7f4f0;
-const GLASS = 0xe6f6ff;
-const HEAT = 0xffb347;
-const CHALK = 0x34584a;
-
-/** Sprinkles, icings, macaron shells, boxes: the bakery's candy colours, in turn. */
-const CANDY = [PINK, MINT, LEMON, LILAC, BLUEBERRY, ORANGE] as const;
-
-/** The common rooms' wall and floor colours, as the project rooms' (themes/office/scene.ts ROOM_COLOURS):
- * the wall carries the colour, the floor is a pale tint of it. The tasting table pink, the shop
- * front butter, the pick-up counter mint, the café latte, a vacant room in dust sheets. */
-const COMMON: Record<Exclude<Area["kind"], "project">, [number, number]> = {
-	meeting: [0xffcfe0, 0xfff0f5],
-	lobby: [0xffe6a0, 0xfff9e4],
-	yours: [0xbfecd6, 0xecf9f2],
-	kitchen: [0xecd3bb, 0xfbf3ea],
-	vacant: [0xe3e6ee, 0xf2f3f7],
-};
-
-/** A room's wall and floor: the project's colour on the wall, a pale tint of it on the floor. */
-function coloursOf(a: Area): [wall: number, floor: number] {
-	return a.kind === "project" ? ROOM_COLOURS[a.hue % ROOM_COLOURS.length]! : COMMON[a.kind];
-}
+import { BLUEBERRY, BRASS, BRICK, BRICK_DARK, CANDY, CHALK, CHERRY, CHOC, CHOC_DARK, CHROME, CHROME_DARK, COPPER, CREAM, CRUST, CRUST_DARK, CRUST_LIGHT, DOUGH, GLASS, HEAT, IVORY, LEMON, LILAC, MARBLE, MINT, MINT_LIGHT, PINK, PINK_LIGHT, RASPBERRY, WOOD, WOOD_DARK, coloursOf } from "./palette";
 
 /** Under a project room's desks: a rug a step deeper than its checks, edged in a deeper shade of
  * its wall, so the room reads as its project's from the whole-office stop (as the office's). */
@@ -86,7 +35,6 @@ function rugOf(a: Area): { fill: number; edge: number } | undefined {
 	const [wall, floor] = coloursOf(a);
 	return { fill: mix(floor, wall, 0.4), edge: mix(wall, RASPBERRY, 0.3) };
 }
-
 
 const thin = (w: number) => ({ width: w, color: INK, join: "round" as const, cap: "round" as const });
 
