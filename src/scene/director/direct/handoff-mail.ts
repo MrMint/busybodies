@@ -11,7 +11,8 @@ import type { Actor, WorldEvent } from "../types";
 import type { Spec } from "./specs";
 import type { Place } from "./places";
 import type { Choice } from "./choice";
-import { type Pre, here, stationKind } from "../direct";
+import { here } from "../direct";
+import { type Pre, stationKind } from "./station-trips";
 
 /** How long a PR's celebration lasts, the longer of its two parts. */
 export const celebrateMs = () => Math.max(poseMs("celebrate", "lead"), poseMs("celebrate", "partner"));

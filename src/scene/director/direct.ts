@@ -9,16 +9,16 @@ import type { Snapshot } from "../../watcher/model";
 import { beat, flourishAfter, overlapOf } from "./beats";
 import { habitAt } from "./habits";
 import { dodges } from "./dodge";
-import { atYourDoor, errandPlace, errandUnderWay, newErrands, ongoingErrands, pauseOf, queueUp } from "./errands";
+import { atYourDoor, errandPlace, errandUnderWay, newErrands, ongoingErrands, queueUp } from "./errands";
 import { HANDOFF, MAIL, handOffSlot } from "./handoff";
 import { NO_METRICS, changesOf, metricsFor, towerBricks, trayFor } from "./metrics";
 import { type Pace, PACE, RUNS, editRate, runCooldown } from "./pace";
 import { RUSH, type Rush, heatOf, nextDash, nextRush, rushWake } from "./rush";
 import { type Point, along, pathBetween, walkMs } from "../world/paths";
-import { STATION_FOR, STATION_POSE, type StationKind } from "../world/stations";
-import { TRIP, type Trip, type Want, planTrips, tripPlace } from "./trips";
+import { STATION_POSE } from "../world/stations";
+import { TRIP, type Trip, tripPlace } from "./trips";
 import type { Actor, Build, Cue, Run, World, WorldEvent } from "./types";
-import { WORK, type Work, type WorkKind, isEdit, nextWork, tempo, tempoWake, workKind } from "./work";
+import { WORK, isEdit, nextWork, tempo, tempoWake, workKind } from "./work";
 import { faceFront, inCrowd } from "../world/world";
 import { HANDOFF_LOOK, NOTICE, NOTICE_POSES, type View, freshReturn, handOffWakes, looksFor, noticeDelay, pairUp, readyAt, rippleDelay, waverOf } from "./social";
 import { STORY, type Story, cheersReply, headlinesFor, logOf, replyChoice, replyPlace, replyWakes, replyWalkPose, repliesFor, sendOffHold, sendOffLooks, sendOffsFor, storyNews } from "./story";
@@ -27,6 +27,7 @@ import { type Spec, gaitBase, specs, traitFor } from "./direct/specs";
 import { type Place, assign, doorPlace } from "./direct/places";
 import { type Choice, acted, standing } from "./direct/choice";
 import { celebrateMs, celebratesMail, handOffMs, handOffsFor, mailChoice, mailFor, takingAt } from "./direct/handoff-mail";
+import { type Pre, followUp, tripsFor } from "./direct/station-trips";
 
 export { runCooldown };
 export type { View };
@@ -690,79 +691,6 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 	return { world, events, wake: due.length ? Math.min(...due) : undefined };
 }
 
-/** What the director works out about each character before anyone moves. */
-export interface Pre {
-	/** The kind of work the tool in hand says, and the kind showing (held). */
-	want?: WorkKind;
-	work?: Work;
-	news?: Choice;
-	/** An acted pose still playing from last time. */
-	continuing?: Actor;
-	/** An acted pose to play now that the last one ended (the thumb after a red stamp). */
-	follow?: string;
-}
-
-/** After a red stamp at the stamp desk: the thumb for a builder, the failed-test pose for anyone else. */
-function followUp(s: Spec, was: Actor | undefined, continuing: Actor | undefined): string | undefined {
-	if (!was || continuing || !was.acted || was.pose !== STATION_POSE.test.bad) return undefined;
-	return s.rig === "builder" ? "thumb" : "testFailed";
-}
-
-/** The station a crew member's work sends it to, if the tool in hand still says so. A shell
- * command or a test sends it to the copier or the stamp desk only while it runs. */
-export function stationKind(s: Spec, p: Pre): StationKind | undefined {
-	const w = p.work;
-	if (!w || p.want !== w.kind) return undefined;
-	const kind = STATION_FOR[w.kind];
-	if (!kind) return undefined;
-	if ((w.kind === "shell" || w.kind === "test") && !s.running) return undefined;
-	return kind;
-}
-
-/**
- * Who goes to a station this time. A busy crew member at its crew spot (not carrying a brick, not
- * just hired) goes once its work kind has held for TRIP.holdMs; it stays while the kind holds, and
- * while it is mid-way through something acted there (a red stamp and the thumb after it).
- */
-function tripsFor(
-	list: Spec[],
-	pre: Map<string, Pre>,
-	places: Map<string, Place>,
-	before: Record<string, Actor>,
-	floor: Floor,
-	runs: Runs,
-	hiredBy: Map<string, string>,
-	now: number,
-	wakes: number[],
-	/** Sessions in rush: a held kind sends its crew sooner (rush.ts). */
-	rushing: Set<string> = new Set(),
-	/** Crew who don't go this time: handing a folder over, or handed one (handoff.ts). */
-	skip: Set<string> = new Set(),
-): Map<string, Trip> {
-	const wants: Want[] = [];
-	for (const s of list) {
-		if (s.kind !== "crew" || !s.busy || s.mood !== "busy" || hiredBy.has(s.key) || skip.has(s.key)) continue;
-		const place = places.get(s.key);
-		const was = before[s.key];
-		if (!place?.spot.startsWith("crew:") || !was || was.gone) continue;
-		const r = runs.active.get(s.session.id);
-		if (r?.key === s.key && r.carried && now < r.lands) continue;
-		const stations = floor.areas.find((a) => a.id === place.area)?.stations ?? [];
-		if (!stations.length) continue;
-		const p = pre.get(s.key)!;
-		const stay = was.trip !== undefined && (p.news !== undefined || p.continuing !== undefined || p.follow !== undefined);
-		let kind = stationKind(s, p);
-		// In a rush trips go sooner; a deliberate model takes a beat more before setting off (traits.ts).
-		const hold = (rushing.has(s.session.id) ? RUSH.tripHoldMs : TRIP.holdMs) + pauseOf(s);
-		if (kind && was.trip?.kind !== kind && now - p.work!.since < hold) {
-			wakes.push(p.work!.since + hold);
-			kind = undefined;
-		}
-		wants.push({ key: s.key, stations, kind, stay, was: was.trip, since: p.work?.since ?? now });
-	}
-	return planTrips(wants, now);
-}
-
 /** A long build at the copier: a running feud with it, looped until the build ends (instead of the
  * one-off kick, `STATION_POSE.build.bad`). */
 export const COPIER_FEUD = "copierFeud";
@@ -817,7 +745,7 @@ function foremanVisits(list: Spec[], places: Map<string, Place>, now: number, wa
 }
 
 /** The brick runs of one direction: under way (by session), set off this time, and dropped. */
-interface Runs {
+export interface Runs {
 	active: Map<string, Run>;
 	started: Map<string, Run>;
 	/** Sessions whose runner stopped mid-carry (finished, stalled, gone): the brick goes straight on. */
