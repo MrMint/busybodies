@@ -19,7 +19,20 @@
 // what it changes. Pixi-free: the layout, the director and tests read it.
 
 /** Things that move on their own, on the life clock (office/ambient.ts draws each). */
-export type AmbientKind = "steam" | "fan" | "printer" | "flicker" | "beacon" | "pilot" | "vents" | "sparks" | "ovens" | "marquee" | "cakeStand" | "sprinkles" | "parade";
+export type AmbientKind =
+	| "steam"
+	| "fan"
+	| "printer"
+	| "flicker"
+	| "beacon"
+	| "pilot"
+	| "vents"
+	| "sparks"
+	| "ovens"
+	| "marquee"
+	| "cakeStand"
+	| "sprinkles"
+	| "parade";
 
 /** What the world carries (world/world.ts `World.staging`): the layout reads the bay and the hall,
  * the director the habits. */
@@ -37,7 +50,7 @@ export interface Staging {
 /** The idle habits for a character in this staging: a lead at its desk in a line bay plays the
  * booth's own, the rest the theme's (none: the rig's seven). */
 export const habitsFor = (staging: Staging | undefined, lead: boolean): readonly string[] | undefined =>
-	(lead && staging?.bay === "line" && staging.leadHabits?.length ? staging.leadHabits : staging?.habits);
+	lead && staging?.bay === "line" && staging.leadHabits?.length ? staging.leadHabits : staging?.habits;
 
 export interface SceneStaging extends Staging {
 	ambient: readonly AmbientKind[];

@@ -257,24 +257,53 @@ export type Body = keyof typeof BODIES;
 
 /** Things held in a hand. They stay upright whatever the arm does. */
 export const HELD = [
-	"sign", "ok", "trophy", "mag", "clip", "pom", "mug", "hammer", "map", "torch", "brush", "plane", "phone", "paper",
-	"wrench", "bolt", "gear", "brick",
+	"sign",
+	"ok",
+	"trophy",
+	"mag",
+	"clip",
+	"pom",
+	"mug",
+	"hammer",
+	"map",
+	"torch",
+	"brush",
+	"plane",
+	"phone",
+	"paper",
+	"wrench",
+	"bolt",
+	"gear",
+	"brick",
 	// At the stations (reach.ts GRIP says where each one's business end is).
-	"folder", "card", "receiver", "pencil", "stamp", "stampG", "stampR", "envelope", "crumple",
+	"folder",
+	"card",
+	"receiver",
+	"pencil",
+	"stamp",
+	"stampG",
+	"stampR",
+	"envelope",
+	"crumple",
 	/** A sheet slid flat off the shredder's pile, then held by its top edge going into the slot:
 	 * the slot eats it, so less of it shows each step. */
-	"slip", "feed1", "feed2", "feed3",
+	"slip",
+	"feed1",
+	"feed2",
+	"feed3",
 	// Wave 2.
 	/** A numbered ticket from the ticket machine at your door. */
 	"ticket",
 	/** The clipboard held in the forward hand: the same board, on the hand's other side. */
 	"clipF",
 	/** A sticky note stuck on a fingertip, and the same with its free end lifting in the breeze. */
-	"sticky", "stickyFlap",
+	"sticky",
+	"stickyFlap",
 	/** A finger-gun: the index finger out, the thumb up. */
 	"finger",
 	/** A folder held out flat by its near edge (reach.ts HANDOFF.folder), and tucked under the arm. */
-	"folderOut", "folderTuck",
+	"folderOut",
+	"folderTuck",
 	// Wave 3: the factory's habits.
 	/** A hand of playing cards, fanned. */
 	"hand",
@@ -289,48 +318,96 @@ export type Front = (typeof FRONTS)[number];
  * faces). Numbered variants are its states as the work goes: the nail driven in a stroke at a time,
  * the nut turned, the stack rocking. Swapped without a pop, so a state change reads as the effect. */
 export const WORKS = [
-	"nail1", "nail2", "nail3", "bent",
-	"nut1", "nut2", "nut3",
+	"nail1",
+	"nail2",
+	"nail3",
+	"bent",
+	"nut1",
+	"nut2",
+	"nut3",
 	"crate",
-	"stack", "stackL", "stackR",
+	"stack",
+	"stackL",
+	"stackR",
 	"brick",
 	// The working parts of a station, at its working point (reach.ts STATION and AT): the office
 	// draws the furniture's body, the rig draws what the hands move and what the work changes.
 	/** Filing cabinet: the top drawer shut, pulled out with its folder tabs, and with one taken. */
-	"cabinet", "drawer", "drawerGap",
+	"cabinet",
+	"drawer",
+	"drawerGap",
 	/** Card catalogue: the tray's cards upright, flicked forward to the fingertip, one pulled. */
-	"cards", "cardsA", "cardsB", "cardsGap",
+	"cards",
+	"cardsA",
+	"cardsB",
+	"cardsGap",
 	/** Copier: the lid, button and out-tray; the lid half up, up, a sheet on the glass; the scan
 	 * light, a copy coming out, the copies in the tray; jammed (a crumpled corner at the door and
 	 * a red light), the door open, the sheet tugged out, the door empty, still jammed, kicked. */
-	"copier", "lidHalf", "lidUp", "lidSheet", "scan", "copy1", "copy2",
-	"jam", "door", "doorTug", "doorOpen", "jammed", "kicked",
+	"copier",
+	"lidHalf",
+	"lidUp",
+	"lidSheet",
+	"scan",
+	"copy1",
+	"copy2",
+	"jam",
+	"door",
+	"doorTug",
+	"doorOpen",
+	"jammed",
+	"kicked",
 	/** Stamp desk: an ink pad, a pad of forms and the done pile; green-stamped, slid onto the
 	 * pile; with the red pad, and red-stamped. */
-	"forms", "formsOk", "formsSlid", "formsR", "formsNo",
+	"forms",
+	"formsOk",
+	"formsSlid",
+	"formsR",
+	"formsNo",
 	/** Phone table: the notepad, with one, two and three lines jotted, and its page flipped over. */
-	"note0", "note1", "note2", "note3", "noteFlip",
+	"note0",
+	"note1",
+	"note2",
+	"note3",
+	"noteFlip",
 	/** Outbox: the tray, an envelope falling into it, and lying in it. */
-	"outbox", "mail1", "mail2",
+	"outbox",
+	"mail1",
+	"mail2",
 	/** Shredder: the slot with the pile beside it, one sheet fewer, and buzzing as it eats one. */
-	"shred", "shred4", "shredBuzz",
+	"shred",
+	"shred4",
+	"shredBuzz",
 	// Wave 2.
 	/** The lead's in-tray on its desk (reach.ts TRAY), from a few sheets to teetering past the
 	 * eyes: `tray4` rocks left and right, its top sheet slides off (`traySlide`) and drops off the
 	 * desk's edge (`trayDrop`). The office can bake `tray1`-`tray4` onto a desk. */
-	"tray1", "tray2", "tray3", "tray4", "tray4L", "tray4R", "traySlide", "trayDrop",
+	"tray1",
+	"tray2",
+	"tray3",
+	"tray4",
+	"tray4L",
+	"tray4R",
+	"traySlide",
+	"trayDrop",
 	/** The bell on your desk (reach.ts BELL): at rest, the plunger struck (it rings), and humming. */
-	"bell", "bellDing", "bellHum",
+	"bell",
+	"bellDing",
+	"bellHum",
 	/** A sticky note pressed on the wall planner (reach.ts PLANNER). */
 	"stickyOn",
 	/** Copier feud: the start button jabbed while jammed (the red light flashing), and kicked
 	 * with the crumpled corner poking out of the jam door's seam. */
-	"jabbed", "kickSpit",
+	"jabbed",
+	"kickSpit",
 	// Wave 3: the factory's habits (themes/factory/scene.ts FACTORY_STAGING).
 	/** Cards on a pallet: the pallet with the game laid out on it, and a card slapped down. */
-	"pallet", "palletSlap",
+	"pallet",
+	"palletSlap",
 	/** The vending machine: standing there, rocked by a kick, and the snack finally dropping. */
-	"vending", "vendingRock", "vendingDrop",
+	"vending",
+	"vendingRock",
+	"vendingDrop",
 ] as const;
 export type Work = (typeof WORKS)[number];
 
@@ -344,22 +421,40 @@ export type Wear = (typeof WEARS)[number];
 
 /** Effects around the character. Numbered variants are the steps of a little loop (z1, z2, z3). */
 export const FX = [
-	"sweat1", "sweat2",
-	"conf1", "conf2", "conf3",
-	"pop", "spark", "dust", "idea",
-	"z1", "z2", "z3",
-	"think1", "think2", "think3",
-	"clock1", "clock2", "clock3", "clock4",
-	"steam1", "steam2",
-	"papers1", "papers2",
+	"sweat1",
+	"sweat2",
+	"conf1",
+	"conf2",
+	"conf3",
+	"pop",
+	"spark",
+	"dust",
+	"idea",
+	"z1",
+	"z2",
+	"z3",
+	"think1",
+	"think2",
+	"think3",
+	"clock1",
+	"clock2",
+	"clock3",
+	"clock4",
+	"steam1",
+	"steam2",
+	"papers1",
+	"papers2",
 	"cobweb",
 	"hit",
 	/** A sigh's puff from the mouth; dust shaken off the hands. */
-	"sigh", "dusty",
+	"sigh",
+	"dusty",
 	/** The bell's "ding": rings in the air over the bell (reach.ts BELL). */
 	"ding",
 	/** A run: sweat flying off, and papers peeling off behind, three steps of the trail. */
-	"rush1", "rush2", "rush3",
+	"rush1",
+	"rush2",
+	"rush3",
 	/** A crumpled ball tossed over the shoulder. */
 	"toss",
 	/** A finger-gun's "shot": a spark at the fingertip (ARMS.recoil). */

@@ -9,7 +9,24 @@ import { FloorPlan } from "../src/scene/world/layout";
 import { DEFAULT_STAGING, habitsFor, stagingOf } from "../src/scene/world/staging";
 import { FACTORY_STAGING } from "../src/themes/factory/staging";
 import { CRATE, crateAt, crateRide } from "../src/scene/world/crate";
-import { AISLE, BELT, DESK_TOP, type Desk, OVERLAP, ROW, type Rect, SQUEEZE, type Floor, bodyRect, crewPlaces, crewSpots, endPlaces, faceZone, meets, overlapX } from "../src/scene/world/world";
+import {
+	AISLE,
+	BELT,
+	DESK_TOP,
+	type Desk,
+	OVERLAP,
+	ROW,
+	type Rect,
+	SQUEEZE,
+	type Floor,
+	bodyRect,
+	crewPlaces,
+	crewSpots,
+	endPlaces,
+	faceZone,
+	meets,
+	overlapX,
+} from "../src/scene/world/world";
 import { LEAD_SIZE } from "../src/scene/world/placement";
 import { demo } from "../src/mainview/demo";
 import { HABITS, POSE } from "../src/scene/rig/data/poses";
@@ -57,7 +74,9 @@ describe("the staging grammar", () => {
 	test("staging never moves a room, a desk, a lead or a station: only the crew's spots and what the floor adds", () => {
 		const { office, line } = both(sessions);
 		expect(line.bounds).toEqual(office.bounds);
-		expect(line.areas.map((a) => [a.id, a.rect, a.cells, a.stations, a.fixtures, a.wall])).toEqual(office.areas.map((a) => [a.id, a.rect, a.cells, a.stations, a.fixtures, a.wall]));
+		expect(line.areas.map((a) => [a.id, a.rect, a.cells, a.stations, a.fixtures, a.wall])).toEqual(
+			office.areas.map((a) => [a.id, a.rect, a.cells, a.stations, a.fixtures, a.wall]),
+		);
 		expect([...line.desks.values()]).toEqual([...office.desks.values()]);
 		expect(spotsOf(line)).not.toEqual(spotsOf(office));
 	});
@@ -76,7 +95,12 @@ describe("the staging grammar", () => {
 				expect(b.x).toBe(cells[0]!.x + BELT.inset);
 				expect(b.x + b.w).toBe(cells.at(-1)!.x + cells.at(-1)!.w - BELT.inset);
 				expect(b.id).toBe(`${a.id}:belt:${b.row}`);
-				expect(b.desks).toEqual(a.desks.filter((d) => d.row === b.row).sort((p, q) => p.col - q.col).map((d) => d.id));
+				expect(b.desks).toEqual(
+					a.desks
+						.filter((d) => d.row === b.row)
+						.sort((p, q) => p.col - q.col)
+						.map((d) => d.id),
+				);
 				for (const id of b.desks) {
 					const d = line.desks.get(id)!;
 					// In front of the desk (and its lead), inside its cell; its front draws over the crew behind it.
@@ -95,14 +119,17 @@ describe("the staging grammar", () => {
 	};
 	/** Body boxes overlap by at most `cap` of the smaller one. */
 	const share = (p: Rect, q: Rect) =>
-		(Math.max(0, Math.min(p.x + p.w, q.x + q.w) - Math.max(p.x, q.x)) * Math.max(0, Math.min(p.y + p.h, q.y + q.h) - Math.max(p.y, q.y))) / Math.min(p.w * p.h, q.w * q.h);
+		(Math.max(0, Math.min(p.x + p.w, q.x + q.w) - Math.max(p.x, q.x)) * Math.max(0, Math.min(p.y + p.h, q.y + q.h) - Math.max(p.y, q.y))) /
+		Math.min(p.w * p.h, q.w * q.h);
 
 	test("the crew stand along the belt facing downstream: three behind it and a pair in front over open floor, else four behind it; none on another", () => {
 		// A back-row desk whose front-row neighbour has gone: the floor in front of its belt is open.
 		const plan = new FloorPlan();
 		const six = Array.from({ length: 6 }, () => session("pebble"));
 		const full = plan.update(snap(six), LINE);
-		const gone = [...full.desks.values()].find((d) => d.row === 0 && full.desks.size > 0 && [...full.desks.values()].some((o) => o.row === 1 && o.col === d.col))!;
+		const gone = [...full.desks.values()].find(
+			(d) => d.row === 0 && full.desks.size > 0 && [...full.desks.values()].some((o) => o.row === 1 && o.col === d.col),
+		)!;
 		const opened = plan.update(snap(six.filter((x) => x.id !== gone.id)), LINE);
 		let open = 0;
 		let closed = 0;
@@ -124,7 +151,8 @@ describe("the staging grammar", () => {
 					expect(front).toHaveLength(2);
 					// The pair in front face each other across their work.
 					expect(front.map((s) => s.facing).sort()).toEqual([-1, 1]);
-					for (const [i, a] of spots.entries()) for (const b of spots.slice(i + 1)) expect(Math.abs(a.x - b.x) >= OVERLAP.dx || Math.abs(a.y - b.y) >= OVERLAP.dy).toBe(true);
+					for (const [i, a] of spots.entries())
+						for (const b of spots.slice(i + 1)) expect(Math.abs(a.x - b.x) >= OVERLAP.dx || Math.abs(a.y - b.y) >= OVERLAP.dy).toBe(true);
 				} else {
 					// No open floor in front (the room's front row, or a desk in front): four behind the
 					// belt at the aisle's places, inside the desk's cell, as clear of each other as the aisle.
@@ -134,7 +162,8 @@ describe("the staging grammar", () => {
 						expect(s.x).toBeGreaterThan(d.cell.x);
 						expect(s.x).toBeLessThan(d.cell.x + d.cell.w);
 					}
-					for (const [i, a] of spots.entries()) for (const b of spots.slice(i + 1)) expect(overlapX(bodyRect(a, 58), bodyRect(b, 58))).toBeLessThanOrEqual(AISLE.overlap * 61);
+					for (const [i, a] of spots.entries())
+						for (const b of spots.slice(i + 1)) expect(overlapX(bodyRect(a, 58), bodyRect(b, 58))).toBeLessThanOrEqual(AISLE.overlap * 61);
 				}
 			}
 		}
@@ -280,7 +309,10 @@ describe("the foreman's booth habits", () => {
 		for (const name of lead) {
 			const p = POSE[name]!;
 			expect(p).toBeDefined();
-			expect(p.frames.some((f) => high.has(f.armL) || high.has(f.armR)), name).toBe(true);
+			expect(
+				p.frames.some((f) => high.has(f.armL) || high.has(f.armR)),
+				name,
+			).toBe(true);
 			for (const f of p.frames) {
 				expect(f.props.back).toBeUndefined();
 				expect(f.props.front).toBeUndefined();
@@ -309,7 +341,10 @@ describe("the foreman's booth habits", () => {
 describe("a change of stage", () => {
 	test("switched live, the cast takes the new stage's spots at once instead of walking over", () => {
 		const agent = (id: string, status: Agent["status"]): Agent => ({ id, role: "scout", task: "Invented", depth: 1, status, lastWriteAt: 0, children: [] });
-		const crew = session("teapot", { state: "idle", agents: [agent("a1", "finished"), agent("a2", "running"), agent("a3", "running"), agent("a4", "running")] });
+		const crew = session("teapot", {
+			state: "idle",
+			agents: [agent("a1", "finished"), agent("a2", "running"), agent("a3", "running"), agent("a4", "running")],
+		});
 		const s = snap([crew]);
 		const T = 1_000_000;
 		const office = direct(undefined, s, T, new FloorPlan().update(s));
@@ -318,7 +353,12 @@ describe("a change of stage", () => {
 		const switched = direct(office.world, s, T + 5_000, line);
 		const crewKeys = Object.keys(switched.world.actors).filter((k) => k.startsWith("a:"));
 		// The stage really moved them, and nobody walks for it.
-		expect(crewKeys.some((k) => switched.world.actors[k]!.slot.x !== office.world.actors[k]!.slot.x || switched.world.actors[k]!.slot.y !== office.world.actors[k]!.slot.y)).toBe(true);
+		expect(
+			crewKeys.some(
+				(k) =>
+					switched.world.actors[k]!.slot.x !== office.world.actors[k]!.slot.x || switched.world.actors[k]!.slot.y !== office.world.actors[k]!.slot.y,
+			),
+		).toBe(true);
 		expect(switched.events.filter((e) => e.type === "walk")).toEqual([]);
 		for (const k of crewKeys) expect(switched.world.actors[k]!.walk).toBeUndefined();
 		expect(switched.world.stage).toBe("line/conveyor");
@@ -326,7 +366,6 @@ describe("a change of stage", () => {
 		expect(direct(switched.world, s, T + 10_000, line).world.stage).toBe("line/conveyor");
 	});
 });
-
 
 describe("a PR crate's ride", () => {
 	const from = { x: 380, y: -330 };

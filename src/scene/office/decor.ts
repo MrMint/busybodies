@@ -25,19 +25,34 @@ function drawDecor(d: RoomDecor, style: StoryStyle, seed: number): Graphics {
 		const y = f.y + tilt * 0.3;
 		// A gilt edge, a mat, and a merge mark: two branches meeting.
 		g.roundRect(f.x, y, w, h, 2).fill(style.gold).stroke({ width: 1.5, color: style.ink });
-		g.rect(f.x + 3, y + 3, w - 6, h - 6).fill(style.mat).stroke({ width: 0.8, color: style.ink, alpha: 0.5 });
+		g.rect(f.x + 3, y + 3, w - 6, h - 6)
+			.fill(style.mat)
+			.stroke({ width: 0.8, color: style.ink, alpha: 0.5 });
 		const cx = f.x + w / 2;
 		const cy = y + h / 2;
-		g.moveTo(cx - 3, cy + 5).lineTo(cx - 3, cy - 5).moveTo(cx - 3, cy + 2).quadraticCurveTo(cx + 3, cy + 1, cx + 3, cy - 5).stroke({ width: 1.6, color: style.mark });
-		for (const [px, py] of [[cx - 3, cy + 5], [cx + 3, cy - 5], [cx - 3, cy - 5]] as const) g.circle(px, py, 1.8).fill(style.mark);
+		g.moveTo(cx - 3, cy + 5)
+			.lineTo(cx - 3, cy - 5)
+			.moveTo(cx - 3, cy + 2)
+			.quadraticCurveTo(cx + 3, cy + 1, cx + 3, cy - 5)
+			.stroke({ width: 1.6, color: style.mark });
+		for (const [px, py] of [
+			[cx - 3, cy + 5],
+			[cx + 3, cy - 5],
+			[cx - 3, cy - 5],
+		] as const)
+			g.circle(px, py, 1.8).fill(style.mark);
 	}
 	if (d.pennants.length) {
 		const first = d.pennants[0]!;
 		const last = d.pennants[d.pennants.length - 1]!;
-		g.moveTo(first.x - 8, first.y).quadraticCurveTo((first.x + last.x) / 2, first.y + 3, last.x + 8, last.y).stroke({ width: 1, color: style.ink, alpha: 0.6 });
+		g.moveTo(first.x - 8, first.y)
+			.quadraticCurveTo((first.x + last.x) / 2, first.y + 3, last.x + 8, last.y)
+			.stroke({ width: 1, color: style.ink, alpha: 0.6 });
 		for (const [i, p] of d.pennants.entries()) {
 			const pw = DECOR.pennant.w / 2;
-			g.poly([p.x - pw, p.y, p.x + pw, p.y, p.x, p.y + DECOR.pennant.h]).fill(style.pennants[i % style.pennants.length]!).stroke({ width: 0.8, color: style.ink, alpha: 0.5 });
+			g.poly([p.x - pw, p.y, p.x + pw, p.y, p.x, p.y + DECOR.pennant.h])
+				.fill(style.pennants[i % style.pennants.length]!)
+				.stroke({ width: 0.8, color: style.ink, alpha: 0.5 });
 		}
 	}
 	for (const st of d.stars) star(g, st.x, st.y, 6, style.gold, style.ink);

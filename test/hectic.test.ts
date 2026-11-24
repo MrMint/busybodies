@@ -67,7 +67,13 @@ const STATION = (kind: string, n = 0) => `station:room:teapot:${kind}:${n}`;
 
 describe("rush", () => {
 	test("heat is tool calls a minute across the crew, plus edits", () => {
-		const s = release([builder("a", "Edit", T0, { tools: rate(30) }), builder("b", "Read", T0, { tools: rate(20), children: [builder("c", "Read", T0, { tools: rate(10) })] })], { tools: rate(6) });
+		const s = release(
+			[
+				builder("a", "Edit", T0, { tools: rate(30) }),
+				builder("b", "Read", T0, { tools: rate(20), children: [builder("c", "Read", T0, { tools: rate(10) })] }),
+			],
+			{ tools: rate(6) },
+		);
 		expect(heatOf(s, undefined, T0)).toBe(66);
 		expect(heatOf(s, [T0 - 2 * MIN, T0 - 10 * SEC, T0 - SEC], T0)).toBe(66 + 2 * RUSH.editWeight);
 		// A finished crew member's rate doesn't count.
@@ -104,7 +110,10 @@ describe("rush", () => {
 	});
 
 	test("in a rush, trips set off sooner and every walk is a run with papers flying", () => {
-		const hot = (_t: number) => [builder("b0", "Read", T0, { tools: rate(60), lastWriteAt: T0 - 5 * MIN }), builder("b1", "Edit", T0 - 5 * MIN, { tools: rate(40), lastWriteAt: T0 - 5 * MIN })];
+		const hot = (_t: number) => [
+			builder("b0", "Read", T0, { tools: rate(60), lastWriteAt: T0 - 5 * MIN }),
+			builder("b1", "Edit", T0 - 5 * MIN, { tools: rate(40), lastWriteAt: T0 - 5 * MIN }),
+		];
 		const s = stage();
 		s.step(snap(T0, [release(hot(T0))]));
 		const d = s.step(snap(T0 + RUSH.tripHoldMs, [release(hot(T0 + RUSH.tripHoldMs))]));
@@ -150,7 +159,9 @@ describe("rush", () => {
 			builder("b0", "Bash", T0, {
 				tools: rate(60),
 				running: { tool: "Bash", since: T0, kind: "test" },
-				...(t >= T0 + 8 * SEC ? { commands: { failStreak: 1, repeats: 1, failed: 1, testsFailed: 1, last: { kind: "test", exitCode: 1, at: T0 + 8 * SEC } } } : {}),
+				...(t >= T0 + 8 * SEC
+					? { commands: { failStreak: 1, repeats: 1, failed: 1, testsFailed: 1, last: { kind: "test", exitCode: 1, at: T0 + 8 * SEC } } }
+					: {}),
 			}),
 			builder("b1", "Edit", T0, { tools: rate(60) }),
 		];
@@ -187,8 +198,32 @@ describe("rush", () => {
 
 describe("dodges", () => {
 	const cross = () => [
-		{ key: "a", area: "room", walk: { path: [{ x: 0, y: 100 }, { x: 200, y: 100 }], ms: 2000, since: T0 }, free: true },
-		{ key: "b", area: "room", walk: { path: [{ x: 100, y: 0 }, { x: 100, y: 200 }], ms: 2000, since: T0 }, free: true },
+		{
+			key: "a",
+			area: "room",
+			walk: {
+				path: [
+					{ x: 0, y: 100 },
+					{ x: 200, y: 100 },
+				],
+				ms: 2000,
+				since: T0,
+			},
+			free: true,
+		},
+		{
+			key: "b",
+			area: "room",
+			walk: {
+				path: [
+					{ x: 100, y: 0 },
+					{ x: 100, y: 200 },
+				],
+				ms: 2000,
+				since: T0,
+			},
+			free: true,
+		},
 	];
 
 	test("two walkers crossing at the same moment: one sidesteps, and they never pass through", () => {
@@ -208,8 +243,32 @@ describe("dodges", () => {
 
 	test("head on, the same: one steps aside", () => {
 		const walkers = [
-			{ key: "a", area: "room", walk: { path: [{ x: 0, y: 100 }, { x: 300, y: 100 }], ms: 2000, since: T0 }, free: true },
-			{ key: "b", area: "room", walk: { path: [{ x: 300, y: 100 }, { x: 0, y: 100 }], ms: 2000, since: T0 }, free: true },
+			{
+				key: "a",
+				area: "room",
+				walk: {
+					path: [
+						{ x: 0, y: 100 },
+						{ x: 300, y: 100 },
+					],
+					ms: 2000,
+					since: T0,
+				},
+				free: true,
+			},
+			{
+				key: "b",
+				area: "room",
+				walk: {
+					path: [
+						{ x: 300, y: 100 },
+						{ x: 0, y: 100 },
+					],
+					ms: 2000,
+					since: T0,
+				},
+				free: true,
+			},
 		];
 		const out = dodges(walkers);
 		expect(out.size).toBe(1);

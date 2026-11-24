@@ -92,15 +92,28 @@ function cubicleWall(g: Graphics): void {
 	g.roundRect(x, -116, 16, 80, 2).fill(0x9aa7c7).stroke(line(3));
 	for (let y = -108; y < -40; y += 6) g.moveTo(x + 3, y).lineTo(x + 13, y + 1);
 	g.stroke({ width: 1, color: 0x8794b6 });
-	g.roundRect(x - 1, -119, 18, 5, 2).fill(0xdfe4ef).stroke({ width: 2, color: INK });
+	g.roundRect(x - 1, -119, 18, 5, 2)
+		.fill(0xdfe4ef)
+		.stroke({ width: 2, color: INK });
 	// The family photo: two grown-ups and a small one, under a pin.
-	g.rect(x + 2.5, -106, 11, 9).fill(0xffffff).stroke({ width: 1.2, color: INK });
+	g.rect(x + 2.5, -106, 11, 9)
+		.fill(0xffffff)
+		.stroke({ width: 1.2, color: INK });
 	g.rect(x + 3.5, -105, 9, 7).fill(0xbfe6ff);
-	for (const [cx, r] of [[5.6, 1.4], [8, 1], [10.4, 1.4]] as const) g.circle(x + cx, -101.5, r).fill(INK);
+	for (const [cx, r] of [
+		[5.6, 1.4],
+		[8, 1],
+		[10.4, 1.4],
+	] as const)
+		g.circle(x + cx, -101.5, r).fill(INK);
 	g.circle(x + 8, -106.5, 1).fill(RED);
 	// A postcard of a beach, askew, and a sticky note.
-	g.poly(rotRect(x + 8, -88, 11, 8, 0.15)).fill(0xffe9b0).stroke({ width: 1.1, color: INK });
-	g.rect(x + 3, -76, 9, 9).fill(SUN).stroke({ width: 1, color: INK });
+	g.poly(rotRect(x + 8, -88, 11, 8, 0.15))
+		.fill(0xffe9b0)
+		.stroke({ width: 1.1, color: INK });
+	g.rect(x + 3, -76, 9, 9)
+		.fill(SUN)
+		.stroke({ width: 1, color: INK });
 }
 
 /** The office ficus: a slim trunk, a crown of small leaves, a terracotta pot. */
@@ -109,8 +122,19 @@ function ficus(g: Graphics): void {
 	g.moveTo(0, -30).bezierCurveTo(-4, -50, 6, -60, 0, -84).stroke({ width: 4, color: 0x8a5a3c, cap: "round" });
 	g.moveTo(0, -60).lineTo(10, -70).stroke({ width: 2.6, color: 0x8a5a3c, cap: "round" });
 	const leaves: [number, number, number][] = [
-		[-14, -86, -0.6], [-4, -96, 0.2], [8, -92, 0.7], [16, -80, 1.1], [-18, -72, -1], [-8, -78, -0.3],
-		[4, -80, 0.4], [12, -68, 0.9], [-12, -62, -0.8], [0, -70, 0], [-2, -104, 0.1], [12, -100, 0.6], [-14, -98, -0.5],
+		[-14, -86, -0.6],
+		[-4, -96, 0.2],
+		[8, -92, 0.7],
+		[16, -80, 1.1],
+		[-18, -72, -1],
+		[-8, -78, -0.3],
+		[4, -80, 0.4],
+		[12, -68, 0.9],
+		[-12, -62, -0.8],
+		[0, -70, 0],
+		[-2, -104, 0.1],
+		[12, -100, 0.6],
+		[-14, -98, -0.5],
 	];
 	leaves.forEach(([lx, ly, a], i) => {
 		const pts: number[] = [];
@@ -122,7 +146,9 @@ function ficus(g: Graphics): void {
 			const py = Math.sin(t) * r;
 			pts.push(lx + px * Math.cos(a) - py * Math.sin(a), ly + px * Math.sin(a) + py * Math.cos(a));
 		}
-		g.poly(pts).fill(i % 3 ? 0x2fb36b : 0x47c97f).stroke({ width: 2.2, color: INK, join: "round" });
+		g.poly(pts)
+			.fill(i % 3 ? 0x2fb36b : 0x47c97f)
+			.stroke({ width: 2.2, color: INK, join: "round" });
 	});
 }
 
@@ -192,7 +218,9 @@ export const BINDERS = {
 		const kind = (n + Math.floor(n / 3)) % 3;
 		if (kind === 1) {
 			// A binder on its side, spine out: a label window and a finger hole.
-			g.roundRect(x, y, w, h, 1.5).fill(SPINES[n % SPINES.length]!).stroke({ width: 1.5, color: INK });
+			g.roundRect(x, y, w, h, 1.5)
+				.fill(SPINES[n % SPINES.length]!)
+				.stroke({ width: 1.5, color: INK });
 			g.rect(x + 2, y + 2, w * 0.5, h - 5).fill(0xffffff);
 			g.circle(x + w - 3, y + h / 2, 1.2).fill(0xffffff);
 		} else {
@@ -202,10 +230,21 @@ export const BINDERS = {
 		}
 	},
 	flag: (f: Graphics, top: { x: number; y: number }) => {
-		f.moveTo(top.x, top.y).lineTo(top.x, top.y - 22).stroke({ width: 3.4, color: INK });
-		f.moveTo(top.x, top.y - 1).lineTo(top.x, top.y - 21).stroke({ width: 1.6, color: 0xffc93c });
-		f.circle(top.x, top.y - 23, 1.8).fill(0xff9eb1).stroke({ width: 1, color: INK });
-		f.rect(top.x, top.y - 21, 13, 11).fill(SUN).stroke({ width: 1.5, color: INK });
-		f.moveTo(top.x + 3, top.y - 17).lineTo(top.x + 5, top.y - 14).lineTo(top.x + 10, top.y - 19).stroke({ width: 1.4, color: GREEN });
+		f.moveTo(top.x, top.y)
+			.lineTo(top.x, top.y - 22)
+			.stroke({ width: 3.4, color: INK });
+		f.moveTo(top.x, top.y - 1)
+			.lineTo(top.x, top.y - 21)
+			.stroke({ width: 1.6, color: 0xffc93c });
+		f.circle(top.x, top.y - 23, 1.8)
+			.fill(0xff9eb1)
+			.stroke({ width: 1, color: INK });
+		f.rect(top.x, top.y - 21, 13, 11)
+			.fill(SUN)
+			.stroke({ width: 1.5, color: INK });
+		f.moveTo(top.x + 3, top.y - 17)
+			.lineTo(top.x + 5, top.y - 14)
+			.lineTo(top.x + 10, top.y - 19)
+			.stroke({ width: 1.4, color: GREEN });
 	},
 };

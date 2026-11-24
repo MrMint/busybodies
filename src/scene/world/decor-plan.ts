@@ -35,7 +35,9 @@ export function regularNames(cast: Pick<Who, "key" | "regular">[], view: StoryVi
 	const out = new Map<string, string>();
 	if (!view?.diary) return out;
 	const today = (view.day ?? localDay)(view.now);
-	const known = cast.filter((w): w is Pick<Who, "key"> & { regular: string } => !!w.regular && daysSeen(view.diary!, diaryRegular(w.regular), today) >= RECOGNISED_DAYS);
+	const known = cast.filter(
+		(w): w is Pick<Who, "key"> & { regular: string } => !!w.regular && daysSeen(view.diary!, diaryRegular(w.regular), today) >= RECOGNISED_DAYS,
+	);
 	const names = regularNamesFor(known.map((w) => w.regular));
 	for (const w of known) out.set(w.key, names.get(w.regular)!);
 	return out;

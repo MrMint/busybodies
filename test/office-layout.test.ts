@@ -5,7 +5,22 @@ import { FloorPlan } from "../src/scene/world/layout";
 import { demo } from "../src/mainview/demo";
 import { LEAD_SIZE } from "../src/scene/world/placement";
 import { KITCHEN_WALL, MONITOR, ceilingPanels, deskParts } from "../src/scene/world/propspots";
-import { BUILD, DESK_TOP, SEAT, STATIONS_BASE, STATION_CREW, STRIP, type Rect, type Floor, bodyRect, crewPlaces, crewSlot, endPlaces, faceZone, meets } from "../src/scene/world/world";
+import {
+	BUILD,
+	DESK_TOP,
+	SEAT,
+	STATIONS_BASE,
+	STATION_CREW,
+	STRIP,
+	type Rect,
+	type Floor,
+	bodyRect,
+	crewPlaces,
+	crewSlot,
+	endPlaces,
+	faceZone,
+	meets,
+} from "../src/scene/world/world";
 import type { Agent } from "../src/watcher/model";
 import type { Session, Snapshot } from "../src/watcher/model";
 
@@ -29,7 +44,7 @@ const session = (project: string, extra: Partial<Session> = {}): Session => ({
 const snap = (sessions: Session[]): Snapshot => ({ at: 0, sessions });
 
 /** A seeded generator, so a failing sequence can be replayed. */
-const rng = (seed: number) => () => ((seed = (seed * 1103515245 + 12345) >>> 0) / 2 ** 32);
+const rng = (seed: number) => () => (seed = (seed * 1103515245 + 12345) >>> 0) / 2 ** 32;
 
 const overlaps = (a: Rect, b: Rect) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 const inside = (a: Rect, b: Rect) => a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h;
@@ -223,7 +238,15 @@ describe("layout scaling", () => {
 
 describe("stations", () => {
 	const crew = (count: number): Agent[] =>
-		Array.from({ length: count }, (_, i) => ({ id: `c${i}`, role: "general-purpose", task: "invented", depth: 1, status: "running", lastWriteAt: 0, children: [] }));
+		Array.from({ length: count }, (_, i) => ({
+			id: `c${i}`,
+			role: "general-purpose",
+			task: "invented",
+			depth: 1,
+			status: "running",
+			lastWriteAt: 0,
+			children: [],
+		}));
 	const where = (w: Floor, project: string) =>
 		new Map(w.areas.find((a) => a.name === project)!.stations.map((st) => [st.id, JSON.stringify([st.base, st.use, st.queue])]));
 
@@ -251,7 +274,16 @@ describe("stations", () => {
 		expect(small.stations).toHaveLength(STATIONS_BASE.length);
 		list[0] = { ...list[0]!, agents: crew(STATION_CREW * 3) };
 		const big = plan.update(snap(list)).areas.find((a) => a.name === "lanternfish")!;
-		expect(big.stations.map((st) => st.id.split(":").slice(2).join(":"))).toEqual(["build:0", "test:0", "reference:0", "search:0", "web:0", "outbox:0", "build:1", "test:1"]);
+		expect(big.stations.map((st) => st.id.split(":").slice(2).join(":"))).toEqual([
+			"build:0",
+			"test:0",
+			"reference:0",
+			"search:0",
+			"web:0",
+			"outbox:0",
+			"build:1",
+			"test:1",
+		]);
 		// The base six stay put.
 		for (const st of small.stations) expect(big.stations.find((x) => x.id === st.id)!.base).toEqual(st.base);
 		// A two-row room has no space for more, however big the crew.
@@ -368,7 +400,8 @@ describe("the crew's towers stay in view", () => {
 		w: BUILD.wide * BUILD.brickW + 3 + 2,
 		h: courses * BUILD.brickH + 2,
 	});
-	const area = (a: Rect, b: Rect) => Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
+	const area = (a: Rect, b: Rect) =>
+		Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
 
 	test("crew on a desk's end place cover under 15% of any tower, a short one or a tall one, in either staging", () => {
 		let ends = 0;
@@ -387,7 +420,10 @@ describe("the crew's towers stay in view", () => {
 									for (const courses of [1, 3, 10]) {
 										const t = tower(other.at, courses);
 										const covered = area(body, t) / (t.w * t.h);
-										if (covered > 0.15) throw new Error(`${name || "busy"}/${staging ? "line" : "desks"}: ${d.id}'s end place covers ${(covered * 100).toFixed(0)}% of ${other.id}'s tower`);
+										if (covered > 0.15)
+											throw new Error(
+												`${name || "busy"}/${staging ? "line" : "desks"}: ${d.id}'s end place covers ${(covered * 100).toFixed(0)}% of ${other.id}'s tower`,
+											);
 									}
 								}
 							}

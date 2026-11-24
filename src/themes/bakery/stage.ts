@@ -30,13 +30,29 @@ export const CAKE_BUILD = {
 		g.rect(x, y, w, h).stroke({ width: 1.4, color: INK });
 	},
 	flag: (f: Graphics, top: { x: number; y: number }) => {
-		f.rect(top.x - 1.6, top.y - 14, 3.2, 14).fill(0xffffff).stroke({ width: 1.1, color: INK });
-		f.rect(top.x - 1.6, top.y - 10, 3.2, 2).rect(top.x - 1.6, top.y - 5, 3.2, 2).fill(PINK);
-		f.ellipse(top.x, top.y - 18, 2.4, 3.8).fill(HEAT).stroke({ width: 1, color: INK });
+		f.rect(top.x - 1.6, top.y - 14, 3.2, 14)
+			.fill(0xffffff)
+			.stroke({ width: 1.1, color: INK });
+		f.rect(top.x - 1.6, top.y - 10, 3.2, 2)
+			.rect(top.x - 1.6, top.y - 5, 3.2, 2)
+			.fill(PINK);
+		f.ellipse(top.x, top.y - 18, 2.4, 3.8)
+			.fill(HEAT)
+			.stroke({ width: 1, color: INK });
 		f.ellipse(top.x, top.y - 17.2, 1, 1.8).fill(0xfff3b0);
-		f.circle(top.x + 6, top.y - 2.6, 3.2).fill(CHERRY).stroke({ width: 1.2, color: INK });
-		f.moveTo(top.x - 5, top.y).lineTo(top.x - 5, top.y - 24).stroke({ width: 1.6, color: INK });
-		f.moveTo(top.x - 5, top.y - 24).lineTo(top.x - 20, top.y - 20).lineTo(top.x - 20, top.y - 13).lineTo(top.x - 5, top.y - 15).closePath().fill(PINK).stroke({ width: 1.4, color: INK });
+		f.circle(top.x + 6, top.y - 2.6, 3.2)
+			.fill(CHERRY)
+			.stroke({ width: 1.2, color: INK });
+		f.moveTo(top.x - 5, top.y)
+			.lineTo(top.x - 5, top.y - 24)
+			.stroke({ width: 1.6, color: INK });
+		f.moveTo(top.x - 5, top.y - 24)
+			.lineTo(top.x - 20, top.y - 20)
+			.lineTo(top.x - 20, top.y - 13)
+			.lineTo(top.x - 5, top.y - 15)
+			.closePath()
+			.fill(PINK)
+			.stroke({ width: 1.4, color: INK });
 		f.circle(top.x - 12.5, top.y - 18.5, 1.6).fill(0xffffff);
 	},
 };
@@ -54,7 +70,9 @@ function belt(g: Graphics, w: number): void {
 	for (let x = 10; x < w; x += 120) g.rect(x, 6, 5, 10);
 	g.fill(BRASS);
 	g.rect(0, -8, w, 8).fill(MINT_LIGHT);
-	g.roundRect(-2, 0, w + 4, 8, 2).fill(RASPBERRY).stroke(line(2.5));
+	g.roundRect(-2, 0, w + 4, 8, 2)
+		.fill(RASPBERRY)
+		.stroke(line(2.5));
 	for (let x = 4; x < w; x += 12) g.rect(x, 2, 5, 4);
 	g.fill(0xffffff);
 	g.moveTo(0, -8).lineTo(w, -8).stroke({ width: 2, color: INK });
@@ -104,7 +122,9 @@ function kiosk(g: Graphics): void {
 	const top = -124;
 	const bottom = -66;
 	for (const px of [l, r]) {
-		g.rect(px, top, 7, bottom - top).fill(0xffffff).stroke(thin(2));
+		g.rect(px, top, 7, bottom - top)
+			.fill(0xffffff)
+			.stroke(thin(2));
 		for (let y = top + 4; y < bottom; y += 9) g.poly([px, y + 4, px + 7, y, px + 7, y + 3, px, y + 7]).fill(CHERRY);
 	}
 	awning(g, l - 4, r + 11, top - 6, 8, PINK, 0xffffff, 12);
@@ -115,16 +135,23 @@ function kiosk(g: Graphics): void {
 function hatch(g: Graphics, h: number): void {
 	const w = 56;
 	g.rect(-w, 6, w, h - 12).fill(PINK_LIGHT);
-	g.rect(-w + 6, 22, w - 12, h * 0.4).fill(0x5a3a44).stroke(thin(2));
+	g.rect(-w + 6, 22, w - 12, h * 0.4)
+		.fill(0x5a3a44)
+		.stroke(thin(2));
 	for (let k = 0; k < 2; k++) {
 		const sy = 22 + (h * 0.4 * (k + 1)) / 2 - 2;
 		g.rect(-w + 6, sy, w - 12, 2).fill(0xffffff);
-		for (let i = 0; i < 3; i++) g.rect(-w + 9 + i * 13, sy - 8, 11, 8).fill([PINK, MINT_LIGHT, 0xfff3c4][(i + k) % 3]!).stroke(thin(1));
+		for (let i = 0; i < 3; i++)
+			g.rect(-w + 9 + i * 13, sy - 8, 11, 8)
+				.fill([PINK, MINT_LIGHT, 0xfff3c4][(i + k) % 3]!)
+				.stroke(thin(1));
 	}
 	awning(g, -w - 4, 2, 9, 7, RASPBERRY, 0xffffff, 8);
 	g.rect(-w, h / 2 - 15, w, 30).fill({ color: 0x5a3a44, alpha: 0.85 });
 	g.rect(-w, 6, w, h - 12).stroke(line(3));
-	g.circle(-w / 2, h - 22, 5).fill(0xf2bd3c).stroke(thin(1.6));
+	g.circle(-w / 2, h - 22, 5)
+		.fill(0xf2bd3c)
+		.stroke(thin(1.6));
 }
 
 /** A PR's cake box riding the hallway's belt: pink, tied with a ribbon and a bow, its base at y = 0. */

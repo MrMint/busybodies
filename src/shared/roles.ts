@@ -22,7 +22,10 @@ const BY_TASK: [Role, RegExp][] = [
 	["verifier", /\b(verif|test|validat|reproduc|confirm|check|qa\b)/],
 	["designer", /\b(design|plan|architect|mock ?up|sketch|wireframe|ui\b|ux\b)/],
 	["explorer", /\bexplor/],
-	["scout", /\b(scout|search|survey|find|research|investigat|look (up|into|for|at|through)|locate|trace|read|fetch|summari[sz]|gather|inventory|map out|understand|where )/],
+	[
+		"scout",
+		/\b(scout|search|survey|find|research|investigat|look (up|into|for|at|through)|locate|trace|read|fetch|summari[sz]|gather|inventory|map out|understand|where )/,
+	],
 	["builder", /\b(build|implement|fix|add|writ|refactor|updat|migrat|port\b|creat|make|chang|edit|renam|remov|delet|bump|wire|set ?up|install|clean)/],
 ];
 

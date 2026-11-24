@@ -65,7 +65,16 @@ export class Director {
 		// Regulars (director/story.ts): the same project and role, the same character every day.
 		const regulars = regularsOf(Object.values(d.world.actors), snap);
 		return Object.values(d.world.actors).map((a) => ({
-			who: { key: a.key, kind: a.kind, role: a.role, look: a.kind === "lead" ? "lead" : roleFor(a.role, a.task), mood: a.mood, size: a.size, tint: a.tint, ...(regulars.has(a.key) ? { regular: regulars.get(a.key)! } : {}) },
+			who: {
+				key: a.key,
+				kind: a.kind,
+				role: a.role,
+				look: a.kind === "lead" ? "lead" : roleFor(a.role, a.task),
+				mood: a.mood,
+				size: a.size,
+				tint: a.tint,
+				...(regulars.has(a.key) ? { regular: regulars.get(a.key)! } : {}),
+			},
 			slot: a.slot,
 			desk: a.session,
 			area: a.area,

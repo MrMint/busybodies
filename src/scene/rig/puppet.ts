@@ -85,7 +85,13 @@ export class Puppet extends Container {
 	/** The hand colour, for a prop that is the hand itself (a finger-gun). */
 	#skin: number;
 	#springs: SpringSet<ChannelName>;
-	#pop = { face: new Spring(1, FEEL.pop), heldL: new Spring(1, FEEL.pop), heldR: new Spring(1, FEEL.pop), front: new Spring(1, FEEL.pop), fx: new Spring(1, FEEL.pop) };
+	#pop = {
+		face: new Spring(1, FEEL.pop),
+		heldL: new Spring(1, FEEL.pop),
+		heldR: new Spring(1, FEEL.pop),
+		front: new Spring(1, FEEL.pop),
+		fx: new Spring(1, FEEL.pop),
+	};
 	/** The pops as a list, for the per-frame loops (no array made each frame). */
 	#pops: Spring[] = Object.values(this.#pop);
 	/** The parts that come and go (props, the desk, the work, binoculars, the fx) shown now. They
@@ -600,4 +606,3 @@ export class Puppet extends Container {
 		arm.held.scale.set(heldScale);
 	}
 }
-

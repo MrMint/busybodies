@@ -93,7 +93,18 @@ function blank(): void {
 	const charactersFor = (a: Atlas) => (params.has("placeholders") ? undefined : rigCharacters(a));
 	// The director decides who stands where and in which pose; the office draws it.
 	const director = new Director();
-	const office = new Office({ renderer: app.renderer, characters, wake: () => scene.redraw(), cast: director.cast, builds: director.builds, metrics: director.metrics, story: director.story, top: compact ? 40 : 64, theme: sceneTheme(theme), ...lightOptions(director) });
+	const office = new Office({
+		renderer: app.renderer,
+		characters,
+		wake: () => scene.redraw(),
+		cast: director.cast,
+		builds: director.builds,
+		metrics: director.metrics,
+		story: director.story,
+		top: compact ? 40 : 64,
+		theme: sceneTheme(theme),
+		...lightOptions(director),
+	});
 	app.stage.addChild(office);
 	// The office's voice (src/scene/sass): bubbles and signs from what the sessions are doing.
 	// ?toolvoice keeps the director's placeholder (each busy lead says its tool). A live scene lets
@@ -225,10 +236,13 @@ function blank(): void {
 		const wakes = [director.wake, voice?.nextWake(director.now), camerawork?.wake(director.now)].filter((t): t is number => t !== undefined);
 		const at = wakes.length ? Math.min(...wakes) : undefined;
 		if (at !== undefined && !scene.frozen) {
-			wakeTimer = setTimeout(() => {
-				director.now = at;
-				direct();
-			}, Math.max(0, at - director.now));
+			wakeTimer = setTimeout(
+				() => {
+					director.now = at;
+					direct();
+				},
+				Math.max(0, at - director.now),
+			);
 		}
 	};
 	Object.assign(scene, { direct });
@@ -248,7 +262,10 @@ function blank(): void {
 	};
 	const show = scene.show;
 	const redraw = scene.redraw;
-	const inspector = import.meta.env.DEV || params.has("inspect") ? installInspector(app, office, scene, director, voice && { voice, now: () => director.now }, { current: () => theme, set: setTheme }, visibility) : undefined;
+	const inspector =
+		import.meta.env.DEV || params.has("inspect")
+			? installInspector(app, office, scene, director, voice && { voice, now: () => director.now }, { current: () => theme, set: setTheme }, visibility)
+			: undefined;
 	if (inspector) Object.assign(inspector, { setToggles });
 	// The diary (src/shared/diary.ts): counts and kinds only, from the Bun process (or, in a demo,
 	// kept here from the demo's snapshots). The walls and the lobby board read it (office/decor.ts).
@@ -269,7 +286,14 @@ function blank(): void {
 	}
 	let bridge: Bridge | undefined;
 	const shell = installShell({
-		bridge: { status: () => bridge!.status(), setCompact: (on) => bridge?.setCompact(on), showOffice: () => bridge?.showOffice(), openProjectPage: () => bridge?.openProjectPage(), setTheme: (id) => bridge?.setTheme(id), setToggles: (change) => bridge?.setToggles(change) },
+		bridge: {
+			status: () => bridge!.status(),
+			setCompact: (on) => bridge?.setCompact(on),
+			showOffice: () => bridge?.showOffice(),
+			openProjectPage: () => bridge?.openProjectPage(),
+			setTheme: (id) => bridge?.setTheme(id),
+			setToggles: (change) => bridge?.setToggles(change),
+		},
 		live: !params.has("demo") && !params.has("replay"),
 		compact,
 		theme: { current: () => theme, set: (id) => setTheme(id) },
@@ -289,7 +313,11 @@ function blank(): void {
 		},
 	});
 	if (follow) {
-		camerawork = installCamerawork(office, director, { visible: () => visibility.visible, tiles: (t, shot) => hud.tiles(t, shot), redraw: () => scene.redraw() });
+		camerawork = installCamerawork(office, director, {
+			visible: () => visibility.visible,
+			tiles: (t, shot) => hud.tiles(t, shot),
+			redraw: () => scene.redraw(),
+		});
 		inspector?.shots(camerawork);
 	}
 	if (params.has("about")) shell.about();
@@ -353,7 +381,12 @@ function blank(): void {
 	}
 
 	const rpc = Electroview.defineRPC<BusybodiesRPC>({
-		handlers: { messages: { snapshot: show, about: () => shell.about(), theme: ({ id }) => (setTheme(themeId(id)), shell.themeChanged()), settings: (s) => (setToggles(s), shell.togglesChanged()),
+		handlers: {
+			messages: {
+				snapshot: show,
+				about: () => shell.about(),
+				theme: ({ id }) => (setTheme(themeId(id)), shell.themeChanged()),
+				settings: (s) => (setToggles(s), shell.togglesChanged()),
 				// The snapshot that changed the diary comes right after it, and draws it.
 				diary: (d) => void (director.diary = diaryOf(d)),
 			},

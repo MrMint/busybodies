@@ -1,4 +1,3 @@
-
 import type { Floor } from "../../world/world";
 import { crewSpots } from "../../world/world";
 import { POSE, poseMs } from "../../rig/data/poses";
@@ -64,15 +63,26 @@ export function stage(list: Spec[], places: Map<string, Place>, floor: Floor): v
 			if (turned[i] !== p.slot) places.set(k, { ...p, slot: turned[i]! });
 		});
 	}
-	pairUp(places, floor.areas.find((a) => a.kind === "kitchen"));
+	pairUp(
+		places,
+		floor.areas.find((a) => a.kind === "kitchen"),
+	);
 }
 
 /** For each crew member startled by news (a red test, a teammate finishing): who it looks at (the
  * nearest one the news is about) and how long after the nearest glancer it looks up. */
-export function rippleFor(list: Spec[], startled: Map<string, Set<string>>, places: Map<string, Place>, before: Record<string, Actor>, now: number): Map<string, { to: string; delay: number }> {
+export function rippleFor(
+	list: Spec[],
+	startled: Map<string, Set<string>>,
+	places: Map<string, Place>,
+	before: Record<string, Actor>,
+	now: number,
+): Map<string, { to: string; delay: number }> {
 	const out = new Map<string, { to: string; delay: number }>();
 	for (const [session, news] of startled) {
-		const from = [...news].map((k) => ({ key: k, at: before[k] ? here(before[k]!, now) : places.get(k)?.slot })).filter((n): n is { key: string; at: Point } => !!n.at);
+		const from = [...news]
+			.map((k) => ({ key: k, at: before[k] ? here(before[k]!, now) : places.get(k)?.slot }))
+			.filter((n): n is { key: string; at: Point } => !!n.at);
 		if (!from.length) continue;
 		const near: { key: string; to: string; d: number }[] = [];
 		for (const s of list) {
@@ -101,7 +111,16 @@ export function rippleFor(list: Spec[], startled: Map<string, Set<string>>, plac
  * busy crew member at its spot looks up at it, once, from the moment the lead arrives. Leads are
  * directed before their crew, so this direction's lead is already in `actors`.
  */
-export function roundFor(s: Spec, actors: Record<string, Actor>, before: Record<string, Actor>, places: Map<string, Place>, trip: Trip | undefined, continuing: Actor | undefined, now: number, wakes: number[]): { lead: string; at: number } | undefined {
+export function roundFor(
+	s: Spec,
+	actors: Record<string, Actor>,
+	before: Record<string, Actor>,
+	places: Map<string, Place>,
+	trip: Trip | undefined,
+	continuing: Actor | undefined,
+	now: number,
+	wakes: number[],
+): { lead: string; at: number } | undefined {
 	if (s.kind !== "crew" || s.mood !== "busy" || trip || !places.get(s.key)?.spot.startsWith("crew:")) return undefined;
 	const lead = `s:${s.session.id}`;
 	const a = actors[lead];
@@ -112,7 +131,12 @@ export function roundFor(s: Spec, actors: Record<string, Actor>, before: Record<
 	}
 	// It arrived at the end of last time's walk; already looking up, it carries on.
 	const w = before[lead]?.walk;
-	const at = continuing?.pose === "glance" && continuing.reactTo === lead ? continuing.poseSince : w && before[lead]!.spot === a.spot && w.since + w.ms <= now ? w.since + w.ms : undefined;
+	const at =
+		continuing?.pose === "glance" && continuing.reactTo === lead
+			? continuing.poseSince
+			: w && before[lead]!.spot === a.spot && w.since + w.ms <= now
+				? w.since + w.ms
+				: undefined;
 	if (at === undefined || now >= at + poseMs("glance", "lead")) return undefined;
 	if (continuing && continuing.poseSince !== at) return undefined;
 	return { lead, at };

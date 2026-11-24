@@ -1,4 +1,3 @@
-
 import type { Floor } from "../../world/world";
 import { pauseOf } from "../errands";
 import { RUSH } from "../rush";

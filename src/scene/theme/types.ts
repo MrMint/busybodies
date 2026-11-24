@@ -178,4 +178,3 @@ export interface SceneLight {
 	/** Outside on the lawn: trees (office) or bollards and pallets (factory). */
 	yard: "trees" | "yard";
 }
-

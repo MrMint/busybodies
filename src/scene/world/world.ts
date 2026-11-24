@@ -488,8 +488,7 @@ export function crewSpots(world: Floor, desk: Desk): Slot[] {
 	const deskAt = (c: Rect | undefined) => (c ? area.desks.find((d) => d.cell.x === c.x && d.cell.y === c.y) : undefined);
 	const rowsWithDesks = new Set(area.desks.map((d) => d.cell.y));
 	/** Who a free cell is lent to. */
-	const owner = (c: Rect) =>
-		deskAt(at(c.x, c.y - ROW)) ?? deskAt(at(c.x, c.y + ROW)) ?? deskAt(at(c.x - CELL_W, c.y)) ?? deskAt(at(c.x + CELL_W, c.y));
+	const owner = (c: Rect) => deskAt(at(c.x, c.y - ROW)) ?? deskAt(at(c.x, c.y + ROW)) ?? deskAt(at(c.x - CELL_W, c.y)) ?? deskAt(at(c.x + CELL_W, c.y));
 	const c = desk.cell;
 	const near = [at(c.x, c.y + ROW), at(c.x, c.y - ROW), at(c.x - CELL_W, c.y), at(c.x + CELL_W, c.y)];
 	for (const f of near) {
@@ -525,7 +524,13 @@ export const inCrowd = (spots: Slot[], i: number) => i >= spots.length;
  * anyone, each facing the lead. A big crew in a full room spills out of its cell this way rather
  * than stacking up on the desk's name card.
  */
-export const CROWD = { rows: [[0, -54, 54], [-27, 27, -81, 81]], reach: 108 } as const;
+export const CROWD = {
+	rows: [
+		[0, -54, 54],
+		[-27, 27, -81, 81],
+	],
+	reach: 108,
+} as const;
 
 export function crowdSlot(desk: Desk, k: number): Slot {
 	let row = 0;

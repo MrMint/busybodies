@@ -43,17 +43,7 @@ export type Speaker = Role | "anyone" | "room";
  * rest are props the wiring maps to whatever draws them (the fridge dock, the event ticker, the
  * desk note, the plant, the mug pile), or drops.
  */
-export type SignPlace =
-	| "sign"
-	| "board"
-	| "meeting:sign"
-	| "meeting:board"
-	| "kitchen:sign"
-	| "fridge"
-	| "ticker"
-	| "desk"
-	| "plant"
-	| "mugs";
+export type SignPlace = "sign" | "board" | "meeting:sign" | "meeting:board" | "kitchen:sign" | "fridge" | "ticker" | "desk" | "plant" | "mugs";
 
 /** Values a line's `{placeholders}` can take. A line whose placeholder has no value isn't used. */
 export interface LineVars {

@@ -1,4 +1,3 @@
-
 import { choosePose } from "../../rig/data/player";
 import { habitAt } from "../habits";
 import type { Seen } from "../types";
@@ -24,7 +23,8 @@ export interface Choice {
 export function standing(s: Spec, now: number, count: Record<string, number>, work?: Work, life = false, habits?: readonly string[]): Choice {
 	if (s.mood === "stalled") return { pose: "stalled", as: "lead", acted: false };
 	if (s.mood === "done") return { pose: "done", as: "lead", acted: false };
-	if (s.seen.waiting !== undefined) return { pose: choosePose("waiting", s.key, s.rig, count.waiting ?? 0).name, as: "lead", acted: false, trigger: "waiting" };
+	if (s.seen.waiting !== undefined)
+		return { pose: choosePose("waiting", s.key, s.rig, count.waiting ?? 0).name, as: "lead", acted: false, trigger: "waiting" };
 	if (s.busy) {
 		const run = s.running;
 		const ranMin = run ? (now - run.since) / MIN : 0;
@@ -45,10 +45,11 @@ export function standing(s: Spec, now: number, count: Record<string, number>, wo
 export function acted(s: Spec, was: Seen | undefined, now: number): Choice | undefined {
 	const fresh = (at: number | undefined, before: number | undefined) =>
 		at !== undefined && at !== before && (was !== undefined || now - at <= RULES.recentMs);
-	const newPr = s.seen.prs.some((n) => !(was?.prs ?? []).includes(n)) && (was !== undefined);
+	const newPr = s.seen.prs.some((n) => !(was?.prs ?? []).includes(n)) && was !== undefined;
 	if (newPr) return { pose: "prOpened", as: "lead", acted: true, trigger: "pr" };
 	// A builder mid-swing hits its thumb instead.
-	if (fresh(s.seen.failAt, was?.failAt)) return { pose: s.rig === "builder" && s.kind === "crew" ? "thumb" : "testFailed", as: "lead", acted: true, trigger: "fail" };
+	if (fresh(s.seen.failAt, was?.failAt))
+		return { pose: s.rig === "builder" && s.kind === "crew" ? "thumb" : "testFailed", as: "lead", acted: true, trigger: "fail" };
 	if (fresh(s.seen.compactAt, was?.compactAt)) return { pose: "stretch", as: "lead", acted: true, trigger: "compact" };
 	return undefined;
 }

@@ -48,11 +48,20 @@ const inputFor = (name: string): object => {
 		case "Bash":
 			return { command: pick(COMMANDS) };
 		case "Edit":
-			return { file_path: `/Users/you/code/${pick(FILES)}`, old_string: filler(1 + Math.floor(Math.random() * 4)), new_string: filler(1 + Math.floor(Math.random() * 12)) };
+			return {
+				file_path: `/Users/you/code/${pick(FILES)}`,
+				old_string: filler(1 + Math.floor(Math.random() * 4)),
+				new_string: filler(1 + Math.floor(Math.random() * 12)),
+			};
 		case "Write":
 			return { file_path: `/Users/you/code/${pick(FILES)}`, content: filler(10 + Math.floor(Math.random() * 60)) };
 		case "TodoWrite":
-			return { todos: Array.from({ length: 3 + Math.floor(Math.random() * 6) }, (_, i) => ({ content: `Invented step ${i + 1}`, status: pick(TODO_STATUSES) })) };
+			return {
+				todos: Array.from({ length: 3 + Math.floor(Math.random() * 6) }, (_, i) => ({
+					content: `Invented step ${i + 1}`,
+					status: pick(TODO_STATUSES),
+				})),
+			};
 	}
 	return {};
 };
@@ -61,12 +70,21 @@ const toolLine = (model = pick(MODELS)) => {
 	const id = `toolu_${Math.random().toString(36).slice(2)}`;
 	const name = pick(TOOLS);
 	const timestamp = new Date().toISOString();
-	const usage = { input_tokens: 4, cache_read_input_tokens: 20_000 + Math.floor(Math.random() * 400_000), cache_creation_input_tokens: 900, output_tokens: 40 };
+	const usage = {
+		input_tokens: 4,
+		cache_read_input_tokens: 20_000 + Math.floor(Math.random() * 400_000),
+		cache_creation_input_tokens: 900,
+		output_tokens: 40,
+	};
 	const call = JSON.stringify({ message: { model, content: [{ type: "tool_use", id, name, input: inputFor(name) }], usage }, type: "assistant", timestamp });
 	// Reads, searches and the rest stay open until the next call, so they show as running.
 	if (name !== "Bash" && name !== "Edit" && name !== "Write") return `${call}\n`;
 	const fail = name === "Bash" && Math.random() < 0.3;
-	const result = JSON.stringify({ type: "user", message: { content: [{ type: "tool_result", tool_use_id: id, content: fail ? "Exit code 1\nnope" : "ok", is_error: fail }] }, timestamp });
+	const result = JSON.stringify({
+		type: "user",
+		message: { content: [{ type: "tool_result", tool_use_id: id, content: fail ? "Exit code 1\nnope" : "ok", is_error: fail }] },
+		timestamp,
+	});
 	return `${call}\n${result}\n`;
 };
 
@@ -132,17 +150,23 @@ const noise = Number(o.noise);
 const noiseLog = join(home, "projects", projectSlug("/Users/you/code/attic"), "fake-dead-session.jsonl");
 if (noise > 0) await mkdir(join(noiseLog, ".."), { recursive: true });
 const noiseTimer = noise > 0 ? setInterval(() => void appendFile(noiseLog, toolLine()), 1000 / noise) : undefined;
-const timer = rate > 0 ? setInterval(() => {
-	if (logs.length === 0) return;
-	const log = pick(logs);
-	void appendFile(log, toolLine(modelOf.get(log)));
-}, 1000 / rate) : undefined;
+const timer =
+	rate > 0
+		? setInterval(() => {
+				if (logs.length === 0) return;
+				const log = pick(logs);
+				void appendFile(log, toolLine(modelOf.get(log)));
+			}, 1000 / rate)
+		: undefined;
 let next = nSessions;
 const churn = Number(o.churn);
-const churnTimer = churn > 0 ? setInterval(() => {
-	// Alternate busy and idle newcomers, so agents are hired and let go too.
-	void endSession().then(() => addSession(next, next++ % 2 === 0));
-}, churn * 1000) : undefined;
+const churnTimer =
+	churn > 0
+		? setInterval(() => {
+				// Alternate busy and idle newcomers, so agents are hired and let go too.
+				void endSession().then(() => addSession(next, next++ % 2 === 0));
+			}, churn * 1000)
+		: undefined;
 const stop = async () => {
 	clearInterval(churnTimer);
 	clearInterval(timer);

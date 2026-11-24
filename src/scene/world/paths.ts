@@ -22,18 +22,28 @@ function gate(floor: Floor, area: Area, near: number): [Point, Point] {
 	if (area.band === "top") {
 		// Open along the hallway edge: cross it straight down from wherever the walker is.
 		const x = clamp(near, area.rect.x + 30, area.rect.x + area.rect.w - 30);
-		return [{ x, y: area.rect.y + area.rect.h - 22 }, { x, y: mid }];
+		return [
+			{ x, y: area.rect.y + area.rect.h - 22 },
+			{ x, y: mid },
+		];
 	}
 	const door = area.wall.find((w) => w.kind === "door");
 	const x = door ? door.rect.x + door.rect.w / 2 : area.rect.x + area.rect.w / 2;
-	return [{ x, y: area.floorY + 26 }, { x, y: mid }];
+	return [
+		{ x, y: area.floorY + 26 },
+		{ x, y: mid },
+	];
 }
 
 /** The points of a walk from `from` (in area `fromArea`) to `to` (in area `toArea`). */
 export function pathBetween(floor: Floor, fromArea: string | undefined, from: Point, toArea: string | undefined, to: Point): Point[] {
 	const a = floor.areas.find((x) => x.id === fromArea);
 	const b = floor.areas.find((x) => x.id === toArea);
-	if (!a || !b || a.id === b.id) return [{ x: from.x, y: from.y }, { x: to.x, y: to.y }];
+	if (!a || !b || a.id === b.id)
+		return [
+			{ x: from.x, y: from.y },
+			{ x: to.x, y: to.y },
+		];
 	const [aIn, aHall] = gate(floor, a, from.x);
 	const [bIn, bHall] = gate(floor, b, to.x);
 	return dedupe([{ x: from.x, y: from.y }, aIn, aHall, bHall, bIn, { x: to.x, y: to.y }]);
@@ -128,7 +138,11 @@ export function pointAt(points: Point[], d: number): { x: number; y: number; dx:
 	};
 	/** How much of the corner at points[i] is rounded off (none at the ends). */
 	const round = (i: number) => (i <= 0 || i >= n - 1 ? 0 : Math.min(GAIT.corner, segs[i - 1]! / 2, segs[i]! / 2));
-	let left = clamp(d, 0, segs.reduce((x, y) => x + y, 0));
+	let left = clamp(
+		d,
+		0,
+		segs.reduce((x, y) => x + y, 0),
+	);
 	for (let i = 0; i < segs.length; i++) {
 		const seg = segs[i]!;
 		if (left <= seg || i === segs.length - 1) {

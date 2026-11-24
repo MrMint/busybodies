@@ -43,165 +43,195 @@ async function open(query: string): Promise<Page> {
 }
 
 describe("themes", () => {
-	test("?theme=factory: the same floor and cast, factory words, an arm per project bay", async () => {
-		const office = await open("demo&frozen");
-		const factory = await open("demo&frozen&theme=factory");
-		const facts = (p: Page) =>
-			p.evaluate(() => {
-				const b = window.__busybodies!;
-				return {
-					theme: b.theme(),
-					areas: b.layout()!.areas.map((a) => a.id),
-					cast: b.entities().map((e) => e.key).sort(),
-					meeting: b.signs().find((s) => s.id === "meeting:sign")?.text?.title,
-					arms: b.arms().map((a) => a.area),
-				};
-			});
-		const o = await facts(office);
-		const f = await facts(factory);
-		expect(o.theme).toBe("office");
-		expect(f.theme).toBe("factory");
-		expect(f.areas).toEqual(o.areas);
-		expect(f.cast).toEqual(o.cast);
-		expect(o.meeting).toBe("THIS MEETING");
-		expect(f.meeting).toBe("QUALITY CONTROL");
-		expect(o.arms).toEqual([]);
-		expect(f.arms).toEqual(o.areas.filter((id) => id.startsWith("room:")));
-		await office.close();
-		await factory.close();
-	}, T);
+	test(
+		"?theme=factory: the same floor and cast, factory words, an arm per project bay",
+		async () => {
+			const office = await open("demo&frozen");
+			const factory = await open("demo&frozen&theme=factory");
+			const facts = (p: Page) =>
+				p.evaluate(() => {
+					const b = window.__busybodies!;
+					return {
+						theme: b.theme(),
+						areas: b.layout()!.areas.map((a) => a.id),
+						cast: b
+							.entities()
+							.map((e) => e.key)
+							.sort(),
+						meeting: b.signs().find((s) => s.id === "meeting:sign")?.text?.title,
+						arms: b.arms().map((a) => a.area),
+					};
+				});
+			const o = await facts(office);
+			const f = await facts(factory);
+			expect(o.theme).toBe("office");
+			expect(f.theme).toBe("factory");
+			expect(f.areas).toEqual(o.areas);
+			expect(f.cast).toEqual(o.cast);
+			expect(o.meeting).toBe("THIS MEETING");
+			expect(f.meeting).toBe("QUALITY CONTROL");
+			expect(o.arms).toEqual([]);
+			expect(f.arms).toEqual(o.areas.filter((id) => id.startsWith("room:")));
+			await office.close();
+			await factory.close();
+		},
+		T,
+	);
 
-	test("?theme=bakery: the bakery, the same floor and cast in bakery words, no arms", async () => {
-		const office = await open("demo&frozen");
-		const line = await open("demo&frozen&theme=bakery");
-		const facts = (p: Page) =>
-			p.evaluate(() => {
-				const b = window.__busybodies!;
-				return {
-					theme: b.theme(),
-					areas: b.layout()!.areas.map((a) => a.id),
-					cast: b.entities().map((e) => e.key).sort(),
-					meeting: b.signs().find((s) => s.id === "meeting:sign")?.text?.title,
-					serving: b.signs().find((s) => s.id === "yours:serving")?.text?.title,
-					arms: b.arms().length,
-				};
-			});
-		const o = await facts(office);
-		const k = await facts(line);
-		expect(k.theme).toBe("bakery");
-		expect(k.areas).toEqual(o.areas);
-		expect(k.cast).toEqual(o.cast);
-		expect(k.meeting).toBe("NO CRUMB UNTASTED");
-		expect(k.serving).toBe("ORDER UP!");
-		expect(k.arms).toBe(0);
-		// Switched live from the factory and back to the office, without a reload.
-		await line.evaluate(() => ((window as unknown as { __loaded: boolean }).__loaded = true));
-		await line.evaluate(() => window.__busybodies!.setTheme("factory"));
-		expect(await line.evaluate(() => [window.__busybodies!.theme(), window.__busybodies!.arms().length > 0])).toEqual(["factory", true]);
-		await line.evaluate(() => window.__busybodies!.setTheme("bakery"));
-		const back = await line.evaluate(() => ({
-			theme: window.__busybodies!.theme(),
-			arms: window.__busybodies!.arms().length,
-			serving: window.__busybodies!.signs().find((s) => s.id === "yours:serving")?.text?.title,
-			sameDocument: (window as unknown as { __loaded?: boolean }).__loaded === true,
-		}));
-		expect(back).toEqual({ theme: "bakery", arms: 0, serving: "ORDER UP!", sameDocument: true });
-		await office.close();
-		await line.close();
-	}, T);
-
-	test("switching live redraws in the new look without a reload, and an idle office stays at zero frames", async () => {
-		// A long settle keeps the naps and waits from talking: a bubble going up or down in the
-		// quiet window below is one render, which isn't the switch's doing.
-		const page = await open("demo=idle&calm&settle=600000");
-		await page.evaluate(() => ((window as unknown as { __loaded: boolean }).__loaded = true));
-		const signs = () => page.evaluate(() => Object.fromEntries(window.__busybodies!.signs().map((s) => [s.id, s.text?.title ?? ""])));
-		const before = await page.evaluate(() => window.__busybodies!.entities().map((e) => e.key).sort());
-		const signsBefore = await signs();
-		await page.evaluate(() => window.__busybodies!.setTheme("factory"));
-		const after = await page.evaluate(() => {
-			const b = window.__busybodies!;
-			return {
-				theme: b.theme(),
-				arms: b.arms().length,
-				cast: b.entities().map((e) => e.key).sort(),
+	test(
+		"?theme=bakery: the bakery, the same floor and cast in bakery words, no arms",
+		async () => {
+			const office = await open("demo&frozen");
+			const line = await open("demo&frozen&theme=bakery");
+			const facts = (p: Page) =>
+				p.evaluate(() => {
+					const b = window.__busybodies!;
+					return {
+						theme: b.theme(),
+						areas: b.layout()!.areas.map((a) => a.id),
+						cast: b
+							.entities()
+							.map((e) => e.key)
+							.sort(),
+						meeting: b.signs().find((s) => s.id === "meeting:sign")?.text?.title,
+						serving: b.signs().find((s) => s.id === "yours:serving")?.text?.title,
+						arms: b.arms().length,
+					};
+				});
+			const o = await facts(office);
+			const k = await facts(line);
+			expect(k.theme).toBe("bakery");
+			expect(k.areas).toEqual(o.areas);
+			expect(k.cast).toEqual(o.cast);
+			expect(k.meeting).toBe("NO CRUMB UNTASTED");
+			expect(k.serving).toBe("ORDER UP!");
+			expect(k.arms).toBe(0);
+			// Switched live from the factory and back to the office, without a reload.
+			await line.evaluate(() => ((window as unknown as { __loaded: boolean }).__loaded = true));
+			await line.evaluate(() => window.__busybodies!.setTheme("factory"));
+			expect(await line.evaluate(() => [window.__busybodies!.theme(), window.__busybodies!.arms().length > 0])).toEqual(["factory", true]);
+			await line.evaluate(() => window.__busybodies!.setTheme("bakery"));
+			const back = await line.evaluate(() => ({
+				theme: window.__busybodies!.theme(),
+				arms: window.__busybodies!.arms().length,
+				serving: window.__busybodies!.signs().find((s) => s.id === "yours:serving")?.text?.title,
 				sameDocument: (window as unknown as { __loaded?: boolean }).__loaded === true,
-			};
-		});
-		expect(after.theme).toBe("factory");
-		expect(after.sameDocument).toBe(true);
-		expect(after.arms).toBeGreaterThan(0);
-		expect(after.cast).toEqual(before);
-		// A sign on the office's default takes the factory's; one the voice wrote goes back to the
-		// factory's default (or the voice writes it again in factory words): no office sign stays up.
-		const DEFAULTS: Record<string, [string, string]> = {
-			"meeting:sign": ["THIS MEETING", "QUALITY CONTROL"],
-			"kitchen:sign": ["1 CUP PER GREEN BUILD", "1 SNACK PER GREEN BUILD"],
-			"lobby:frame": ["EMPLOYEE OF THE MONTH", "DAYS WITHOUT INCIDENT"],
-			"yours:serving": ["NOW SERVING", "NEXT UP"],
-		};
-		const signsAfter = await signs();
-		for (const [id, [office, factory]] of Object.entries(DEFAULTS)) {
-			expect(signsAfter[id]).not.toBe(office);
-			if (signsBefore[id] === office) expect(signsAfter[id]).toBe(factory);
-		}
-		expect(Object.entries(DEFAULTS).some(([id, [office]]) => signsBefore[id] === office)).toBe(true);
-		// Settled, the switched office is as quiet as before.
-		await page.waitForFunction(() => !window.__busybodies!.counters().tickerRunning, undefined, { timeout: 15_000 });
-		await page.waitForTimeout(300);
-		await page.evaluate(() => window.__busybodies!.resetCounters());
-		await page.waitForTimeout(1500);
-		const c = await page.evaluate(() => window.__busybodies!.counters());
-		expect(c.animationFrames).toBe(0);
-		expect(c.renders).toBe(0);
-		// And back.
-		await page.evaluate(() => window.__busybodies!.setTheme("office"));
-		expect(await page.evaluate(() => [window.__busybodies!.theme(), window.__busybodies!.arms().length])).toEqual(["office", 0]);
-		await page.close();
-	}, T);
+			}));
+			expect(back).toEqual({ theme: "bakery", arms: 0, serving: "ORDER UP!", sameDocument: true });
+			await office.close();
+			await line.close();
+		},
+		T,
+	);
 
-	test("a bay's arm works only on a real event, batches mid-move, then is still", async () => {
-		const page = await open("demo=release&settle=600000&theme=factory");
-		// At rest before anything lands.
-		expect(await page.evaluate(() => window.__busybodies!.arms().some((a) => a.moving))).toBe(false);
-		// The release plays edits landing on the builds every few seconds: wait for one.
-		await page.waitForFunction(() => window.__busybodies!.arms().some((a) => a.moving), undefined, { timeout: 20_000 });
-		const moving = await page.evaluate(() => {
-			const b = window.__busybodies!;
-			b.freeze();
-			const arm = b.arms().find((a) => a.moving)!;
-			// A piece waits on the arm (hidden until it lets go), as the build's newest.
-			return { arm, waiting: b.bricks().some((x) => x.t < 0) };
-		});
-		expect(moving.arm.jobs[0]!.kind).toBe("place");
-		expect(moving.waiting).toBe(true);
-		// Mid-move, the frame still fits the draw budget.
-		const draws = await page.evaluate(() => {
-			const gl = document.querySelector("canvas")!.getContext("webgl2")!;
-			let n = 0;
-			const de = gl.drawElements.bind(gl);
-			const da = gl.drawArrays.bind(gl);
-			gl.drawElements = (...a: Parameters<typeof de>) => (n++, de(...a));
-			gl.drawArrays = (...a: Parameters<typeof da>) => (n++, da(...a));
-			const b = window.__busybodies!;
-			b.step(20);
-			n = 0;
-			b.step(1);
-			return n;
-		});
-		expect(draws).toBeLessThanOrEqual(30);
-		// Stepped through, it finishes and is still: no jobs left, back at rest.
-		const done = await page.evaluate((area) => {
-			const b = window.__busybodies!;
-			for (let i = 0; i < 1200 && b.arms().find((a) => a.area === area)!.moving; i++) b.step(1);
-			const a = b.arms().find((x) => x.area === area)!;
-			const rest = a.base;
-			b.step(30);
-			return { moving: a.moving, jobs: a.jobs.length, still: b.arms().find((x) => x.area === area)!.base === rest };
-		}, moving.arm.area);
-		expect(done).toEqual({ moving: false, jobs: 0, still: true });
-		await page.close();
-	}, T);
+	test(
+		"switching live redraws in the new look without a reload, and an idle office stays at zero frames",
+		async () => {
+			// A long settle keeps the naps and waits from talking: a bubble going up or down in the
+			// quiet window below is one render, which isn't the switch's doing.
+			const page = await open("demo=idle&calm&settle=600000");
+			await page.evaluate(() => ((window as unknown as { __loaded: boolean }).__loaded = true));
+			const signs = () => page.evaluate(() => Object.fromEntries(window.__busybodies!.signs().map((s) => [s.id, s.text?.title ?? ""])));
+			const before = await page.evaluate(() =>
+				window
+					.__busybodies!.entities()
+					.map((e) => e.key)
+					.sort(),
+			);
+			const signsBefore = await signs();
+			await page.evaluate(() => window.__busybodies!.setTheme("factory"));
+			const after = await page.evaluate(() => {
+				const b = window.__busybodies!;
+				return {
+					theme: b.theme(),
+					arms: b.arms().length,
+					cast: b
+						.entities()
+						.map((e) => e.key)
+						.sort(),
+					sameDocument: (window as unknown as { __loaded?: boolean }).__loaded === true,
+				};
+			});
+			expect(after.theme).toBe("factory");
+			expect(after.sameDocument).toBe(true);
+			expect(after.arms).toBeGreaterThan(0);
+			expect(after.cast).toEqual(before);
+			// A sign on the office's default takes the factory's; one the voice wrote goes back to the
+			// factory's default (or the voice writes it again in factory words): no office sign stays up.
+			const DEFAULTS: Record<string, [string, string]> = {
+				"meeting:sign": ["THIS MEETING", "QUALITY CONTROL"],
+				"kitchen:sign": ["1 CUP PER GREEN BUILD", "1 SNACK PER GREEN BUILD"],
+				"lobby:frame": ["EMPLOYEE OF THE MONTH", "DAYS WITHOUT INCIDENT"],
+				"yours:serving": ["NOW SERVING", "NEXT UP"],
+			};
+			const signsAfter = await signs();
+			for (const [id, [office, factory]] of Object.entries(DEFAULTS)) {
+				expect(signsAfter[id]).not.toBe(office);
+				if (signsBefore[id] === office) expect(signsAfter[id]).toBe(factory);
+			}
+			expect(Object.entries(DEFAULTS).some(([id, [office]]) => signsBefore[id] === office)).toBe(true);
+			// Settled, the switched office is as quiet as before.
+			await page.waitForFunction(() => !window.__busybodies!.counters().tickerRunning, undefined, { timeout: 15_000 });
+			await page.waitForTimeout(300);
+			await page.evaluate(() => window.__busybodies!.resetCounters());
+			await page.waitForTimeout(1500);
+			const c = await page.evaluate(() => window.__busybodies!.counters());
+			expect(c.animationFrames).toBe(0);
+			expect(c.renders).toBe(0);
+			// And back.
+			await page.evaluate(() => window.__busybodies!.setTheme("office"));
+			expect(await page.evaluate(() => [window.__busybodies!.theme(), window.__busybodies!.arms().length])).toEqual(["office", 0]);
+			await page.close();
+		},
+		T,
+	);
+
+	test(
+		"a bay's arm works only on a real event, batches mid-move, then is still",
+		async () => {
+			const page = await open("demo=release&settle=600000&theme=factory");
+			// At rest before anything lands.
+			expect(await page.evaluate(() => window.__busybodies!.arms().some((a) => a.moving))).toBe(false);
+			// The release plays edits landing on the builds every few seconds: wait for one.
+			await page.waitForFunction(() => window.__busybodies!.arms().some((a) => a.moving), undefined, { timeout: 20_000 });
+			const moving = await page.evaluate(() => {
+				const b = window.__busybodies!;
+				b.freeze();
+				const arm = b.arms().find((a) => a.moving)!;
+				// A piece waits on the arm (hidden until it lets go), as the build's newest.
+				return { arm, waiting: b.bricks().some((x) => x.t < 0) };
+			});
+			expect(moving.arm.jobs[0]!.kind).toBe("place");
+			expect(moving.waiting).toBe(true);
+			// Mid-move, the frame still fits the draw budget.
+			const draws = await page.evaluate(() => {
+				const gl = document.querySelector("canvas")!.getContext("webgl2")!;
+				let n = 0;
+				const de = gl.drawElements.bind(gl);
+				const da = gl.drawArrays.bind(gl);
+				gl.drawElements = (...a: Parameters<typeof de>) => (n++, de(...a));
+				gl.drawArrays = (...a: Parameters<typeof da>) => (n++, da(...a));
+				const b = window.__busybodies!;
+				b.step(20);
+				n = 0;
+				b.step(1);
+				return n;
+			});
+			expect(draws).toBeLessThanOrEqual(30);
+			// Stepped through, it finishes and is still: no jobs left, back at rest.
+			const done = await page.evaluate((area) => {
+				const b = window.__busybodies!;
+				for (let i = 0; i < 1200 && b.arms().find((a) => a.area === area)!.moving; i++) b.step(1);
+				const a = b.arms().find((x) => x.area === area)!;
+				const rest = a.base;
+				b.step(30);
+				return { moving: a.moving, jobs: a.jobs.length, still: b.arms().find((x) => x.area === area)!.base === rest };
+			}, moving.arm.area);
+			expect(done).toEqual({ moving: false, jobs: 0, still: true });
+			await page.close();
+		},
+		T,
+	);
 
 	// The bakery once drew no one at all: the upper band's gaps lie above the hallway at negative y,
 	// a big one there gave the café terrace a negative seed, its chalkboard a colour of undefined, and
@@ -210,7 +240,12 @@ describe("themes", () => {
 	test("every theme shows its crew, from an empty office to a full one, in the full and compact windows", async () => {
 		const source = await open("demo&frozen");
 		const busy = await source.evaluate(() => window.__busybodies!.snapshot()!);
-		const crew = await source.evaluate(() => window.__busybodies!.entities().map((e) => e.key).sort());
+		const crew = await source.evaluate(() =>
+			window
+				.__busybodies!.entities()
+				.map((e) => e.key)
+				.sort(),
+		);
 		await source.close();
 		expect(crew.length).toBeGreaterThan(10);
 		for (const id of THEME_IDS) {
@@ -228,34 +263,53 @@ describe("themes", () => {
 				const yards = await page.evaluate(() => window.__busybodies!.layout()!.yards);
 				expect(yards.some((y) => y.band === "top" && y.rect.y < 0 && y.rect.w >= 164 && y.rect.h >= 164)).toBe(true);
 				await page.evaluate((s) => window.__busybodies!.show(s), busy);
-				const shown = await page.evaluate(() => window.__busybodies!.entities().map((e) => e.key).sort());
+				const shown = await page.evaluate(() =>
+					window
+						.__busybodies!.entities()
+						.map((e) => e.key)
+						.sort(),
+				);
 				expect({ id, compact, shown, errors }).toEqual({ id, compact, shown: crew, errors: [] });
 				await page.close();
 			}
 		}
 	}, 90_000);
 
-	test("the settings cog: pick a theme in the sheet, and this window switches", async () => {
-		const page = await open("demo&frozen");
-		await page.click("#hud .settings");
-		await page.waitForFunction(() => !document.querySelector<HTMLElement>("#bb-settings")!.hidden);
-		const marked = () => page.evaluate(() => document.querySelector<HTMLElement>('#bb-settings [aria-checked="true"]')?.dataset.theme);
-		expect(await marked()).toBe("office");
-		await page.click('#bb-settings [data-theme="factory"]');
-		expect(await page.evaluate(() => window.__busybodies!.theme())).toBe("factory");
-		expect(await marked()).toBe("factory");
-		await page.keyboard.press("Escape");
-		expect(await page.evaluate(() => document.querySelector<HTMLElement>("#bb-settings")!.hidden)).toBe(true);
-		await page.close();
-	}, T);
+	test(
+		"the settings cog: pick a theme in the sheet, and this window switches",
+		async () => {
+			const page = await open("demo&frozen");
+			await page.click("#hud .settings");
+			await page.waitForFunction(() => !document.querySelector<HTMLElement>("#bb-settings")!.hidden);
+			const marked = () => page.evaluate(() => document.querySelector<HTMLElement>('#bb-settings [aria-checked="true"]')?.dataset.theme);
+			expect(await marked()).toBe("office");
+			await page.click('#bb-settings [data-theme="factory"]');
+			expect(await page.evaluate(() => window.__busybodies!.theme())).toBe("factory");
+			expect(await marked()).toBe("factory");
+			await page.keyboard.press("Escape");
+			expect(await page.evaluate(() => document.querySelector<HTMLElement>("#bb-settings")!.hidden)).toBe(true);
+			await page.close();
+		},
+		T,
+	);
 
-	test("the top bar fits a narrow window, cog and all", async () => {
-		const page = await open("demo&frozen");
-		for (const width of [800, 700, 600]) {
-			await page.setViewportSize({ width, height: 700 });
-			const right = await page.evaluate(() => Math.max(...[...document.querySelectorAll("#hud > *")].filter((e) => (e as HTMLElement).offsetParent).map((e) => e.getBoundingClientRect().right)));
-			expect(right).toBeLessThanOrEqual(width);
-		}
-		await page.close();
-	}, T);
+	test(
+		"the top bar fits a narrow window, cog and all",
+		async () => {
+			const page = await open("demo&frozen");
+			for (const width of [800, 700, 600]) {
+				await page.setViewportSize({ width, height: 700 });
+				const right = await page.evaluate(() =>
+					Math.max(
+						...[...document.querySelectorAll("#hud > *")]
+							.filter((e) => (e as HTMLElement).offsetParent)
+							.map((e) => e.getBoundingClientRect().right),
+					),
+				);
+				expect(right).toBeLessThanOrEqual(width);
+			}
+			await page.close();
+		},
+		T,
+	);
 });

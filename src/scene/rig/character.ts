@@ -21,7 +21,6 @@ import { ACCENTS } from "./theme";
 import { AT_VIEWER, type Aim, type LookAt, aimAt, eyesOf, isViewer } from "./data/gaze";
 import { LOOKS } from "./data/vocab";
 
-
 /** Everyone one factory made, by key: so a character told to look at another can find it. */
 type Cast = Map<string, RigCharacter>;
 
@@ -73,7 +72,13 @@ class RigCharacter implements Character {
 		// The office draws real desks, so the rig's own stays off. A regular (rig/data/roles.ts) is the same
 		// puppet every day: its key is the puppet's id, and it wears its accessory.
 		const regular = who.regular ? regularOf(who.regular) : undefined;
-		this.puppet = new Puppet(atlas, { id: regular?.key ?? who.key, role, accent: ACCENTS[hash(who.tint) % ACCENTS.length], desk: false, ...(regular?.wear ? { wear: regular.wear } : {}) });
+		this.puppet = new Puppet(atlas, {
+			id: regular?.key ?? who.key,
+			role,
+			accent: ACCENTS[hash(who.tint) % ACCENTS.length],
+			desk: false,
+			...(regular?.wear ? { wear: regular.wear } : {}),
+		});
 		this.#regular = regular;
 		this.#size();
 		this.#act(who.mood, true);
@@ -363,5 +368,6 @@ export function rigCharacters(atlas: Atlas): CharacterFactory {
 	return (who) => new RigCharacter(atlas, who, cast);
 }
 
-const lookAtText = (l: LookAt | undefined) => (l === undefined ? "" : typeof l === "string" ? l : isViewer(l) ? "viewer" : `${Math.round(l.x)},${Math.round(l.y)}`);
+const lookAtText = (l: LookAt | undefined) =>
+	l === undefined ? "" : typeof l === "string" ? l : isViewer(l) ? "viewer" : `${Math.round(l.x)},${Math.round(l.y)}`;
 const aimText = (a: Aim | undefined) => (a ? `${a.x},${a.y}${a.side ? " side" : ""}` : "");

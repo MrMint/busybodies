@@ -8,10 +8,7 @@ import { WALL } from "../src/scene/world/world";
 import { LEAD_SIZE } from "../src/scene/world/placement";
 
 /** The two themes' windows (themes/office/scene.ts, themes/factory/scene.ts OFFICE_LIGHT / FACTORY_LIGHT). */
-const WINDOWS = [
-	{ window: { inset: 5, panes: 2, transom: false, bar: 5 } },
-	{ window: { inset: 4, height: 42, panes: 4, transom: true, bar: 2.5 } },
-];
+const WINDOWS = [{ window: { inset: 5, panes: 2, transom: false, bar: 5 } }, { window: { inset: 4, height: 42, panes: 4, transom: true, bar: 2.5 } }];
 
 describe("time of day", () => {
 	test("each hour falls in one phase, in the PaperNight order", () => {
@@ -91,7 +88,19 @@ describe("rush", () => {
 
 describe("signs clear of head height", () => {
 	test("every sign, whiteboard and frame ends above the head of a lead at the back row", () => {
-		const s = (id: string, project: string, at: number) => ({ id, pid: 1, title: id, cwd: "/x", project, origin: "cli", state: "busy", stateSince: 0, startedAt: at, agents: [], children: [] });
+		const s = (id: string, project: string, at: number) => ({
+			id,
+			pid: 1,
+			title: id,
+			cwd: "/x",
+			project,
+			origin: "cli",
+			state: "busy",
+			stateSince: 0,
+			startedAt: at,
+			agents: [],
+			children: [],
+		});
 		const world = new FloorPlan().update({ at: 0, sessions: [s("a", "alpha", 1), s("b", "alpha", 2), s("c", "beta", 3), s("d", "gamma", 4)] } as never);
 		// A back-row lead stands 36 px into the floor; its head (and a hat) reach LEAD_SIZE + 8 above.
 		const head = 36 - LEAD_SIZE - 8;

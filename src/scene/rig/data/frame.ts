@@ -2,9 +2,36 @@
 // ("e-wide b-worry al-type1 bd-fwd") and parsed here into complete Frame objects, so a pose reads
 // like the board it came from and every part not named stays at rest.
 import {
-	ARMS, BACKS, BODIES, BROWS, CHEEKS, EYES, FEET, FRONTS, FX, HELD, LOOKS, MOUTHS, SPOTS, WEARS, WORKS,
-	type Arm, type Back, type Body, type Brows, type Cheeks, type Eyes, type Feet, type Front, type Fx,
-	type Held, type Look, type Mouth, type Spot, type Wear, type Work,
+	ARMS,
+	BACKS,
+	BODIES,
+	BROWS,
+	CHEEKS,
+	EYES,
+	FEET,
+	FRONTS,
+	FX,
+	HELD,
+	LOOKS,
+	MOUTHS,
+	SPOTS,
+	WEARS,
+	WORKS,
+	type Arm,
+	type Back,
+	type Body,
+	type Brows,
+	type Cheeks,
+	type Eyes,
+	type Feet,
+	type Front,
+	type Fx,
+	type Held,
+	type Look,
+	type Mouth,
+	type Spot,
+	type Wear,
+	type Work,
 } from "./vocab";
 
 interface Props {
@@ -41,8 +68,17 @@ export interface TimedFrame extends Frame {
 }
 
 export const REST: Frame = Object.freeze({
-	eyes: "rest", look: "center", brows: "none", cheeks: "rest", mouth: "rest",
-	armL: "rest", armR: "rest", feet: "rest", body: "rest", props: {}, spot: "here",
+	eyes: "rest",
+	look: "center",
+	brows: "none",
+	cheeks: "rest",
+	mouth: "rest",
+	armL: "rest",
+	armR: "rest",
+	feet: "rest",
+	body: "rest",
+	props: {},
+	spot: "here",
 }) as Frame;
 
 // Token prefixes, as the boards wrote them (rig.css), and which list each one may name.
@@ -102,13 +138,33 @@ export function describe(f: Frame): string {
 /** The numeric targets a frame asks every spring for. Names match the puppet's channels. */
 export type Channels = Record<ChannelName, number>;
 export const CHANNELS = [
-	"shoulderL", "elbowL", "handL", "shoulderR", "elbowR", "handR",
-	"legL", "liftL", "legR", "liftR",
-	"bodyX", "bodyY", "bodyR", "bodySX", "bodySY", "hop",
-	"lookX", "lookY",
-	"browLY", "browLR", "browRY", "browRR", "browA",
+	"shoulderL",
+	"elbowL",
+	"handL",
+	"shoulderR",
+	"elbowR",
+	"handR",
+	"legL",
+	"liftL",
+	"legR",
+	"liftR",
+	"bodyX",
+	"bodyY",
+	"bodyR",
+	"bodySX",
+	"bodySY",
+	"hop",
+	"lookX",
+	"lookY",
+	"browLY",
+	"browLR",
+	"browRY",
+	"browRR",
+	"browA",
 	"cheek",
-	"spotX", "spotA", "spotS",
+	"spotX",
+	"spotA",
+	"spotS",
 ] as const;
 export type ChannelName = (typeof CHANNELS)[number];
 
@@ -122,14 +178,33 @@ export function channels(f: Frame): Channels {
 	const [cs] = CHEEKS[f.cheeks];
 	const [px, pa, ps] = SPOTS[f.spot];
 	return {
-		shoulderL: sl, elbowL: el, handL: hl,
+		shoulderL: sl,
+		elbowL: el,
+		handL: hl,
 		// The right arm mirrors the left: same numbers, opposite sense.
-		shoulderR: -sr, elbowR: -er, handR: -hr,
-		legL: ll, liftL: ly, legR: lr, liftR: ry,
-		bodyX: bx, bodyY: by, bodyR: br, bodySX: sx, bodySY: sy, hop,
-		lookX: fx, lookY: fy,
-		browLY: byl, browLR: brl, browRY: byr, browRR: brr, browA: ba,
+		shoulderR: -sr,
+		elbowR: -er,
+		handR: -hr,
+		legL: ll,
+		liftL: ly,
+		legR: lr,
+		liftR: ry,
+		bodyX: bx,
+		bodyY: by,
+		bodyR: br,
+		bodySX: sx,
+		bodySY: sy,
+		hop,
+		lookX: fx,
+		lookY: fy,
+		browLY: byl,
+		browLR: brl,
+		browRY: byr,
+		browRR: brr,
+		browA: ba,
 		cheek: cs,
-		spotX: px, spotA: pa, spotS: ps,
+		spotX: px,
+		spotA: pa,
+		spotS: ps,
 	};
 }

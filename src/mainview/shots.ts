@@ -37,9 +37,14 @@ export interface Camerawork {
 }
 
 /** The areas as the compact strip names them: in the theme's words, not always the office's. */
-export const tileAreas = (areas: readonly { id: string; kind: AreaKind; name: string }[], words: ThemeWords) => areas.map((a) => ({ id: a.id, kind: a.kind, name: areaLabel(a, words) }));
+export const tileAreas = (areas: readonly { id: string; kind: AreaKind; name: string }[], words: ThemeWords) =>
+	areas.map((a) => ({ id: a.id, kind: a.kind, name: areaLabel(a, words) }));
 
-export function installCamerawork(office: Office, director: Director, opts: { visible(): boolean; tiles(tiles: Tile[], shot: ShotState["shot"]): void; redraw(): void }): Camerawork {
+export function installCamerawork(
+	office: Office,
+	director: Director,
+	opts: { visible(): boolean; tiles(tiles: Tile[], shot: ShotState["shot"]): void; redraw(): void },
+): Camerawork {
 	let news: News[] = [];
 	let state: ShotState | undefined;
 	let pinned: string | undefined;
@@ -64,7 +69,11 @@ export function installCamerawork(office: Office, director: Director, opts: { vi
 		const waitAreas = new Set(waits.map((w) => w.area));
 		const mine = yours();
 		if (waits.length && mine) waitAreas.add(mine);
-		const rush = new Set(Object.keys(world?.rush ?? {}).map(areaOf).filter((a): a is string => !!a));
+		const rush = new Set(
+			Object.keys(world?.rush ?? {})
+				.map(areaOf)
+				.filter((a): a is string => !!a),
+		);
 		const areas = tileAreas(floor.areas, office.theme.words);
 		if (pinned !== undefined && !areas.some((a) => a.id === pinned)) pinned = undefined;
 		tiles = tilesFor(areas, score, rush, waitAreas);

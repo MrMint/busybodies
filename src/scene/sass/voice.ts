@@ -102,6 +102,8 @@ export class Voice {
 
 	/** The bubbles up now, for the inspector. */
 	bubbles(now: number): { key: string; text: string; kind: string; trigger: string; until: number }[] {
-		return [...this.#up].filter(([, b]) => b.until > now).map(([key, b]) => ({ key, text: b.say.text, kind: b.say.kind, trigger: b.say.trigger, until: b.until }));
+		return [...this.#up]
+			.filter(([, b]) => b.until > now)
+			.map(([key, b]) => ({ key, text: b.say.text, kind: b.say.kind, trigger: b.say.trigger, until: b.until }));
 	}
 }

@@ -61,7 +61,9 @@ export function bands(g: Graphics, region: number[], color: number, step: number
 	}
 	const h = y1 - y0;
 	const stripe: number[][] = [];
-	if (dir === "v") for (let k = x0 - Math.abs(lean) * h - step; k < x1 + Math.abs(lean) * h; k += step) stripe.push([k, y1, k + w, y1, k + w + lean * h, y0, k + lean * h, y0]);
+	if (dir === "v")
+		for (let k = x0 - Math.abs(lean) * h - step; k < x1 + Math.abs(lean) * h; k += step)
+			stripe.push([k, y1, k + w, y1, k + w + lean * h, y0, k + lean * h, y0]);
 	else for (let k = y0 + step / 2 - w / 2; k < y1; k += step) stripe.push([x0, k, x1, k, x1, k + w, x0, k + w]);
 	for (const s of stripe) {
 		const c = clipConvex(s, region);
@@ -73,7 +75,17 @@ export function bands(g: Graphics, region: number[], color: number, step: number
 export const gloss = (g: Graphics, x: number, y: number, rx: number, ry: number, alpha = 0.6) => g.ellipse(x, y, rx, ry).fill({ color: 0xffffff, alpha });
 
 /** Sprinkles scattered in a box (deterministic from `seed`), skipping any point `keep` refuses. */
-export function sprinkles(g: Graphics, x0: number, y0: number, x1: number, y1: number, n: number, seed: number, size = 1, keep?: (x: number, y: number) => boolean) {
+export function sprinkles(
+	g: Graphics,
+	x0: number,
+	y0: number,
+	x1: number,
+	y1: number,
+	n: number,
+	seed: number,
+	size = 1,
+	keep?: (x: number, y: number) => boolean,
+) {
 	for (let i = 0; i < n; i++) {
 		const k = i * 37 + seed * 11 + 5;
 		const x = x0 + (((k * 29) % 97) / 97) * (x1 - x0);

@@ -27,15 +27,33 @@ const session = (id: string, extra: Partial<Session> = {}): Session => ({
 	children: [],
 	...extra,
 });
-const agent = (id: string, role: string, extra: Partial<Agent> = {}): Agent => ({ id, role, task: "Look for the spout", depth: 1, status: "running", lastWriteAt: T0, children: [], ...extra });
+const agent = (id: string, role: string, extra: Partial<Agent> = {}): Agent => ({
+	id,
+	role,
+	task: "Look for the spout",
+	depth: 1,
+	status: "running",
+	lastWriteAt: T0,
+	children: [],
+	...extra,
+});
 const snap = (at: number, sessions: Session[]): Snapshot => ({ at, sessions });
-const test_ = (at: number, exitCode: number) => ({ last: { kind: "test" as const, exitCode, at }, failStreak: exitCode ? 1 : 0, repeats: 1, failed: 0, testsFailed: 0 });
+const test_ = (at: number, exitCode: number) => ({
+	last: { kind: "test" as const, exitCode, at },
+	failStreak: exitCode ? 1 : 0,
+	repeats: 1,
+	failed: 0,
+	testsFailed: 0,
+});
 
 describe("the diary", () => {
 	test("counts sessions, hires, PRs and merges once each, keyed by a hash of the project", () => {
 		const mem = newMemory();
 		let d = emptyDiary();
-		const s = session("s1", { agents: [agent("a1", "Explore"), agent("a2", "code-reviewer")], prs: [{ number: 7, url: "https://example.invalid/pr/7", state: "OPEN" }] });
+		const s = session("s1", {
+			agents: [agent("a1", "Explore"), agent("a2", "code-reviewer")],
+			prs: [{ number: 7, url: "https://example.invalid/pr/7", state: "OPEN" }],
+		});
 		d = noteSnapshot(d, mem, snap(T0, [s]), { day });
 		const again = noteSnapshot(d, mem, snap(T0 + 1000, [s]), { day });
 		expect(again).toBe(d);
@@ -49,10 +67,14 @@ describe("the diary", () => {
 
 	test("nothing in it names the project, the branch, the title, a path or an agent type", () => {
 		const mem = newMemory();
-		const s = session("s1", { agents: [agent("a1", "kettle-whisperer")], prs: [{ number: 3, url: "https://example.invalid/kettle-works/pull/3", repo: "someone/kettle-works", state: "MERGED" }] });
+		const s = session("s1", {
+			agents: [agent("a1", "kettle-whisperer")],
+			prs: [{ number: 3, url: "https://example.invalid/kettle-works/pull/3", repo: "someone/kettle-works", state: "MERGED" }],
+		});
 		const d = noteSnapshot(emptyDiary(), mem, snap(T0, [s]), { day });
 		const text = JSON.stringify(d);
-		for (const word of ["kettle", "whistle", "tune", "someone", "Users", "code", "example", "Explore", "whisperer", "s1", "a1"]) expect(text).not.toContain(word);
+		for (const word of ["kettle", "whistle", "tune", "someone", "Users", "code", "example", "Explore", "whisperer", "s1", "a1"])
+			expect(text).not.toContain(word);
 	});
 
 	test("a red streak that goes green is a redemption; one red then green is not", () => {
@@ -93,8 +115,22 @@ describe("the diary", () => {
 	});
 
 	test("reading anything gives a diary: unknown keys, wrong types and words that aren't hashes are dropped", () => {
-		const d = diaryOf({ v: 1, days: { "2031-03-04": { counts: { sessions: 2, bogus: 4, finished: "3" }, projects: { "kettle-works": { sessions: 1 }, pabc: { sessions: 1 } }, regulars: ["pabc:lead", "kettle:lead"], marks: ["abc", "../x"] }, yesterday: {} } });
-		expect(d).toEqual({ v: 1, days: { "2031-03-04": { counts: { sessions: 2 }, projects: { pabc: { sessions: 1 } }, regulars: ["pabc:lead"], marks: ["abc"] } } });
+		const d = diaryOf({
+			v: 1,
+			days: {
+				"2031-03-04": {
+					counts: { sessions: 2, bogus: 4, finished: "3" },
+					projects: { "kettle-works": { sessions: 1 }, pabc: { sessions: 1 } },
+					regulars: ["pabc:lead", "kettle:lead"],
+					marks: ["abc", "../x"],
+				},
+				yesterday: {},
+			},
+		});
+		expect(d).toEqual({
+			v: 1,
+			days: { "2031-03-04": { counts: { sessions: 2 }, projects: { pabc: { sessions: 1 } }, regulars: ["pabc:lead"], marks: ["abc"] } },
+		});
 		expect(diaryOf("nonsense")).toEqual(emptyDiary());
 	});
 });

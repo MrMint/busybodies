@@ -19,7 +19,15 @@ export interface Inspector {
 	/** True once the first snapshot has been drawn. */
 	ready: boolean;
 	/** The sass engine: bubbles up now, the last triggers, signs it wrote and slots it had no place for. */
-	sass(): { bubbles: ReturnType<Voice["bubbles"]>; triggers: readonly Trigger[]; signs: Record<string, string>; dropped: Record<string, string>; nextWake?: number } | undefined;
+	sass():
+		| {
+				bubbles: ReturnType<Voice["bubbles"]>;
+				triggers: readonly Trigger[];
+				signs: Record<string, string>;
+				dropped: Record<string, string>;
+				nextWake?: number;
+		  }
+		| undefined;
 	snapshot(): Snapshot | undefined;
 	/** Every character: key, mood, size, position, how high it is bouncing right now, and from the
 	 * rig its role, pose, frame (of frames) and the frame's non-rest params. */
@@ -153,11 +161,24 @@ export function installInspector(
 			if (!voice) return undefined;
 			const now = voice.now();
 			const v = voice.voice;
-			return { bubbles: v.bubbles(now), triggers: v.sass.triggers, signs: Object.fromEntries(v.written), dropped: Object.fromEntries(v.dropped), nextWake: v.nextWake(now) };
+			return {
+				bubbles: v.bubbles(now),
+				triggers: v.sass.triggers,
+				signs: Object.fromEntries(v.written),
+				dropped: Object.fromEntries(v.dropped),
+				nextWake: v.nextWake(now),
+			};
 		},
 		snapshot: () => scene.current,
 		entities: () => office.entities(),
-		counters: () => ({ renders, animationFrames, tickerRunning: app.ticker.started, maxFPS: app.ticker.maxFPS, visible: visibility?.visible ?? true, life: office.life }),
+		counters: () => ({
+			renders,
+			animationFrames,
+			tickerRunning: app.ticker.started,
+			maxFPS: app.ticker.maxFPS,
+			visible: visibility?.visible ?? true,
+			life: office.life,
+		}),
 		setVisible: (v) => visibility?.force(v),
 		resetCounters: () => {
 			renders = 0;

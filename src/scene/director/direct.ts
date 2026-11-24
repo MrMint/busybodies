@@ -1,4 +1,3 @@
-
 import { LEAD_SIZE } from "../world/placement";
 import { habitsFor } from "../world/staging";
 import type { Floor } from "../world/world";
@@ -19,7 +18,22 @@ import { tripPlace } from "./trips";
 import type { Actor, World, WorldEvent } from "./types";
 import { WORK, nextWork, tempo, tempoWake, workKind } from "./work";
 import { HANDOFF_LOOK, NOTICE, NOTICE_POSES, type View, freshReturn, handOffWakes, looksFor, noticeDelay, readyAt, waverOf } from "./social";
-import { STORY, type Story, cheersReply, headlinesFor, logOf, replyChoice, replyPlace, replyWakes, replyWalkPose, repliesFor, sendOffHold, sendOffLooks, sendOffsFor, storyNews } from "./story";
+import {
+	STORY,
+	type Story,
+	cheersReply,
+	headlinesFor,
+	logOf,
+	replyChoice,
+	replyPlace,
+	replyWakes,
+	replyWalkPose,
+	repliesFor,
+	sendOffHold,
+	sendOffLooks,
+	sendOffsFor,
+	storyNews,
+} from "./story";
 import { MIN } from "../../shared/time";
 import { type Spec, gaitBase, specs, traitFor } from "./direct/specs";
 import { assign, doorPlace } from "./direct/places";
@@ -150,7 +164,13 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 		const work = s.busy ? nextWork(live?.work, want, now) : undefined;
 		// A quick model's acted pose is over a touch early: the next one overlaps its end (beats.ts).
 		const continuing = live?.acted && now < live.poseSince + poseMs(live.pose, live.as) - overlapOf(traitFor(s), live.pose) ? live : undefined;
-		pre.set(s.key, { want, work, news: acted(s, was?.seen, now), continuing, follow: followUp(s, live, continuing) ?? flourishAfter(live, continuing, traitFor(s)) });
+		pre.set(s.key, {
+			want,
+			work,
+			news: acted(s, was?.seen, now),
+			continuing,
+			follow: followUp(s, live, continuing) ?? flourishAfter(live, continuing, traitFor(s)),
+		});
 	}
 
 	// Errands metrics sent people on (the shredder, the planner: errands.ts): whoever is on one is
@@ -247,7 +267,9 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 				session: s.session.id,
 				place: places.get(s.key),
 				waiting: s.seen.waiting !== undefined,
-				mates: list.filter((m) => m.session.id === s.session.id && m.kind === "crew" && m.mood === "busy" && places.get(m.key)?.spot.startsWith("crew:")).map((m) => m.key),
+				mates: list
+					.filter((m) => m.session.id === s.session.id && m.kind === "crew" && m.mood === "busy" && places.get(m.key)?.spot.startsWith("crew:"))
+					.map((m) => m.key),
 			})),
 		news: tale,
 		was: prev?.story?.replies ?? {},
@@ -273,7 +295,9 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 	for (const s of list) {
 		const r = rush[s.session.id];
 		if (s.kind !== "lead" || !r || !s.busy || s.seen.waiting !== undefined || mailing.has(s.key)) continue;
-		const crew = list.filter((m) => m.session.id === s.session.id && m.kind === "crew" && m.mood === "busy" && places.has(m.key) && !Object.hasOwn(handoffs, m.key));
+		const crew = list.filter(
+			(m) => m.session.id === s.session.id && m.kind === "crew" && m.mood === "busy" && places.has(m.key) && !Object.hasOwn(handoffs, m.key),
+		);
 		const cands = crew.map((m) => {
 			const t = trips.get(m.key);
 			return { key: m.key, failAt: m.seen.failAt, queuedSince: t && t.queue > 0 ? t.since : undefined };
@@ -294,7 +318,18 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 	// compaction sends a lead to the shredder, a todo done sends a note to the planner.
 	const queue = queueUp(list, floor, metricsWas);
 	for (const [key, q] of queue.places) places.set(key, q);
-	const fresh = newErrands({ list, places, before, floor, metrics: metricsWas, ongoing, busyElsewhere: away, now, first, speed: (m) => gaitBase(m as Spec, now).speed });
+	const fresh = newErrands({
+		list,
+		places,
+		before,
+		floor,
+		metrics: metricsWas,
+		ongoing,
+		busyElsewhere: away,
+		now,
+		first,
+		speed: (m) => gaitBase(m as Spec, now).speed,
+	});
 	const errands = new Map([...ongoing, ...fresh]);
 	for (const [key, e] of fresh) {
 		for (const t of [e.since, e.since + e.walkMs, e.until]) if (t > now) wakes.push(t);
@@ -320,7 +355,8 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 		for (const s of list) {
 			const live = before[s.key];
 			if (!live || live.gone !== undefined || live.noticed === back || (live.walk && now < live.walk.since + live.walk.ms)) continue;
-			if ((s.kind === "lead" && s.mood === "idle" && s.seen.waiting === undefined) || (s.kind === "crew" && s.mood === "done" && places.has(s.key))) lookers.push(s.key);
+			if ((s.kind === "lead" && s.mood === "idle" && s.seen.waiting === undefined) || (s.kind === "crew" && s.mood === "done" && places.has(s.key)))
+				lookers.push(s.key);
 		}
 	}
 	const waver = back !== undefined ? waverOf(lookers, back) : undefined;
@@ -359,7 +395,16 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 		if (work && want && want !== work.kind) wakes.push(work.since + WORK.holdMs);
 		let st = standing(s, now, count, work, life, habitsOf(s));
 		// Buried in the in-tray: past 95% of the context window, a busy lead at its desk (metrics.ts).
-		if (s.kind === "lead" && s.busy && !st.trigger && place.spot === "desk" && st.pose !== "grumpy" && st.pose !== "thinking" && trayFor(s.session.context)?.buried) st = { pose: "buried", as: "lead", acted: false };
+		if (
+			s.kind === "lead" &&
+			s.busy &&
+			!st.trigger &&
+			place.spot === "desk" &&
+			st.pose !== "grumpy" &&
+			st.pose !== "thinking" &&
+			trayFor(s.session.context)?.buried
+		)
+			st = { pose: "buried", as: "lead", acted: false };
 		if (visits.has(s.key) && st.pose !== "grumpy") st = { pose: "inspect", as: "lead", acted: false };
 		if (trip) st = atStation(st, trip);
 		// One wait keeps one pose: the rare roll happens once, when the wait starts.
@@ -371,21 +416,34 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 		else if (mailing.has(s.key)) choice = mailChoice(mail[s.session.id]!, now, news);
 		// Story: fetching a merged PR's reply, and the teammate who celebrates it (story.ts).
 		else if (replying.has(s.key)) choice = replyChoice(replies[s.session.id]!, now);
-		else if (cheersReply(replies[s.session.id], s.key, now)) choice = { pose: STORY.cheer, as: "partner", acted: true, trigger: "reply", since: replies[s.session.id]!.back! };
-		else if (celebratesMail(mail[s.session.id], s.key, now)) choice = { pose: "celebrate", as: "partner", acted: true, trigger: "pr", since: mail[s.session.id]!.back! };
+		else if (cheersReply(replies[s.session.id], s.key, now))
+			choice = { pose: STORY.cheer, as: "partner", acted: true, trigger: "reply", since: replies[s.session.id]!.back! };
+		else if (celebratesMail(mail[s.session.id], s.key, now))
+			choice = { pose: "celebrate", as: "partner", acted: true, trigger: "pr", since: mail[s.session.id]!.back! };
 		else if (Object.hasOwn(handoffs, s.key)) choice = { pose: HANDOFF.pose, as: "lead", acted: true, trigger: "handoff", since: handoffs[s.key]!.since };
-		else if (takers.has(s.key) && takingAt(handoffs, s.key, now) !== undefined) choice = { pose: HANDOFF.pose, as: "partner", acted: true, trigger: "handoff", since: takingAt(handoffs, s.key, now)! };
+		else if (takers.has(s.key) && takingAt(handoffs, s.key, now) !== undefined)
+			choice = { pose: HANDOFF.pose, as: "partner", acted: true, trigger: "handoff", since: takingAt(handoffs, s.key, now)! };
 		// The folder's nearly here: a hand goes up for it (social.ts).
-		else if (takers.has(s.key) && readyAt(handoffs, s.key, now) !== undefined) choice = { pose: HANDOFF_LOOK.pose, as: "lead", acted: true, trigger: "ready", since: readyAt(handoffs, s.key, now)! };
+		else if (takers.has(s.key) && readyAt(handoffs, s.key, now) !== undefined)
+			choice = { pose: HANDOFF_LOOK.pose, as: "lead", acted: true, trigger: "ready", since: readyAt(handoffs, s.key, now)! };
 		else if (news?.trigger === "pr") {
-			const mate = list.find((m) => m.session.id === s.session.id && m.kind === "crew" && m.mood === "busy" && places.get(m.key)?.spot.startsWith("crew:") && !celebrating.has(m.key) && !hiredBy.has(m.key));
+			const mate = list.find(
+				(m) =>
+					m.session.id === s.session.id &&
+					m.kind === "crew" &&
+					m.mood === "busy" &&
+					places.get(m.key)?.spot.startsWith("crew:") &&
+					!celebrating.has(m.key) &&
+					!hiredBy.has(m.key),
+			);
 			if (s.kind === "lead" && mate) {
 				celebrating.set(mate.key, s.key);
 				pair(mate.key, s.key);
 				choice = { pose: "celebrate", as: "lead", acted: true, trigger: "pr" };
 			} else choice = news;
 		} else if (celebrating.has(s.key)) choice = { pose: "celebrate", as: "partner", acted: true, trigger: "pr" };
-		else if (news?.trigger === "fail" && trip?.queue === 0 && trip.kind === "test") choice = { pose: STATION_POSE.test.bad!, as: "lead", acted: true, trigger: "fail" };
+		else if (news?.trigger === "fail" && trip?.queue === 0 && trip.kind === "test")
+			choice = { pose: STATION_POSE.test.bad!, as: "lead", acted: true, trigger: "fail" };
 		// Story: a red streak gone green, a little flourish (story.ts).
 		else if (tale.redeemed.has(s.key) && !news) choice = { pose: STORY.redeemed, as: "lead", acted: true, trigger: "redeemed" };
 		else if (news) choice = news;
@@ -402,7 +460,8 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 		// or, for a deliberate model, a beat before an acted pose (errands.ts, beats.ts).
 		const live = was && !was.gone ? was : undefined;
 		// A look up at you plays through, even for the finished crew (whose standing pose is `done`).
-		if (continuing && NOTICE_POSES.has(continuing.pose) && continuing.pose !== NOTICE.ticket) choice = { pose: continuing.pose, as: continuing.as, acted: true };
+		if (continuing && NOTICE_POSES.has(continuing.pose) && continuing.pose !== NOTICE.ticket)
+			choice = { pose: continuing.pose, as: continuing.as, acted: true };
 		let noticed = live?.noticed;
 		const q = queue.places.get(s.key);
 		const trait = traitFor(s);
@@ -421,7 +480,8 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 			if (!rare && !door.acted && back !== undefined && noticed !== back && there) {
 				choice = { pose: NOTICE.ticket, as: "lead", acted: true, trigger: "notice", since: now };
 				noticed = back;
-			} else if (!rare && !door.acted && continuing?.pose === NOTICE.ticket) choice = { pose: NOTICE.ticket, as: "lead", acted: true, since: continuing.poseSince };
+			} else if (!rare && !door.acted && continuing?.pose === NOTICE.ticket)
+				choice = { pose: NOTICE.ticket, as: "lead", acted: true, since: continuing.poseSince };
 		}
 		const errand = errands.get(s.key);
 		const doing = errandUnderWay(errand, now) ? errand : undefined;
@@ -435,9 +495,11 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 			const pose = waver === s.key ? NOTICE.wave : NOTICE.look;
 			held = { pose, delay: noticeDelay(s.key, back, waver === s.key), trigger: "notice" };
 			noticed = back;
-		} else if (!q && !doing && choice.trigger === "glance" && (ripple.get(s.key)?.delay ?? 0) > 0) held = { pose: "glance", delay: ripple.get(s.key)!.delay, trigger: "glance" };
+		} else if (!q && !doing && choice.trigger === "glance" && (ripple.get(s.key)?.delay ?? 0) > 0)
+			held = { pose: "glance", delay: ripple.get(s.key)!.delay, trigger: "glance" };
 		// Story: waving a long session off, the nearest first (story.ts).
-		else if (!q && !doing && !mailing.has(s.key) && !replying.has(s.key) && sendOffHold(sendoffs, s.key, now)) held = { pose: STORY.sendoff, delay: sendOffHold(sendoffs, s.key, now)!.delay, trigger: "sendoff" };
+		else if (!q && !doing && !mailing.has(s.key) && !replying.has(s.key) && sendOffHold(sendoffs, s.key, now))
+			held = { pose: STORY.sendoff, delay: sendOffHold(sendoffs, s.key, now)!.delay, trigger: "sendoff" };
 		if (held && held.delay <= 0) choice = { pose: held.pose, as: "lead", acted: true, trigger: held.trigger };
 		else if (held && live) {
 			pending = { pose: held.pose, as: "lead", trigger: held.trigger, at: now + held.delay };
@@ -455,7 +517,22 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 		// How fast it walks, from how hot its work is (and its model's stride).
 		const lastAt = Math.max(s.activity?.at ?? -Infinity, s.agent?.lastWriteAt ?? -Infinity);
 		const gait = gaitOf(s, place.area);
-		const run = doing ? undefined : brickRun(s, was, place, choice, runs, prev?.builds[s.session.id], visits, byKey, floor, now, gait.speed, rushing.has(s.session.id) ? RUSH.runShare : 1);
+		const run = doing
+			? undefined
+			: brickRun(
+					s,
+					was,
+					place,
+					choice,
+					runs,
+					prev?.builds[s.session.id],
+					visits,
+					byKey,
+					floor,
+					now,
+					gait.speed,
+					rushing.has(s.session.id) ? RUSH.runShare : 1,
+				);
 		if (run) {
 			place = run.place;
 			choice = { pose: "place", as: "lead", acted: true, ...(run.run.since === now ? { trigger: "run" } : {}) };
@@ -510,11 +587,16 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 
 		if (!same) events.push({ type: "pose", key: s.key, at: now, pose: choice.pose, as: choice.as, acted: choice.acted });
 		const tripWas = was && !was.gone ? was.trip : undefined;
-		if (trip && tripWas?.station !== trip.station) events.push({ type: "trip", key: s.key, at: now, station: trip.station, state: trip.queue ? "queue" : "start" });
-		else if (trip && tripWas && tripWas.queue > 0 && trip.queue === 0) events.push({ type: "trip", key: s.key, at: now, station: trip.station, state: "use" });
+		if (trip && tripWas?.station !== trip.station)
+			events.push({ type: "trip", key: s.key, at: now, station: trip.station, state: trip.queue ? "queue" : "start" });
+		else if (trip && tripWas && tripWas.queue > 0 && trip.queue === 0)
+			events.push({ type: "trip", key: s.key, at: now, station: trip.station, state: "use" });
 		if (tripWas && !trip) events.push({ type: "trip", key: s.key, at: now, station: tripWas.station, state: "end" });
 		// Busy loops run at the character's own pace: quick while writing, slow when coasting.
-		const pace = s.mood === "busy" && !choice.acted && POSE[choice.pose]?.play === "loop" ? Math.round(tempo(s.key, Number.isFinite(lastAt) ? lastAt : undefined, now) * trait.tempo * 100) / 100 : 1;
+		const pace =
+			s.mood === "busy" && !choice.acted && POSE[choice.pose]?.play === "loop"
+				? Math.round(tempo(s.key, Number.isFinite(lastAt) ? lastAt : undefined, now) * trait.tempo * 100) / 100
+				: 1;
 
 		if (choice.pose === "handover" && choice.as === "partner") events.push({ type: "handover", key: hiredBy.get(s.key)!, at: now, to: s.key });
 
@@ -523,7 +605,14 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 		if (inMeeting !== wasMeeting && (inMeeting || was)) events.push({ type: "review", key: s.key, at: now, state: inMeeting ? "start" : "end" });
 
 		if (s.kind === "lead" && (s.seen.waiting !== undefined) !== (was?.seen.waiting !== undefined)) {
-			if (s.seen.waiting !== undefined || was) events.push({ type: "waiting", key: s.key, at: now, state: s.seen.waiting !== undefined ? "start" : "end", area: floor.desks.get(s.session.id)?.areaId ?? place.area });
+			if (s.seen.waiting !== undefined || was)
+				events.push({
+					type: "waiting",
+					key: s.key,
+					at: now,
+					state: s.seen.waiting !== undefined ? "start" : "end",
+					area: floor.desks.get(s.session.id)?.areaId ?? place.area,
+				});
 		}
 
 		actors[s.key] = {
@@ -601,7 +690,18 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 		const to = door ?? { spot: "door", area: was.area, slot: was.slot };
 		const path = pathBetween(floor, was.area, from, to.area, to.slot);
 		const ms = walkMs(path);
-		actors[key] = { ...was, area: to.area, spot: "door", slot: to.slot, walk: { path, ms, since: now, exit: true }, gone: now + ms, pace: undefined, stride: undefined, errand: undefined, pending: undefined };
+		actors[key] = {
+			...was,
+			area: to.area,
+			spot: "door",
+			slot: to.slot,
+			walk: { path, ms, since: now, exit: true },
+			gone: now + ms,
+			pace: undefined,
+			stride: undefined,
+			errand: undefined,
+			pending: undefined,
+		};
 		events.push({ type: "leave", key, at: now });
 		if (was.spot.startsWith("meeting:")) events.push({ type: "review", key, at: now, state: "end" });
 		if (was.kind === "lead" && was.seen.waiting !== undefined) events.push({ type: "waiting", key, at: now, state: "end", area: was.homeArea ?? was.area });
@@ -690,4 +790,3 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 	if (Object.keys(mail).length) world.mail = mail;
 	return { world, events, wake: due.length ? Math.min(...due) : undefined };
 }
-

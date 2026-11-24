@@ -15,16 +15,9 @@ export interface TrayStatus {
 	calm: boolean;
 }
 
-export type TrayAction =
-	| { kind: "office" }
-	| { kind: "compact" }
-	| { kind: "calm" }
-	| { kind: "about" }
-	| { kind: "quit" }
-	| { kind: "theme"; id: ThemeId };
+export type TrayAction = { kind: "office" } | { kind: "compact" } | { kind: "calm" } | { kind: "about" } | { kind: "quit" } | { kind: "theme"; id: ThemeId };
 
-const keys = (accelerator: string) =>
-	accelerator.replace("CommandOrControl", "⌘").replace("Alt", "⌥").replace("Shift", "⇧").replaceAll("+", "");
+const keys = (accelerator: string) => accelerator.replace("CommandOrControl", "⌘").replace("Alt", "⌥").replace("Shift", "⇧").replaceAll("+", "");
 
 export function trayMenu(s: TrayStatus, shortcut: string): MenuItemConfig[] {
 	return [

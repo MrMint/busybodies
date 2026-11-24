@@ -4,7 +4,18 @@ import { describe, expect, test } from "bun:test";
 import { direct } from "../src/scene/director/direct";
 import type { View } from "../src/scene/director/social";
 import { STORY, headlinesFor, regularsOf } from "../src/scene/director/story";
-import { DECOR, FACTORY_STORY, BAKERY_STORY, OFFICE_STORY, boardText, decorFor, framesPending, frameSpots, regularNames, storyStyle } from "../src/scene/world/decor-plan";
+import {
+	DECOR,
+	FACTORY_STORY,
+	BAKERY_STORY,
+	OFFICE_STORY,
+	boardText,
+	decorFor,
+	framesPending,
+	frameSpots,
+	regularNames,
+	storyStyle,
+} from "../src/scene/world/decor-plan";
 import { REGULAR_NAMES, REGULAR_WEAR, regularName, regularNamesFor, regularOf } from "../src/scene/rig/data/roles";
 import { ACCESSORIES } from "../src/scene/rig/accessories";
 import { type Diary, type DiaryDay, localDay, projectKey } from "../src/shared/diary";
@@ -46,7 +57,13 @@ const session = (id: string, extra: Partial<Session> = {}): Session => ({
 });
 
 const pr = (state: string) => [{ number: 12, url: "https://example.invalid/pull/12", state }];
-const tests = (at: number, exitCode: number, failStreak = exitCode ? 1 : 0) => ({ last: { kind: "test" as const, exitCode, at }, failStreak, repeats: 1, failed: 0, testsFailed: 0 });
+const tests = (at: number, exitCode: number, failStreak = exitCode ? 1 : 0) => ({
+	last: { kind: "test" as const, exitCode, at },
+	failStreak,
+	repeats: 1,
+	failed: 0,
+	testsFailed: 0,
+});
 
 function stage() {
 	const plan = new FloorPlan();
@@ -185,7 +202,12 @@ describe("while you were out", () => {
 		st.step([session("m1")], T0 + 2 * MIN);
 		const back = T0 + 5 * MIN;
 		const d = st.step([session("m1")], back, { back, since: T0 + 30 * SEC });
-		expect(d.world.story?.headlines).toEqual({ at: back, since: T0 + 30 * SEC, until: back + STORY.headlineMs, counts: { merged: 1, finished: 1, sendoff: 1 } });
+		expect(d.world.story?.headlines).toEqual({
+			at: back,
+			since: T0 + 30 * SEC,
+			until: back + STORY.headlineMs,
+			counts: { merged: 1, finished: 1, sendoff: 1 },
+		});
 		expect(d.wake).toBeLessThanOrEqual(back + STORY.headlineMs);
 		const later = st.step([session("m1")], back + STORY.headlineMs, { back, since: T0 + 30 * SEC });
 		expect(later.world.story?.headlines).toBeUndefined();
@@ -205,7 +227,12 @@ describe("the walls remember", () => {
 	const diary: Diary = {
 		v: 1,
 		days: {
-			[today]: { counts: { sessions: 3, prsOpened: 2, prsMerged: 1, testsRed: 4, redeemed: 1 }, projects: { [projectKey("teapot")]: { sessions: 2, prsMerged: 1, redeemed: 1 } }, regulars: [], marks: [] },
+			[today]: {
+				counts: { sessions: 3, prsOpened: 2, prsMerged: 1, testsRed: 4, redeemed: 1 },
+				projects: { [projectKey("teapot")]: { sessions: 2, prsMerged: 1, redeemed: 1 } },
+				regulars: [],
+				marks: [],
+			},
 			[localDay(T0 - 2 * 86_400_000)]: { counts: { prsMerged: 2 }, projects: { [projectKey("teapot")]: { prsMerged: 2 } }, regulars: [], marks: [] },
 		},
 	};
@@ -235,7 +262,17 @@ describe("the walls remember", () => {
 		const reply = d.world.story!.replies!.s1!;
 		const home = d.floor.areas.find((a) => a.kind === "project" && a.name === "teapot")!;
 		// The diary already counts it, its only merge this week (it hears first: main.ts).
-		const one: Diary = { v: 1, days: { [localDay(T0)]: { counts: { sessions: 1, prsMerged: 1 }, projects: { [projectKey("teapot")]: { sessions: 1, prsMerged: 1 } }, regulars: [], marks: [] } } };
+		const one: Diary = {
+			v: 1,
+			days: {
+				[localDay(T0)]: {
+					counts: { sessions: 1, prsMerged: 1 },
+					projects: { [projectKey("teapot")]: { sessions: 1, prsMerged: 1 } },
+					regulars: [],
+					marks: [],
+				},
+			},
+		};
 		const wall = (now: number) => decorFor(home, { diary: one, now, replies: st.world.story?.replies })?.frames.length ?? 0;
 		expect(framesPending(home, { replies: d.world.story!.replies, now: T0 + SEC })).toBe(1);
 		expect(wall(T0 + SEC)).toBe(0);
@@ -252,9 +289,15 @@ describe("the walls remember", () => {
 
 	test("the lobby board: headlines while they're up, the day's ledger at closing, else the theme's own", () => {
 		const headlines = { at: T0, since: T0 - MIN, until: T0 + STORY.headlineMs, counts: { merged: 2, sendoff: 1 } };
-		expect(boardText({ diary, headlines, now: T0 + SEC }, OFFICE_STORY, "noon")).toEqual({ title: "WHILE YOU WERE OUT", body: "2 PRs merged\n1 long one waved off" });
+		expect(boardText({ diary, headlines, now: T0 + SEC }, OFFICE_STORY, "noon")).toEqual({
+			title: "WHILE YOU WERE OUT",
+			body: "2 PRs merged\n1 long one waved off",
+		});
 		expect(boardText({ diary, headlines, now: T0 + STORY.headlineMs }, OFFICE_STORY, "noon")).toBeUndefined();
-		expect(boardText({ diary, now: T0 }, OFFICE_STORY, "dusk")).toEqual({ title: "TODAY'S LEDGER", body: "3 sessions · 2 PRs · 1 merged · 4 red · 1 fixed" });
+		expect(boardText({ diary, now: T0 }, OFFICE_STORY, "dusk")).toEqual({
+			title: "TODAY'S LEDGER",
+			body: "3 sessions · 2 PRs · 1 merged · 4 red · 1 fixed",
+		});
 		expect(boardText({ diary, now: T0 }, FACTORY_STORY, "night")?.title).toBe("SHIFT REPORT");
 		expect(boardText({ now: T0 }, OFFICE_STORY, "night")).toBeUndefined();
 	});
@@ -266,8 +309,12 @@ describe("the walls remember", () => {
 	});
 
 	test("every theme has story words of its own: the bakery counts its bake", () => {
-		expect(storyStyle({ id: "bakery", slab: 1, lawn: 2, light: { lamp: 3, glow: 4, sky: { noon: [5, 6], dusk: [7, 8] } } } as never).words).toBe(BAKERY_STORY);
-		expect(storyStyle({ id: "factory", slab: 1, lawn: 2, light: { lamp: 3, glow: 4, sky: { noon: [5, 6], dusk: [7, 8] } } } as never).words).toBe(FACTORY_STORY);
+		expect(storyStyle({ id: "bakery", slab: 1, lawn: 2, light: { lamp: 3, glow: 4, sky: { noon: [5, 6], dusk: [7, 8] } } } as never).words).toBe(
+			BAKERY_STORY,
+		);
+		expect(storyStyle({ id: "factory", slab: 1, lawn: 2, light: { lamp: 3, glow: 4, sky: { noon: [5, 6], dusk: [7, 8] } } } as never).words).toBe(
+			FACTORY_STORY,
+		);
 		expect(BAKERY_STORY.lines.opened(2)).toBe("2 batches out of the oven");
 		expect(BAKERY_STORY.lines.merged(1)).toBe("1 order picked up");
 		expect(BAKERY_STORY.ledger).toBe("TODAY'S BAKE");
@@ -276,14 +323,32 @@ describe("the walls remember", () => {
 
 describe("regulars", () => {
 	test("the same project and role is the same regular on any day: key, name and accessory from the key alone", () => {
-		const day1 = regularsOf([{ key: "s:x1", kind: "lead", role: "lead", session: "x1" }, { key: "a:x1:q", kind: "crew", role: "Explore", session: "x1" }], { at: T0, sessions: [session("x1")] });
-		const day2 = regularsOf([{ key: "s:y9", kind: "lead", role: "lead", session: "y9" }, { key: "a:y9:z", kind: "crew", role: "explorer-ish", session: "y9" }], { at: T0 + 86_400_000, sessions: [session("y9")] });
+		const day1 = regularsOf(
+			[
+				{ key: "s:x1", kind: "lead", role: "lead", session: "x1" },
+				{ key: "a:x1:q", kind: "crew", role: "Explore", session: "x1" },
+			],
+			{ at: T0, sessions: [session("x1")] },
+		);
+		const day2 = regularsOf(
+			[
+				{ key: "s:y9", kind: "lead", role: "lead", session: "y9" },
+				{ key: "a:y9:z", kind: "crew", role: "explorer-ish", session: "y9" },
+			],
+			{ at: T0 + 86_400_000, sessions: [session("y9")] },
+		);
 		const p = projectKey("teapot");
 		expect([...day1.values()]).toEqual([`${p}:explorer:0`, `${p}:lead:0`]);
 		expect([...day2.values()].sort()).toEqual([...day1.values()].sort());
 		expect(regularOf(`${p}:lead:0`)).toEqual(regularOf(`${p}:lead:0`));
 		// Two of the same costume in a project are two regulars.
-		const two = regularsOf([{ key: "a:x1:a", kind: "crew", role: "scout", session: "x1" }, { key: "a:x1:b", kind: "crew", role: "scout", session: "x1" }], { at: T0, sessions: [session("x1")] });
+		const two = regularsOf(
+			[
+				{ key: "a:x1:a", kind: "crew", role: "scout", session: "x1" },
+				{ key: "a:x1:b", kind: "crew", role: "scout", session: "x1" },
+			],
+			{ at: T0, sessions: [session("x1")] },
+		);
 		expect([...two.values()]).toEqual([`${p}:scout:0`, `${p}:scout:1`]);
 	});
 
@@ -339,8 +404,19 @@ describe("regulars", () => {
 		const p1 = projectKey("teapot");
 		const p2 = projectKey("saucer");
 		const regs = [`${p1}:lead:0`, `${p1}:scout:0`, `${p2}:lead:0`, `${p2}:scout:0`, `${p1}:scout:1`];
-		const diary: Diary = { v: 1, days: Object.fromEntries([0, 1].map((d) => [localDay(T0 - d * 86_400_000), { counts: {}, projects: {}, regulars: regs.map((r) => r.split(":").slice(0, 2).join(":")), marks: [] }])) };
-		const names = regularNames(regs.map((r, i) => ({ key: `k${i}`, regular: r })), { diary, now: T0 });
+		const diary: Diary = {
+			v: 1,
+			days: Object.fromEntries(
+				[0, 1].map((d) => [
+					localDay(T0 - d * 86_400_000),
+					{ counts: {}, projects: {}, regulars: regs.map((r) => r.split(":").slice(0, 2).join(":")), marks: [] },
+				]),
+			),
+		};
+		const names = regularNames(
+			regs.map((r, i) => ({ key: `k${i}`, regular: r })),
+			{ diary, now: T0 },
+		);
 		expect(names.size).toBe(regs.length);
 		expect(new Set(names.values()).size).toBe(regs.length);
 	});
@@ -348,7 +424,10 @@ describe("regulars", () => {
 	test("you recognise a regular (its name shows) once the diary has seen it on two days", () => {
 		const p = projectKey("teapot");
 		const day = (k: string, regulars: string[]): [string, DiaryDay] => [k, { counts: {}, projects: {}, regulars, marks: [] }];
-		const diary: Diary = { v: 1, days: Object.fromEntries([day(localDay(T0), [`${p}:lead`, `${p}:scout`]), day(localDay(T0 - 86_400_000), [`${p}:lead`])]) };
+		const diary: Diary = {
+			v: 1,
+			days: Object.fromEntries([day(localDay(T0), [`${p}:lead`, `${p}:scout`]), day(localDay(T0 - 86_400_000), [`${p}:lead`])]),
+		};
 		const names = regularNames([{ key: "s:a", regular: `${p}:lead:0` }, { key: "a:a:b", regular: `${p}:scout:0` }, { key: "a:a:c" }], { diary, now: T0 });
 		expect([...names.keys()]).toEqual(["s:a"]);
 		expect(names.get("s:a")).toBe(regularOf(`${p}:lead:0`).name);
@@ -356,5 +435,6 @@ describe("regulars", () => {
 });
 
 test("the story's poses exist", () => {
-	for (const p of [STORY.takePose, STORY.walkPose, STORY.cheer, STORY.alone, STORY.redeemed, STORY.sendoff]) expect(duration(POSE[p]!.frames)).toBeGreaterThan(0);
+	for (const p of [STORY.takePose, STORY.walkPose, STORY.cheer, STORY.alone, STORY.redeemed, STORY.sendoff])
+		expect(duration(POSE[p]!.frames)).toBeGreaterThan(0);
 });

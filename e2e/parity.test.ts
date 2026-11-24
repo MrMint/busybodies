@@ -130,34 +130,39 @@ for (const compact of [false, true]) {
 			for (const id of THEME_IDS) {
 				const known = KNOWN[id]?.[s.name];
 				const run = known ? test.failing : test;
-				run(`${id}: ${s.name}${known ? ` (known: ${known})` : ""}`, async () => {
-					const [o, f] = await Promise.all([reference(), id === "office" ? reference() : facts(id, s, compact)]);
-					// It came up, in this theme, without a thrown error.
-					expect(f.errors).toEqual([]);
-					expect(f.theme).toBe(id);
-					// The same floor: rooms are layout, not paint.
-					expect(f.areas).toEqual(o.areas);
-					expect(f.areas.length).toBeGreaterThan(0);
-					// The same characters, and all of them on the floor.
-					expect(f.sessions).toBe(o.sessions);
-					expect(f.cast).toEqual(o.cast);
-					if (s.empty) expect(f.cast.length).toBe(1);
-					else expect(f.cast.length).toBeGreaterThanOrEqual(f.sessions);
-					expect(f.placed).toBe(f.cast.length);
-					// The rooms are staged: a bay and a hall, something moving on its own, the same sign
-					// slots as the office with the theme's own defaults up, and none in the office's words.
-					expect(f.staging.bay).toMatch(/^(desks|line)$/);
-					expect(f.staging.hall).toMatch(/^(corridor|conveyor)$/);
-					expect(f.staging.ambient.length).toBeGreaterThan(0);
-					expect(Object.keys(f.signs).sort()).toEqual(Object.keys(o.signs).sort());
-					for (const slot of [...Object.keys(wordsFor(id).signs), "yours:serving"]) expect({ slot, title: (f.signs[slot] ?? "").length > 0 }).toEqual({ slot, title: true });
-					for (const [slot, title] of Object.entries(f.signs)) {
-						if (id !== "office") expect({ slot, office: OFFICE_SIGNS.has(title) }).toEqual({ slot, office: false });
-					}
-					// Compact's room tiles: one per room in the office, the common areas in this theme's words.
-					expect(f.tiles.length).toBe(o.tiles.length);
-					if (id !== "office") expect(f.tiles.filter((t) => OFFICE_AREAS.has(t))).toEqual([]);
-				}, T);
+				run(
+					`${id}: ${s.name}${known ? ` (known: ${known})` : ""}`,
+					async () => {
+						const [o, f] = await Promise.all([reference(), id === "office" ? reference() : facts(id, s, compact)]);
+						// It came up, in this theme, without a thrown error.
+						expect(f.errors).toEqual([]);
+						expect(f.theme).toBe(id);
+						// The same floor: rooms are layout, not paint.
+						expect(f.areas).toEqual(o.areas);
+						expect(f.areas.length).toBeGreaterThan(0);
+						// The same characters, and all of them on the floor.
+						expect(f.sessions).toBe(o.sessions);
+						expect(f.cast).toEqual(o.cast);
+						if (s.empty) expect(f.cast.length).toBe(1);
+						else expect(f.cast.length).toBeGreaterThanOrEqual(f.sessions);
+						expect(f.placed).toBe(f.cast.length);
+						// The rooms are staged: a bay and a hall, something moving on its own, the same sign
+						// slots as the office with the theme's own defaults up, and none in the office's words.
+						expect(f.staging.bay).toMatch(/^(desks|line)$/);
+						expect(f.staging.hall).toMatch(/^(corridor|conveyor)$/);
+						expect(f.staging.ambient.length).toBeGreaterThan(0);
+						expect(Object.keys(f.signs).sort()).toEqual(Object.keys(o.signs).sort());
+						for (const slot of [...Object.keys(wordsFor(id).signs), "yours:serving"])
+							expect({ slot, title: (f.signs[slot] ?? "").length > 0 }).toEqual({ slot, title: true });
+						for (const [slot, title] of Object.entries(f.signs)) {
+							if (id !== "office") expect({ slot, office: OFFICE_SIGNS.has(title) }).toEqual({ slot, office: false });
+						}
+						// Compact's room tiles: one per room in the office, the common areas in this theme's words.
+						expect(f.tiles.length).toBe(o.tiles.length);
+						if (id !== "office") expect(f.tiles.filter((t) => OFFICE_AREAS.has(t))).toEqual([]);
+					},
+					T,
+				);
 			}
 		}
 	});

@@ -40,4 +40,3 @@ export interface Character {
 }
 
 export type CharacterFactory = (who: Who) => Character;
-

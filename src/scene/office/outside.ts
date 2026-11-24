@@ -16,10 +16,41 @@ import type { Rect } from "../world/world";
 const PARALLAX = 0.035;
 
 type Kind =
-	| "canopy" | "trunk" | "poplar" | "ball" | "bush" | "flowers-pink" | "flowers-yellow" | "flowers-lilac" | "tuft" | "stone"
-	| "bollard" | "pallet" | "drum" | "crates" | "gravel" | "slab";
+	| "canopy"
+	| "trunk"
+	| "poplar"
+	| "ball"
+	| "bush"
+	| "flowers-pink"
+	| "flowers-yellow"
+	| "flowers-lilac"
+	| "tuft"
+	| "stone"
+	| "bollard"
+	| "pallet"
+	| "drum"
+	| "crates"
+	| "gravel"
+	| "slab";
 
-const KINDS: Kind[] = ["canopy", "trunk", "poplar", "ball", "bush", "flowers-pink", "flowers-yellow", "flowers-lilac", "tuft", "stone", "bollard", "pallet", "drum", "crates", "gravel", "slab"];
+const KINDS: Kind[] = [
+	"canopy",
+	"trunk",
+	"poplar",
+	"ball",
+	"bush",
+	"flowers-pink",
+	"flowers-yellow",
+	"flowers-lilac",
+	"tuft",
+	"stone",
+	"bollard",
+	"pallet",
+	"drum",
+	"crates",
+	"gravel",
+	"slab",
+];
 
 /** A tree's crown: drawn in the tops (they drift with the camera) at this height up its trunk. */
 const CROWN: Partial<Record<Kind, number>> = { canopy: 24, poplar: 24, ball: 24 };
@@ -147,7 +178,10 @@ export class Outside extends Container {
 		sheet.destroy({ children: true });
 		for (const p of placed) {
 			const { base } = p;
-			const tex = new Texture({ source: atlas.source, frame: new Rectangle(atlas.frame.x + p.frame.x, atlas.frame.y + p.frame.y, p.frame.width, p.frame.height) });
+			const tex = new Texture({
+				source: atlas.source,
+				frame: new Rectangle(atlas.frame.x + p.frame.x, atlas.frame.y + p.frame.y, p.frame.width, p.frame.height),
+			});
 			this.#textures.set(p.kind, { tex, anchor: { x: base.x / p.frame.width, y: base.y / p.frame.height } });
 		}
 		this.#atlas = atlas;
@@ -205,7 +239,14 @@ export class Outside extends Container {
 				shadow(15, 4);
 				g.ellipse(-7, -4, 9, 5).ellipse(6, -5, 10, 6).ellipse(0, -8, 8, 5).fill(INK);
 				g.ellipse(-7, -4, 7.5, 3.8).ellipse(6, -5, 8.5, 4.6).ellipse(0, -8, 6.5, 3.8).fill(0x52c476);
-				const at: [number, number][] = [[-9, -8], [-2, -12], [6, -10], [11, -6], [1, -5], [-5, -3]];
+				const at: [number, number][] = [
+					[-9, -8],
+					[-2, -12],
+					[6, -10],
+					[11, -6],
+					[1, -5],
+					[-5, -3],
+				];
 				for (const [bx, by] of at) g.circle(bx, by, 3.3).fill(bloom).stroke({ width: 1.2, color: INK });
 				for (const [bx, by] of at) g.circle(bx, by, 1).fill(kind === "flowers-yellow" ? 0xff8a3d : 0xfff3b0);
 				break;
@@ -299,7 +340,7 @@ function yardSpots(slab: Rect, yard: "trees" | "yard", path: Path | undefined): 
 			const r = noise(i, j, 42);
 			let kind: Kind;
 			if (trees) {
-				if (d < 60) kind = r < 0.7 ? "flowers" as Kind : "bush";
+				if (d < 60) kind = r < 0.7 ? ("flowers" as Kind) : "bush";
 				else if (d < 140) kind = r < 0.35 ? ("flowers" as Kind) : r < 0.65 ? "bush" : r < 0.85 ? "ball" : "poplar";
 				else kind = r < 0.15 ? ("flowers" as Kind) : r < 0.35 ? "bush" : r < 0.55 ? "ball" : r < 0.55 + 0.25 * (0.5 + corner) ? "poplar" : "canopy";
 			} else {
@@ -360,7 +401,13 @@ function pathFrom(door: { x: number; y: number }): Path {
 		// One stone a step, left then right of the line, each a little off.
 		const side = k % 2 ? 1 : -1;
 		const sx = x + side * 7 + (noise(k, side, 45) - 0.5) * 5;
-		stones.push({ x: sx, y: y + (noise(k, side, 46) - 0.5) * 3, size: 1.25 + noise(k, side, 47) * 0.3, flip: noise(k, side, 48) > 0.5, rot: (noise(k, side, 49) - 0.5) * 0.3 });
+		stones.push({
+			x: sx,
+			y: y + (noise(k, side, 46) - 0.5) * 3,
+			size: 1.25 + noise(k, side, 47) * 0.3,
+			flip: noise(k, side, 48) > 0.5,
+			rot: (noise(k, side, 49) - 0.5) * 0.3,
+		});
 	}
 	return {
 		stones,

@@ -54,8 +54,7 @@ export interface Pose {
 }
 
 type Row = [tokens: string, beats: number, say?: string];
-const frames = (rows: Row[]): TimedFrame[] =>
-	rows.map(([t, beats, say]) => ({ ...parseFrame(t), ms: beats * BEAT_MS, ...(say ? { say } : {}) }));
+const frames = (rows: Row[]): TimedFrame[] => rows.map(([t, beats, say]) => ({ ...parseFrame(t), ms: beats * BEAT_MS, ...(say ? { say } : {}) }));
 
 type PoseRows = Omit<Pose, "frames" | "partner" | "beats"> & {
 	frames: Row[];
@@ -78,7 +77,11 @@ const pose = ({ partner, beats, ...p }: PoseRows): Pose => ({
 export const POSES: Pose[] = [
 	// Hard at it ----------------------------------------------------------------------------------
 	pose({
-		name: "typing", title: "Typing, frantic", trigger: "busy", rarity: 1, play: "loop",
+		name: "typing",
+		title: "Typing, frantic",
+		trigger: "busy",
+		rarity: 1,
+		play: "loop",
 		lines: ["Typing.", "Do not talk to me."],
 		frames: [
 			["e-wide l-down b-worry m-flat al-type1 ar-type3 bd-fwd fr-desk", 1],
@@ -119,7 +122,12 @@ export const POSES: Pose[] = [
 		// Edit/Write: a nail driven home in three strokes, checked, and the next one started. Each
 		// strike lands on the head (ARMS.hit1-3), and on the beat after it the nail and the hammer go
 		// down together.
-		name: "hammer", title: "Whacking it until it compiles", trigger: "busy", rarity: 1, play: "loop", roles: ["builder"],
+		name: "hammer",
+		title: "Whacking it until it compiles",
+		trigger: "busy",
+		rarity: 1,
+		play: "loop",
+		roles: ["builder"],
 		lines: ["It compiles in my heart."],
 		frames: [
 			["l-downR b-flat m-flat hr-hammer ar-wind al-hip w-nail1", 2],
@@ -160,7 +168,12 @@ export const POSES: Pose[] = [
 		},
 	}),
 	pose({
-		name: "scouting", title: "Scouting with binoculars", trigger: "busy", rarity: 1, play: "loop", roles: ["scout"],
+		name: "scouting",
+		title: "Scouting with binoculars",
+		trigger: "busy",
+		rarity: 1,
+		play: "loop",
+		roles: ["scout"],
 		lines: ["Found it. Probably."],
 		frames: [
 			["a-binoc m-small al-face ar-face f-wide bd-leanL", 3],
@@ -171,7 +184,12 @@ export const POSES: Pose[] = [
 		],
 	}),
 	pose({
-		name: "exploring", title: "Exploring with a torch", trigger: "busy", rarity: 1, play: "loop", roles: ["explorer"],
+		name: "exploring",
+		title: "Exploring with a torch",
+		trigger: "busy",
+		rarity: 1,
+		play: "loop",
+		roles: ["explorer"],
 		lines: ["It's dark in node_modules."],
 		frames: [
 			["e-wide l-left b-up m-small hr-torch ar-raise al-low", 3],
@@ -182,7 +200,12 @@ export const POSES: Pose[] = [
 		],
 	}),
 	pose({
-		name: "reviewing", title: "Reviewing, with notes", trigger: "busy", rarity: 1, play: "loop", roles: ["reviewer"],
+		name: "reviewing",
+		title: "Reviewing, with notes",
+		trigger: "busy",
+		rarity: 1,
+		play: "loop",
+		roles: ["reviewer"],
 		lines: ["I have notes."],
 		frames: [
 			["e-half l-right b-one m-flat hl-clip al-low ar-point", 3],
@@ -193,7 +216,12 @@ export const POSES: Pose[] = [
 		],
 	}),
 	pose({
-		name: "verifying", title: "Verifying under the glass", trigger: "busy", rarity: 1, play: "loop", roles: ["verifier"],
+		name: "verifying",
+		title: "Verifying under the glass",
+		trigger: "busy",
+		rarity: 1,
+		play: "loop",
+		roles: ["verifier"],
 		lines: ["Green. Allegedly."],
 		frames: [
 			["e-squint l-left b-one m-small hl-mag al-raise ar-hip bd-leanL", 3],
@@ -203,7 +231,12 @@ export const POSES: Pose[] = [
 		],
 	}),
 	pose({
-		name: "painting", title: "Moving it two pixels", trigger: "busy", rarity: 1, play: "loop", roles: ["designer"],
+		name: "painting",
+		title: "Moving it two pixels",
+		trigger: "busy",
+		rarity: 1,
+		play: "loop",
+		roles: ["designer"],
 		lines: ["Two pixels. Trust me."],
 		frames: [
 			["e-squint l-right m-blep hr-brush ar-raise al-hip bd-leanR", 2],
@@ -219,7 +252,12 @@ export const POSES: Pose[] = [
 	pose({
 		// Read: unroll the plan, trace it with a finger, turn it the wrong way round and back, nod,
 		// roll it up.
-		name: "blueprint", title: "Reading the blueprint", trigger: "working", rarity: 1, play: "loop", roles: ["builder"],
+		name: "blueprint",
+		title: "Reading the blueprint",
+		trigger: "working",
+		rarity: 1,
+		play: "loop",
+		roles: ["builder"],
 		lines: ["Measure twice. Read once."],
 		frames: [
 			["l-down m-small fr-roll al-sheet ar-sheet", 2],
@@ -236,7 +274,12 @@ export const POSES: Pose[] = [
 	}),
 	pose({
 		// Grep/Glob: dig in the parts crate, hold one up to the eye, wrong one, dig again, found it.
-		name: "rummage", title: "Looking for the right part", trigger: "working", rarity: 1, play: "loop", roles: ["builder"],
+		name: "rummage",
+		title: "Looking for the right part",
+		trigger: "working",
+		rarity: 1,
+		play: "loop",
+		roles: ["builder"],
 		lines: ["It was here a minute ago."],
 		frames: [
 			["l-downR b-one m-small ar-dig al-hip bd-leanR w-crate", 3],
@@ -254,7 +297,12 @@ export const POSES: Pose[] = [
 	pose({
 		// A shell command running: a wrench on the machine's nut, a third of a turn a stroke, and a
 		// look up at the command now and then.
-		name: "tinker", title: "Tinkering while it runs", trigger: "working", rarity: 1, play: "loop", roles: ["builder"],
+		name: "tinker",
+		title: "Tinkering while it runs",
+		trigger: "working",
+		rarity: 1,
+		play: "loop",
+		roles: ["builder"],
 		lines: ["Tighten. Untighten. Tighten."],
 		frames: [
 			["l-downR b-flat m-blep hr-wrench ar-wr1 al-hip w-nut1", 2],
@@ -270,7 +318,12 @@ export const POSES: Pose[] = [
 	}),
 	pose({
 		// A test run: push the stack, watch it rock, it holds, tick the clipboard.
-		name: "poke", title: "Poking it to see if it holds", trigger: "working", rarity: 1, play: "loop", roles: ["builder"],
+		name: "poke",
+		title: "Poking it to see if it holds",
+		trigger: "working",
+		rarity: 1,
+		play: "loop",
+		roles: ["builder"],
 		lines: ["If it wobbles, it's a feature."],
 		frames: [
 			["l-downR b-one m-small hl-clip al-low ar-draw w-stack", 2],
@@ -287,7 +340,12 @@ export const POSES: Pose[] = [
 	pose({
 		// A red test: the strike goes crooked, the nail folds, the hammer flies off, and the stung
 		// hand gets flapped and blown on.
-		name: "thumb", title: "Whacked the thumb", trigger: "test-failed", rarity: 1, play: "once", roles: ["builder"],
+		name: "thumb",
+		title: "Whacked the thumb",
+		trigger: "test-failed",
+		rarity: 1,
+		play: "once",
+		roles: ["builder"],
 		lines: ["Ow. The test hit me."],
 		frames: [
 			["l-downR b-flat m-flat hr-hammer ar-wind al-hip w-nail1", 2],
@@ -302,7 +360,11 @@ export const POSES: Pose[] = [
 		],
 	}),
 	pose({
-		name: "glance", title: "Glancing at a teammate", trigger: "reacting", rarity: 1, play: "once",
+		name: "glance",
+		title: "Glancing at a teammate",
+		trigger: "reacting",
+		rarity: 1,
+		play: "once",
 		lines: [],
 		frames: [
 			["l-right b-up m-small", 2],
@@ -315,7 +377,11 @@ export const POSES: Pose[] = [
 	// beat before it acts.
 	pose({
 		// A deliberate model: eyes up, chin on a hand, a slow blink, then it acts.
-		name: "consider", title: "Considering it first", trigger: "reacting", rarity: 1, play: "once",
+		name: "consider",
+		title: "Considering it first",
+		trigger: "reacting",
+		rarity: 1,
+		play: "once",
 		lines: [],
 		frames: [
 			["e-half l-upR b-one m-small al-low ar-chin", 2],
@@ -325,7 +391,11 @@ export const POSES: Pose[] = [
 	}),
 	pose({
 		// A quick model's go-ahead: a small nod, and on with it.
-		name: "nod", title: "A small nod", trigger: "reacting", rarity: 1, play: "once",
+		name: "nod",
+		title: "A small nod",
+		trigger: "reacting",
+		rarity: 1,
+		play: "once",
 		lines: [],
 		frames: [
 			["l-right b-up m-small bd-nod", 1],
@@ -334,7 +404,12 @@ export const POSES: Pose[] = [
 	}),
 	pose({
 		// The lead leans in over the work, strokes its chin, points out the next thing, nods.
-		name: "inspect", title: "Checking on the crew", trigger: "inspecting", rarity: 1, play: "loop", roles: ["lead"],
+		name: "inspect",
+		title: "Checking on the crew",
+		trigger: "inspecting",
+		rarity: 1,
+		play: "loop",
+		roles: ["lead"],
 		lines: ["Looks great. Do it again."],
 		frames: [
 			["l-downR b-one m-small al-hip ar-hip bd-fwd", 3],
@@ -350,7 +425,11 @@ export const POSES: Pose[] = [
 	// (rig/data/gaze.ts), so the looks below are only what shows without one.
 	pose({
 		// Back on screen after a while away: an idle character looks up at you, pleased.
-		name: "lookUp", title: "Noticing you", trigger: "reacting", rarity: 1, play: "once",
+		name: "lookUp",
+		title: "Noticing you",
+		trigger: "reacting",
+		rarity: 1,
+		play: "once",
 		lines: [],
 		frames: [
 			["e-wide l-up b-up m-small", 2],
@@ -362,7 +441,11 @@ export const POSES: Pose[] = [
 	}),
 	pose({
 		// One of them waves.
-		name: "wave", title: "Waving at you", trigger: "reacting", rarity: 1, play: "once",
+		name: "wave",
+		title: "Waving at you",
+		trigger: "reacting",
+		rarity: 1,
+		play: "once",
 		lines: [],
 		frames: [
 			["e-wide l-up b-up m-open ar-raise", 2],
@@ -377,7 +460,11 @@ export const POSES: Pose[] = [
 	}),
 	pose({
 		// Waiting at your door when you come back: the ticket goes up high, on tiptoe, then back down.
-		name: "ticketHigh", title: "Holding the ticket up for you", trigger: "working", rarity: 1, play: "once",
+		name: "ticketHigh",
+		title: "Holding the ticket up for you",
+		trigger: "working",
+		rarity: 1,
+		play: "once",
 		lines: [],
 		frames: [
 			["e-wide l-up b-up m-open hr-ticket ar-raise al-hip", 2],
@@ -391,7 +478,11 @@ export const POSES: Pose[] = [
 	}),
 	pose({
 		// A hand-off's taker, as the folder arrives: it looks up and raises a hand to take it.
-		name: "handReady", title: "Ready to take the folder", trigger: "working", rarity: 1, play: "once",
+		name: "handReady",
+		title: "Ready to take the folder",
+		trigger: "working",
+		rarity: 1,
+		play: "once",
 		lines: [],
 		frames: [
 			["e-wide l-right b-up m-small al-low ar-low", 1],
@@ -401,7 +492,12 @@ export const POSES: Pose[] = [
 
 	// Slacking, obviously: seven habits ------------------------------------------------------------
 	pose({
-		name: "feetUp", title: "Feet up", trigger: "idle", rarity: 1, play: "once", habit: true,
+		name: "feetUp",
+		title: "Feet up",
+		trigger: "idle",
+		rarity: 1,
+		play: "once",
+		habit: true,
 		lines: ["Strategic pause."],
 		frames: [
 			["e-half m-smirk bd-back f-up hl-plane al-wave1 ar-head fr-desk", 4],
@@ -412,7 +508,12 @@ export const POSES: Pose[] = [
 		],
 	}),
 	pose({
-		name: "faceDown", title: "Face down on the keys", trigger: "idle-long", rarity: 1, play: "once", habit: true,
+		name: "faceDown",
+		title: "Face down on the keys",
+		trigger: "idle-long",
+		rarity: 1,
+		play: "once",
+		habit: true,
 		lines: ["zzz", "I was resting my context."],
 		frames: [
 			["e-closed m-drool bd-nap al-low ar-low fr-desk x-z1", 4],
@@ -421,7 +522,12 @@ export const POSES: Pose[] = [
 		],
 	}),
 	pose({
-		name: "chairSpin", title: "Chair spin", trigger: "idle", rarity: 1, play: "once", habit: true,
+		name: "chairSpin",
+		title: "Chair spin",
+		trigger: "idle",
+		rarity: 1,
+		play: "once",
+		habit: true,
 		lines: ["Wheee. I mean: thinking."],
 		frames: [
 			["e-happy m-grin al-cheer ar-cheer f-kick bk-chair bd-tilt", 3],
@@ -431,7 +537,12 @@ export const POSES: Pose[] = [
 		],
 	}),
 	pose({
-		name: "scrolling", title: "Scrolling", trigger: "idle", rarity: 1, play: "once", habit: true,
+		name: "scrolling",
+		title: "Scrolling",
+		trigger: "idle",
+		rarity: 1,
+		play: "once",
+		habit: true,
 		lines: ["Researching. On my phone."],
 		frames: [
 			["e-half l-down b-flat m-flat hr-phone ar-phone al-hip", 5],
@@ -441,7 +552,12 @@ export const POSES: Pose[] = [
 		],
 	}),
 	pose({
-		name: "waterCooler", title: "Water cooler", trigger: "idle", rarity: 1, play: "once", habit: true,
+		name: "waterCooler",
+		title: "Water cooler",
+		trigger: "idle",
+		rarity: 1,
+		play: "once",
+		habit: true,
 		lines: ["So anyway, the human said 'quick fix'."],
 		frames: [
 			["l-left b-up m-open hl-mug al-raise ar-out", 2],
@@ -452,7 +568,12 @@ export const POSES: Pose[] = [
 		],
 	}),
 	pose({
-		name: "stretch", title: "The stretch", trigger: "idle", rarity: 1, play: "once", habit: true,
+		name: "stretch",
+		title: "The stretch",
+		trigger: "idle",
+		rarity: 1,
+		play: "once",
+		habit: true,
 		lines: ["Hydrating my joints."],
 		frames: [
 			["e-half m-flat al-low ar-low", 3],
@@ -461,7 +582,12 @@ export const POSES: Pose[] = [
 		],
 	}),
 	pose({
-		name: "slowWalk", title: "The slow walk", trigger: "idle", rarity: 1, play: "once", habit: true,
+		name: "slowWalk",
+		title: "The slow walk",
+		trigger: "idle",
+		rarity: 1,
+		play: "once",
+		habit: true,
 		lines: ["Very busy. Carrying a paper."],
 		frames: [
 			["e-half l-right m-smirk hl-paper al-raise ar-low f-swingL", 3],
@@ -474,7 +600,11 @@ export const POSES: Pose[] = [
 	// The factory's own habits (themes/factory/scene.ts FACTORY_STAGING): played by name from the theme's
 	// habit rotation (director/habits.ts), never by the idle trigger, so the office keeps its seven.
 	pose({
-		name: "drumSit", title: "Sitting on an oil drum", trigger: "idle", rarity: 0, play: "once",
+		name: "drumSit",
+		title: "Sitting on an oil drum",
+		trigger: "idle",
+		rarity: 0,
+		play: "once",
 		lines: ["Supervising. The drum."],
 		frames: [
 			["e-half m-smirk bd-back bk-drum f-wide al-low ar-head", 4],
@@ -484,7 +614,11 @@ export const POSES: Pose[] = [
 		],
 	}),
 	pose({
-		name: "palletCards", title: "Cards on a pallet", trigger: "idle", rarity: 0, play: "once",
+		name: "palletCards",
+		title: "Cards on a pallet",
+		trigger: "idle",
+		rarity: 0,
+		play: "once",
 		lines: ["Gin. Again."],
 		frames: [
 			["e-half l-downR b-flat m-flat hl-hand al-raise ar-low w-pallet", 4],
@@ -494,7 +628,11 @@ export const POSES: Pose[] = [
 		],
 	}),
 	pose({
-		name: "vendingKick", title: "Kicking the vending machine", trigger: "idle", rarity: 0, play: "once",
+		name: "vendingKick",
+		title: "Kicking the vending machine",
+		trigger: "idle",
+		rarity: 0,
+		play: "once",
 		lines: ["It owes me a snack."],
 		frames: [
 			["e-squint l-right b-angry m-flat al-hip ar-hip w-vending", 4],
@@ -510,7 +648,11 @@ export const POSES: Pose[] = [
 	// ear, hands behind the head, a mug at the lips), looking out over the line. Played by name,
 	// never by the idle trigger.
 	pose({
-		name: "boothMug", title: "A brew over the line", trigger: "idle", rarity: 0, play: "once",
+		name: "boothMug",
+		title: "A brew over the line",
+		trigger: "idle",
+		rarity: 0,
+		play: "once",
 		lines: ["Quality control. Of the tea."],
 		frames: [
 			["e-half l-downR m-small hl-mug al-raise ar-hip", 4],
@@ -521,7 +663,11 @@ export const POSES: Pose[] = [
 		],
 	}),
 	pose({
-		name: "boothWatch", title: "Keeping an eye on the line", trigger: "idle", rarity: 0, play: "once",
+		name: "boothWatch",
+		title: "Keeping an eye on the line",
+		trigger: "idle",
+		rarity: 0,
+		play: "once",
 		lines: ["Nobody move. I mean: keep moving."],
 		frames: [
 			["a-binoc m-small al-face ar-face bd-leanL", 4],
@@ -532,7 +678,11 @@ export const POSES: Pose[] = [
 		],
 	}),
 	pose({
-		name: "boothLean", title: "Hands behind the head", trigger: "idle", rarity: 0, play: "once",
+		name: "boothLean",
+		title: "Hands behind the head",
+		trigger: "idle",
+		rarity: 0,
+		play: "once",
 		lines: ["The line runs itself. I made sure."],
 		frames: [
 			["e-half m-smirk al-head ar-head", 5],
@@ -542,7 +692,11 @@ export const POSES: Pose[] = [
 		],
 	}),
 	pose({
-		name: "boothCall", title: "On the booth phone", trigger: "idle", rarity: 0, play: "once",
+		name: "boothCall",
+		title: "On the booth phone",
+		trigger: "idle",
+		rarity: 0,
+		play: "once",
 		lines: ["Yes. Yes. It's on the belt."],
 		frames: [
 			["e-half l-upR b-one m-small hl-receiver al-ear ar-head", 4],
@@ -557,7 +711,11 @@ export const POSES: Pose[] = [
 	// rotation, never by the idle trigger. The bakery's rig paints the mug as a cappuccino, the bolt
 	// as a macaron, the stamp as a cake fork with a morsel on it, and the drum as a flour sack.
 	pose({
-		name: "cappuccinoSip", title: "Sipping a cappuccino", trigger: "idle", rarity: 0, play: "once",
+		name: "cappuccinoSip",
+		title: "Sipping a cappuccino",
+		trigger: "idle",
+		rarity: 0,
+		play: "once",
 		lines: ["Foam first. Feelings later."],
 		frames: [
 			["e-half l-left m-small hl-mug al-raise ar-hip", 3],
@@ -568,7 +726,11 @@ export const POSES: Pose[] = [
 		],
 	}),
 	pose({
-		name: "macaronSneak", title: "Sneaking a macaron", trigger: "idle", rarity: 0, play: "once",
+		name: "macaronSneak",
+		title: "Sneaking a macaron",
+		trigger: "idle",
+		rarity: 0,
+		play: "once",
 		lines: ["Nobody saw that. Nobody count them."],
 		frames: [
 			["e-half l-left b-flat m-flat hr-bolt ar-raise al-hip", 3],
@@ -579,7 +741,11 @@ export const POSES: Pose[] = [
 		],
 	}),
 	pose({
-		name: "forkLick", title: "Licking the cake fork", trigger: "idle", rarity: 0, play: "once",
+		name: "forkLick",
+		title: "Licking the cake fork",
+		trigger: "idle",
+		rarity: 0,
+		play: "once",
 		lines: ["Tasting is part of the job."],
 		frames: [
 			["e-half l-right m-small hr-stamp ar-raise al-hip", 3],
@@ -590,7 +756,11 @@ export const POSES: Pose[] = [
 		],
 	}),
 	pose({
-		name: "flourNap", title: "Napping on a flour sack", trigger: "idle", rarity: 0, play: "once",
+		name: "flourNap",
+		title: "Napping on a flour sack",
+		trigger: "idle",
+		rarity: 0,
+		play: "once",
 		lines: ["zzz", "Five minutes. Then croissants."],
 		frames: [
 			["e-half m-yawn bd-back bk-drum f-wide al-head ar-head", 3],
@@ -602,7 +772,11 @@ export const POSES: Pose[] = [
 
 	// Acted --------------------------------------------------------------------------------------
 	pose({
-		name: "waiting", title: "Waiting on you", trigger: "waiting", rarity: 1, play: "loop",
+		name: "waiting",
+		title: "Waiting on you",
+		trigger: "waiting",
+		rarity: 1,
+		play: "loop",
 		lines: ["Whenever you are ready.", "No rush. Some rush."],
 		frames: [
 			["m-flat hr-sign ar-up al-hip", 3],
@@ -618,7 +792,11 @@ export const POSES: Pose[] = [
 		],
 	}),
 	pose({
-		name: "waitingPlease", title: "Waiting, rare variant", trigger: "waiting", rarity: 1 / 20, play: "loop",
+		name: "waitingPlease",
+		title: "Waiting, rare variant",
+		trigger: "waiting",
+		rarity: 1 / 20,
+		play: "loop",
 		lines: ["I will name a variable after you."],
 		frames: [
 			["e-tear b-worry m-wobble fr-pls al-hi ar-hi bd-tilt", 3],
@@ -630,7 +808,11 @@ export const POSES: Pose[] = [
 	}),
 	pose({
 		// Reads the result under the glass, recoils, hands to the head, looks again, and sulks.
-		name: "testFailed", title: "Failed test", trigger: "test-failed", rarity: 1, play: "once",
+		name: "testFailed",
+		title: "Failed test",
+		trigger: "test-failed",
+		rarity: 1,
+		play: "once",
 		lines: ["It passed on my machine.", "Again."],
 		frames: [
 			["l-left b-one m-small hl-mag al-raise", 2],
@@ -642,7 +824,11 @@ export const POSES: Pose[] = [
 		],
 	}),
 	pose({
-		name: "prOpened", title: "PR opened", trigger: "pr-opened", rarity: 1, play: "once",
+		name: "prOpened",
+		title: "PR opened",
+		trigger: "pr-opened",
+		rarity: 1,
+		play: "once",
 		lines: ["PR #219. Frame it.", "Ship it before it changes its mind."],
 		frames: [
 			["e-shine b-up m-grin hr-trophy ar-up al-cheer f-runL x-conf1", 2],
@@ -653,7 +839,12 @@ export const POSES: Pose[] = [
 		],
 	}),
 	pose({
-		name: "handover", title: "Handing work to a new subagent", trigger: "subagent-spawned", rarity: 1, play: "once", roles: ["lead"],
+		name: "handover",
+		title: "Handing work to a new subagent",
+		trigger: "subagent-spawned",
+		rarity: 1,
+		play: "once",
+		roles: ["lead"],
 		lines: ["One job. Find saveDraft.", "Bring it back in one piece."],
 		frames: [
 			["l-right m-small fr-box al-hold ar-hold", 3],
@@ -680,7 +871,11 @@ export const POSES: Pose[] = [
 		},
 	}),
 	pose({
-		name: "asleep", title: "Asleep at the desk", trigger: "idle-long", rarity: 1, play: "once",
+		name: "asleep",
+		title: "Asleep at the desk",
+		trigger: "idle-long",
+		rarity: 1,
+		play: "once",
 		lines: ["zzz", "I was resting my context."],
 		frames: [
 			["e-half m-small al-type1 ar-type2 fr-desk", 2],
@@ -693,7 +888,11 @@ export const POSES: Pose[] = [
 		],
 	}),
 	pose({
-		name: "stalled", title: "Stalled, gathering cobwebs", trigger: "stalled", rarity: 1, play: "once",
+		name: "stalled",
+		title: "Stalled, gathering cobwebs",
+		trigger: "stalled",
+		rarity: 1,
+		play: "once",
 		lines: ["Still here. Technically.", "Any minute now."],
 		frames: [
 			["e-half b-flat m-flat al-low ar-low", 4],
@@ -702,7 +901,11 @@ export const POSES: Pose[] = [
 		],
 	}),
 	pose({
-		name: "done", title: "Done", trigger: "finished", rarity: 1, play: "once",
+		name: "done",
+		title: "Done",
+		trigger: "finished",
+		rarity: 1,
+		play: "once",
 		lines: ["Done. You're welcome.", "Clocking out."],
 		frames: [
 			["e-wide b-up m-open al-out ar-out", 2],
@@ -713,7 +916,11 @@ export const POSES: Pose[] = [
 		],
 	}),
 	pose({
-		name: "thinking", title: "Thinking hard", trigger: "thinking", rarity: 1, play: "once",
+		name: "thinking",
+		title: "Thinking hard",
+		trigger: "thinking",
+		rarity: 1,
+		play: "once",
 		lines: ["Hm.", "What if we just deleted it."],
 		frames: [
 			["e-half l-upR b-one m-small hl-clip al-low ar-chin x-think1", 2],
@@ -725,7 +932,11 @@ export const POSES: Pose[] = [
 		],
 	}),
 	pose({
-		name: "celebrate", title: "Celebrating with a teammate", trigger: "subagent-green", rarity: 1, play: "once",
+		name: "celebrate",
+		title: "Celebrating with a teammate",
+		trigger: "subagent-green",
+		rarity: 1,
+		play: "once",
 		lines: ["Green. Nobody touch anything."],
 		frames: [
 			["e-wide l-right b-up m-open", 2],
@@ -754,7 +965,11 @@ export const POSES: Pose[] = [
 		},
 	}),
 	pose({
-		name: "grumpy", title: "Grumpy at a 40-minute build", trigger: "long-build", rarity: 1, play: "loop",
+		name: "grumpy",
+		title: "Grumpy at a 40-minute build",
+		trigger: "long-build",
+		rarity: 1,
+		play: "loop",
 		lines: ["Forty minutes. I have aged.", "It is fine. I love waiting."],
 		frames: [
 			["e-half b-flat m-pout al-cross ar-cross2 f-tapR x-clock1", 2],
@@ -769,7 +984,11 @@ export const POSES: Pose[] = [
 		],
 	}),
 	pose({
-		name: "walk", title: "Walking somewhere", trigger: "walking", rarity: 1, play: "loop",
+		name: "walk",
+		title: "Walking somewhere",
+		trigger: "walking",
+		rarity: 1,
+		play: "loop",
 		lines: [],
 		frames: [
 			["l-right f-swingL al-low ar-down", 2],
@@ -782,7 +1001,12 @@ export const POSES: Pose[] = [
 	// and up (theme WORK.brick), lets go and pats it. The last frame has empty hands and holds: the
 	// office puts the brick on the tower the moment `place` ends.
 	pose({
-		name: "carry", title: "Carrying a piece over", trigger: "walking", rarity: 1, play: "loop", roles: ["builder"],
+		name: "carry",
+		title: "Carrying a piece over",
+		trigger: "walking",
+		rarity: 1,
+		play: "loop",
+		roles: ["builder"],
 		lines: [],
 		frames: [
 			["l-right b-one m-small hr-brick ar-shoulder al-low f-swingL", 2],
@@ -793,7 +1017,12 @@ export const POSES: Pose[] = [
 		],
 	}),
 	pose({
-		name: "place", title: "Adding a piece to the build", trigger: "working", rarity: 1, play: "once", roles: ["builder"],
+		name: "place",
+		title: "Adding a piece to the build",
+		trigger: "working",
+		rarity: 1,
+		play: "once",
+		roles: ["builder"],
 		lines: [],
 		frames: [
 			["l-right b-one m-small hr-brick ar-shoulder al-low", 1],
@@ -816,7 +1045,11 @@ export const POSES: Pose[] = [
 	pose({
 		// Read: pull the top drawer, walk the tabs, draw a folder up, open it and read, turn a page,
 		// find it, and put it back and push the drawer shut.
-		name: "fileFolder", title: "Flipping through a folder", trigger: "working", rarity: 1, play: "loop",
+		name: "fileFolder",
+		title: "Flipping through a folder",
+		trigger: "working",
+		rarity: 1,
+		play: "loop",
 		lines: [],
 		frames: [
 			["l-right b-one m-small al-low ar-grip w-cabinet", 2],
@@ -839,7 +1072,11 @@ export const POSES: Pose[] = [
 	pose({
 		// Search: a fingertip walks the cards, flicking them forward, stops, pulls one up to squint at,
 		// it's not the one, back it goes, and on through the cards.
-		name: "cardThumb", title: "Thumbing through the card catalogue", trigger: "working", rarity: 1, play: "loop",
+		name: "cardThumb",
+		title: "Thumbing through the card catalogue",
+		trigger: "working",
+		rarity: 1,
+		play: "loop",
 		lines: [],
 		frames: [
 			["l-right b-one m-small al-low ar-card1 bd-up w-cards", 2],
@@ -859,7 +1096,11 @@ export const POSES: Pose[] = [
 	pose({
 		// A build: lift the lid with the original in hand, lay it on the glass, shut the lid, press
 		// start, the scan light runs, and copies come out into the tray.
-		name: "copierFeed", title: "Feeding the copier", trigger: "working", rarity: 1, play: "loop",
+		name: "copierFeed",
+		title: "Feeding the copier",
+		trigger: "working",
+		rarity: 1,
+		play: "loop",
 		lines: [],
 		frames: [
 			["l-right b-one m-small al-low hr-paper ar-under w-copier", 2],
@@ -878,7 +1119,11 @@ export const POSES: Pose[] = [
 	pose({
 		// A failed build: start does nothing but a red light. Open the jam door, tug out the
 		// crumpled sheet, shut it, press again: still red. A kick, and a glare.
-		name: "copierKick", title: "Kicking the jammed copier", trigger: "working", rarity: 1, play: "once",
+		name: "copierKick",
+		title: "Kicking the jammed copier",
+		trigger: "working",
+		rarity: 1,
+		play: "once",
 		lines: [],
 		frames: [
 			["l-right b-one m-small al-low ar-press w-copier", 1],
@@ -898,7 +1143,11 @@ export const POSES: Pose[] = [
 	pose({
 		// A green test: ink the stamp, swing it over, press, and the form takes a green mark (the
 		// rubber comes away dry); then push it onto the done pile, the next form under it.
-		name: "stampGreen", title: "Stamping it approved", trigger: "working", rarity: 1, play: "loop",
+		name: "stampGreen",
+		title: "Stamping it approved",
+		trigger: "working",
+		rarity: 1,
+		play: "loop",
 		lines: [],
 		frames: [
 			["l-right b-one m-small al-low hr-stamp ar-st1 bd-up w-forms", 2],
@@ -913,7 +1162,11 @@ export const POSES: Pose[] = [
 	}),
 	pose({
 		// A red test: the same stroke from the red pad, a red cross on the form, and a long sigh.
-		name: "stampRed", title: "Stamping it rejected", trigger: "working", rarity: 1, play: "once",
+		name: "stampRed",
+		title: "Stamping it rejected",
+		trigger: "working",
+		rarity: 1,
+		play: "once",
 		lines: [],
 		frames: [
 			["l-right b-flat m-flat al-low hr-stamp ar-st1 bd-up w-formsR", 2],
@@ -928,7 +1181,11 @@ export const POSES: Pose[] = [
 	pose({
 		// A web fetch: the receiver at the ear, listening and nodding, jotting a bit at a time on the
 		// notepad (each bit appears where the pencil went), and the full page flipped over.
-		name: "phone", title: "On the phone", trigger: "working", rarity: 1, play: "loop",
+		name: "phone",
+		title: "On the phone",
+		trigger: "working",
+		rarity: 1,
+		play: "loop",
 		lines: [],
 		frames: [
 			["e-half l-upR b-one m-small hl-receiver al-ear hr-pencil ar-low w-note0", 3],
@@ -949,7 +1206,11 @@ export const POSES: Pose[] = [
 	pose({
 		// The PR: an envelope held up, over the outbox, let go; it drops into the tray. Dust off the
 		// hands, hands on hips. Ends settled.
-		name: "mailDrop", title: "Dropping the envelope in the outbox", trigger: "working", rarity: 1, play: "once",
+		name: "mailDrop",
+		title: "Dropping the envelope in the outbox",
+		trigger: "working",
+		rarity: 1,
+		play: "once",
 		lines: [],
 		frames: [
 			// Arriving from envelopeCarry: the big envelope still held up in both hands, then gripped
@@ -969,7 +1230,11 @@ export const POSES: Pose[] = [
 	pose({
 		// Cleaning up: slide the top sheet off the pile, stand it in the slot, and lower it as the
 		// shredder buzzes and eats it, a sheet at a time.
-		name: "shred", title: "Feeding the shredder", trigger: "working", rarity: 1, play: "loop",
+		name: "shred",
+		title: "Feeding the shredder",
+		trigger: "working",
+		rarity: 1,
+		play: "loop",
 		lines: [],
 		frames: [
 			["l-right b-one m-small al-low ar-pick bd-up w-shred", 2],
@@ -986,7 +1251,11 @@ export const POSES: Pose[] = [
 		// drawn in front), so everything reads on the forward side and up top: the clipboard in the
 		// forward hand under the chin, a foot tapping, and a rise onto the toes to see over the one
 		// ahead (a rise clears its head; a lean would only push into it).
-		name: "queueWait", title: "Waiting in line", trigger: "working", rarity: 1, play: "loop",
+		name: "queueWait",
+		title: "Waiting in line",
+		trigger: "working",
+		rarity: 1,
+		play: "loop",
 		lines: [],
 		frames: [
 			["e-half l-downR b-flat m-flat hr-clipF ar-check al-low", 3],
@@ -1026,7 +1295,11 @@ export const POSES: Pose[] = [
 		// TRAY). The typing rocks the pile; it stops, rises on its toes to peer over and steadies the
 		// top with a palm; types again; the top sheet skids off, a grab misses, and it goes over the
 		// side. Sweat throughout. The pile is back to full on the loop: the in-tray keeps filling.
-		name: "buried", title: "Buried under the in-tray", trigger: "working", rarity: 1, play: "loop",
+		name: "buried",
+		title: "Buried under the in-tray",
+		trigger: "working",
+		rarity: 1,
+		play: "loop",
 		lines: [],
 		frames: [
 			["e-wide l-down b-worry m-flat al-type1 ar-type3 fr-desk w-tray4 x-sweat1", 1],
@@ -1049,7 +1322,11 @@ export const POSES: Pose[] = [
 		// In line at your door, a numbered ticket in hand: a foot tapping, a look up at the NOW
 		// SERVING sign (up and to the right), not yet; the ticket checked under the chin, a sigh, and
 		// the foot again. No furniture of its own, so it plays at any door.
-		name: "ticketWait", title: "Waiting at your door with a ticket", trigger: "working", rarity: 1, play: "loop",
+		name: "ticketWait",
+		title: "Waiting at your door with a ticket",
+		trigger: "working",
+		rarity: 1,
+		play: "loop",
 		lines: [],
 		frames: [
 			["l-right m-flat hr-ticket ar-low al-hip", 3],
@@ -1073,7 +1350,11 @@ export const POSES: Pose[] = [
 	// counter, so the one behind is on the walker's left.
 	pose({
 		// Just arrived: the ticket held up under the chin, a small smile, a hopeful look at the sign.
-		name: "ticketPolite", title: "Waiting politely with a ticket", trigger: "working", rarity: 1, play: "loop",
+		name: "ticketPolite",
+		title: "Waiting politely with a ticket",
+		trigger: "working",
+		rarity: 1,
+		play: "loop",
 		lines: [],
 		frames: [
 			["l-right m-small hr-ticket ar-check al-low", 5],
@@ -1086,7 +1367,11 @@ export const POSES: Pose[] = [
 	pose({
 		// A while in: a sigh, then it turns to the one behind with an open hand ("can you believe"),
 		// a shrug, a smirk, and back to facing the front with the foot going.
-		name: "ticketChat", title: "Sighing to the one behind", trigger: "working", rarity: 1, play: "loop",
+		name: "ticketChat",
+		title: "Sighing to the one behind",
+		trigger: "working",
+		rarity: 1,
+		play: "loop",
 		lines: [],
 		frames: [
 			["e-half l-right b-flat m-flat hr-ticket ar-low al-hip x-sigh", 3],
@@ -1101,7 +1386,11 @@ export const POSES: Pose[] = [
 	pose({
 		// Left far too long: slumped, the ticket drooping from a limp wrist, a glance up at the sign
 		// now and then, nothing.
-		name: "ticketSlump", title: "Slumped in line, ticket drooping", trigger: "working", rarity: 1, play: "loop",
+		name: "ticketSlump",
+		title: "Slumped in line, ticket drooping",
+		trigger: "working",
+		rarity: 1,
+		play: "loop",
 		lines: [],
 		frames: [
 			["e-half l-down b-worry m-pout hr-ticket ar-droop al-low bd-slump", 6],
@@ -1115,7 +1404,11 @@ export const POSES: Pose[] = [
 		// First in line rings the bell on your desk (w-bell at reach.ts BELL): the flat palm raised
 		// over it, brought down on the plunger (it goes down, the bell rings, "ding!"), lifted while
 		// it hums, and the ringer settles, ticket still in the other hand.
-		name: "bellRing", title: "Ringing the bell on your desk", trigger: "working", rarity: 1, play: "once",
+		name: "bellRing",
+		title: "Ringing the bell on your desk",
+		trigger: "working",
+		rarity: 1,
+		play: "once",
 		lines: [],
 		frames: [
 			["l-right b-one m-small hl-ticket al-low ar-low w-bell", 2],
@@ -1130,7 +1423,11 @@ export const POSES: Pose[] = [
 	pose({
 		// A walk pose (the cue's walkPose): a sticky note carried up on a fingertip like something
 		// precious, eyes on it, its free end lifting in the breeze on each step.
-		name: "stickyCarry", title: "Carrying a sticky note", trigger: "working", rarity: 1, play: "loop",
+		name: "stickyCarry",
+		title: "Carrying a sticky note",
+		trigger: "working",
+		rarity: 1,
+		play: "loop",
 		lines: [],
 		frames: [
 			["l-upR b-up m-small hr-sticky ar-tipUp al-low f-swingL", 2],
@@ -1145,7 +1442,11 @@ export const POSES: Pose[] = [
 		// note on (it leaves the finger for the wall), the thumb smooths its top edge there and back,
 		// a step back to look, a nod. Ends with empty hands; the note stays on the planner (w-stickyOn
 		// until the pose changes, then the office's planner shows it).
-		name: "stickyPost", title: "Posting a sticky note on the planner", trigger: "working", rarity: 1, play: "once",
+		name: "stickyPost",
+		title: "Posting a sticky note on the planner",
+		trigger: "working",
+		rarity: 1,
+		play: "once",
 		lines: [],
 		frames: [
 			["l-upR b-up m-small hr-sticky ar-tipUp al-low", 2],
@@ -1168,7 +1469,11 @@ export const POSES: Pose[] = [
 		// in the float between strides; sweat flung back and papers peeling off behind. A beat a frame,
 		// so at the run's walkTempo (1.65) it steps every 80 ms; twelve frames so the three-step trail
 		// lines up with the four-frame stride.
-		name: "rushRun", title: "Running, papers flying", trigger: "working", rarity: 1, play: "loop",
+		name: "rushRun",
+		title: "Running, papers flying",
+		trigger: "working",
+		rarity: 1,
+		play: "loop",
 		lines: [],
 		frames: Array.from({ length: 12 }, (_, i): Row => {
 			const step = i % 4;
@@ -1182,7 +1487,11 @@ export const POSES: Pose[] = [
 	pose({
 		// A walk pose: the PR's big envelope held up in front by both sides, chin up, a springy step
 		// (the free knee lifted, the body rising off the standing leg).
-		name: "envelopeCarry", title: "Carrying the PR envelope", trigger: "working", rarity: 1, play: "loop",
+		name: "envelopeCarry",
+		title: "Carrying the PR envelope",
+		trigger: "working",
+		rarity: 1,
+		play: "loop",
 		lines: [],
 		frames: [
 			["e-happy l-right b-up m-grin fr-bigEnvelope al-present ar-present f-swingL", 2],
@@ -1198,7 +1507,11 @@ export const POSES: Pose[] = [
 		// glare at it, toss it over the shoulder; arms crossed, glaring, a foot tapping, a huff; jab
 		// the button, jab, jab (it sinks and the red light flashes, nothing else); steam; and the
 		// glare that leads into the next kick.
-		name: "copierFeud", title: "A running feud with the copier", trigger: "working", rarity: 1, play: "loop",
+		name: "copierFeud",
+		title: "A running feud with the copier",
+		trigger: "working",
+		rarity: 1,
+		play: "loop",
 		lines: [],
 		frames: [
 			["e-squint l-right b-angry m-shout al-out ar-hip f-boot bd-leanL w-kicked", 2],
@@ -1224,7 +1537,11 @@ export const POSES: Pose[] = [
 	pose({
 		// A signature move after finishing something (a flamboyant model's trait): a finger-gun drawn,
 		// fired (the hand kicks up, a spark at the tip), blown on, holstered. One gesture, then settled.
-		name: "flourish", title: "A little flourish", trigger: "working", rarity: 1, play: "once",
+		name: "flourish",
+		title: "A little flourish",
+		trigger: "working",
+		rarity: 1,
+		play: "once",
 		lines: [],
 		frames: [
 			["l-right b-one m-smirk al-hip ar-hip", 1],
@@ -1242,7 +1559,11 @@ export const POSES: Pose[] = [
 		// the taker tucks it under its arm and nods. Each
 		// part is written in its own space (both look right, toward the other); the folder is drawn
 		// by whoever holds it and sits in the same place for both.
-		name: "handOff", title: "Handing a folder to a teammate", trigger: "working", rarity: 1, play: "once",
+		name: "handOff",
+		title: "Handing a folder to a teammate",
+		trigger: "working",
+		rarity: 1,
+		play: "once",
 		lines: [],
 		frames: [
 			["l-right b-one m-small hr-folderOut ar-offerIn al-low", 2],
@@ -1269,7 +1590,11 @@ export const POSES: Pose[] = [
 		},
 	}),
 	pose({
-		name: "rest", title: "Standing about", trigger: "idle", rarity: 1, play: "once",
+		name: "rest",
+		title: "Standing about",
+		trigger: "idle",
+		rarity: 1,
+		play: "once",
 		lines: [],
 		frames: [["", 1]],
 	}),

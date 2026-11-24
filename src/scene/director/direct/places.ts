@@ -1,4 +1,3 @@
-
 import type { Area, Slot, Floor } from "../../world/world";
 import { crewPlaces } from "../../world/world";
 import type { Actor } from "../types";

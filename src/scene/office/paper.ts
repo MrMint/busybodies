@@ -94,9 +94,12 @@ export function signboard(kind: WallItem["kind"], r: Rect, content: SignText | u
 	const x = -r.w / 2;
 	const y = -r.h / 2 + (style.top ?? 0);
 	const h = r.h - (style.top ?? 0);
-	const fill = kind === "sign" ? (seed % 3 === 1 ? style.signAlt : style.sign) : kind === "whiteboard" ? style.whiteboard : kind === "frame" ? style.frame : 0xffffff;
+	const fill =
+		kind === "sign" ? (seed % 3 === 1 ? style.signAlt : style.sign) : kind === "whiteboard" ? style.whiteboard : kind === "frame" ? style.frame : 0xffffff;
 	if (kind === "sign") g.rect(x + 4, -r.h / 2 + 5, r.w, r.h).fill(SHADOW);
-	g.roundRect(x, -r.h / 2, r.w, r.h, kind === "sign" ? 4 : 8).fill(fill).stroke(line(kind === "sign" ? 3 : 5));
+	g.roundRect(x, -r.h / 2, r.w, r.h, kind === "sign" ? 4 : 8)
+		.fill(fill)
+		.stroke(line(kind === "sign" ? 3 : 5));
 	if (kind === "frame") g.roundRect(x + 8, -r.h / 2 + 8, r.w - 16, r.h - 16, 4).stroke({ width: 2, color: INK, alpha: 0.4 });
 	if (style.dress && (kind === "sign" || kind === "whiteboard" || kind === "frame")) style.dress(g, kind, x, -r.h / 2, r.w, r.h);
 	const pad = kind === "sign" ? 8 : 12;

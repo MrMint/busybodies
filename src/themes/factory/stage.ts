@@ -12,13 +12,24 @@ const CRATES = [0xd9a066, 0xc98f55, 0xe3b074, 0xcf9a5e];
 export const CRATE_BUILD = {
 	piece: (g: Graphics, x: number, y: number, w: number, h: number, k: number) => {
 		g.rect(x, y, w, h).fill(CRATES[k % CRATES.length]!);
-		g.moveTo(x + 1, y + h / 2).lineTo(x + w - 1, y + h / 2).moveTo(x + 2, y + 1).lineTo(x + w - 2, y + h - 1).stroke({ width: 1, color: INK, alpha: 0.45 });
+		g.moveTo(x + 1, y + h / 2)
+			.lineTo(x + w - 1, y + h / 2)
+			.moveTo(x + 2, y + 1)
+			.lineTo(x + w - 2, y + h - 1)
+			.stroke({ width: 1, color: INK, alpha: 0.45 });
 		g.rect(x, y, w, h).stroke({ width: 1.5, color: INK });
 	},
 	flag: (f: Graphics, top: { x: number; y: number }) => {
 		// A pennant on a pole: SHIP IT, in green.
-		f.moveTo(top.x, top.y).lineTo(top.x, top.y - 22).stroke({ width: 2.5, color: INK });
-		f.moveTo(top.x, top.y - 22).lineTo(top.x + 15, top.y - 16).lineTo(top.x, top.y - 10).closePath().fill(GREEN).stroke({ width: 1.5, color: INK });
+		f.moveTo(top.x, top.y)
+			.lineTo(top.x, top.y - 22)
+			.stroke({ width: 2.5, color: INK });
+		f.moveTo(top.x, top.y - 22)
+			.lineTo(top.x + 15, top.y - 16)
+			.lineTo(top.x, top.y - 10)
+			.closePath()
+			.fill(GREEN)
+			.stroke({ width: 1.5, color: INK });
 	},
 };
 
@@ -31,7 +42,9 @@ function belt(g: Graphics, w: number): void {
 	for (const x of [10, w - 15]) g.rect(x, 6, 5, 10);
 	g.fill(STEEL_DARK);
 	g.rect(0, -8, w, 8).fill(0x3c414a);
-	g.roundRect(-2, 0, w + 4, 8, 2).fill(STEEL).stroke(line(2.5));
+	g.roundRect(-2, 0, w + 4, 8, 2)
+		.fill(STEEL)
+		.stroke(line(2.5));
 	hazard(g, 2, 2, w, 3, 10);
 	g.moveTo(0, -8).lineTo(w, -8).stroke({ width: 2, color: INK });
 }
@@ -105,11 +118,19 @@ function booth(g: Graphics): void {
 	for (let y = top + 16; y < bottom; y += 11) g.moveTo(l + 7, y).lineTo(r, y);
 	for (let x = l + 18; x < r; x += 14) g.moveTo(x, top + 6).lineTo(x, bottom);
 	g.stroke({ width: 1, color: STEEL_DARK, alpha: 0.3 });
-	g.rect(l, top, 7, bottom - top).rect(r, top, 7, bottom - top).fill(STEEL_DARK);
-	g.rect(l, top, 7, bottom - top).rect(r, top, 7, bottom - top).stroke(line(2.5));
-	g.roundRect(l - 4, top - 4, r - l + 15, 8, 3).fill(STEEL).stroke(line(2.5));
+	g.rect(l, top, 7, bottom - top)
+		.rect(r, top, 7, bottom - top)
+		.fill(STEEL_DARK);
+	g.rect(l, top, 7, bottom - top)
+		.rect(r, top, 7, bottom - top)
+		.stroke(line(2.5));
+	g.roundRect(l - 4, top - 4, r - l + 15, 8, 3)
+		.fill(STEEL)
+		.stroke(line(2.5));
 	hazard(g, l - 1, top - 1, r - l + 9, 2.5, 9);
-	g.roundRect(l - 2, top - 13, 11, 9, 4.5).fill(ORANGE).stroke(line(2));
+	g.roundRect(l - 2, top - 13, 11, 9, 4.5)
+		.fill(ORANGE)
+		.stroke(line(2));
 }
 
 /** The dock at the hallway's end: a loading door with its shutter half up and the belt running in

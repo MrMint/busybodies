@@ -132,7 +132,11 @@ export interface StoryNews {
 	entries: StoryEntry[];
 }
 
-const mergedOf = (s: Session) => (s.prs ?? []).filter((p) => p.state?.toUpperCase() === "MERGED").map((p) => p.number).sort((a, b) => a - b);
+const mergedOf = (s: Session) =>
+	(s.prs ?? [])
+		.filter((p) => p.state?.toUpperCase() === "MERGED")
+		.map((p) => p.number)
+		.sort((a, b) => a - b);
 
 /**
  * Read the snapshot's story news. A world with no story yet (the first snapshot, or an older
@@ -359,7 +363,13 @@ export function logOf(was: StoryEntry[] | undefined, entries: StoryEntry[], now:
  * log's entries between the two, counted. The last headlines stay up until they run out; a new
  * return replaces them. None when nothing happened.
  */
-export function headlinesFor(was: Headlines | undefined, log: StoryEntry[], view: View | undefined, fresh: number | undefined, now: number): Headlines | undefined {
+export function headlinesFor(
+	was: Headlines | undefined,
+	log: StoryEntry[],
+	view: View | undefined,
+	fresh: number | undefined,
+	now: number,
+): Headlines | undefined {
 	const since = view?.since;
 	if (fresh !== undefined && since !== undefined && was?.at !== fresh) {
 		const counts: Headlines["counts"] = {};

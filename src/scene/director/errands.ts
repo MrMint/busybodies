@@ -126,14 +126,22 @@ export function newErrands(x: NewErrands): Map<string, Errand> {
 		const desk = x.metrics.desks[s.id];
 		const place = x.places.get(lead.key);
 		if (!desk || !place) continue;
-		const atDesk = (m: Member) => x.places.get(m.key)?.spot === "desk" && m.seen.waiting === undefined && still(x.before[m.key], x.now) && !errandFor(m.key);
+		const atDesk = (m: Member) =>
+			x.places.get(m.key)?.spot === "desk" && m.seen.waiting === undefined && still(x.before[m.key], x.now) && !errandFor(m.key);
 
 		// A compaction: the lead takes the in-tray to the shredder.
 		if ((s.compactions?.count ?? 0) > desk.compactions && atDesk(lead)) {
 			const st = x.floor.areas.find((a) => a.id === place.area)?.shredder;
 			if (st && !taken.has(st.id)) {
 				taken.add(st.id);
-				go(lead, "shred", { spot: `station:${st.id}`, area: st.areaId, slot: shredderUse(st, lead.size) }, STATION_POSE.shredder.work, poseMs(STATION_POSE.shredder.work) * ERRANDS.shredLoops, { station: st.id });
+				go(
+					lead,
+					"shred",
+					{ spot: `station:${st.id}`, area: st.areaId, slot: shredderUse(st, lead.size) },
+					STATION_POSE.shredder.work,
+					poseMs(STATION_POSE.shredder.work) * ERRANDS.shredLoops,
+					{ station: st.id },
+				);
 			}
 		}
 
@@ -149,7 +157,15 @@ export function newErrands(x: NewErrands): Map<string, Errand> {
 			const who = crew[0] ?? (atDesk(lead) && !x.busyElsewhere.has(lead.key) ? lead : undefined);
 			// It stands so the note it presses on lands in the DONE column (the rig's PLANNER point).
 			const feet = who && posterFor(plannerNote(board.rect), who.size);
-			if (who && feet) go(who, "sticky", { spot: `planner:${s.id}`, area: place.area, slot: { ...feet, depth: feet.y, facing: 1 } }, ERRANDS.stickyPose, poseMs(ERRANDS.stickyPose), { walkPose: ERRANDS.stickyWalk });
+			if (who && feet)
+				go(
+					who,
+					"sticky",
+					{ spot: `planner:${s.id}`, area: place.area, slot: { ...feet, depth: feet.y, facing: 1 } },
+					ERRANDS.stickyPose,
+					poseMs(ERRANDS.stickyPose),
+					{ walkPose: ERRANDS.stickyWalk },
+				);
 		}
 	}
 	return out;

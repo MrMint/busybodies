@@ -22,7 +22,14 @@ describe("compact tiles", () => {
 		test(`${id}: common areas by the theme's words, rooms by their project`, () => {
 			const words = wordsFor(id);
 			const tiles = tilesFor(tileAreas(FLOOR, words), {}, new Set(), new Set(["yours"]));
-			expect(tiles.map((t) => t.name)).toEqual(["kettle", words.areas.meeting, words.areas.lobby, words.areas.yours, words.areas.kitchen, words.areas.vacant]);
+			expect(tiles.map((t) => t.name)).toEqual([
+				"kettle",
+				words.areas.meeting,
+				words.areas.lobby,
+				words.areas.yours,
+				words.areas.kitchen,
+				words.areas.vacant,
+			]);
 			// Identity is untouched: pins and the camera still aim at the area's id.
 			expect(tiles.map((t) => t.id)).toEqual(FLOOR.map((a) => a.id));
 			expect(tiles.find((t) => t.id === "yours")?.state).toBe("waiting");

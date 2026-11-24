@@ -34,12 +34,25 @@ export function yard(g: Graphics, r: Rect, _band: Band): void {
 /** A pallet with boxes on it, its base's centre at (x, y). */
 function pallet(g: Graphics, x: number, y: number, k: number): void {
 	g.rect(x - 28, y - 3, 62, 6).fill(SHADOW);
-	g.rect(x - 30, y - 9, 60, 9).fill(WOOD).stroke(line(2.5));
-	g.rect(x - 24, y - 7, 8, 5).rect(x - 4, y - 7, 8, 5).rect(x + 16, y - 7, 8, 5).fill(INK);
-	const boxes: [number, number, number, number][] = [[-26, -31, 26, 22], [2, -27, 24, 18], [-14, -49, 24, 18]];
+	g.rect(x - 30, y - 9, 60, 9)
+		.fill(WOOD)
+		.stroke(line(2.5));
+	g.rect(x - 24, y - 7, 8, 5)
+		.rect(x - 4, y - 7, 8, 5)
+		.rect(x + 16, y - 7, 8, 5)
+		.fill(INK);
+	const boxes: [number, number, number, number][] = [
+		[-26, -31, 26, 22],
+		[2, -27, 24, 18],
+		[-14, -49, 24, 18],
+	];
 	for (const [i, [bx, by, bw, bh]] of boxes.slice(0, 2 + (k % 2)).entries()) {
-		g.rect(x + bx, y + by, bw, bh).fill(i === 2 ? 0xd6b48a : 0xc9a77a).stroke(line(2));
-		g.moveTo(x + bx + bw / 2, y + by).lineTo(x + bx + bw / 2, y + by + bh * 0.45).stroke({ width: 3, color: 0xe8d6b5 });
+		g.rect(x + bx, y + by, bw, bh)
+			.fill(i === 2 ? 0xd6b48a : 0xc9a77a)
+			.stroke(line(2));
+		g.moveTo(x + bx + bw / 2, y + by)
+			.lineTo(x + bx + bw / 2, y + by + bh * 0.45)
+			.stroke({ width: 3, color: 0xe8d6b5 });
 	}
 }
 
@@ -49,8 +62,14 @@ function drums(g: Graphics, x: number, y: number, n: number): void {
 		const dx = x - i * 22;
 		const dy = y - i * 8;
 		g.ellipse(dx + 3, dy + 1, 13, 4).fill(SHADOW);
-		g.roundRect(dx - 11, dy - 32, 22, 32, 3).fill(i ? 0x3d7dff : RED).stroke(line(2.5));
-		g.rect(dx - 11, dy - 22, 22, 2).rect(dx - 11, dy - 11, 22, 2).fill(INK);
-		g.ellipse(dx, dy - 32, 11, 3).fill(i ? 0x6f9cff : 0xff8f8f).stroke({ width: 1.8, color: INK });
+		g.roundRect(dx - 11, dy - 32, 22, 32, 3)
+			.fill(i ? 0x3d7dff : RED)
+			.stroke(line(2.5));
+		g.rect(dx - 11, dy - 22, 22, 2)
+			.rect(dx - 11, dy - 11, 22, 2)
+			.fill(INK);
+		g.ellipse(dx, dy - 32, 11, 3)
+			.fill(i ? 0x6f9cff : 0xff8f8f)
+			.stroke({ width: 1.8, color: INK });
 	}
 }

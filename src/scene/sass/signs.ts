@@ -98,7 +98,11 @@ export class Counters {
 			const streak = Math.max(0, ...crew.map((m) => m.commands?.failStreak ?? 0));
 			const failAt = this.#rooms.get(p)?.lastTestFailAt;
 			if (streak >= 3) out.set(slotName("board", p), fill(counterSign(this.#bank, words.failStreak), { n: streak })!);
-			else if (failAt !== undefined) out.set(slotName("board", p), fill(counterSign(this.#bank, words.daysSince), { n: Math.max(0, Math.floor((now - failAt) / (24 * 60 * MIN))) })!);
+			else if (failAt !== undefined)
+				out.set(
+					slotName("board", p),
+					fill(counterSign(this.#bank, words.daysSince), { n: Math.max(0, Math.floor((now - failAt) / (24 * 60 * MIN))) })!,
+				);
 
 			const prs = ss.flatMap((s) => s.prs ?? []).filter((pr) => pr.at === undefined || day(pr.at) === today);
 			if (prs.length) out.set(slotName("sign", p), fill(counterSign(this.#bank, words.prTally), { count: prs.length })!);
@@ -140,7 +144,8 @@ export class Counters {
 		const deep = sessions.filter((s) => members(s).some((m) => (m.agent?.depth ?? 0) >= 3));
 		if (deep.length) concerns.push({ tag: "crew", key: "crew", vars: {}, crew: crewCount(deep) });
 		const stalled = sessions.find((s) => s.state === "busy" && !s.running && !s.waiting && now - (s.activity?.at ?? s.stateSince) >= 7 * MIN);
-		if (stalled) concerns.push({ tag: "stalled", key: stalled.id, vars: { name: stalled.title, min: five(now - (stalled.activity?.at ?? stalled.stateSince)) } });
+		if (stalled)
+			concerns.push({ tag: "stalled", key: stalled.id, vars: { name: stalled.title, min: five(now - (stalled.activity?.at ?? stalled.stateSince)) } });
 		const h = hour(now);
 		if ((h >= LIMITS.lateFrom || h < LIMITS.lateUntil) && sessions.some((s) => s.state === "busy")) concerns.push({ tag: "late", key: "late", vars: {} });
 		const done = sessions.find((s) => s.state === "idle" && (s.prs ?? []).length > 0 && now - s.stateSince >= 10 * MIN);
@@ -149,7 +154,9 @@ export class Counters {
 		if (idle) concerns.push({ tag: "idle", key: idle.id, vars: { name: idle.title, min: five(now - idle.stateSince) } });
 
 		for (const c of concerns) {
-			const lines = this.#bank.lines.filter((l) => l.trigger === "fridge" && l.tag === c.tag).filter((l) => !l.needs || (c.crew?.[l.needs.role] ?? 0) >= l.needs.n);
+			const lines = this.#bank.lines
+				.filter((l) => l.trigger === "fridge" && l.tag === c.tag)
+				.filter((l) => !l.needs || (c.crew?.[l.needs.role] ?? 0) >= l.needs.n);
 			if (!lines.length) continue;
 			const l = lines[hash(`${c.tag}|${c.key}`) % lines.length]!;
 			const text = fill(l.text, c.vars);

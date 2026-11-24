@@ -49,7 +49,16 @@ export function handOffsFor(
 	const takers = list
 		.filter((m) => {
 			const a = live(m.key);
-			return m.kind === "crew" && m.mood === "busy" && !hiredBy.has(m.key) && a && !a.trip && still(a) && places.get(m.key)?.spot.startsWith("crew:") && a.handed !== pre.get(m.key)!.work?.since;
+			return (
+				m.kind === "crew" &&
+				m.mood === "busy" &&
+				!hiredBy.has(m.key) &&
+				a &&
+				!a.trip &&
+				still(a) &&
+				places.get(m.key)?.spot.startsWith("crew:") &&
+				a.handed !== pre.get(m.key)!.work?.since
+			);
 		})
 		.map((m) => ({ key: m.key, session: m.session.id, kind: stationKind(m, pre.get(m.key)!), since: pre.get(m.key)!.work?.since ?? now }));
 	for (const s of list) {
@@ -59,7 +68,11 @@ export function handOffsFor(
 		if (p.news || p.continuing || p.follow || stationKind(s, p) === a.trip.kind) continue;
 		const home = places.get(s.key);
 		if (!home?.spot.startsWith("crew:")) continue;
-		const taker = pickTaker({ key: s.key, session: s.session.id, kind: a.trip.kind }, takers.filter((t) => !out[t.key]), taken);
+		const taker = pickTaker(
+			{ key: s.key, session: s.session.id, kind: a.trip.kind },
+			takers.filter((t) => !out[t.key]),
+			taken,
+		);
 		if (!taker) continue;
 		const there = places.get(taker)!;
 		const slot = handOffSlot(there.slot, s.size);

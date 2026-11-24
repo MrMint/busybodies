@@ -1,4 +1,3 @@
-
 import type { Floor } from "../../world/world";
 import { OVERLAP, buildSlot } from "../../world/world";
 import { hash } from "../../rig/data/player";
@@ -36,7 +35,10 @@ export function foremanVisits(list: Spec[], places: Map<string, Place>, now: num
 	for (const s of list) {
 		if (s.kind !== "lead" || !s.busy || s.seen.waiting !== undefined) continue;
 		const crew = list
-			.filter((m) => m.session.id === s.session.id && m.kind === "crew" && m.mood === "busy" && !away.has(m.key) && places.get(m.key)?.spot.startsWith("crew:"))
+			.filter(
+				(m) =>
+					m.session.id === s.session.id && m.kind === "crew" && m.mood === "busy" && !away.has(m.key) && places.get(m.key)?.spot.startsWith("crew:"),
+			)
 			.sort((a, b) => (a.key < b.key ? -1 : 1));
 		if (crew.length < RULES.foremanCrew) continue;
 		const delegating = /^(Task|Agent)$/.test(s.running?.tool ?? "") || !s.activity || now - s.activity.at >= RULES.foremanQuietMs;
@@ -54,7 +56,10 @@ export function foremanVisits(list: Spec[], places: Map<string, Place>, now: num
 		// On the crew member's outer side, a step back, facing the same way: looking over its shoulder;
 		// the turn's crew member, or the next whose shoulder has room (not someone else's place, such
 		// as the desk's end place beside the row).
-		const others = list.filter((o) => o.session.id === s.session.id && o.kind === "crew").map((o) => places.get(o.key)).filter((o): o is Place => !!o?.spot.startsWith("crew:"));
+		const others = list
+			.filter((o) => o.session.id === s.session.id && o.kind === "crew")
+			.map((o) => places.get(o.key))
+			.filter((o): o is Place => !!o?.spot.startsWith("crew:"));
 		const first = (Math.floor(t / every) + hash(s.key)) % crew.length;
 		for (let k = 0; k < crew.length; k++) {
 			const m = crew[(first + k) % crew.length]!;

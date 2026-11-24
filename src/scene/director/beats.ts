@@ -45,7 +45,14 @@ export type Pause = Pick<Trait, "pauseMs" | "beat">;
  * character with a pause is held back (a wake is booked) while it plays its beat pose, or holds the
  * old one; when the beat is over it plays, unless something newer took its place.
  */
-export function beat(choice: Acting, live: Actor | undefined, continuing: Actor | undefined, pause: Pause, now: number, wakes: number[]): { choice: Acting; pending?: Pending } {
+export function beat(
+	choice: Acting,
+	live: Actor | undefined,
+	continuing: Actor | undefined,
+	pause: Pause,
+	now: number,
+	wakes: number[],
+): { choice: Acting; pending?: Pending } {
 	const p = live?.pending;
 	const waiting = (): Acting => ({ pose: pause.beat ?? live!.pose, as: pause.beat ? "lead" : live!.as, acted: false });
 	if (p && !continuing) {

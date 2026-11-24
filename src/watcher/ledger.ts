@@ -9,7 +9,20 @@
 // The record shapes are internal to the agent tool and change between versions. Everything here
 // is optional: a line that doesn't parse, or a record we don't know, is skipped.
 import { open, stat } from "node:fs/promises";
-import type { ApiRetry, Changes, CommandKind, CommandResult, Commands, Compactions, Context, ModelFamily, PullRequest, RunningTool, Todos, ToolRate } from "./model";
+import type {
+	ApiRetry,
+	Changes,
+	CommandKind,
+	CommandResult,
+	Commands,
+	Compactions,
+	Context,
+	ModelFamily,
+	PullRequest,
+	RunningTool,
+	Todos,
+	ToolRate,
+} from "./model";
 import { contextWindow, modelFamily } from "./models";
 import { count, optional } from "./read";
 
@@ -24,9 +37,17 @@ export const TOOL_RATE_WINDOW_MS = 60_000;
 /** Tests, builds, installs and git, by the command's text. Anything else is "other". */
 export function commandKind(command: string): CommandKind {
 	const c = command.trim();
-	if (/\b(bun|npm|pnpm|yarn|deno)\s+(run\s+)?test\b|\b(pytest|vitest|jest|mocha|rspec|phpunit|ctest)\b|\b(go|cargo|mix|dotnet|swift)\s+test\b|\bxcodebuild\b.*\btest\b|\bplaywright\s+test\b|\bmake\s+(test|check)\b|\bgradlew?\s+test\b/.test(c))
+	if (
+		/\b(bun|npm|pnpm|yarn|deno)\s+(run\s+)?test\b|\b(pytest|vitest|jest|mocha|rspec|phpunit|ctest)\b|\b(go|cargo|mix|dotnet|swift)\s+test\b|\bxcodebuild\b.*\btest\b|\bplaywright\s+test\b|\bmake\s+(test|check)\b|\bgradlew?\s+test\b/.test(
+			c,
+		)
+	)
 		return "test";
-	if (/\b(bun|npm|pnpm|yarn)\s+(run\s+)?build\b|\b(cargo|go|swift|dotnet|zig)\s+build\b|\btsc\b|\bvite\s+build\b|\bwebpack\b|\bxcodebuild\b|\bgradlew?\s+(build|assemble)|\bmake\b|\bcmake\b|\bdocker\s+build\b|\belectrobun\s+build\b/.test(c))
+	if (
+		/\b(bun|npm|pnpm|yarn)\s+(run\s+)?build\b|\b(cargo|go|swift|dotnet|zig)\s+build\b|\btsc\b|\bvite\s+build\b|\bwebpack\b|\bxcodebuild\b|\bgradlew?\s+(build|assemble)|\bmake\b|\bcmake\b|\bdocker\s+build\b|\belectrobun\s+build\b/.test(
+			c,
+		)
+	)
 		return "build";
 	if (/\b(bun|npm|pnpm|yarn)\s+(install|i|add|ci)\b|\bpip3?\s+install\b|\bbrew\s+install\b|\bcargo\s+(install|fetch)\b|\bgo\s+mod\s+download\b/.test(c))
 		return "install";
@@ -161,7 +182,18 @@ export class TranscriptLedger {
 	line(line: string): void {
 		// Cheap text checks first: most lines are none of these, and some are megabytes.
 		const has = (s: string) => line.includes(s);
-		if (!(has('"tool_use"') || has('"tool_result"') || has('"pr-link"') || has('"cost-state"') || has('"compact_boundary"') || has('"api_error"') || has('"type":"user"') || has('"usage"')))
+		if (
+			!(
+				has('"tool_use"') ||
+				has('"tool_result"') ||
+				has('"pr-link"') ||
+				has('"cost-state"') ||
+				has('"compact_boundary"') ||
+				has('"api_error"') ||
+				has('"type":"user"') ||
+				has('"usage"')
+			)
+		)
 			return;
 		// A plain response record is common and can be large: take its token count without parsing.
 		if (!has('"tool_use"') && has('"type":"assistant"')) return this.#tokens(line);
@@ -399,7 +431,6 @@ export class TranscriptLedger {
 		this.#seenCall = false;
 	}
 }
-
 
 /** Adds a time and drops those older than the rate window before the newest one. */
 function push(list: number[], at: number): void {

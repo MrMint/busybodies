@@ -119,7 +119,9 @@ async function shoot(browser: Browser, s: State, dpr: number, theme: string | un
 	const page = await browser.newPage({ viewport: { width: s.size[0], height: s.size[1] }, deviceScaleFactor: dpr });
 	const thrown: string[] = [];
 	page.on("pageerror", (e) => thrown.push(e.message));
-	await page.goto(`http://localhost:${server.port}/?inspect&frozen&demo=${s.demo}&hour=${s.hour ?? 14}${s.query ? `&${s.query}` : ""}${theme ? `&theme=${theme}` : ""}`);
+	await page.goto(
+		`http://localhost:${server.port}/?inspect&frozen&demo=${s.demo}&hour=${s.hour ?? 14}${s.query ? `&${s.query}` : ""}${theme ? `&theme=${theme}` : ""}`,
+	);
 	try {
 		await page.waitForFunction(() => window.__busybodies?.ready === true, undefined, { timeout: 30_000 });
 	} catch (e) {
@@ -130,8 +132,7 @@ async function shoot(browser: Browser, s: State, dpr: number, theme: string | un
 		({ aim, frames }) => {
 			const b = window.__busybodies!;
 			const layout = b.layout()!;
-			const flat = (l: { id: string; title: string; children: never[] }[]): { id: string; title: string }[] =>
-				l.flatMap((x) => [x, ...flat(x.children)]);
+			const flat = (l: { id: string; title: string; children: never[] }[]): { id: string; title: string }[] => l.flatMap((x) => [x, ...flat(x.children)]);
 			let stop: Parameters<typeof b.goTo>[0] = { kind: "office" };
 			if (aim.kind === "room") stop = { kind: "room", id: layout.areas.find((a) => a.name === aim.name)!.id };
 			if (aim.kind === "desk") stop = { kind: "desk", id: flat(b.snapshot()!.sessions as never).find((x) => x.title === aim.title)!.id };

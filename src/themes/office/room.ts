@@ -27,11 +27,21 @@ function roomShell(g: Graphics, r: Rect, floorY: number, wall: number, floor: nu
 	}
 	// A soft band where the wall meets the floor, then the skirting line.
 	g.rect(x, floorY, w, 10).fill({ color: INK, alpha: 0.07 });
-	g.moveTo(x, floorY).lineTo(x + w, floorY).stroke(line(4));
+	g.moveTo(x, floorY)
+		.lineTo(x + w, floorY)
+		.stroke(line(4));
 	// Side walls: narrow strips with an inner edge, for a little depth.
 	const sideTop = y + 100;
-	g.rect(x, sideTop, 13, y + h - sideTop).fill(wall).moveTo(x + 13, sideTop).lineTo(x + 13, y + h).stroke(line(4));
-	g.rect(x + w - 13, sideTop, 13, y + h - sideTop).fill(wall).moveTo(x + w - 13, sideTop).lineTo(x + w - 13, y + h).stroke(line(4));
+	g.rect(x, sideTop, 13, y + h - sideTop)
+		.fill(wall)
+		.moveTo(x + 13, sideTop)
+		.lineTo(x + 13, y + h)
+		.stroke(line(4));
+	g.rect(x + w - 13, sideTop, 13, y + h - sideTop)
+		.fill(wall)
+		.moveTo(x + w - 13, sideTop)
+		.lineTo(x + w - 13, y + h)
+		.stroke(line(4));
 	g.roundRect(x + 2.5, y + 2.5, w - 5, h - 5, 10).stroke(line(5));
 }
 
@@ -39,7 +49,11 @@ export function hallway(g: Graphics, r: Rect): void {
 	g.rect(r.x, r.y, r.w, r.h).fill(HALL_FLOOR);
 	for (let x = r.x + 118; x < r.x + r.w; x += 122) g.rect(x, r.y, 4, r.h);
 	g.fill({ color: INK, alpha: 0.1 });
-	g.moveTo(r.x, r.y + 2.5).lineTo(r.x + r.w, r.y + 2.5).moveTo(r.x, r.y + r.h - 2.5).lineTo(r.x + r.w, r.y + r.h - 2.5).stroke(line(5));
+	g.moveTo(r.x, r.y + 2.5)
+		.lineTo(r.x + r.w, r.y + 2.5)
+		.moveTo(r.x, r.y + r.h - 2.5)
+		.lineTo(r.x + r.w, r.y + r.h - 2.5)
+		.stroke(line(5));
 }
 
 // --- Wall items -------------------------------------------------------------------------------
@@ -48,22 +62,29 @@ function windowPane(g: Graphics, { x, y, w, h }: Rect, seed: number): void {
 	g.roundRect(x, y, w, h, 10).fill(0xbfe6ff);
 	const cx = x + w * (0.12 + (seed % 5) * 0.05);
 	const cy = y + h * 0.3;
-	g.roundRect(cx, cy, 34, 16, 8).roundRect(cx + 20, cy + 9, 30, 12, 6).fill(0xffffff);
+	g.roundRect(cx, cy, 34, 16, 8)
+		.roundRect(cx + 20, cy + 9, 30, 12, 6)
+		.fill(0xffffff);
 	g.rect(x + w / 2 - 2.5, y, 5, h).fill(INK);
 	g.roundRect(x + 2.5, y + 2.5, w - 5, h - 5, 9).stroke(line(5));
 }
 
 function door(g: Graphics, { x, y, w, h }: Rect): void {
 	const r = w / 2;
-	g.moveTo(x, y + h).lineTo(x, y + r).arc(x + r, y + r, r, Math.PI, 0).lineTo(x + w, y + h).closePath().fill(SLAB).stroke(line(5));
+	g.moveTo(x, y + h)
+		.lineTo(x, y + r)
+		.arc(x + r, y + r, r, Math.PI, 0)
+		.lineTo(x + w, y + h)
+		.closePath()
+		.fill(SLAB)
+		.stroke(line(5));
 	g.circle(x + w - 12, y + h * 0.52, 4.5).fill(SUN);
 }
 
 /** A room: its shell in its colours, the fluorescent panels, then its wall items (the planner has
  * its own layer), and a motivational poster in any stretch of bare wall wide enough for one. */
 export function room(g: Graphics, c: Container, a: Area, sign: (slot: string) => SignText | undefined): void {
-	const [wall, floor] =
-		a.kind === "project" ? ROOM_COLOURS[a.hue % ROOM_COLOURS.length]! : COMMON_COLOURS[a.kind as keyof typeof COMMON_COLOURS];
+	const [wall, floor] = a.kind === "project" ? ROOM_COLOURS[a.hue % ROOM_COLOURS.length]! : COMMON_COLOURS[a.kind as keyof typeof COMMON_COLOURS];
 	roomShell(g, a.rect, a.floorY, wall, floor, a.kind === "kitchen");
 	fluorescents(g, a.rect);
 	const seed = hash(a.id);
@@ -86,7 +107,9 @@ function fluorescents(g: Graphics, r: Rect): void {
 	const y = r.y;
 	for (const { cx } of ceilingPanels(r)) {
 		g.rect(cx - 34, y + 9, 68, 5).fill({ color: 0xeaf6ff, alpha: 0.55 });
-		g.roundRect(cx - 38, y + 3, 76, 7, 3).fill(0xf7fbff).stroke({ width: 2, color: INK });
+		g.roundRect(cx - 38, y + 3, 76, 7, 3)
+			.fill(0xf7fbff)
+			.stroke({ width: 2, color: INK });
 		g.roundRect(cx - 33, y + 5, 66, 3, 1.5).fill(0xdff4ff);
 	}
 }
@@ -102,13 +125,19 @@ function mugWall(g: Graphics, a: Area): Container {
 	const sy = y + h - 3.6;
 	for (let k = 0; k < mugs.length; k++) {
 		const mx = x + 4 + k * 15;
-		g.roundRect(mx, sy - 9, 9, 9, 2).fill(mugs[k]!).stroke({ width: 1.4, color: INK });
-		g.moveTo(mx + 9, sy - 7.5).arc(mx + 9, sy - 5, 2.5, -Math.PI / 2, Math.PI / 2).stroke({ width: 1.2, color: INK });
+		g.roundRect(mx, sy - 9, 9, 9, 2)
+			.fill(mugs[k]!)
+			.stroke({ width: 1.4, color: INK });
+		g.moveTo(mx + 9, sy - 7.5)
+			.arc(mx + 9, sy - 5, 2.5, -Math.PI / 2, Math.PI / 2)
+			.stroke({ width: 1.2, color: INK });
 		if (k % 2 === 0) g.rect(mx + 2, sy - 6, 5, 1.6).fill({ color: INK, alpha: 0.5 });
 	}
 	g.roundRect(x, sy, w, 3.6, 1.5).fill(0xd9a066).stroke({ width: 1.5, color: INK });
 	// The banner over the mugs' tops, its two lines clear of its edge.
-	g.roundRect(x, y - 1, w, 13, 3).fill(0xffffff).stroke({ width: 1.5, color: INK });
+	g.roundRect(x, y - 1, w, 13, 3)
+		.fill(0xffffff)
+		.stroke({ width: 1.5, color: INK });
 	const t = text("you don't have to be busy\nto work here", 4.6, { fontWeight: "800", align: "center", lineHeight: 5.2 });
 	if (t.width > w - 4) t.scale.set((w - 4) / t.width);
 	t.anchor.set(0.5, 0);
@@ -125,7 +154,8 @@ function posterSpots(a: Area): Rect[] {
 	if (a.kind === "kitchen") taken.push([x, x + 196]);
 	// So is a plant standing against the back wall (not one out on the floor): its leaves reach up it.
 	for (const f of a.fixtures) {
-		if (f.kind === "plant" && Math.abs(f.y - a.floorY) <= 20) taken.push([f.x - PLANT_LEAVES.left - PLANT_LEAVES.air, f.x + PLANT_LEAVES.right + PLANT_LEAVES.air]);
+		if (f.kind === "plant" && Math.abs(f.y - a.floorY) <= 20)
+			taken.push([f.x - PLANT_LEAVES.left - PLANT_LEAVES.air, f.x + PLANT_LEAVES.right + PLANT_LEAVES.air]);
 	}
 	taken.sort((p, q) => p[0] - q[0]);
 	const spots: Rect[] = [];
@@ -179,11 +209,17 @@ function poster(g: Graphics, r: Rect, seed: number): Container {
 			g.poly([px + pw / 2, py + ph * 0.55, px + 4, py + ph * 0.3, px + pw / 2 - 3, py + ph * 0.45, px + pw - 4, py + ph * 0.3]).fill(0x2b2340);
 			break;
 		case "sunrise":
-			g.moveTo(px + pw / 2 - ph * 0.38, ground).arc(px + pw / 2, ground, ph * 0.38, Math.PI, 0).closePath().fill(SUN);
+			g.moveTo(px + pw / 2 - ph * 0.38, ground)
+				.arc(px + pw / 2, ground, ph * 0.38, Math.PI, 0)
+				.closePath()
+				.fill(SUN);
 			g.rect(px, ground - 3, pw, 3).fill(0x2b2340);
 			break;
 		case "dominoes":
-			for (let k = 0; k < 5; k++) g.poly(rotRect(px + 7 + k * 8, ground - 8, 4, 14, k === 4 ? 0.9 : k * 0.12)).fill(0xffffff).stroke({ width: 1, color: INK });
+			for (let k = 0; k < 5; k++)
+				g.poly(rotRect(px + 7 + k * 8, ground - 8, 4, 14, k === 4 ? 0.9 : k * 0.12))
+					.fill(0xffffff)
+					.stroke({ width: 1, color: INK });
 			break;
 	}
 	g.rect(px, py, pw, ph).stroke({ width: 1, color: 0xffffff, alpha: 0.5 });
@@ -218,7 +254,10 @@ const OFFICE_SIGNS: SignStyle = {
 				const n = pts.length;
 				const [ax, ay, bx2, by2] = [pts[n - 4]!, pts[n - 3]!, pts[n - 2]!, pts[n - 1]!];
 				const a = Math.atan2(by2 - ay, bx2 - ax);
-				g.moveTo(bx2 + Math.cos(a + 2.6) * 3.4, by2 + Math.sin(a + 2.6) * 3.4).lineTo(bx2, by2).lineTo(bx2 + Math.cos(a - 2.6) * 3.4, by2 + Math.sin(a - 2.6) * 3.4).stroke({ width: 1.3, color: col, alpha: 0.8 });
+				g.moveTo(bx2 + Math.cos(a + 2.6) * 3.4, by2 + Math.sin(a + 2.6) * 3.4)
+					.lineTo(bx2, by2)
+					.lineTo(bx2 + Math.cos(a - 2.6) * 3.4, by2 + Math.sin(a - 2.6) * 3.4)
+					.stroke({ width: 1.3, color: col, alpha: 0.8 });
 			};
 			arrow([bx + 15, by + 6, bx + 27, by + 6], INK);
 			arrow([bx + 34, by + 11, bx + 34, by + 21, bx + 28, by + 21], INK);
@@ -230,7 +269,10 @@ const OFFICE_SIGNS: SignStyle = {
 		if (kind === "frame") {
 			// A gilt edge and a mountain at the foot of the frame: motivational, whatever it says.
 			g.roundRect(x + 4, y + 4, w - 8, h - 8, 6).stroke({ width: 2, color: 0xf2bd3c });
-			g.poly([x + 10, y + h - 9, x + w * 0.32, y + h - 30, x + w * 0.48, y + h - 18, x + w * 0.66, y + h - 36, x + w - 10, y + h - 9]).fill({ color: 0x46536f, alpha: 0.22 });
+			g.poly([x + 10, y + h - 9, x + w * 0.32, y + h - 30, x + w * 0.48, y + h - 18, x + w * 0.66, y + h - 36, x + w - 10, y + h - 9]).fill({
+				color: 0x46536f,
+				alpha: 0.22,
+			});
 		}
 	},
 };
@@ -240,9 +282,17 @@ const OFFICE_SIGNS: SignStyle = {
 /** Your door: a door with YOU on it. */
 function yourDoor(g: Graphics, { x, y, w, h }: Rect): Container {
 	const r = w / 2;
-	g.moveTo(x, y + h).lineTo(x, y + r).arc(x + r, y + r, r, Math.PI, 0).lineTo(x + w, y + h).closePath().fill(0x8a5a3c).stroke(line(5));
+	g.moveTo(x, y + h)
+		.lineTo(x, y + r)
+		.arc(x + r, y + r, r, Math.PI, 0)
+		.lineTo(x + w, y + h)
+		.closePath()
+		.fill(0x8a5a3c)
+		.stroke(line(5));
 	g.circle(x + w - 12, y + h * 0.55, 4.5).fill(SUN);
-	g.roundRect(x + 10, y + 24, w - 20, 20, 4).fill(0xffffff).stroke(line(3));
+	g.roundRect(x + 10, y + 24, w - 20, 20, 4)
+		.fill(0xffffff)
+		.stroke(line(3));
 	const t = label(OFFICE_WORDS.door, 13, "800");
 	t.position.set(x + w / 2 - t.width / 2, y + 26);
 	return t;
@@ -266,35 +316,67 @@ function bossCorner(g: Graphics, a: Area): void {
 	g.circle(px + 25, py + 17, 5).fill(0xfff0a6);
 	g.poly([px + 5, py + 25, px + 15, py + 15, px + 23, py + 21, px + 31, py + 13, px + 39, py + 20, px + 39, py + 25]).fill(0x6c9b7a);
 	// The rug.
-	g.roundRect(x + 204, f + 86, 84, 92, 14).fill(0xc7524f).stroke({ width: 2, color: INK, alpha: 0.4 });
+	g.roundRect(x + 204, f + 86, 84, 92, 14)
+		.fill(0xc7524f)
+		.stroke({ width: 2, color: INK, alpha: 0.4 });
 	g.roundRect(x + 211, f + 93, 70, 78, 10).stroke({ width: 2.5, color: 0xf2bd3c, alpha: 0.85 });
 	g.roundRect(x + 220, f + 102, 52, 60, 8).fill({ color: 0xffffff, alpha: 0.12 });
 	// The armchair: a wingback in green leather, facing out.
 	const cx = x + 246;
 	const cy = f + 140;
 	g.ellipse(cx + 4, cy + 2, 38, 8).fill(SHADOW);
-	g.roundRect(cx - 26, cy - 74, 52, 60, 14).fill(0x2f8f6b).stroke(line(3));
+	g.roundRect(cx - 26, cy - 74, 52, 60, 14)
+		.fill(0x2f8f6b)
+		.stroke(line(3));
 	for (const bx of [-12, 0, 12]) g.circle(cx + bx, cy - 52, 1.8).fill({ color: INK, alpha: 0.5 });
-	g.roundRect(cx - 24, cy - 30, 48, 18, 6).fill(0x3aa57c).stroke(line(2.5));
-	g.roundRect(cx - 36, cy - 44, 14, 38, 6).roundRect(cx + 22, cy - 44, 14, 38, 6).fill(0x3aa57c).stroke(line(3));
-	g.rect(cx - 30, cy - 6, 5, 7).rect(cx + 25, cy - 6, 5, 7).fill(0x8a5a3c);
+	g.roundRect(cx - 24, cy - 30, 48, 18, 6)
+		.fill(0x3aa57c)
+		.stroke(line(2.5));
+	g.roundRect(cx - 36, cy - 44, 14, 38, 6)
+		.roundRect(cx + 22, cy - 44, 14, 38, 6)
+		.fill(0x3aa57c)
+		.stroke(line(3));
+	g.rect(cx - 30, cy - 6, 5, 7)
+		.rect(cx + 25, cy - 6, 5, 7)
+		.fill(0x8a5a3c);
 	// The bookcase: two shelves of books, a trophy on top.
 	const bx = x + 236;
 	const by = f + 238;
 	g.rect(bx - 20, by - 50, 46, 50).fill(SHADOW);
-	g.roundRect(bx - 23, by - 52, 46, 52, 3).fill(0xb7794a).stroke(line(3));
-	g.moveTo(bx - 23, by - 26).lineTo(bx + 23, by - 26).stroke(line(2));
+	g.roundRect(bx - 23, by - 52, 46, 52, 3)
+		.fill(0xb7794a)
+		.stroke(line(3));
+	g.moveTo(bx - 23, by - 26)
+		.lineTo(bx + 23, by - 26)
+		.stroke(line(2));
 	const spines = [0x3d7dff, 0xff6b6b, 0xffd166, 0x2fcf83, 0x8c5cff, 0xffffff];
-	for (const [row, top] of [[0, by - 48], [1, by - 22]] as const) {
+	for (const [row, top] of [
+		[0, by - 48],
+		[1, by - 22],
+	] as const) {
 		for (let i = 0; i < 5; i++) {
 			const h = 15 + ((i + row) % 3) * 2;
-			g.rect(bx - 18 + i * 7, top + 19 - h, 6, h).fill(spines[(i + row * 2) % spines.length]!).stroke({ width: 1, color: INK });
+			g.rect(bx - 18 + i * 7, top + 19 - h, 6, h)
+				.fill(spines[(i + row * 2) % spines.length]!)
+				.stroke({ width: 1, color: INK });
 		}
 	}
 	// The trophy: a gold cup on a plinth.
 	g.rect(bx - 7, by - 58, 14, 6).fill(INK);
-	g.rect(bx - 2, by - 65, 4, 8).fill(0xf2bd3c).stroke({ width: 1.2, color: INK });
-	g.moveTo(bx - 10, by - 82).lineTo(bx + 10, by - 82).quadraticCurveTo(bx + 9, by - 66, bx, by - 65).quadraticCurveTo(bx - 9, by - 66, bx - 10, by - 82).closePath().fill(0xf7c948).stroke(line(2));
-	g.moveTo(bx - 10, by - 79).quadraticCurveTo(bx - 16, by - 77, bx - 9, by - 71).moveTo(bx + 10, by - 79).quadraticCurveTo(bx + 16, by - 77, bx + 9, by - 71).stroke({ width: 1.8, color: INK });
+	g.rect(bx - 2, by - 65, 4, 8)
+		.fill(0xf2bd3c)
+		.stroke({ width: 1.2, color: INK });
+	g.moveTo(bx - 10, by - 82)
+		.lineTo(bx + 10, by - 82)
+		.quadraticCurveTo(bx + 9, by - 66, bx, by - 65)
+		.quadraticCurveTo(bx - 9, by - 66, bx - 10, by - 82)
+		.closePath()
+		.fill(0xf7c948)
+		.stroke(line(2));
+	g.moveTo(bx - 10, by - 79)
+		.quadraticCurveTo(bx - 16, by - 77, bx - 9, by - 71)
+		.moveTo(bx + 10, by - 79)
+		.quadraticCurveTo(bx + 16, by - 77, bx + 9, by - 71)
+		.stroke({ width: 1.8, color: INK });
 	g.rect(bx - 4, by - 79, 2.5, 8).fill({ color: 0xffffff, alpha: 0.6 });
 }

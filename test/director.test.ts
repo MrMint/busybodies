@@ -95,7 +95,11 @@ describe("standing poses", () => {
 
 	test("idle characters slack off in a habit picked from their id, rotating slowly", () => {
 		const s = stage();
-		const idle = (at: number) => snap(at, Array.from({ length: 14 }, (_, i) => session(`idle${i}`, "teapot", { state: "idle", stateSince: T0 })));
+		const idle = (at: number) =>
+			snap(
+				at,
+				Array.from({ length: 14 }, (_, i) => session(`idle${i}`, "teapot", { state: "idle", stateSince: T0 })),
+			);
 		const d = s.step(idle(T0));
 		const habits = new Set(HABITS.map((h) => h.name));
 		const first = Object.values(d.world.actors).map((a) => a.pose);
@@ -115,7 +119,10 @@ describe("standing poses", () => {
 		const s = stage();
 		const d = s.step(
 			snap(T0, [
-				session("a", "teapot", { agents: [agent("x", "scout", { status: "stalled" })], commands: { failStreak: 0, repeats: 4, failed: 0, testsFailed: 0 } }),
+				session("a", "teapot", {
+					agents: [agent("x", "scout", { status: "stalled" })],
+					commands: { failStreak: 0, repeats: 4, failed: 0, testsFailed: 0 },
+				}),
 				session("bb", "teapot", { apiRetry: { attempt: 2, at: T0 - MIN } }),
 			]),
 		);
@@ -153,7 +160,10 @@ describe("acted poses", () => {
 	test("a PR opened: walked to the outbox, then celebrate with a busy teammate at the desk, else alone", () => {
 		const s = stage();
 		const crew = [agent("v", "verifier")];
-		const both = (prs: boolean) => [session("a", "teapot", { agents: crew, ...(prs ? { prs: pr(7) } : {}) }), session("bb", "kettle", prs ? { prs: pr(8) } : {})];
+		const both = (prs: boolean) => [
+			session("a", "teapot", { agents: crew, ...(prs ? { prs: pr(7) } : {}) }),
+			session("bb", "kettle", prs ? { prs: pr(8) } : {}),
+		];
 		const pr = (n: number) => [{ number: n, url: `https://example.invalid/pr/${n}`, at: T0 + 1000 }];
 		s.step(snap(T0, both(false)));
 		const d = s.step(snap(T0 + 1000, both(true)));
@@ -206,7 +216,9 @@ describe("waiting on you", () => {
 		const run = () => {
 			let rare = 0;
 			for (let i = 0; i < 400; i++) {
-				const d = stage().step(snap(T0, [session(`w${i}`, "teapot", { state: "idle", waiting: { reason: "question", since: T0, source: "transcript" } })]));
+				const d = stage().step(
+					snap(T0, [session(`w${i}`, "teapot", { state: "idle", waiting: { reason: "question", since: T0, source: "transcript" } })]),
+				);
 				if (actor(d.world, `s:w${i}`).pose === "waitingPlease") rare++;
 			}
 			return rare;
@@ -269,7 +281,14 @@ describe("movement", () => {
 
 	test("a general-purpose agent asked to review goes to the meeting room, in a reviewer's costume", () => {
 		const s = stage();
-		const d = s.step({ at: T0, sessions: [session("a", "kettle", { agents: [agent("r", "general-purpose", { task: "Review the spout change" }), agent("b", "general-purpose", { task: "Fix the lid" })] })] });
+		const d = s.step({
+			at: T0,
+			sessions: [
+				session("a", "kettle", {
+					agents: [agent("r", "general-purpose", { task: "Review the spout change" }), agent("b", "general-purpose", { task: "Fix the lid" })],
+				}),
+			],
+		});
 		expect(d.world.actors["a:a:r"]!.spot).toMatch(/^meeting:seat:/);
 		expect(d.world.actors["a:a:b"]!.spot).not.toMatch(/^meeting:/);
 	});
@@ -311,7 +330,9 @@ describe("movement", () => {
 			(p.y >= floor.hallway.y && p.y <= floor.hallway.y + floor.hallway.h) ||
 			floor.areas.some((a) => p.x >= a.rect.x && p.x <= a.rect.x + a.rect.w && p.y >= a.floorY && p.y <= a.rect.y + a.rect.h) ||
 			// Through a wall only at a door.
-			floor.areas.some((a) => a.wall.some((w) => w.kind === "door" && p.x >= w.rect.x && p.x <= w.rect.x + w.rect.w && p.y >= a.rect.y && p.y <= a.floorY));
+			floor.areas.some((a) =>
+				a.wall.some((w) => w.kind === "door" && p.x >= w.rect.x && p.x <= w.rect.x + w.rect.w && p.y >= a.rect.y && p.y <= a.floorY),
+			);
 		// Sample every 10 px along the path.
 		const len = pathLength(path);
 		for (let d = 0; d <= len; d += 10) expect(inside(along(path, d, len))).toBe(true);
@@ -376,14 +397,19 @@ describe("the desk aisle", () => {
 					if (a.kind !== "crew" || !a.spot.startsWith("crew:") || !placed(a, now)) continue;
 					byDesk.set(a.session, [...(byDesk.get(a.session) ?? []), a]);
 				}
-				const cards = [...floor.desks.values()].map((d) => ({ id: d.id, r: { x: d.at.x - CARD.maxW / 2, y: d.at.y + CARD.top, w: CARD.maxW, h: CARD.foot - CARD.top } }));
+				const cards = [...floor.desks.values()].map((d) => ({
+					id: d.id,
+					r: { x: d.at.x - CARD.maxW / 2, y: d.at.y + CARD.top, w: CARD.maxW, h: CARD.foot - CARD.top },
+				}));
 				for (const [id, crew] of byDesk) {
 					// A desk at the room's front whose crew fill its row, its lent cells and its free
 					// ends tightens its row (world.ts SQUEEZE): that row may overlap up to SQUEEZE.overlap.
 					const desk = floor.desks.get(id)!;
 					const n = Math.max(...crew.map((a) => Number(a.spot.slice(5)) + 1));
 					const row = crewSpots(floor, desk).slice(0, 4);
-					const squeezed = crewPlaces(floor, desk, n).slice(0, 4).some((p, i) => p.x !== row[i]!.x || p.y !== row[i]!.y);
+					const squeezed = crewPlaces(floor, desk, n)
+						.slice(0, 4)
+						.some((p, i) => p.x !== row[i]!.x || p.y !== row[i]!.y);
 					if (squeezed) squeezes++;
 					for (const [i, a] of crew.entries()) {
 						const body = bodyRect(a.slot, a.size);
@@ -391,7 +417,8 @@ describe("the desk aisle", () => {
 						for (const b of crew.slice(i + 1)) {
 							const other = bodyRect(b.slot, b.size);
 							const limit = (squeezed ? SQUEEZE.overlap : AISLE.overlap) * Math.min(body.w, other.w);
-							if (overlapX(body, other) > limit) throw new Error(`${name} +${after}: ${a.key} and ${b.key} at ${id} overlap ${overlapX(body, other).toFixed(1)} px`);
+							if (overlapX(body, other) > limit)
+								throw new Error(`${name} +${after}: ${a.key} and ${b.key} at ${id} overlap ${overlapX(body, other).toFixed(1)} px`);
 							checked++;
 						}
 					}
@@ -416,14 +443,21 @@ describe("the desk aisle", () => {
 		const t = t0 + 1000;
 		const build = start.builds[gap.builder!] ?? ({ session: gap.builder!, pieces: 1, topped: false, seen: {} } as World["builds"][string]);
 		const runner = Object.values(start.actors).find((a) => a.session === gap.builder && a.kind === "crew")?.key ?? "runner";
-		const was: World = { ...start, builds: { ...start.builds, [gap.builder!]: { ...build, run: { key: runner, from: "crew:0", since: t, walkMs: 1500, lands: t + 3000, done: t + 4500, carried: true } } } };
+		const was: World = {
+			...start,
+			builds: {
+				...start.builds,
+				[gap.builder!]: { ...build, run: { key: runner, from: "crew:0", since: t, walkMs: 1500, lands: t + 3000, done: t + 4500, carried: true } },
+			},
+		};
 		const during = direct(was, snapshot, t, floor);
 		const a = during.world.actors[ender.key]!;
 		expect(a.yielding).toBe(true);
 		expect(a.slot).toEqual(yieldFrom(gap.slot));
 		expect(a.walk).toBeDefined();
 		// Only that one moves: the row does not reshuffle.
-		for (const o of Object.values(during.world.actors)) if (o.session === d.id && o.kind === "crew" && o.key !== ender.key) expect(o.slot).toEqual(start.actors[o.key]!.slot);
+		for (const o of Object.values(during.world.actors))
+			if (o.session === d.id && o.kind === "crew" && o.key !== ender.key) expect(o.slot).toEqual(start.actors[o.key]!.slot);
 		// Held aside while the run lasts, then back to the end place.
 		const mid = direct(during.world, snapshot, t + 2000, floor).world.actors[ender.key]!;
 		expect(mid.slot).toEqual(yieldFrom(gap.slot));
@@ -445,7 +479,8 @@ describe("the desk aisle", () => {
 				for (const a of Object.values(world.actors)) {
 					if (a.kind !== "crew" || !a.spot.startsWith("crew:") || !still(a, now)) continue;
 					const room = floor.areas.find((r) => r.id === floor.desks.get(a.session)?.areaId)!;
-					const ok = a.slot.y >= room.floorY && a.slot.y <= floorFoot(room) && a.slot.x > room.rect.x + 13 && a.slot.x < room.rect.x + room.rect.w - 13;
+					const ok =
+						a.slot.y >= room.floorY && a.slot.y <= floorFoot(room) && a.slot.x > room.rect.x + 13 && a.slot.x < room.rect.x + room.rect.w - 13;
 					if (!ok) throw new Error(`${name} +${after}: ${a.key} stands at ${a.slot.x},${a.slot.y}, off ${room.id}'s floor`);
 					checked++;
 				}

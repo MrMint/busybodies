@@ -29,7 +29,9 @@ for (const p of poses) {
 	const rare = p.rarity < 1 ? `, rare 1 in ${Math.round(1 / p.rarity)}` : "";
 	const roles = p.roles ? `, roles ${p.roles.join("/")}` : "";
 	console.log(`${p.name}: ${p.title}`);
-	console.log(`  on ${p.trigger}${rare}, ${p.play}${p.habit ? ", slacking habit" : ""}${roles}; ${p.frames.length} frames, ${duration(p.frames)} ms (${duration(p.frames) / BEAT_MS} beats)`);
+	console.log(
+		`  on ${p.trigger}${rare}, ${p.play}${p.habit ? ", slacking habit" : ""}${roles}; ${p.frames.length} frames, ${duration(p.frames)} ms (${duration(p.frames) / BEAT_MS} beats)`,
+	);
 	if (p.lines.length) console.log(`  may say: ${p.lines.map((l) => `"${l}"`).join(" ")}`);
 	// A theme that paints different things in the hands names the pose its own way (theme/words.ts).
 	for (const id of THEME_IDS) {

@@ -11,7 +11,7 @@ export const PHASE_START: Record<Phase, number> = { morning: 6, noon: 10, aftern
 
 /** The phase an hour (0 to 23, any number is wrapped) falls in. */
 export function phaseOf(hour: number): Phase {
-	const h = (((Math.floor(hour) % 24) + 24) % 24);
+	const h = ((Math.floor(hour) % 24) + 24) % 24;
 	if (h >= PHASE_START.night || h < PHASE_START.morning) return "night";
 	if (h >= PHASE_START.dusk) return "dusk";
 	if (h >= PHASE_START.afternoon) return "afternoon";

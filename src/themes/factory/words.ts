@@ -3,7 +3,13 @@ import type { ThemeWords } from "../../scene/theme/words";
 
 export const FACTORY_WORDS: ThemeWords = {
 	areas: { meeting: "QA booth", lobby: "gatehouse", yours: "foreman's office", kitchen: "break room", vacant: "empty bay" },
-	subs: { meeting: "inspections", lobby: "clocking in and out", yours: "waiting on the foreman", kitchen: "idle, finished and clocked off", vacant: "mothballed" },
+	subs: {
+		meeting: "inspections",
+		lobby: "clocking in and out",
+		yours: "waiting on the foreman",
+		kitchen: "idle, finished and clocked off",
+		vacant: "mothballed",
+	},
 	signs: {
 		"meeting:sign": { title: "QUALITY CONTROL", body: "We control it. Mostly." },
 		"kitchen:sign": { title: "1 SNACK PER GREEN BUILD", body: "Finished? Clock yourself out." },

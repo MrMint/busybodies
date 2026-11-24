@@ -49,7 +49,8 @@ export const wordsFor = (id: ThemeId): ThemeWords => WORDS[id] ?? OFFICE_WORDS;
  * What a theme calls an area: a project room by its project, a common area by the theme's word for
  * it (the office's tabs, the compact strip's tiles). `Area.name` stays the office's word.
  */
-export const areaLabel = (area: { kind: AreaKind; name: string }, words: ThemeWords): string => (area.kind === "project" ? area.name : (words.areas[area.kind] ?? area.name));
+export const areaLabel = (area: { kind: AreaKind; name: string }, words: ThemeWords): string =>
+	area.kind === "project" ? area.name : (words.areas[area.kind] ?? area.name);
 
 /** A pose's title and lines in a theme's words. */
 export function poseWords(id: ThemeId, pose: { name: string; title: string; lines: readonly string[] }): { title: string; lines: readonly string[] } {

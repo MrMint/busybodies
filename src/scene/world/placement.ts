@@ -49,7 +49,14 @@ export class Placement {
 		const free = {
 			meeting: common("meeting", "seat"),
 			// Finished agents fill these in order.
-			out: [...common("kitchen", "queue").slice(0, 3), ...common("lobby", "nap"), ...common("kitchen", "cooler"), ...common("kitchen", "queue").slice(3), ...common("lobby", "sofa"), ...common("kitchen", "sofa")],
+			out: [
+				...common("kitchen", "queue").slice(0, 3),
+				...common("lobby", "nap"),
+				...common("kitchen", "cooler"),
+				...common("kitchen", "queue").slice(3),
+				...common("lobby", "sofa"),
+				...common("kitchen", "sofa"),
+			],
 		};
 		const live = new Set<string>();
 
@@ -71,8 +78,21 @@ export class Placement {
 
 			for (const a of crew) {
 				const look = roleFor(a.role, a.task);
-				const who: Who = { key: `a:${session.id}:${a.id}`, kind: "crew", role: a.role, look, mood: agentMood(a), size: crewSize(a.depth), tint: a.role };
-				const away = a.status === "running" && look === "reviewer" ? free.meeting.shift() : a.status === "finished" || a.status === "stopped" ? free.out.shift() : undefined;
+				const who: Who = {
+					key: `a:${session.id}:${a.id}`,
+					kind: "crew",
+					role: a.role,
+					look,
+					mood: agentMood(a),
+					size: crewSize(a.depth),
+					tint: a.role,
+				};
+				const away =
+					a.status === "running" && look === "reviewer"
+						? free.meeting.shift()
+						: a.status === "finished" || a.status === "stopped"
+							? free.out.shift()
+							: undefined;
 				if (away) {
 					spots.delete(a.id);
 					out.push({ who, slot: away.slot, desk: desk.id, area: away.area });

@@ -73,7 +73,11 @@ export const AT = {
 	drawerTabs: { x: 9, y: -9 },
 	drawerTabs2: { x: 13, y: -9 },
 	/** Card catalogue: the card tops in the open tray, walked along by the fingertips. */
-	cards: [{ x: 3, y: -8 }, { x: 8, y: -8 }, { x: 13, y: -8 }],
+	cards: [
+		{ x: 3, y: -8 },
+		{ x: 8, y: -8 },
+		{ x: 13, y: -8 },
+	],
 	/** Copier: the lid's front edge, the lid lifted part way (hinged 30 behind the edge), the glass,
 	 * the start button, the jam door's latch and the jammed sheet inside it. */
 	lid: { x: 0, y: 0 },
@@ -89,7 +93,11 @@ export const AT = {
 	form: { x: 11, y: 0 },
 	formEdge: { x: 4, y: -2 },
 	/** Phone table: the notepad, jotted on from left to right. */
-	note: [{ x: 0, y: 0 }, { x: 5, y: 1 }, { x: 10, y: 0 }],
+	note: [
+		{ x: 0, y: 0 },
+		{ x: 5, y: 1 },
+		{ x: 10, y: 0 },
+	],
 	/** Where the handset's cord meets the phone's base: the office draws the base on the wall side
 	 * of the table top, 20 to 42 office px past the point (a 58 px user) and from 10 above it to 3
 	 * below: 29 to 62 rig units on, -15 to 4 down. The cord ends at its near edge, a little up. */
@@ -198,7 +206,10 @@ export function handAt(arm: Arm | readonly [number, number, number], body: Body 
  * and in. Out of reach, the arm points straight at the target. Used to write the station arms in
  * vocab.ts; the unit tests check them with handAt.
  */
-export function solveArm(target: { x: number; y: number }, opts: { body?: Body; side?: 1 | -1; grip?: { x: number; y: number }; hand?: number; bend?: 1 | -1 } = {}): [number, number, number] {
+export function solveArm(
+	target: { x: number; y: number },
+	opts: { body?: Body; side?: 1 | -1; grip?: { x: number; y: number }; hand?: number; bend?: 1 | -1 } = {},
+): [number, number, number] {
 	const body = opts.body ?? "rest";
 	const side = opts.side ?? 1;
 	const hand = opts.hand ?? 0;

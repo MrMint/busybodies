@@ -59,7 +59,10 @@ export function trayFor(c: Context | undefined): Tray | undefined {
  * doesn't fill the room), capped at `max`. */
 export function towerBricks(added: number, max = 30): number {
 	if (!(added > 0)) return 0;
-	const n = added <= METRICS.linearLines ? Math.floor(added / METRICS.linesPerBrick) : METRICS.linearLines / METRICS.linesPerBrick + Math.floor(METRICS.bricksPerDouble * Math.log2(added / METRICS.linearLines));
+	const n =
+		added <= METRICS.linearLines
+			? Math.floor(added / METRICS.linesPerBrick)
+			: METRICS.linearLines / METRICS.linesPerBrick + Math.floor(METRICS.bricksPerDouble * Math.log2(added / METRICS.linearLines));
 	return Math.min(max, n);
 }
 
@@ -189,5 +192,11 @@ export function metricsFor(sessions: Map<string, Session>, was: Metrics, actors:
 		const e = lead?.errand;
 		desks[id] = deskState(s, was.desks[id], e?.kind === "shred" && now < e.until, lead?.pose === "buried");
 	}
-	return { desks, planners: planners(floor, sessions, carried), tickets: queue.tickets, next: queue.next, ...(queue.serving !== undefined ? { serving: queue.serving } : {}) };
+	return {
+		desks,
+		planners: planners(floor, sessions, carried),
+		tickets: queue.tickets,
+		next: queue.next,
+		...(queue.serving !== undefined ? { serving: queue.serving } : {}),
+	};
 }

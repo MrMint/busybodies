@@ -6,7 +6,6 @@ import { Container } from "pixi.js";
 import type { DeskProps, PlannerRow } from "../contract";
 import type { SceneTheme } from "../theme/types";
 
-
 /** Everything a desk's metrics draw, split into what reads at any zoom (the pile, the lamp) and the
  * small things that only show zoomed in (mugs, drawers, skip). */
 export function deskProps(theme: SceneTheme, p: DeskProps, seed: string): { always: Container; detail: Container } {
@@ -23,6 +22,15 @@ export function deskProps(theme: SceneTheme, p: DeskProps, seed: string): { alwa
 
 /** The signature a desk's props redraw on. */
 export const propsSig = (p: DeskProps | undefined): string =>
-	p ? [p.tray ? `${p.tray.sheets},${p.tray.spill},${p.tray.buried},${!!p.tray.out},${!!p.tray.rig}` : "", p.word ?? "", p.drawers ? `${p.drawers.drawers},${p.drawers.full}` : "", p.skip, p.mugs, p.lamp ?? ""].join("/") : "";
+	p
+		? [
+				p.tray ? `${p.tray.sheets},${p.tray.spill},${p.tray.buried},${!!p.tray.out},${!!p.tray.rig}` : "",
+				p.word ?? "",
+				p.drawers ? `${p.drawers.drawers},${p.drawers.full}` : "",
+				p.skip,
+				p.mugs,
+				p.lamp ?? "",
+			].join("/")
+		: "";
 
 export const plannerSig = (rows: PlannerRow[] | undefined): string => (rows ?? []).map((r) => `${r.session}:${r.pending},${r.active},${r.done}`).join(";");

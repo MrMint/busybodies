@@ -1,4 +1,3 @@
-
 import { INK } from "../../scene/office/paper";
 import type { Rect } from "../../scene/world/world";
 import { crewBuild } from "../../scene/theme/build";
@@ -13,7 +12,8 @@ import { CRATE_BUILD, FACTORY_STAGE } from "./stage";
 import { yard } from "./outside";
 
 /** The job board: the planner on a steel board with rivets, its notes magnets. */
-const jobBoard = (r: Rect, rows: Parameters<typeof plannerOf>[1]) => plannerOf(r, rows, 0xdfe4e8, FACTORY_WORDS.columns, (g, b) => rivets(g, b.x, b.y, b.w, b.h));
+const jobBoard = (r: Rect, rows: Parameters<typeof plannerOf>[1]) =>
+	plannerOf(r, rows, 0xdfe4e8, FACTORY_WORDS.columns, (g, b) => rivets(g, b.x, b.y, b.w, b.h));
 
 /** The factory's light (office/light.ts): cold fluorescent strips over each line, high windows on
  * an industrial skyline, a gravel yard with bollards and pallets. */

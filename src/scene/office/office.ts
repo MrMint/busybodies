@@ -228,7 +228,22 @@ export class Office extends Container {
 		this.#phase = phaseOf(this.#hour);
 		if (opts.outside !== false) this.#outside = new Outside(opts.renderer);
 		if (this.#outside) this.world.addChild(this.#outside);
-		this.world.addChild(this.#slab, this.#floor, this.#clouds, this.#walls, this.#decor, this.#shade, this.#ambientLayer, this.#depth, this.#armLayer, this.#light, this.#pulse, this.#tasks, this.#bubbles, this.#labels);
+		this.world.addChild(
+			this.#slab,
+			this.#floor,
+			this.#clouds,
+			this.#walls,
+			this.#decor,
+			this.#shade,
+			this.#ambientLayer,
+			this.#depth,
+			this.#armLayer,
+			this.#light,
+			this.#pulse,
+			this.#tasks,
+			this.#bubbles,
+			this.#labels,
+		);
 		this.#signs.set("yours:serving", this.#theme.words.serving(undefined));
 		if (opts.hour === undefined) this.#schedulePhase();
 		this.world.interactiveChildren = false;
@@ -307,7 +322,15 @@ export class Office extends Container {
 	/** The light: the time-of-day phase and the hour it is for (forced by `?hour=` or the clock's),
 	 * and what the light layer shows (lamps, overhead lights, glow, re-bakes, rooms in rush). */
 	get light(): { phase: Phase; hour: number; forced: boolean; focus?: string; clouds: number; lifeMs: number } & LightInfo {
-		return { phase: this.#phase, hour: this.#hour, forced: this.#opts.hour !== undefined, focus: this.#focus(), clouds: this.#cloudList.length, lifeMs: Math.round(this.#lifeMs), ...this.#light.info };
+		return {
+			phase: this.#phase,
+			hour: this.#hour,
+			forced: this.#opts.hour !== undefined,
+			focus: this.#focus(),
+			clouds: this.#cloudList.length,
+			lifeMs: Math.round(this.#lifeMs),
+			...this.#light.info,
+		};
 	}
 
 	/** Force the hour (0 to 23), or undefined to follow the clock again: the inspector's, for tests. */
@@ -653,7 +676,10 @@ export class Office extends Container {
 		if (slab !== this.#slabSig) {
 			this.#slabSig = slab;
 			// The building's base, its edge cut by hand.
-			this.#slab.clear().poly(wobblyRect(slabRect, 17, 2.2, 60), true).fill(this.#theme.slab);
+			this.#slab
+				.clear()
+				.poly(wobblyRect(slabRect, 17, 2.2, 60), true)
+				.fill(this.#theme.slab);
 		}
 		// The path out starts under the lobby, at the slab's edge.
 		const lobby = world.areas.find((a) => a.kind === "lobby");
@@ -684,7 +710,11 @@ export class Office extends Container {
 			held.set(p.desk, list);
 		}
 		for (const list of held.values()) list.sort();
-		const running = new Set(flatSessions(snapshot.sessions).filter(buildRunning).map((s) => s.id));
+		const running = new Set(
+			flatSessions(snapshot.sessions)
+				.filter(buildRunning)
+				.map((s) => s.id),
+		);
 		const building = new Set(world.areas.filter((a) => a.desks.some((d) => running.has(d.id))).map((a) => a.id));
 		const topped = new Map(Object.entries(this.#opts.builds?.() ?? {}).map(([id, b]) => [id, b.topped] as const));
 		const facts: AmbientFacts = { held, building, topped, setDown: this.#setDown };
@@ -1171,7 +1201,10 @@ export class Office extends Container {
 	#drawPeople(world: Floor, snapshot: Snapshot): void {
 		const placed = this.#opts.cast ? this.#opts.cast(snapshot, world, { life: this.#life }) : this.#placement.place(snapshot, world);
 		this.#placed = placed;
-		this.#names = regularNames(placed.map((p) => p.who), this.#opts.story?.());
+		this.#names = regularNames(
+			placed.map((p) => p.who),
+			this.#opts.story?.(),
+		);
 		// An empty office is never a blank one: the night watch naps in the lobby's pod.
 		if (placed.length === 0) {
 			const nap = world.areas.find((a) => a.kind === "lobby")?.spots.nap?.[0];
@@ -1297,7 +1330,6 @@ const roomBounds = (r: Rect): Rect => ({ x: r.x, y: r.y - 70, w: r.w, h: r.h + 1
 
 const differs = (a: View, b: View) => Math.abs(a.scale - b.scale) > 1e-4 || Math.abs(a.x - b.x) > 0.5 || Math.abs(a.y - b.y) > 0.5;
 
-
 /** A build running in a session: its own shell command, or one of its agents'. */
 const buildRunning = (s: Session): boolean => {
 	const agent = (a: Session["agents"][number]): boolean => a.running?.kind === "build" || a.children.some(agent);
@@ -1385,7 +1417,10 @@ function setBubble(c: Container, value: string, kind: "said" | "thought"): void 
 	t.text = value;
 	const w = t.width + 14;
 	const h = 22;
-	g.clear().roundRect(0, -h, w, h, kind === "thought" ? 11 : 9).fill(0xffffff).stroke({ width: 2.5, color: INK });
+	g.clear()
+		.roundRect(0, -h, w, h, kind === "thought" ? 11 : 9)
+		.fill(0xffffff)
+		.stroke({ width: 2.5, color: INK });
 	// A said line has a tail; a thought trails off in two little puffs.
 	if (kind === "said") g.poly([8, -1.5, 18, -1.5, 6, 8]).fill(0xffffff).stroke({ width: 2.5, color: INK });
 	else g.circle(9, 5, 3.5).fill(0xffffff).stroke({ width: 2, color: INK }).circle(4, 12, 2.2).fill(0xffffff).stroke({ width: 1.8, color: INK });

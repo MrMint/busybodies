@@ -5,8 +5,7 @@ import pkg from "./package.json" with { type: "json" };
 // bumps) and look for updates on the latest published GitHub Release (see docs/decisions.md,
 // "releases").
 const version = process.env.BUSYBODIES_VERSION || pkg.version;
-const updateBaseUrl =
-	process.env.BUSYBODIES_UPDATE_BASE_URL || "https://github.com/MrMint/busybodies/releases/latest/download";
+const updateBaseUrl = process.env.BUSYBODIES_UPDATE_BASE_URL || "https://github.com/MrMint/busybodies/releases/latest/download";
 // Signing and notarization switch on only when the release workflow has Apple credentials.
 const codesign = process.env.BUSYBODIES_CODESIGN === "1";
 

@@ -17,9 +17,7 @@ export function defaultRoots(env = process.env): Roots {
 		home: env.BUSYBODIES_AGENT_HOME ?? join(homedir(), ".claude"),
 		desktopIndex:
 			env.BUSYBODIES_DESKTOP_INDEX ??
-			(process.platform === "darwin"
-				? join(homedir(), "Library", "Application Support", "Claude", "claude-code-sessions")
-				: undefined),
+			(process.platform === "darwin" ? join(homedir(), "Library", "Application Support", "Claude", "claude-code-sessions") : undefined),
 	};
 }
 
@@ -56,7 +54,18 @@ export function registryEntry(raw: unknown): RegistryEntry | undefined {
 	const r = obj(raw);
 	return r
 		? pick<RegistryEntry>(
-				{ pid: num, sessionId: str, cwd: str, startedAt: num, kind: str, entrypoint: str, hostSessionId: str, name: str, status: str, statusUpdatedAt: num },
+				{
+					pid: num,
+					sessionId: str,
+					cwd: str,
+					startedAt: num,
+					kind: str,
+					entrypoint: str,
+					hostSessionId: str,
+					name: str,
+					status: str,
+					statusUpdatedAt: num,
+				},
 				r,
 			)
 		: undefined;
@@ -66,10 +75,7 @@ export function registryEntry(raw: unknown): RegistryEntry | undefined {
 export function agentMeta(raw: unknown): AgentMeta | undefined {
 	const r = obj(raw);
 	return r
-		? pick<AgentMeta>(
-				{ agentType: str, description: str, model: str, spawnDepth: num, parentAgentId: str, finished: bool, stoppedByUser: bool },
-				r,
-			)
+		? pick<AgentMeta>({ agentType: str, description: str, model: str, spawnDepth: num, parentAgentId: str, finished: bool, stoppedByUser: bool }, r)
 		: undefined;
 }
 

@@ -48,7 +48,8 @@ export function patio(g: Graphics, r: Rect, _band: Band): void {
 		things.push([p.y + p.h * 0.62, () => bench(g, bx, p.y + p.h * 0.62, bw)]);
 	}
 	// Room for more: a table under a parasol, with a chair either side.
-	if (wide) things.push([p.y + p.h * 0.4, () => parasol(g, p.x + p.w * 0.3, p.y + p.h * 0.4)]); else if (!corner) things.push([p.y + p.h - 6, () => planter(g, p.x + p.w / 2, p.y + p.h - 6, 0)]);
+	if (wide) things.push([p.y + p.h * 0.4, () => parasol(g, p.x + p.w * 0.3, p.y + p.h * 0.4)]);
+	else if (!corner) things.push([p.y + p.h - 6, () => planter(g, p.x + p.w / 2, p.y + p.h - 6, 0)]);
 	for (const [, draw] of things.sort((a, b) => a[0] - b[0])) draw();
 }
 
@@ -56,12 +57,25 @@ export function patio(g: Graphics, r: Rect, _band: Band): void {
 function planter(g: Graphics, x: number, y: number, k: number): void {
 	g.setTransform(1.25, 0, 0, 1.25, x - x * 1.25, y - y * 1.25);
 	g.ellipse(x + 3, y + 1, 21, 5).fill(SHADOW);
-	g.circle(x - 9, y - 26, 11).circle(x + 8, y - 28, 12).circle(x, y - 36, 11).fill(INK);
-	g.circle(x - 9, y - 26, 9.5).circle(x + 8, y - 28, 10.5).circle(x, y - 36, 9.5).fill(k % 2 ? 0x47c97f : 0x3fb874);
+	g.circle(x - 9, y - 26, 11)
+		.circle(x + 8, y - 28, 12)
+		.circle(x, y - 36, 11)
+		.fill(INK);
+	g.circle(x - 9, y - 26, 9.5)
+		.circle(x + 8, y - 28, 10.5)
+		.circle(x, y - 36, 9.5)
+		.fill(k % 2 ? 0x47c97f : 0x3fb874);
 	g.circle(x - 4, y - 36, 3.4).fill({ color: 0xffffff, alpha: 0.22 });
-	for (let i = 0; i < 4; i++) g.circle(x - 10 + i * 7, y - 30 - (i % 2) * 7, 2.4).fill(BLOOMS[(k + i) % BLOOMS.length]!).stroke({ width: 1, color: INK });
-	g.roundRect(x - 17, y - 20, 34, 20, 3).fill(0xd9a066).stroke(line(2.5));
-	g.moveTo(x - 17, y - 13).lineTo(x + 17, y - 13).stroke({ width: 1.2, color: INK, alpha: 0.4 });
+	for (let i = 0; i < 4; i++)
+		g.circle(x - 10 + i * 7, y - 30 - (i % 2) * 7, 2.4)
+			.fill(BLOOMS[(k + i) % BLOOMS.length]!)
+			.stroke({ width: 1, color: INK });
+	g.roundRect(x - 17, y - 20, 34, 20, 3)
+		.fill(0xd9a066)
+		.stroke(line(2.5));
+	g.moveTo(x - 17, y - 13)
+		.lineTo(x + 17, y - 13)
+		.stroke({ width: 1.2, color: INK, alpha: 0.4 });
 	g.setTransform(1, 0, 0, 1, 0, 0);
 }
 
@@ -70,20 +84,43 @@ function parasol(g: Graphics, x: number, y: number): void {
 	g.ellipse(x + 5, y + 2, 34, 7).fill(SHADOW);
 	for (const side of [-1, 1]) {
 		const cx = x + side * 26;
-		g.roundRect(cx - 8, y - 30, 16, 14, 4).fill(0x8fc8ff).stroke(line(2));
-		g.rect(cx - 7, y - 16, 3, 16).rect(cx + 4, y - 16, 3, 16).fill(SLAB);
+		g.roundRect(cx - 8, y - 30, 16, 14, 4)
+			.fill(0x8fc8ff)
+			.stroke(line(2));
+		g.rect(cx - 7, y - 16, 3, 16)
+			.rect(cx + 4, y - 16, 3, 16)
+			.fill(SLAB);
 	}
 	g.rect(x - 1.5, y - 74, 3, 74).fill(SLAB);
-	g.ellipse(x, y - 24, 17, 5).fill(0xffffff).stroke(line(2.2));
-	g.moveTo(x - 36, y - 66).quadraticCurveTo(x, y - 98, x + 36, y - 66).closePath().fill(0xffffff).stroke(line(2.5));
-	g.moveTo(x - 12, y - 66).quadraticCurveTo(x - 6, y - 90, x, y - 82).quadraticCurveTo(x + 6, y - 90, x + 12, y - 66).closePath().fill(0xff8fa3);
-	g.moveTo(x - 36, y - 66).quadraticCurveTo(x, y - 98, x + 36, y - 66).stroke(line(2.5));
+	g.ellipse(x, y - 24, 17, 5)
+		.fill(0xffffff)
+		.stroke(line(2.2));
+	g.moveTo(x - 36, y - 66)
+		.quadraticCurveTo(x, y - 98, x + 36, y - 66)
+		.closePath()
+		.fill(0xffffff)
+		.stroke(line(2.5));
+	g.moveTo(x - 12, y - 66)
+		.quadraticCurveTo(x - 6, y - 90, x, y - 82)
+		.quadraticCurveTo(x + 6, y - 90, x + 12, y - 66)
+		.closePath()
+		.fill(0xff8fa3);
+	g.moveTo(x - 36, y - 66)
+		.quadraticCurveTo(x, y - 98, x + 36, y - 66)
+		.stroke(line(2.5));
 }
 
 /** A park bench seen from the front: slatted back and seat on dark iron legs, centred at (x, y). */
 function bench(g: Graphics, x: number, y: number, w: number): void {
 	g.ellipse(x + 4, y + 1, w / 2 + 2, 6).fill(SHADOW);
-	g.roundRect(x - w / 2 + 6, y - 30, 5, 30, 2).roundRect(x + w / 2 - 11, y - 30, 5, 30, 2).fill(SLAB);
-	g.roundRect(x - w / 2, y - 40, w, 8, 3).roundRect(x - w / 2, y - 29, w, 8, 3).fill(0xc98a55).stroke(line(2));
-	g.roundRect(x - w / 2 - 3, y - 17, w + 6, 8, 3).fill(0xd9a066).stroke(line(2.2));
+	g.roundRect(x - w / 2 + 6, y - 30, 5, 30, 2)
+		.roundRect(x + w / 2 - 11, y - 30, 5, 30, 2)
+		.fill(SLAB);
+	g.roundRect(x - w / 2, y - 40, w, 8, 3)
+		.roundRect(x - w / 2, y - 29, w, 8, 3)
+		.fill(0xc98a55)
+		.stroke(line(2));
+	g.roundRect(x - w / 2 - 3, y - 17, w + 6, 8, 3)
+		.fill(0xd9a066)
+		.stroke(line(2.2));
 }

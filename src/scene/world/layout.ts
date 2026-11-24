@@ -89,7 +89,12 @@ export class FloorPlan {
 	/** Fold a snapshot into the plan and return the world it gives, staged as the theme says
 	 * (world/staging.ts): the rooms and desks are the same in every staging. */
 	update(snapshot: Snapshot, staging: Staging = DEFAULT_STAGING): Floor {
-		this.#staging = { bay: staging.bay, hall: staging.hall, ...(staging.habits ? { habits: staging.habits } : {}), ...(staging.leadHabits ? { leadHabits: staging.leadHabits } : {}) };
+		this.#staging = {
+			bay: staging.bay,
+			hall: staging.hall,
+			...(staging.habits ? { habits: staging.habits } : {}),
+			...(staging.leadHabits ? { leadHabits: staging.leadHabits } : {}),
+		};
 		const all = seats(snapshot.sessions);
 		const live = new Set(all.map((s) => s.session.id));
 
@@ -261,7 +266,23 @@ function build(room: Room, x: number): Area {
 	const id = room.kind === "project" ? `room:${room.project}` : room.kind === "vacant" ? `vacant:${room.key}` : room.key;
 	const name = room.kind === "project" ? room.project! : room.kind === "vacant" ? "vacant" : NAMES[room.kind];
 	const hue = room.key.startsWith("room-") ? Number(room.key.slice(5)) - 1 : -1;
-	const area: Area = { id, kind: room.kind, name, band: room.band, hue, rect, floorY, cols: room.cols, rows, cells: [], desks: [], fixtures: [], wall: [], spots: {}, stations: [] };
+	const area: Area = {
+		id,
+		kind: room.kind,
+		name,
+		band: room.band,
+		hue,
+		rect,
+		floorY,
+		cols: room.cols,
+		rows,
+		cells: [],
+		desks: [],
+		fixtures: [],
+		wall: [],
+		spots: {},
+		stations: [],
+	};
 
 	if (room.kind === "project" || room.kind === "vacant") {
 		room.cells.forEach((occupant, i) => {
@@ -328,7 +349,12 @@ function dressRoom(a: Area): void {
 	for (const kind of items) {
 		const ww = kind === "whiteboard" ? 150 : 116;
 		if (at + ww > x + w - (a.band === "bottom" ? 90 : 18)) break;
-		const rect = kind === "whiteboard" ? { x: at, y: y + SIGN_TOP - 4, w: ww, h: SIGN_FOOT - SIGN_TOP + 4 } : kind === "sign" ? { x: at, y: y + SIGN_TOP, w: ww, h: SIGN_FOOT - SIGN_TOP } : { x: at, y: wy + 4, w: ww, h: 74 };
+		const rect =
+			kind === "whiteboard"
+				? { x: at, y: y + SIGN_TOP - 4, w: ww, h: SIGN_FOOT - SIGN_TOP + 4 }
+				: kind === "sign"
+					? { x: at, y: y + SIGN_TOP, w: ww, h: SIGN_FOOT - SIGN_TOP }
+					: { x: at, y: wy + 4, w: ww, h: 74 };
 		a.wall.push({ kind, rect, slot: kind === "whiteboard" ? `${key}:board` : kind === "sign" ? `${key}:sign` : undefined });
 		at += ww + 26;
 	}

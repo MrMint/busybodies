@@ -150,13 +150,27 @@ export function nextShot(prev: ShotState | undefined, input: ShotInput): ShotSta
 			return { shot: { ...cur, reason, until: now + SHOTS.holdMs, news: newsId(best) }, shown: mark(best.area) };
 		}
 		if (!cur || (settled && (!holding || SHOTS.priority[best.reason] - priorityOf(cur) >= SHOTS.preempt))) {
-			return { shot: { stop: roomStop(best.area), area: best.area, reason: best.reason, since: now, until: now + SHOTS.holdMs, pinned: false, news: newsId(best) }, shown: mark(best.area) };
+			return {
+				shot: {
+					stop: roomStop(best.area),
+					area: best.area,
+					reason: best.reason,
+					since: now,
+					until: now + SHOTS.holdMs,
+					pinned: false,
+					news: newsId(best),
+				},
+				shown: mark(best.area),
+			};
 		}
 	}
 	if (cur && holding) return prev!;
 
 	const rest = restFor(input);
-	const restShot = (): ShotState => ({ shot: { stop: rest.stop, ...(rest.area ? { area: rest.area } : {}), reason: rest.reason, since: now, until: now + SHOTS.holdMs, pinned: false }, shown });
+	const restShot = (): ShotState => ({
+		shot: { stop: rest.stop, ...(rest.area ? { area: rest.area } : {}), reason: rest.reason, since: now, until: now + SHOTS.holdMs, pinned: false },
+		shown,
+	});
 	if (!cur) return restShot();
 	if (sameStop(cur.stop, rest.stop)) {
 		// Same room, maybe a new reason (the wait ended but the room is still the busiest): no cut.
@@ -201,9 +215,13 @@ export function newsFrom(events: WorldEvent[], world: World | undefined, areaOf:
 	return out;
 }
 
-
 /** How busy each project room is: its sessions' heat (rush.ts), plus a little per busy session. */
-export function scoreByArea(sessions: Session[], builds: Record<string, Build>, areaOf: (session: string) => string | undefined, now: number): Record<string, number> {
+export function scoreByArea(
+	sessions: Session[],
+	builds: Record<string, Build>,
+	areaOf: (session: string) => string | undefined,
+	now: number,
+): Record<string, number> {
 	const score: Record<string, number> = {};
 	for (const s of flatSessions(sessions)) {
 		const area = areaOf(s.id);

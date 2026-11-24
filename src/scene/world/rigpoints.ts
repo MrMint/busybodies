@@ -20,7 +20,13 @@ const px = (units: number, size: number) => (units * size) / RIG_HEIGHT;
  * `lead` (relative to the same centre): its left edge, width, base (the desk top) and a sheet. */
 export function trayOnDesk(lead: { x: number; y: number }, size: number) {
 	const w = px(RIG_TRAY.w, size);
-	return { x: lead.x + px(RIG_TRAY.x, size) - w / 2, w, y: lead.y + px(RIG_TRAY.base, size), sheet: px(RIG_TRAY.sheet, size), top: lead.y + px(RIG_TRAY.buried, size) };
+	return {
+		x: lead.x + px(RIG_TRAY.x, size) - w / 2,
+		w,
+		y: lead.y + px(RIG_TRAY.base, size),
+		sheet: px(RIG_TRAY.sheet, size),
+		top: lead.y + px(RIG_TRAY.buried, size),
+	};
 }
 
 /** The bell's plunger top and the counter's top, from a ringer `size` px tall facing right at its feet. */
@@ -30,7 +36,10 @@ export function bellFrom(feet: { x: number; y: number }, size: number) {
 }
 
 /** Where a poster `size` px tall stands (facing right) so the note it presses on lands at `note`. */
-export const posterFor = (note: { x: number; y: number }, size: number) => ({ x: Math.round(note.x - px(RIG_PLANNER.x, size)), y: Math.round(note.y - px(RIG_PLANNER.y, size)) });
+export const posterFor = (note: { x: number; y: number }, size: number) => ({
+	x: Math.round(note.x - px(RIG_PLANNER.x, size)),
+	y: Math.round(note.y - px(RIG_PLANNER.y, size)),
+});
 
 /** Where on the planner a new note goes: the DONE column (the right third), low on the board, so
  * even a small poster stands on the floor below it. */

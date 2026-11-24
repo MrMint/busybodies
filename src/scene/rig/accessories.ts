@@ -29,11 +29,15 @@ export function paintAccessories(parts: Record<string, Painter>, p: Palette): vo
 		const cy = -58;
 		for (let k = 0; k < 5; k++) {
 			const a = (k * Math.PI * 2) / 5 - Math.PI / 2;
-			g.ellipse(cx + Math.cos(a) * 4.6, cy + Math.sin(a) * 4.6, 3.4, 3.4).fill(PETAL).stroke({ width: 1.5, color: ink });
+			g.ellipse(cx + Math.cos(a) * 4.6, cy + Math.sin(a) * 4.6, 3.4, 3.4)
+				.fill(PETAL)
+				.stroke({ width: 1.5, color: ink });
 		}
 		g.circle(cx, cy, 2.8).fill(p.sun).stroke({ width: 1.4, color: ink });
 		// A leaf, tucked behind.
-		g.ellipse(cx + 3, cy + 7.5, 3.6, 1.8).fill(p.go).stroke({ width: 1.2, color: ink });
+		g.ellipse(cx + 3, cy + 7.5, 3.6, 1.8)
+			.fill(p.go)
+			.stroke({ width: 1.2, color: ink });
 	};
 
 	// Small gold hoops at either side of the head, just above the shoulders.
@@ -47,7 +51,13 @@ export function paintAccessories(parts: Record<string, Painter>, p: Palette): vo
 	// Freckles across the cheeks (under the blush, which is tinted over them per frame).
 	parts["wear/freckles"] = (g: Graphics) => {
 		for (const s of [-1, 1]) {
-			for (const [dx, dy] of [[-4, -5], [1, -6.5], [5, -4.5], [-1, -2]] as const) g.circle(s * (A.cheekX - 2 + dx * s), A.cheekY + dy, 1.05);
+			for (const [dx, dy] of [
+				[-4, -5],
+				[1, -6.5],
+				[5, -4.5],
+				[-1, -2],
+			] as const)
+				g.circle(s * (A.cheekX - 2 + dx * s), A.cheekY + dy, 1.05);
 		}
 		g.fill({ color: FRECKLE, alpha: 0.75 });
 	};
@@ -58,7 +68,9 @@ export function paintAccessories(parts: Record<string, Painter>, p: Palette): vo
 		const cx = -28;
 		const cy = -10;
 		g.circle(cx, cy, 5.6).fill(PIN).stroke({ width: 1.8, color: ink });
-		g.circle(cx - 1.3, cy - 1.2, 1.5).circle(cx + 1.3, cy - 1.2, 1.5).fill(0xffffff);
+		g.circle(cx - 1.3, cy - 1.2, 1.5)
+			.circle(cx + 1.3, cy - 1.2, 1.5)
+			.fill(0xffffff);
 		g.poly([cx - 2.7, cy - 0.6, cx + 2.7, cy - 0.6, cx, cy + 2.6]).fill(0xffffff);
 	};
 

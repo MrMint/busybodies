@@ -297,7 +297,10 @@ export class Light extends Container {
 					const left = Math.max(a.rect.x + 14, Math.min(x0, x0 + dx));
 					const right = Math.min(a.rect.x + a.rect.w - 14, Math.max(x1, x1 + dx));
 					const clampX = (v: number) => Math.max(left, Math.min(right, v));
-					g.poly([clampX(x0), y0, clampX(x1), y0, clampX(x1 + dx), y0 + len, clampX(x0 + dx), y0 + len]).fill({ color: light.sun, alpha: sun.alpha * fade });
+					g.poly([clampX(x0), y0, clampX(x1), y0, clampX(x1 + dx), y0 + len, clampX(x0 + dx), y0 + len]).fill({
+						color: light.sun,
+						alpha: sun.alpha * fade,
+					});
 					glowed = true;
 				}
 			}

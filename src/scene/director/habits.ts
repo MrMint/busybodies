@@ -9,7 +9,6 @@ import { hash, unit } from "../rig/data/player";
 import { HABITS } from "../rig/data/poses";
 import { MIN } from "../../shared/time";
 
-
 export const HABIT = {
 	/** Calm mode: the next habit this often after going idle. */
 	calmRotateMs: 10 * MIN,
@@ -22,8 +21,7 @@ export const HABIT = {
 } as const;
 
 /** A length from `range`, picked from the id, rounded to the grid. */
-const pickMs = (key: string, salt: string, [lo, hi]: readonly [number, number]) =>
-	Math.round((lo + unit(key, salt) * (hi - lo)) / HABIT.gridMs) * HABIT.gridMs;
+const pickMs = (key: string, salt: string, [lo, hi]: readonly [number, number]) => Math.round((lo + unit(key, salt) * (hi - lo)) / HABIT.gridMs) * HABIT.gridMs;
 
 export interface Habit {
 	pose: string;

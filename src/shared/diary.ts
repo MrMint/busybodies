@@ -98,7 +98,9 @@ export function noteSnapshot(diary: Diary, mem: DiaryMemory, snap: Snapshot, opt
 	const today = (): DiaryDay => {
 		if (day) return day;
 		const was = diary.days[key];
-		day = was ? { counts: { ...was.counts }, projects: { ...was.projects }, regulars: [...was.regulars], marks: [...was.marks] } : { counts: {}, projects: {}, regulars: [], marks: [] };
+		day = was
+			? { counts: { ...was.counts }, projects: { ...was.projects }, regulars: [...was.regulars], marks: [...was.marks] }
+			: { counts: {}, projects: {}, regulars: [], marks: [] };
 		return day;
 	};
 	const marks = new Set(diary.days[key]?.marks ?? []);
@@ -177,7 +179,9 @@ export function noteSnapshot(diary: Diary, mem: DiaryMemory, snap: Snapshot, opt
 
 /** Keep the last `DIARY.keepDays` days, counting back from `today` (`YYYY-MM-DD` sorts as a date). */
 export function prune(diary: Diary, today: string): Diary {
-	const keys = Object.keys(diary.days).filter((k) => k <= today).sort();
+	const keys = Object.keys(diary.days)
+		.filter((k) => k <= today)
+		.sort();
 	const keep = keys.slice(-DIARY.keepDays);
 	if (keep.length === Object.keys(diary.days).length) return diary;
 	return { v: 1, days: Object.fromEntries(keep.map((k) => [k, diary.days[k]!])) };
@@ -205,8 +209,14 @@ export function diaryOf(raw: unknown): Diary {
 		if (!/^\d{4}-\d{2}-\d{2}$/.test(k) || !v || typeof v !== "object") continue;
 		const d = v as Record<string, unknown>;
 		const projects: Record<string, Counts> = {};
-		if (d.projects && typeof d.projects === "object") for (const [p, c] of Object.entries(d.projects as Record<string, unknown>)) if (/^p[0-9a-z]{1,8}$/.test(p)) projects[p] = countsOf(c);
-		out.days[k] = { counts: countsOf(d.counts), projects, regulars: strings(d.regulars, /^p[0-9a-z]{1,8}:[a-z]+$/), marks: strings(d.marks, /^[0-9a-z]{1,8}$/) };
+		if (d.projects && typeof d.projects === "object")
+			for (const [p, c] of Object.entries(d.projects as Record<string, unknown>)) if (/^p[0-9a-z]{1,8}$/.test(p)) projects[p] = countsOf(c);
+		out.days[k] = {
+			counts: countsOf(d.counts),
+			projects,
+			regulars: strings(d.regulars, /^p[0-9a-z]{1,8}:[a-z]+$/),
+			marks: strings(d.marks, /^[0-9a-z]{1,8}$/),
+		};
 	}
 	return out;
 }

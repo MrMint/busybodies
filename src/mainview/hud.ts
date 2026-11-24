@@ -71,7 +71,6 @@ export interface HudOptions {
 	pin?: (area: string | undefined) => void;
 }
 
-
 export function installHud(office: Office, opts: HudOptions = {}) {
 	const style = document.createElement("style");
 	style.textContent = CSS;

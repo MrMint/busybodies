@@ -286,7 +286,14 @@ describe("brick runs", () => {
 		expect(go.world.builds.rel!.pieces).toBe(first.world.builds.rel!.pieces);
 		expect(run).toMatchObject({ key: "a:rel:b0", since: T0 + SEC, carried: true });
 		expect(run.lands).toBe(T0 + SEC + run.walkMs + placeMs());
-		expect(go.events).toContainEqual({ type: "build", session: "rel", at: T0 + SEC, pieces: first.world.builds.rel!.pieces, change: "carry", key: "a:rel:b0" });
+		expect(go.events).toContainEqual({
+			type: "build",
+			session: "rel",
+			at: T0 + SEC,
+			pieces: first.world.builds.rel!.pieces,
+			change: "carry",
+			key: "a:rel:b0",
+		});
 		expect(go.wake).toBeLessThanOrEqual(run.lands);
 	});
 
@@ -297,7 +304,9 @@ describe("brick runs", () => {
 		expect(before.world.builds.rel!.pieces).toBe(pieces);
 		expect(before.world.actors["a:rel:b0"]!.spot).toBe("build");
 		// The same cue all the way there: the walk and the pose are not restarted.
-		expect(cueFor(before.world.actors["a:rel:b0"]!, run.lands - 1).key).toBe(cueFor(s.step(snap(T0 + SEC, [release(crew, busyLead(T0 + SEC))])).world.actors["a:rel:b0"]!, T0 + SEC).key);
+		expect(cueFor(before.world.actors["a:rel:b0"]!, run.lands - 1).key).toBe(
+			cueFor(s.step(snap(T0 + SEC, [release(crew, busyLead(T0 + SEC))])).world.actors["a:rel:b0"]!, T0 + SEC).key,
+		);
 	});
 
 	test("landing: a piece, an add event, and the walk back in the plain walk", () => {
@@ -394,7 +403,10 @@ describe("brick runs", () => {
 				const at = T0 + i * 1500;
 				if (i % 2) crew = edit(crew, i % 6, at);
 				const d = s.step(snap(at, [release(crew)]));
-				out.push(d.world.builds.rel, d.events.filter((e) => e.type === "build"));
+				out.push(
+					d.world.builds.rel,
+					d.events.filter((e) => e.type === "build"),
+				);
 			}
 			return out;
 		};
@@ -440,7 +452,6 @@ describe("crew spots", () => {
 		for (const p of a) expect(b.some((q) => q.x === p.x && q.y === p.y)).toBe(false);
 	});
 });
-
 
 describe("stations and trips", () => {
 	const STATION = (kind: string, n = 0) => `station:room:teapot:${kind}:${n}`;
@@ -517,7 +528,8 @@ describe("stations and trips", () => {
 
 	test("one user per station: the next two queue beside it, a fourth stays at its bench", () => {
 		const s = stage();
-		const readers = (t: number) => ["b0", "b1", "b2", "b3"].map((id, i) => builder(id, i === 0 && t >= T0 + 20 * SEC ? "Edit" : "Read", i === 0 && t >= T0 + 20 * SEC ? t : T0));
+		const readers = (t: number) =>
+			["b0", "b1", "b2", "b3"].map((id, i) => builder(id, i === 0 && t >= T0 + 20 * SEC ? "Edit" : "Read", i === 0 && t >= T0 + 20 * SEC ? t : T0));
 		const [, d] = run(s, [T0, T0 + TRIP.holdMs], readers);
 		const a = (k: string) => d!.world.actors[`a:rel:${k}`]!;
 		expect(a("b0").spot).toBe(STATION("reference"));
@@ -563,7 +575,11 @@ describe("stations and trips", () => {
 		const [at] = run(s, [T0 + TRIP.holdMs], () => testing);
 		expect(at!.world.actors["a:rel:b0"]!.spot).toBe(STATION("test"));
 		expect(at!.world.actors["a:rel:b0"]!.pose).toBe(STATION_POSE.test.work);
-		const red = [builder("b0", "Bash", T0 + 8 * SEC, { commands: { failStreak: 1, repeats: 1, failed: 1, testsFailed: 1, last: { kind: "test", exitCode: 1, at: T0 + 8 * SEC } } })];
+		const red = [
+			builder("b0", "Bash", T0 + 8 * SEC, {
+				commands: { failStreak: 1, repeats: 1, failed: 1, testsFailed: 1, last: { kind: "test", exitCode: 1, at: T0 + 8 * SEC } },
+			}),
+		];
 		const [stamp] = run(s, [T0 + 8 * SEC], () => red);
 		const b0 = stamp!.world.actors["a:rel:b0"]!;
 		expect(b0.spot).toBe(STATION("test"));
@@ -598,7 +614,10 @@ describe("stations and trips", () => {
 			const tools = ["Read", "Grep", "Edit", "Read", "Grep", "Read"];
 			for (let i = 0; i < 40; i++) {
 				const at = T0 + i * 1500;
-				const crew = six(tools.map((t, k) => ((i + k) % 9 < 5 ? t : "Edit")), at);
+				const crew = six(
+					tools.map((t, k) => ((i + k) % 9 < 5 ? t : "Edit")),
+					at,
+				);
 				const d = s.step(snap(at, [release(crew)]));
 				out.push(d.events.filter((e) => e.type === "trip" || e.type === "walk"));
 			}

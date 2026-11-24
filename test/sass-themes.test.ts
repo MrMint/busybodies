@@ -74,7 +74,12 @@ describe("each theme's bank", () => {
 	});
 
 	test("the themes say different things", () => {
-		const signs = (id: (typeof THEME_IDS)[number]) => new Set(sassFor(id).lines.filter((l) => l.kind === "sign").map((l) => l.text));
+		const signs = (id: (typeof THEME_IDS)[number]) =>
+			new Set(
+				sassFor(id)
+					.lines.filter((l) => l.kind === "sign")
+					.map((l) => l.text),
+			);
 		const factory = signs("factory");
 		expect([...signs("bakery")].filter((t) => factory.has(t) && !signs("office").has(t))).toEqual([]);
 		expect(sassFor("factory").counters.prTally).not.toBe(sassFor("bakery").counters.prTally);
@@ -84,20 +89,46 @@ describe("each theme's bank", () => {
 });
 
 describe("the counters in each theme", () => {
-	const cmd = (exitCode: number, failStreak: number, at: number) => ({ last: { kind: "test" as const, exitCode, at }, failStreak, repeats: 1, failed: 0, testsFailed: 0 });
+	const cmd = (exitCode: number, failStreak: number, at: number) => ({
+		last: { kind: "test" as const, exitCode, at },
+		failStreak,
+		repeats: 1,
+		failed: 0,
+		testsFailed: 0,
+	});
 	const run = (theme: (typeof THEME_IDS)[number]) => {
 		const c = new Counters({ ...OPTS, theme });
 		const first = c.update(snap(session("a", { commands: cmd(1, 1, NOW - MIN) })), NOW);
 		const streak = c.update(snap(session("a", { commands: cmd(1, 3, NOW) })), NOW);
 		const later = NOW + 2 * 24 * 60 * MIN;
 		const green = c.update(snap(session("a", { commands: cmd(0, 0, later), prs: [{ number: 1, url: "u", at: later }] })), later);
-		return { days: first.get("room:teapot:board"), streak: streak.get("room:teapot:board"), pr: green.get("room:teapot:sign"), greens: green.get("kitchen:sign") };
+		return {
+			days: first.get("room:teapot:board"),
+			streak: streak.get("room:teapot:board"),
+			pr: green.get("room:teapot:sign"),
+			greens: green.get("kitchen:sign"),
+		};
 	};
 
 	test("the office's, the factory's and the bakery's words", () => {
-		expect(run("office")).toEqual({ days: "Days since a test broke: 0", streak: "Fail streak: 3. New personal best.", pr: "PRs today: 1. Humility: 0.", greens: "One cup per green build. Today: 1." });
-		expect(run("factory")).toEqual({ days: "Days without incident: 0", streak: "Rejects this shift: 3. A record.", pr: "Crates out today: 1. Modesty: out of stock.", greens: "One snack per green build. Today: 1." });
-		expect(run("bakery")).toEqual({ days: "Days since a soufflé fell: 0", streak: "Burnt batches: 3. Smoke alarm: hoarse.", pr: "Trays out today: 1. Humility: crumbs.", greens: "One éclair per green build. Today: 1." });
+		expect(run("office")).toEqual({
+			days: "Days since a test broke: 0",
+			streak: "Fail streak: 3. New personal best.",
+			pr: "PRs today: 1. Humility: 0.",
+			greens: "One cup per green build. Today: 1.",
+		});
+		expect(run("factory")).toEqual({
+			days: "Days without incident: 0",
+			streak: "Rejects this shift: 3. A record.",
+			pr: "Crates out today: 1. Modesty: out of stock.",
+			greens: "One snack per green build. Today: 1.",
+		});
+		expect(run("bakery")).toEqual({
+			days: "Days since a soufflé fell: 0",
+			streak: "Burnt batches: 3. Smoke alarm: hoarse.",
+			pr: "Trays out today: 1. Humility: crumbs.",
+			greens: "One éclair per green build. Today: 1.",
+		});
 	});
 
 	test("the fridge note is the theme's", () => {
@@ -130,7 +161,11 @@ describe("a theme switch", () => {
 
 	test("live: the old theme's signs come down, the new defaults go back, the counters write again", () => {
 		const signs = new Map<string, { title: string; body?: string } | undefined>();
-		const stage = { say: () => {}, setSign: (id: string, v: { title: string; body?: string } | undefined) => void signs.set(id, v), signs: () => ["room:teapot:sign", "kitchen:sign"].map((id) => ({ id })) };
+		const stage = {
+			say: () => {},
+			setSign: (id: string, v: { title: string; body?: string } | undefined) => void signs.set(id, v),
+			signs: () => ["room:teapot:sign", "kitchen:sign"].map((id) => ({ id })),
+		};
 		const v = new Voice(stage, { ...OPTS, gapMs: 0 });
 		const s = snap(session("a", { prs: [{ number: 3, url: "u", at: NOW }] }));
 		v.run(s, NOW, { zoom: 2 });

@@ -7,7 +7,34 @@ import { MONITOR, PROPS } from "../../scene/world/propspots";
 import { DESK_TOP } from "../../scene/world/world";
 import type { FurnitureKind } from "../../scene/theme/types";
 import { mix } from "../../shared/colour";
-import { BRASS, BRICK, BRICK_DARK, CANDY, CHERRY, CHOC, CHOC_DARK, CHROME, CHROME_DARK, COPPER, CREAM, CRUST_LIGHT, DOUGH, GLASS, HEAT, IVORY, LEMON, LILAC, MARBLE, MINT, MINT_LIGHT, PINK, PINK_LIGHT, RASPBERRY, WOOD, WOOD_DARK } from "./palette";
+import {
+	BRASS,
+	BRICK,
+	BRICK_DARK,
+	CANDY,
+	CHERRY,
+	CHOC,
+	CHOC_DARK,
+	CHROME,
+	CHROME_DARK,
+	COPPER,
+	CREAM,
+	CRUST_LIGHT,
+	DOUGH,
+	GLASS,
+	HEAT,
+	IVORY,
+	LEMON,
+	LILAC,
+	MARBLE,
+	MINT,
+	MINT_LIGHT,
+	PINK,
+	PINK_LIGHT,
+	RASPBERRY,
+	WOOD,
+	WOOD_DARK,
+} from "./palette";
 import { baguette, croissant, cup, cupcake, donut, eclair, layerCake, loaf, lollipop, macaron, oval, painAuChocolat } from "./pastries";
 import { thin } from "./scene";
 import { awning, candyJar, scallops } from "./room";
@@ -38,12 +65,17 @@ export function macaronStand(t: Tray, seed: string): Graphics {
 			const mx = x + 1 + c * tw + tw / 2 + (over ? (lean * (r - rows + 1)) / 3 + (r % 2 ? 0.8 : -0.8) : 0);
 			const my = base - 1 - r * mh;
 			const k = s + r * 3 + c;
-			g.roundRect(mx - 6 * sc, my - mh * 0.45, 12 * sc, mh * 0.45, 1.2).roundRect(mx - 6 * sc, my - mh, 12 * sc, mh * 0.5, 1.2).fill(CANDY[k % CANDY.length]!).stroke({ width: 0.8, color: INK });
+			g.roundRect(mx - 6 * sc, my - mh * 0.45, 12 * sc, mh * 0.45, 1.2)
+				.roundRect(mx - 6 * sc, my - mh, 12 * sc, mh * 0.5, 1.2)
+				.fill(CANDY[k % CANDY.length]!)
+				.stroke({ width: 0.8, color: INK });
 			g.rect(mx - 5.2 * sc, my - mh * 0.52, 10.4 * sc, mh * 0.12).fill(IVORY);
 		}
 	}
 	// The plate and its doily.
-	g.ellipse(x + w / 2, base + 0.5, w / 2 + 4, 2.2).fill(0xffffff).stroke({ width: 1.2, color: INK });
+	g.ellipse(x + w / 2, base + 0.5, w / 2 + 4, 2.2)
+		.fill(0xffffff)
+		.stroke({ width: 1.2, color: INK });
 	for (let k = 0; k < 7; k++) g.circle(x - 2 + ((w + 4) * (k + 0.5)) / 7, base + 1.8, 1.1);
 	g.fill({ color: PINK, alpha: 0.9 });
 	// Rolled off: onto the bench, then over the edge onto the floor.
@@ -66,8 +98,12 @@ export function cappuccinos(n: number): Graphics {
 		for (let i = 0; i < rows[r]! && k < n; i++, k++) {
 			const mx = x + (i + r * 0.5) * (w + 1);
 			const my = y - (r + 1) * h;
-			g.poly([mx, my, mx + w, my, mx + w - 1, my + h - 1, mx + 1, my + h - 1]).fill(k % 3 === 1 ? PINK_LIGHT : 0xffffff).stroke({ width: 1, color: INK, join: "round" });
-			g.rect(mx - 0.8, my + h - 1.2, w + 1.6, 1.2).fill(0xffffff).stroke({ width: 0.7, color: INK });
+			g.poly([mx, my, mx + w, my, mx + w - 1, my + h - 1, mx + 1, my + h - 1])
+				.fill(k % 3 === 1 ? PINK_LIGHT : 0xffffff)
+				.stroke({ width: 1, color: INK, join: "round" });
+			g.rect(mx - 0.8, my + h - 1.2, w + 1.6, 1.2)
+				.fill(0xffffff)
+				.stroke({ width: 0.7, color: INK });
 			g.ellipse(mx + w / 2, my + 0.4, w / 2 - 0.4, 1).fill(0xd9a46a);
 		}
 	}
@@ -80,11 +116,23 @@ export function clocheLamp(lamp: Lamp): Graphics {
 	const colour = lamp === "red" ? RED : GREEN;
 	const g = batched();
 	g.circle(x, y - 3, 13).fill({ color: colour, alpha: 0.22 });
-	g.ellipse(x, y + 11, 8, 2.4).fill(0xffffff).stroke({ width: 1.2, color: INK });
-	g.rect(x - 1.4, y + 4, 2.8, 7).fill(BRASS).stroke({ width: 1, color: INK });
-	g.moveTo(x - 8, y + 4).lineTo(x - 8, y - 4).arc(x, y - 4, 8, Math.PI, 0).lineTo(x + 8, y + 4).closePath().fill({ color: colour, alpha: 0.85 }).stroke(line(1.6));
+	g.ellipse(x, y + 11, 8, 2.4)
+		.fill(0xffffff)
+		.stroke({ width: 1.2, color: INK });
+	g.rect(x - 1.4, y + 4, 2.8, 7)
+		.fill(BRASS)
+		.stroke({ width: 1, color: INK });
+	g.moveTo(x - 8, y + 4)
+		.lineTo(x - 8, y - 4)
+		.arc(x, y - 4, 8, Math.PI, 0)
+		.lineTo(x + 8, y + 4)
+		.closePath()
+		.fill({ color: colour, alpha: 0.85 })
+		.stroke(line(1.6));
 	g.rect(x - 5, y - 6, 2, 8).fill({ color: 0xffffff, alpha: 0.7 });
-	g.circle(x, y - 13.5, 2).fill(BRASS).stroke({ width: 1, color: INK });
+	g.circle(x, y - 13.5, 2)
+		.fill(BRASS)
+		.stroke({ width: 1, color: INK });
 	return g;
 }
 
@@ -100,14 +148,20 @@ export function cakeBoxes(n: number, full: number): Graphics {
 		const bulge = n - 1 - i < full;
 		const dx = (i % 2 ? 1 : -1) * 1.2 + (bulge ? -3 : 0);
 		const colour = [PINK_LIGHT, MINT_LIGHT, 0xfff3c4][i % 3]!;
-		g.rect(x + dx, dy, w, h - 1).fill(colour).stroke(thin(1.4));
+		g.rect(x + dx, dy, w, h - 1)
+			.fill(colour)
+			.stroke(thin(1.4));
 		g.rect(x + dx + w / 2 - 1, dy, 2, h - 1).fill(RASPBERRY);
 		if (bulge) {
-			g.poly([x + dx - 1, dy, x + dx + w + 1, dy - 3, x + dx + w + 1, dy - 1, x + dx - 1, dy + 2]).fill(colour).stroke(thin(1.1));
+			g.poly([x + dx - 1, dy, x + dx + w + 1, dy - 3, x + dx + w + 1, dy - 1, x + dx - 1, dy + 2])
+				.fill(colour)
+				.stroke(thin(1.1));
 			croissant(g, x + dx + 6, dy + 1, 0.4);
 		}
 	}
-	g.circle(x + w / 2 + 1, top + 1, 2).circle(x + w / 2 + 4, top + 0.5, 1.6).fill(RASPBERRY);
+	g.circle(x + w / 2 + 1, top + 1, 2)
+		.circle(x + w / 2 + 4, top + 0.5, 1.6)
+		.fill(RASPBERRY);
 	return g;
 }
 
@@ -120,12 +174,24 @@ export function crumbBin(load: number): Graphics {
 		for (let i = 0; i < heap * 2; i++) {
 			const bx = x + 4 + ((i * 7) % (w - 8));
 			const by = y - h + 1 - Math.floor(i / 2) * 2.2 + (i % 2);
-			if (i % 3 === 0) g.poly([bx, by, bx + 7, by - 2, bx + 2, by + 2]).fill(0xffffff).stroke({ width: 0.9, color: INK, join: "round" });
-			else g.moveTo(bx, by + 1).arc(bx + 3, by + 1, 3, Math.PI, 0).closePath().fill(0xfff4e0).stroke({ width: 0.9, color: INK });
+			if (i % 3 === 0)
+				g.poly([bx, by, bx + 7, by - 2, bx + 2, by + 2])
+					.fill(0xffffff)
+					.stroke({ width: 0.9, color: INK, join: "round" });
+			else
+				g.moveTo(bx, by + 1)
+					.arc(bx + 3, by + 1, 3, Math.PI, 0)
+					.closePath()
+					.fill(0xfff4e0)
+					.stroke({ width: 0.9, color: INK });
 		}
 	}
-	g.poly([x, y - h, x + w, y - h, x + w - 4, y, x + 4, y]).fill(PINK).stroke(line(2));
-	g.moveTo(x + 6, y - h / 2).lineTo(x + w - 6, y - h / 2).stroke({ width: 1.5, color: 0xffffff, alpha: 0.8 });
+	g.poly([x, y - h, x + w, y - h, x + w - 4, y, x + 4, y])
+		.fill(PINK)
+		.stroke(line(2));
+	g.moveTo(x + 6, y - h / 2)
+		.lineTo(x + w - 6, y - h / 2)
+		.stroke({ width: 1.5, color: 0xffffff, alpha: 0.8 });
 	return g;
 }
 
@@ -139,20 +205,29 @@ function bench(g: Graphics, w = 150, flour = true, front = CREAM, display = true
 	/** A height on the top, laid out for the full -70 top, squeezed onto this one. */
 	const Y = (y: number) => -38 + ((y + 38) * (-38 - back)) / 32;
 	g.rect(-w / 2 + 5, -44 + 6, w, 44).fill(SHADOW);
-	g.roundRect(-w / 2 - 12, back, w + 24, -38 - back, 4).fill(MARBLE).stroke(line(4));
-	g.moveTo(-w / 2 + 4, Y(-62)).quadraticCurveTo(-w / 2 + 40, Y(-54), -w / 2 + 70, Y(-64)).moveTo(w / 2 - 50, Y(-50)).quadraticCurveTo(w / 2 - 30, Y(-60), w / 2, Y(-56));
+	g.roundRect(-w / 2 - 12, back, w + 24, -38 - back, 4)
+		.fill(MARBLE)
+		.stroke(line(4));
+	g.moveTo(-w / 2 + 4, Y(-62))
+		.quadraticCurveTo(-w / 2 + 40, Y(-54), -w / 2 + 70, Y(-64))
+		.moveTo(w / 2 - 50, Y(-50))
+		.quadraticCurveTo(w / 2 - 30, Y(-60), w / 2, Y(-56));
 	g.stroke({ width: 1.2, color: CHROME_DARK, alpha: 0.35 });
 	if (flour) {
 		g.ellipse(w / 2 - 26, Y(-55), 18, 4 * ((-38 - back) / 32)).fill({ color: 0xffffff, alpha: 0.9 });
 		for (let k = 0; k < 7; k++) g.circle(w / 2 - 44 + k * 6, Y(-60 + (k % 3) * 3), 0.9);
 		g.fill({ color: 0xffffff, alpha: 0.9 });
 	}
-	g.roundRect(-w / 2, -44, w, 44, 3).fill(front).stroke(line(4));
+	g.roundRect(-w / 2, -44, w, 44, 3)
+		.fill(front)
+		.stroke(line(4));
 	if (display) {
 		const gx = -w / 2 + 6;
 		const gw = w - 12;
 		g.roundRect(gx, -38, gw, 27, 3).fill(GLASS).stroke(thin(2));
-		g.rect(gx + 1, -25, gw - 2, 1.6).fill(0xffffff).stroke({ width: 0.8, color: INK, alpha: 0.4 });
+		g.rect(gx + 1, -25, gw - 2, 1.6)
+			.fill(0xffffff)
+			.stroke({ width: 0.8, color: INK, alpha: 0.4 });
 		const n = Math.floor(gw / 17);
 		const step = gw / n;
 		for (let i = 0; i < n; i++) {
@@ -178,9 +253,13 @@ function bench(g: Graphics, w = 150, flour = true, front = CREAM, display = true
 		}
 		g.poly([gx + 4, -36, gx + 12, -36, gx + 4, -24]).fill({ color: 0xffffff, alpha: 0.7 });
 		g.rect(-w / 2 + 3, -9, w - 6, 6).fill(mix(front, INK, 0.08));
-		g.circle(-w / 2 + 12, -6, 1.6).circle(w / 2 - 12, -6, 1.6).fill(BRASS);
+		g.circle(-w / 2 + 12, -6, 1.6)
+			.circle(w / 2 - 12, -6, 1.6)
+			.fill(BRASS);
 	} else {
-		g.roundRect(-w / 2 + 8, -30, w / 2 - 12, 24, 3).roundRect(4, -30, w / 2 - 12, 24, 3).stroke({ width: 2, color: INK, alpha: 0.3 });
+		g.roundRect(-w / 2 + 8, -30, w / 2 - 12, 24, 3)
+			.roundRect(4, -30, w / 2 - 12, 24, 3)
+			.stroke({ width: 2, color: INK, alpha: 0.3 });
 		g.circle(-6, -18, 2.4).circle(10, -18, 2.4).fill(BRASS).stroke(thin(1));
 	}
 	scallops(g, -w / 2 + 2, w / 2 - 2, -44, 6, [PINK, PINK_LIGHT], 1.4);
@@ -193,9 +272,15 @@ function bench(g: Graphics, w = 150, flour = true, front = CREAM, display = true
 function till(g: Graphics, face: number): void {
 	const { w, h, neck } = MONITOR;
 	g.roundRect(-10, -3, 20, 4.4, 2).fill(PINK).stroke(thin(1.6));
-	g.rect(-3, -neck - 1, 6, neck).fill(PINK).stroke(thin(1.6));
-	g.poly([w / 2 - 15, -neck - h + 1, w / 2 - 6, -neck - h + 1, w / 2 - 7, -neck - h - 1, w / 2 - 14, -neck - h - 1]).fill(0xffffff).stroke({ width: 1.2, color: INK, join: "round" });
-	g.roundRect(-w / 2, -neck - h, w, h, 5).fill(PINK).stroke(line(4));
+	g.rect(-3, -neck - 1, 6, neck)
+		.fill(PINK)
+		.stroke(thin(1.6));
+	g.poly([w / 2 - 15, -neck - h + 1, w / 2 - 6, -neck - h + 1, w / 2 - 7, -neck - h - 1, w / 2 - 14, -neck - h - 1])
+		.fill(0xffffff)
+		.stroke({ width: 1.2, color: INK, join: "round" });
+	g.roundRect(-w / 2, -neck - h, w, h, 5)
+		.fill(PINK)
+		.stroke(line(4));
 	g.roundRect(-w / 2 + 4, -neck - h + 4, w - 8, h - 8, 2.5).fill(face);
 	g.rect(-w / 2 + 6, -neck - h + 6, 3, h - 14).fill({ color: 0xffffff, alpha: 0.18 });
 }
@@ -262,7 +347,9 @@ export function furniture(kind: FurnitureKind): Graphics {
 			g.circle(-36, -88, 6).fill(0xffffff).stroke(thin(1.6));
 			g.moveTo(-36, -88).lineTo(-33, -91).stroke({ width: 1.2, color: RED });
 			for (const gx of [-56, -16]) {
-				g.roundRect(gx - 6, -80, 12, 5, 2).fill(CHROME_DARK).stroke(thin(1.4));
+				g.roundRect(gx - 6, -80, 12, 5, 2)
+					.fill(CHROME_DARK)
+					.stroke(thin(1.4));
 				g.rect(gx - 1, -76, 2, 4).fill(INK);
 				g.rect(gx + 4, -80, 10, 2.6).fill(INK);
 			}
@@ -324,7 +411,11 @@ export function furniture(kind: FurnitureKind): Graphics {
 			g.roundRect(-21, -40, 42, 40, 4).stroke(line(4));
 			g.roundRect(-17, -96, 34, 56, 8).fill({ color: GLASS, alpha: 0.95 }).stroke(line(3));
 			g.roundRect(-14, -82, 28, 39, 6).fill({ color: PINK, alpha: 0.75 });
-			for (const [lx, ly] of [[-6, -70], [6, -60], [-3, -52]] as const) {
+			for (const [lx, ly] of [
+				[-6, -70],
+				[6, -60],
+				[-3, -52],
+			] as const) {
 				g.circle(lx, ly, 5).fill(LEMON).stroke(thin(1.2));
 				for (let k = 0; k < 4; k++) g.moveTo(lx, ly).lineTo(lx + Math.cos((k * Math.PI) / 2) * 4, ly + Math.sin((k * Math.PI) / 2) * 4);
 				g.stroke({ width: 0.8, color: 0xffffff });
@@ -369,11 +460,17 @@ export function furniture(kind: FurnitureKind): Graphics {
 			for (const [i, sx] of [-50, 0, 50].entries()) {
 				const shell = [PINK, MINT, LEMON][i]!;
 				g.ellipse(sx + 4, -2, 26, 5).fill(SHADOW);
-				g.roundRect(sx - 25, -26, 50, 24, 12).fill(shell).stroke(line(3.5));
+				g.roundRect(sx - 25, -26, 50, 24, 12)
+					.fill(shell)
+					.stroke(line(3.5));
 				for (let k = -20; k <= 20; k += 5) g.circle(sx + k, -4, 2.2);
 				g.fill(mix(shell, INK, 0.12));
-				g.roundRect(sx - 23, -34, 46, 9, 4).fill(IVORY).stroke(thin(2));
-				g.roundRect(sx - 25, -58, 50, 26, 13).fill(shell).stroke(line(3.5));
+				g.roundRect(sx - 23, -34, 46, 9, 4)
+					.fill(IVORY)
+					.stroke(thin(2));
+				g.roundRect(sx - 25, -58, 50, 26, 13)
+					.fill(shell)
+					.stroke(line(3.5));
 				g.ellipse(sx - 8, -50, 9, 3.4).fill({ color: 0xffffff, alpha: 0.5 });
 			}
 			break;
@@ -412,7 +509,10 @@ export function furniture(kind: FurnitureKind): Graphics {
 				[-118, 34, 11],
 				[-130, 16, 9],
 			];
-			for (const [ry, rx, rr] of rings) g.roundRect(-rx, ry - rr, rx * 2, rr * 2, rr).fill(PINK).stroke(line(3));
+			for (const [ry, rx, rr] of rings)
+				g.roundRect(-rx, ry - rr, rx * 2, rr * 2, rr)
+					.fill(PINK)
+					.stroke(line(3));
 			for (const [ry, rx] of rings) g.ellipse(-rx * 0.4, ry - 4, rx * 0.3, 2.6).fill({ color: 0xffffff, alpha: 0.55 });
 			for (let k = 0; k < 26; k++) {
 				const ri = k % rings.length;
@@ -452,18 +552,24 @@ export function furniture(kind: FurnitureKind): Graphics {
 			painAuChocolat(g, ST_L + 13, -21, 0.75);
 			painAuChocolat(g, ST_R - 13, -21, 0.75);
 			g.rect(ST_L + 4, -45, 2.4, 22).fill({ color: 0xffffff, alpha: 0.7 });
-			g.roundRect(ST_L - 2, -49, w + 4, 5, 2).fill(0xffffff).stroke(thin(2));
+			g.roundRect(ST_L - 2, -49, w + 4, 5, 2)
+				.fill(0xffffff)
+				.stroke(thin(2));
 			break;
 		}
 		case "catalogue": {
 			// The sweet shelf (search): candy jars in a row on a shelf on legs.
 			g.rect(ST_L + 4, -42 + 5, w, 42).fill(SHADOW);
-			g.rect(ST_L + 4, -10, 5, 10).rect(ST_R - 9, -10, 5, 10).fill(WOOD_DARK);
+			g.rect(ST_L + 4, -10, 5, 10)
+				.rect(ST_R - 9, -10, 5, 10)
+				.fill(WOOD_DARK);
 			g.roundRect(ST_L, -12, w, 5, 2).fill(WOOD).stroke(thin(2.5));
 			candyJar(g, ST_L + 8, -12, 13, 22, 1, PINK);
 			candyJar(g, 0, -12, 13, 26, 3, MINT);
 			candyJar(g, ST_R - 8, -12, 13, 20, 5, LEMON);
-			g.roundRect(ST_L - 2, -44, w + 4, 6, 2).fill(WOOD).stroke(thin(2.5));
+			g.roundRect(ST_L - 2, -44, w + 4, 6, 2)
+				.fill(WOOD)
+				.stroke(thin(2.5));
 			lollipop(g, ST_L + 5, -50, 5, 6, LILAC);
 			break;
 		}
@@ -475,24 +581,37 @@ export function furniture(kind: FurnitureKind): Graphics {
 			for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) g.rect(ST_L + 2 + c * 12 + (r % 2 ? 6 : 0), -38 + r * 9, 1.2, 8);
 			for (let r = 1; r < 4; r++) g.rect(ST_L + 1, -40 + r * 9 + 2, w - 2, 1.2);
 			g.fill({ color: BRICK_DARK, alpha: 0.6 });
-			g.roundRect(OVEN_WINDOW.x - 2, OVEN_WINDOW.y - 2, OVEN_WINDOW.w + 4, OVEN_WINDOW.h + 4, 4).fill(COPPER).stroke(thin(2));
+			g.roundRect(OVEN_WINDOW.x - 2, OVEN_WINDOW.y - 2, OVEN_WINDOW.w + 4, OVEN_WINDOW.h + 4, 4)
+				.fill(COPPER)
+				.stroke(thin(2));
 			g.roundRect(OVEN_WINDOW.x, OVEN_WINDOW.y, OVEN_WINDOW.w, OVEN_WINDOW.h, 3).fill(0x5a2c1e);
 			loaf(g, -8, -16, 0.55);
 			loaf(g, 8, -16, 0.55);
 			g.rect(OVEN_WINDOW.x, OVEN_WINDOW.y + OVEN_WINDOW.h - 4, OVEN_WINDOW.w, 2).fill({ color: HEAT, alpha: 0.8 });
-			g.roundRect(ST_L + 8, -9, w - 16, 3, 1.5).fill(BRASS).stroke(thin(1));
-			g.roundRect(ST_L - 2, -42, w + 4, 5, 2).fill(COPPER).stroke(thin(2));
+			g.roundRect(ST_L + 8, -9, w - 16, 3, 1.5)
+				.fill(BRASS)
+				.stroke(thin(1));
+			g.roundRect(ST_L - 2, -42, w + 4, 5, 2)
+				.fill(COPPER)
+				.stroke(thin(2));
 			break;
 		}
 		case "stamps": {
 			// The tasting stand (test): a little pastel table under the point, a jar of cake testers.
 			g.rect(ST_L + 4, -38 + 5, w, 38).fill(SHADOW);
-			g.moveTo(ST_L + 6, 0).quadraticCurveTo(ST_L + 4, -18, ST_L + 8, -32).moveTo(ST_R - 6, 0).quadraticCurveTo(ST_R - 4, -18, ST_R - 8, -32);
+			g.moveTo(ST_L + 6, 0)
+				.quadraticCurveTo(ST_L + 4, -18, ST_L + 8, -32)
+				.moveTo(ST_R - 6, 0)
+				.quadraticCurveTo(ST_R - 4, -18, ST_R - 8, -32);
 			g.stroke({ width: 3.4, color: BRASS, cap: "round" });
 			g.rect(ST_L + 8, -14, w - 16, 2.6).fill(BRASS);
-			g.roundRect(ST_L + 1, -54, 10, 15, 2).fill(GLASS).stroke({ width: 2, color: INK });
+			g.roundRect(ST_L + 1, -54, 10, 15, 2)
+				.fill(GLASS)
+				.stroke({ width: 2, color: INK });
 			for (const x of [ST_L + 4, ST_L + 6, ST_L + 8.5]) g.rect(x, -60, 1.2, 12).fill(WOOD_DARK);
-			g.roundRect(ST_L - 2, -38, w + 4, 8, 3).fill(MINT).stroke(line(3.5));
+			g.roundRect(ST_L - 2, -38, w + 4, 8, 3)
+				.fill(MINT)
+				.stroke(line(3.5));
 			scallops(g, ST_L, ST_R, -30, 4, [MINT_LIGHT], 1.2);
 			break;
 		}
@@ -501,20 +620,32 @@ export function furniture(kind: FurnitureKind): Graphics {
 			// the point (the handset and the pad: the rig).
 			g.rect(ST_L + 8, -38 + 5, w - 8, 38).fill(SHADOW);
 			g.roundRect(-5, -32, 10, 30, 3).fill(BRASS).stroke(line(3));
-			g.roundRect(ST_L + 2, -4, w - 4, 6, 3).fill(BRASS).stroke(line(3));
-			g.roundRect(ST_L - 2, -38, w + 4, 7, 3).fill(0xffffff).stroke(line(3.5));
-			g.roundRect(ST_L + 1, -50, 22, 13, 5).fill(PINK).stroke(line(3));
-			g.circle(ST_L + 12, -44, 3.4).fill(0xffffff).stroke(thin(1.2));
+			g.roundRect(ST_L + 2, -4, w - 4, 6, 3)
+				.fill(BRASS)
+				.stroke(line(3));
+			g.roundRect(ST_L - 2, -38, w + 4, 7, 3)
+				.fill(0xffffff)
+				.stroke(line(3.5));
+			g.roundRect(ST_L + 1, -50, 22, 13, 5)
+				.fill(PINK)
+				.stroke(line(3));
+			g.circle(ST_L + 12, -44, 3.4)
+				.fill(0xffffff)
+				.stroke(thin(1.2));
 			break;
 		}
 		case "outbox": {
 			// The pick-up shelf (outbox): a shelf on legs, cake boxes tied with ribbon on its lower
 			// tier, a striped canopy over it (the shelf's top and what goes on it: the rig).
 			g.rect(ST_L + 4, -36 + 5, w, 36).fill(SHADOW);
-			g.rect(ST_L + 2, -36, 4, 36).rect(ST_R - 6, -36, 4, 36).fill(BRASS);
+			g.rect(ST_L + 2, -36, 4, 36)
+				.rect(ST_R - 6, -36, 4, 36)
+				.fill(BRASS);
 			g.rect(ST_L + 2, -12, w - 4, 3).fill(BRASS);
 			for (const [i, bx] of [-12, 2].entries()) {
-				g.rect(ST_L + 16 + bx, -23, 15, 11).fill(i ? MINT_LIGHT : PINK_LIGHT).stroke(thin(1.4));
+				g.rect(ST_L + 16 + bx, -23, 15, 11)
+					.fill(i ? MINT_LIGHT : PINK_LIGHT)
+					.stroke(thin(1.4));
 				g.rect(ST_L + 22.5 + bx, -23, 2, 11).fill(RASPBERRY);
 			}
 			g.rect(-2, -84, 4, 34).fill(0xffffff).stroke(thin(1));
@@ -548,8 +679,14 @@ export function furniture(kind: FurnitureKind): Graphics {
 			// (rigpoints.ts), the service bell on it: the same bell the rig draws over while it rings.
 			g.rect(-14, -31 + 5, 32, 31).fill(SHADOW);
 			g.roundRect(-18, -24, 36, 24, 3).fill(GLASS).stroke(line(3));
-			for (let k = 0; k < 3; k++) g.circle(-10 + k * 10, -8, 4).fill(DOUGH).stroke(thin(1));
-			for (let k = 0; k < 3; k++) g.circle(-11 + k * 10, -9, 0.9).circle(-9 + k * 10, -7, 0.9).fill(CHOC_DARK);
+			for (let k = 0; k < 3; k++)
+				g.circle(-10 + k * 10, -8, 4)
+					.fill(DOUGH)
+					.stroke(thin(1));
+			for (let k = 0; k < 3; k++)
+				g.circle(-11 + k * 10, -9, 0.9)
+					.circle(-9 + k * 10, -7, 0.9)
+					.fill(CHOC_DARK);
 			g.roundRect(-18, -31, 36, 7, 2).fill(0xffffff).stroke(line(3));
 			g.moveTo(-6, -31).arc(0, -31, 6, Math.PI, 0).closePath().fill(0xf2bd3c).stroke(line(2));
 			g.rect(-1, -41, 2, 4).fill(INK);

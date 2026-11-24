@@ -1,4 +1,3 @@
-
 import { SUN } from "../../scene/office/paper";
 
 export const LAWN = 0xbfe8c6;

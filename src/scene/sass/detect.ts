@@ -6,7 +6,6 @@ import type { Agent, Commands, Session, Snapshot } from "../../watcher/model";
 import { type Role, type Trigger, type TriggerKind, hash, roleFor } from "./types";
 import { MIN } from "../../shared/time";
 
-
 /** The thresholds the detectors use. Exported so tests and the dump can name them. */
 export const LIMITS = {
 	/** A shell command running this long is a long build. */
@@ -121,12 +120,23 @@ export function detect(prev: Snapshot | undefined, snap: Snapshot, now: number, 
 	const prevMembers = new Map<string, Member>();
 	for (const s of prevSessions.values()) for (const m of members(s)) prevMembers.set(m.id, m);
 	/** Was this event time new since the last snapshot? With none, only if it's recent. */
-	const fresh = (at: number | undefined, before: number | undefined) =>
-		at !== undefined && (prev ? at !== before : now - at < LIMITS.freshMs);
+	const fresh = (at: number | undefined, before: number | undefined) => at !== undefined && (prev ? at !== before : now - at < LIMITS.freshMs);
 
 	const sessions = allSessions(snap);
 	const push = (kind: TriggerKind, m: Member, magnitude: number, key: string, ongoing: boolean, extra: Partial<Trigger> = {}) =>
-		out.push({ kind, who: m.id, session: m.session.id, project: m.session.project, role: m.role, magnitude, key, ongoing, crew: crewCount([m.session]), ...extra, vars: { name: m.session.title, ...extra.vars } });
+		out.push({
+			kind,
+			who: m.id,
+			session: m.session.id,
+			project: m.session.project,
+			role: m.role,
+			magnitude,
+			key,
+			ongoing,
+			crew: crewCount([m.session]),
+			...extra,
+			vars: { name: m.session.title, ...extra.vars },
+		});
 
 	let finishedCrew: Member[] = [];
 	for (const s of sessions) {
@@ -196,14 +206,19 @@ export function detect(prev: Snapshot | undefined, snap: Snapshot, now: number, 
 		}
 		for (const m of crew) {
 			const a = m.agent;
-			if (a?.status === "stalled") push("stalled", m, mins(now - a.lastWriteAt), `stall:${a.id}:${a.lastWriteAt}`, true, { vars: { min: mins(now - a.lastWriteAt) } });
+			if (a?.status === "stalled")
+				push("stalled", m, mins(now - a.lastWriteAt), `stall:${a.id}:${a.lastWriteAt}`, true, { vars: { min: mins(now - a.lastWriteAt) } });
 		}
 
 		// Idle, and finished-but-open (idle with a PR up). Waking up after a long idle.
 		const prs = s.prs ?? [];
 		if (s.state === "idle" && !s.waiting && now - s.stateSince >= LIMITS.idleMs) {
 			const idle = mins(now - s.stateSince);
-			if (prs.length > 0 && idle < 10) push("finished", lead, idle, `done:${s.id}:${s.stateSince}`, true, { tag: "pr", vars: { time: clock(s.stateSince), time2: clock(s.stateSince + MIN) } });
+			if (prs.length > 0 && idle < 10)
+				push("finished", lead, idle, `done:${s.id}:${s.stateSince}`, true, {
+					tag: "pr",
+					vars: { time: clock(s.stateSince), time2: clock(s.stateSince + MIN) },
+				});
 			else push("idle", lead, idle, `idle:${s.id}:${s.stateSince}`, true, { vars: { min: idle } });
 			if (now - s.stateSince >= LIMITS.slackerMs) {
 				const busy = sessions.find((o) => o.id !== s.id && o.project === s.project && o.state === "busy" && !o.waiting);
@@ -219,7 +234,10 @@ export function detect(prev: Snapshot | undefined, snap: Snapshot, now: number, 
 		const seen = new Set((was?.prs ?? []).map((p) => p.number));
 		for (const p of prs) {
 			if (seen.has(p.number) || (!was && !(p.at !== undefined && now - p.at < 5 * MIN))) continue;
-			push("prOpened", lead, prs.length, `pr:${s.id}:${p.number}`, false, { tag: crew.length > 2 ? "crew" : undefined, vars: { n: p.number, count: prs.length } });
+			push("prOpened", lead, prs.length, `pr:${s.id}:${p.number}`, false, {
+				tag: crew.length > 2 ? "crew" : undefined,
+				vars: { n: p.number, count: prs.length },
+			});
 			const t = teammate(lead);
 			if (t) push("reaction", t, prs.length, `react-pr:${s.id}:${p.number}`, false, { tag: "pr" });
 		}

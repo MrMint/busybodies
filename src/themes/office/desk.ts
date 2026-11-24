@@ -18,7 +18,9 @@ export function inTray(t: Tray, seed: string): Graphics {
 	const { x, y, w, sheet } = PROPS.tray;
 	const s = hash(seed);
 	// The tray.
-	g.roundRect(x - 2, y - 4, w + 4, 6, 2).fill(0xc5cbe0).stroke(line(2));
+	g.roundRect(x - 2, y - 4, w + 4, 6, 2)
+		.fill(0xc5cbe0)
+		.stroke(line(2));
 	if (t.out) return g;
 	// The pile: each sheet a little off the last; past 95% it leans like it means it.
 	const lean = t.buried ? 0.35 : t.spill ? 0.15 : 0;
@@ -61,8 +63,12 @@ export function mugPile(n: number): Graphics {
 		for (let i = 0; i < rows[r]! && k < n; i++, k++) {
 			const mx = x + (i + r * 0.5) * (w + 1);
 			const my = y - (r + 1) * h;
-			g.roundRect(mx, my, w, h, 1.5).fill(k % 2 ? 0xffffff : 0xffd0e4).stroke(line(1.4));
-			g.moveTo(mx + w, my + 1.5).arc(mx + w, my + h / 2, h / 2 - 1.5, -Math.PI / 2, Math.PI / 2).stroke(line(1.2));
+			g.roundRect(mx, my, w, h, 1.5)
+				.fill(k % 2 ? 0xffffff : 0xffd0e4)
+				.stroke(line(1.4));
+			g.moveTo(mx + w, my + 1.5)
+				.arc(mx + w, my + h / 2, h / 2 - 1.5, -Math.PI / 2, Math.PI / 2)
+				.stroke(line(1.2));
 		}
 	}
 	return g;
@@ -76,7 +82,9 @@ export function testLamp(lamp: Lamp): Graphics {
 	g.roundRect(x - 5, y + 10, 10, 3, 1.5).fill(INK);
 	g.rect(x - 1, y - 2, 2, 12).fill(INK);
 	g.circle(x, y - 6, 9).fill({ color: colour, alpha: 0.25 });
-	g.circle(x, y - 6, 5).fill(colour).stroke(line(1.6));
+	g.circle(x, y - 6, 5)
+		.fill(colour)
+		.stroke(line(1.6));
 	return g;
 }
 
@@ -93,9 +101,14 @@ export function drawers(n: number, full: number): Graphics {
 		const bulge = n - 1 - i < full;
 		const dx = bulge ? -4 : 0;
 		if (bulge) {
-			for (let f = 0; f < 3; f++) g.rect(x + dx + 3 + f * 5, dy - 3 + (f % 2), 4, 5).fill([SUN, 0x9be3ff, 0xffbdd6][f]!).stroke({ width: 1, color: INK });
+			for (let f = 0; f < 3; f++)
+				g.rect(x + dx + 3 + f * 5, dy - 3 + (f % 2), 4, 5)
+					.fill([SUN, 0x9be3ff, 0xffbdd6][f]!)
+					.stroke({ width: 1, color: INK });
 		}
-		g.roundRect(x + dx + 1, dy, w - 2, h - 2, 2).fill(0xdfe4f2).stroke(line(1.5));
+		g.roundRect(x + dx + 1, dy, w - 2, h - 2, 2)
+			.fill(0xdfe4f2)
+			.stroke(line(1.5));
 		g.roundRect(x + dx + w / 2 - 3, dy + h / 2 - 2, 6, 2, 1).fill(INK);
 	}
 	return g;
@@ -112,18 +125,26 @@ export function skip(load: number): Graphics {
 		for (let i = 0; i < heap * 2; i++) {
 			const bx = x + 6 + ((i * 7) % (w - 10));
 			const by = y - h + 1 - Math.floor(i / 2) * 2.2 + (i % 2);
-			g.circle(bx, by, 3).fill(i % 3 ? 0xffffff : 0xf1f3fa).stroke({ width: 1, color: INK });
+			g.circle(bx, by, 3)
+				.fill(i % 3 ? 0xffffff : 0xf1f3fa)
+				.stroke({ width: 1, color: INK });
 		}
 	}
-	g.poly([x + 2, y - h, x + w - 2, y - h, x + w - 5, y, x + 5, y]).fill(0x3d7dff).stroke(line(2));
-	g.roundRect(x, y - h - 2, w, 3.4, 1.5).fill(0x2f63d0).stroke({ width: 1.5, color: INK });
+	g.poly([x + 2, y - h, x + w - 2, y - h, x + w - 5, y, x + 5, y])
+		.fill(0x3d7dff)
+		.stroke(line(2));
+	g.roundRect(x, y - h - 2, w, 3.4, 1.5)
+		.fill(0x2f63d0)
+		.stroke({ width: 1.5, color: INK });
 	// The three chasing arrows, in white.
 	const cx = x + w / 2;
 	const cy = y - h / 2 + 0.5;
 	for (let k = 0; k < 3; k++) {
 		const a = -Math.PI / 2 + (k * Math.PI * 2) / 3;
 		const b = a + 1.6;
-		g.moveTo(cx + Math.cos(a) * 3.4, cy + Math.sin(a) * 3.4).lineTo(cx + Math.cos(b) * 3.4, cy + Math.sin(b) * 3.4).stroke({ width: 1.2, color: 0xffffff });
+		g.moveTo(cx + Math.cos(a) * 3.4, cy + Math.sin(a) * 3.4)
+			.lineTo(cx + Math.cos(b) * 3.4, cy + Math.sin(b) * 3.4)
+			.stroke({ width: 1.2, color: 0xffffff });
 		g.circle(cx + Math.cos(b) * 3.4, cy + Math.sin(b) * 3.4, 0.9).fill(0xffffff);
 	}
 	return g;
@@ -132,7 +153,13 @@ export function skip(load: number): Graphics {
 /** The room's planner on its back wall: a board in three columns of sticky notes, a colour per
  * session, as many as fit and a "+n" for the rest. Another theme takes it with its own board
  * colour, column words and dressing. */
-export function plannerOf(r: Rect, rows: PlannerRow[], board = 0xf7e7c6, columns: readonly string[] = OFFICE_WORDS.columns, dress?: (g: Graphics, r: Rect) => void): Container {
+export function plannerOf(
+	r: Rect,
+	rows: PlannerRow[],
+	board = 0xf7e7c6,
+	columns: readonly string[] = OFFICE_WORDS.columns,
+	dress?: (g: Graphics, r: Rect) => void,
+): Container {
 	const c = new Container();
 	const g = batched();
 	c.addChild(g);
@@ -146,11 +173,16 @@ export function plannerOf(r: Rect, rows: PlannerRow[], board = 0xf7e7c6, columns
 	const fit = perRow * Math.floor((r.h - head - 6) / (note + gap));
 	for (let k = 0; k < 3; k++) {
 		const cx = r.x + 6 + k * colW;
-		if (k > 0) g.moveTo(cx, r.y + 6).lineTo(cx, r.y + r.h - 6).stroke({ width: 1.5, color: INK, alpha: 0.3 });
+		if (k > 0)
+			g.moveTo(cx, r.y + 6)
+				.lineTo(cx, r.y + r.h - 6)
+				.stroke({ width: 1.5, color: INK, alpha: 0.3 });
 		const t = label(columns[k]!, 6.5, "800");
 		t.position.set(cx + (colW - t.width) / 2, r.y + 5);
 		c.addChild(t);
-		const notes = rows.flatMap((row) => Array.from({ length: [row.pending, row.active, row.done][k]! }, () => NOTE_COLOURS[hash(row.session) % NOTE_COLOURS.length]!));
+		const notes = rows.flatMap((row) =>
+			Array.from({ length: [row.pending, row.active, row.done][k]! }, () => NOTE_COLOURS[hash(row.session) % NOTE_COLOURS.length]!),
+		);
 		notes.slice(0, notes.length > fit ? fit - 1 : fit).forEach((colour, i) => {
 			const nx = cx + 2 + (i % perRow) * (note + gap);
 			const ny = r.y + head + Math.floor(i / perRow) * (note + gap);
@@ -171,8 +203,12 @@ export function plannerOf(r: Rect, rows: PlannerRow[], board = 0xf7e7c6, columns
  * back edge at `back` (a work desk's is DESK_TOP, low enough that its lead's face shows over it). */
 export function desk(g: Graphics, front: number, top: number, w = 150, back = -70): void {
 	g.rect(-w / 2 + 5, -44 + 6, w, 44).fill(SHADOW);
-	g.roundRect(-w / 2 - 12, back, w + 24, -38 - back, 8).fill(top).stroke(line(4));
-	g.roundRect(-w / 2, -44, w, 44, 5).fill(front).stroke(line(4));
+	g.roundRect(-w / 2 - 12, back, w + 24, -38 - back, 8)
+		.fill(top)
+		.stroke(line(4));
+	g.roundRect(-w / 2, -44, w, 44, 5)
+		.fill(front)
+		.stroke(line(4));
 }
 
 /** The desk's screen, its stand's foot at the origin (propspots.ts MONITOR): an ink foot and neck,
@@ -181,7 +217,9 @@ export function screen(g: Graphics, face: number): void {
 	const { w, h, neck } = MONITOR;
 	g.roundRect(-9, -3, 18, 4, 2).fill(INK);
 	g.rect(-3, -neck - 1, 6, neck).fill(INK);
-	g.roundRect(-w / 2, -neck - h, w, h, 6).fill(face).stroke(line(4));
+	g.roundRect(-w / 2, -neck - h, w, h, 6)
+		.fill(face)
+		.stroke(line(4));
 }
 
 /** Body extents, from the base: left edge (toward the wall) and right edge (toward the user). */
@@ -203,7 +241,9 @@ export function station(g: Graphics, kind: FurnitureKind): void {
 		case "catalogue": {
 			// A card catalogue: a chest of little drawers on legs (the rig draws the open tray on top).
 			g.rect(ST_L + 4, -42 + 5, w, 42).fill(SHADOW);
-			g.rect(ST_L + 4, -10, 5, 10).rect(ST_R - 9, -10, 5, 10).fill(INK);
+			g.rect(ST_L + 4, -10, 5, 10)
+				.rect(ST_R - 9, -10, 5, 10)
+				.fill(INK);
 			g.roundRect(ST_L, -42, w, 34, 4).fill(WOOD).stroke(line(4));
 			for (let r = 0; r < 2; r++)
 				for (let c = 0; c < 3; c++) {
@@ -218,7 +258,9 @@ export function station(g: Graphics, kind: FurnitureKind): void {
 			// A copier's body: a pale box on a plinth with its paper drawer (lid, panel and trays: the rig).
 			g.rect(ST_L + 4, -40 + 5, w, 40).fill(SHADOW);
 			g.roundRect(ST_L, -40, w, 34, 5).fill(0xf1f3fa).stroke(line(4));
-			g.roundRect(ST_L + 5, -20, w - 10, 9, 3).fill(0xdfe4f2).stroke({ width: 2, color: INK });
+			g.roundRect(ST_L + 5, -20, w - 10, 9, 3)
+				.fill(0xdfe4f2)
+				.stroke({ width: 2, color: INK });
 			g.roundRect(-5, -17, 10, 3, 1.5).fill(INK);
 			g.roundRect(ST_L + 2, -7, w - 4, 7, 3).fill(SLAB);
 			break;
@@ -226,9 +268,13 @@ export function station(g: Graphics, kind: FurnitureKind): void {
 		case "stamps": {
 			// The QA desk: a small table, its top just under the point (ink pad and forms: the rig).
 			g.rect(ST_L + 4, -38 + 5, w, 38).fill(SHADOW);
-			g.rect(ST_L + 4, -32, 5, 32).rect(ST_R - 9, -32, 5, 32).fill(INK);
+			g.rect(ST_L + 4, -32, 5, 32)
+				.rect(ST_R - 9, -32, 5, 32)
+				.fill(INK);
 			g.rect(ST_L + 6, -14, w - 12, 3).fill(INK);
-			g.roundRect(ST_L - 2, -38, w + 4, 8, 3).fill(WOOD_TOP).stroke(line(4));
+			g.roundRect(ST_L - 2, -38, w + 4, 8, 3)
+				.fill(WOOD_TOP)
+				.stroke(line(4));
 			break;
 		}
 		case "phone": {
@@ -236,9 +282,15 @@ export function station(g: Graphics, kind: FurnitureKind): void {
 			// the handset's cord goes (the receiver and the notepad at the working point: the rig).
 			g.rect(ST_L + 8, -38 + 5, w - 8, 38).fill(SHADOW);
 			g.roundRect(-5, -32, 10, 30, 3).fill(WOOD).stroke(line(3));
-			g.roundRect(ST_L + 2, -4, w - 4, 6, 3).fill(WOOD).stroke(line(3));
-			g.roundRect(ST_L - 2, -38, w + 4, 7, 3).fill(WOOD_TOP).stroke(line(4));
-			g.roundRect(ST_L + 1, -50, 22, 13, 5).fill(0x3d4256).stroke(line(3));
+			g.roundRect(ST_L + 2, -4, w - 4, 6, 3)
+				.fill(WOOD)
+				.stroke(line(3));
+			g.roundRect(ST_L - 2, -38, w + 4, 7, 3)
+				.fill(WOOD_TOP)
+				.stroke(line(4));
+			g.roundRect(ST_L + 1, -50, 22, 13, 5)
+				.fill(0x3d4256)
+				.stroke(line(3));
 			g.roundRect(ST_L + 5, -47, 14, 3, 1.5).fill(0x9aa3bd);
 			break;
 		}
@@ -246,9 +298,15 @@ export function station(g: Graphics, kind: FurnitureKind): void {
 			// A mail cart: a canvas bin on a frame with wheels (the wire tray on top: the rig).
 			g.rect(ST_L + 4, -40 + 5, w, 36).fill(SHADOW);
 			g.roundRect(ST_L, -40, w, 30, 5).fill(0xb9c7e6).stroke(line(4));
-			g.moveTo(ST_L + 6, -30).quadraticCurveTo(0, -22, ST_R - 6, -30).stroke({ width: 2, color: INK, alpha: 0.5 });
-			g.rect(ST_L + 3, -10, 4, 6).rect(ST_R - 7, -10, 4, 6).fill(INK);
-			g.circle(ST_L + 5, -3, 3.5).circle(ST_R - 5, -3, 3.5).fill(INK);
+			g.moveTo(ST_L + 6, -30)
+				.quadraticCurveTo(0, -22, ST_R - 6, -30)
+				.stroke({ width: 2, color: INK, alpha: 0.5 });
+			g.rect(ST_L + 3, -10, 4, 6)
+				.rect(ST_R - 7, -10, 4, 6)
+				.fill(INK);
+			g.circle(ST_L + 5, -3, 3.5)
+				.circle(ST_R - 5, -3, 3.5)
+				.fill(INK);
 			break;
 		}
 	}

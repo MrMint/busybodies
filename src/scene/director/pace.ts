@@ -27,8 +27,7 @@ export interface Pace {
 }
 
 /** Tool calls a minute, from a snapshot rate. */
-export const perMinute = (rate: ToolRate | undefined): number | undefined =>
-	rate && rate.windowMs > 0 ? (rate.calls * 60_000) / rate.windowMs : undefined;
+export const perMinute = (rate: ToolRate | undefined): number | undefined => (rate && rate.windowMs > 0 ? (rate.calls * 60_000) / rate.windowMs : undefined);
 
 /**
  * How fast a character walks. With a tool rate: 20 calls a minute (or 8 and a recent write) is a

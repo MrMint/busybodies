@@ -237,7 +237,12 @@ export class Scheduler {
 				.filter((c) => longOk || c.text.length <= o.longChars)
 				.filter((c) => now - (this.#saidBy.get(`${t.who}|${c.line.text}`) ?? -Infinity) >= o.repeatMs)
 				.filter((c) => now - (this.#said.get(c.line.text) ?? -Infinity) >= o.anyoneRepeatMs);
-			const line = pick(options.map((c) => c.line), t, `${o.seed}|${t.key}|${now}|${this.#picks++}`, o.rareWeight);
+			const line = pick(
+				options.map((c) => c.line),
+				t,
+				`${o.seed}|${t.key}|${now}|${this.#picks++}`,
+				o.rareWeight,
+			);
 			if (!line) {
 				// Nothing fits right now (all said, or all too long at this zoom). An event is
 				// dropped; an ongoing state waits until it escalates or `againMs` passes.
@@ -245,7 +250,17 @@ export class Scheduler {
 				continue;
 			}
 			const text = options.find((c) => c.line === line)!.text;
-			const say: Say = { who: t.who, session: t.session, text, kind: line.kind === "thought" ? "thought" : "said", trigger: t.kind, project: t.project, line, at: now, until: now + bubbleMs(text) };
+			const say: Say = {
+				who: t.who,
+				session: t.session,
+				text,
+				kind: line.kind === "thought" ? "thought" : "said",
+				trigger: t.kind,
+				project: t.project,
+				line,
+				at: now,
+				until: now + bubbleMs(text),
+			};
 			says.push(say);
 			this.#active.push(say);
 			this.#lastStart = now;
@@ -268,7 +283,13 @@ export class Scheduler {
 		const times: number[] = active.map((b) => b.until);
 		const full = active.length >= o.maxBubbles(this.#view.zoom) ? Math.min(...active.map((b) => b.until)) : -Infinity;
 		const ready = (t: Trigger) =>
-			Math.max(now + 1, full, this.#lastStart + o.gapMs, (this.#spokeAt.get(t.who) ?? -Infinity) + o.cooldownMs, ...active.filter((b) => b.who === t.who).map((b) => b.until));
+			Math.max(
+				now + 1,
+				full,
+				this.#lastStart + o.gapMs,
+				(this.#spokeAt.get(t.who) ?? -Infinity) + o.cooldownMs,
+				...active.filter((b) => b.who === t.who).map((b) => b.until),
+			);
 		for (const p of this.#pending) times.push(Math.min(ready(p.t), p.since + o.eventTtlMs));
 		for (const t of this.#ongoing) {
 			const s = this.#states.get(t.key);
@@ -298,7 +319,12 @@ export class Scheduler {
 		const options = fitting(t, "sign", this.#lines)
 			.map((line) => ({ line, text: fill(line.text, t.vars) }))
 			.filter((c): c is { line: Line; text: string } => c.text !== undefined);
-		const line = pick(options.map((c) => c.line), t, `${this.opts.seed}|sign|${t.key}|${now}`, this.opts.rareWeight);
+		const line = pick(
+			options.map((c) => c.line),
+			t,
+			`${this.opts.seed}|sign|${t.key}|${now}`,
+			this.opts.rareWeight,
+		);
 		return line && { line, text: options.find((c) => c.line === line)!.text, trigger: t };
 	}
 

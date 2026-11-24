@@ -14,5 +14,4 @@ export const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) 
 export const count = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : 0);
 
 /** `{ [key]: value }`, or `{}` when the value is missing: for spreading optional fields. */
-export const optional = <K extends string, V>(key: K, value: V | undefined) =>
-	(value === undefined ? {} : { [key]: value }) as { [P in K]?: V };
+export const optional = <K extends string, V>(key: K, value: V | undefined) => (value === undefined ? {} : { [key]: value }) as { [P in K]?: V };

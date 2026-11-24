@@ -60,11 +60,19 @@ try {
 		await page.evaluate((s) => window.__busybodies!.goTo(s as never, true), stop);
 		do await frame();
 		while (await page.evaluate(() => window.__busybodies!.camera().moving));
-		texts.add(await page.evaluate(() => JSON.stringify({ hud: document.body.innerText, snapshot: window.__busybodies!.snapshot(), signs: window.__busybodies!.signs() })));
+		texts.add(
+			await page.evaluate(() =>
+				JSON.stringify({ hud: document.body.innerText, snapshot: window.__busybodies!.snapshot(), signs: window.__busybodies!.signs() }),
+			),
+		);
 	};
 	const room = (name: string) => page.evaluate((n) => window.__busybodies!.layout()!.areas.find((a) => a.name === n)!.id, name);
 
-	texts.add(await page.evaluate(() => JSON.stringify({ hud: document.body.innerText, snapshot: window.__busybodies!.snapshot(), signs: window.__busybodies!.signs() })));
+	texts.add(
+		await page.evaluate(() =>
+			JSON.stringify({ hud: document.body.innerText, snapshot: window.__busybodies!.snapshot(), signs: window.__busybodies!.signs() }),
+		),
+	);
 	await hold(2.5);
 	await go({ kind: "room", id: await room("lanternfish") });
 	await hold(3);

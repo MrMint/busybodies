@@ -49,15 +49,17 @@ export interface Line {
 type LineOpts = Partial<Pick<Line, "min" | "max" | "tag" | "needs" | "rare" | "place" | "boardText" | "themed" | "office">>;
 type Opts = LineOpts;
 const K = { s: "said", t: "thought", n: "sign" } as const;
-const line = (board: boolean) => (trigger: TriggerKind, k: keyof typeof K, text: string, role: Speaker, note = "", o: Opts = {}): Line => ({
-	trigger,
-	kind: K[k],
-	text,
-	role,
-	note,
-	...o,
-	...(board ? { board: true } : {}),
-});
+const line =
+	(board: boolean) =>
+	(trigger: TriggerKind, k: keyof typeof K, text: string, role: Speaker, note = "", o: Opts = {}): Line => ({
+		trigger,
+		kind: K[k],
+		text,
+		role,
+		note,
+		...o,
+		...(board ? { board: true } : {}),
+	});
 const B = line(true);
 const N = line(false);
 /** A line that isn't on the board, for a theme's own bank (bank.ts): `(trigger, "s" | "t" | "n", text, role, note, opts)`. */
@@ -71,7 +73,10 @@ export const BOARD_LINES: Line[] = [
 	B("waiting", "s", "Still here. Arm is fine. Arm is thriving.", "lead", "lead · 10 min", { min: 10 }),
 	B("waiting", "t", "They have a life. I respect that. I have a paddle.", "lead", "lead", { min: 2 }),
 	B("waiting", "s", "I will name a variable after you.", "lead", "rare variant", { rare: true }),
-	B("waiting", "n", "Now serving: nobody. Your number: 1.", "room", "wall sign", { place: "sign", themed: { factory: "Next up: nobody. Your number: 1.", bakery: "Order up: nobody. Your number: 1." } }),
+	B("waiting", "n", "Now serving: nobody. Your number: 1.", "room", "wall sign", {
+		place: "sign",
+		themed: { factory: "Next up: nobody. Your number: 1.", bakery: "Order up: nobody. Your number: 1." },
+	}),
 	// A test failed
 	B("testFailed", "s", "It passed on my machine. I am the machine.", "verifier", "verifier"),
 	B("testFailed", "s", "Same line. Same red. Hello again.", "verifier", "verifier · 2nd failure", { min: 2 }),
@@ -85,7 +90,10 @@ export const BOARD_LINES: Line[] = [
 	B("longBuild", "s", "It is fine. I love waiting.", "builder", "builder · 20 min", { min: 20, max: 30 }),
 	B("longBuild", "s", "The progress bar and I have stopped speaking.", "builder", "builder · 30 min", { min: 30 }),
 	B("longBuild", "t", "I could have written a faster build by now. Twice.", "builder", "builder"),
-	B("longBuild", "n", "A build started at {time}. It is still the build.", "room", "event ticker", { place: "ticker", boardText: "A build started at 13:52. It is still the build." }),
+	B("longBuild", "n", "A build started at {time}. It is still the build.", "room", "event ticker", {
+		place: "ticker",
+		boardText: "A build started at 13:52. It is still the build.",
+	}),
 	// PR opened
 	B("prOpened", "s", "PR #{n}. Frame it.", "lead", "lead", { boardText: "PR #219. Frame it." }),
 	B("prOpened", "s", "Ship it before it changes its mind.", "lead", "lead"),
@@ -98,7 +106,11 @@ export const BOARD_LINES: Line[] = [
 	B("review", "s", "Rejected, with love. Mostly with notes.", "reviewer", "reviewer"),
 	B("review", "s", "Approved. Do not make it weird.", "reviewer", "reviewer · pass"),
 	B("review", "t", "Rejected twice. It was a good comma.", "lead", "the builder", { min: 2 }),
-	B("review", "n", "This meeting could have been a diff.", "room", "meeting room sign", { office: true, place: "meeting:sign", themed: { factory: "This inspection could have been a diff." } }),
+	B("review", "n", "This meeting could have been a diff.", "room", "meeting room sign", {
+		office: true,
+		place: "meeting:sign",
+		themed: { factory: "This inspection could have been a diff." },
+	}),
 	// Hiring a subagent
 	B("hiring", "s", "One job. Find saveDraft.", "lead", "lead · hiring", { max: 2 }),
 	B("hiring", "s", "Bring it back in one piece.", "lead", "lead · hiring", { max: 2 }),
@@ -110,15 +122,29 @@ export const BOARD_LINES: Line[] = [
 	// Stalled
 	B("stalled", "t", "…", "anyone", "anyone · 5 min", { min: 5, max: 7 }),
 	B("stalled", "s", "I am thinking. It is a process. Do not rush the process.", "anyone", "7 min", { min: 7 }),
-	B("stalled", "s", "No output for {min} minutes. I am being mysterious.", "anyone", "9 min", { min: 9, boardText: "No output for 9 minutes. I am being mysterious." }),
+	B("stalled", "s", "No output for {min} minutes. I am being mysterious.", "anyone", "9 min", {
+		min: 9,
+		boardText: "No output for 9 minutes. I am being mysterious.",
+	}),
 	B("stalled", "n", "Not frozen. Buffering with intent.", "room", "desk note, appears by itself", { place: "desk" }),
 	// Idle
 	B("idle", "t", "This is a planning phase. The plane is part of the plan.", "lead", "feet up", { max: 10 }),
 	B("idle", "s", "Feet up is a valid posture for deep work.", "lead", "feet up", { max: 10 }),
 	B("idle", "t", "zzz… webhooks… zzz", "lead", "asleep", { min: 10 }),
 	B("woken", "s", "I was resting my context.", "lead", "woken up"),
-	B("idle", "n", "Idle: {min} min. Plant: also idle.", "room", "wall sign, long-idle room", { office: true, place: "sign", min: 20, boardText: "Idle: 31 min. Plant: also idle.", themed: { factory: "Idle: {min} min. Forklift: also idle." } }),
-	B("idle", "n", "Last watered when this room was busy.", "room", "the plant", { office: true, place: "plant", min: 20, themed: { factory: "Last oiled when this bay was busy." } }),
+	B("idle", "n", "Idle: {min} min. Plant: also idle.", "room", "wall sign, long-idle room", {
+		office: true,
+		place: "sign",
+		min: 20,
+		boardText: "Idle: 31 min. Plant: also idle.",
+		themed: { factory: "Idle: {min} min. Forklift: also idle." },
+	}),
+	B("idle", "n", "Last watered when this room was busy.", "room", "the plant", {
+		office: true,
+		place: "plant",
+		min: 20,
+		themed: { factory: "Last oiled when this bay was busy." },
+	}),
 	// Compacting
 	B("compacting", "s", "Who needs the first three hours anyway.", "lead", "lead"),
 	B("compacting", "s", "Forgetting things on purpose. Very healthy.", "lead", "lead"),
@@ -135,9 +161,15 @@ export const BOARD_LINES: Line[] = [
 	B("finished", "s", "Finished at {time}. Scrolling since {time2}.", "lead", "lead", { boardText: "Finished at 14:10. Scrolling since 14:11." }),
 	B("finished", "s", "My PR is up. My feet are also up.", "lead", "lead", { tag: "pr" }),
 	B("finished", "n", "Gone to lunch. Forever.", "room", "note on the empty desk", { office: true, place: "desk" }),
-	B("finished", "n", "Finished? Close your own session.", "room", "kitchen sign", { office: true, place: "kitchen:sign", themed: { factory: "Finished? Clock yourself out." } }),
+	B("finished", "n", "Finished? Close your own session.", "room", "kitchen sign", {
+		office: true,
+		place: "kitchen:sign",
+		themed: { factory: "Finished? Clock yourself out." },
+	}),
 	// Paused or sent home
-	B("paused", "s", "Sent home at {time}. Taking it well. Telling everyone.", "builder", "builder · water cooler", { boardText: "Sent home at 14:02. Taking it well. Telling everyone." }),
+	B("paused", "s", "Sent home at {time}. Taking it well. Telling everyone.", "builder", "builder · water cooler", {
+		boardText: "Sent home at 14:02. Taking it well. Telling everyone.",
+	}),
 	B("paused", "s", "Paused? I prefer “on sabbatical”.", "scout", "scout", { office: true }),
 	B("paused", "s", "I was this close. I was not this close.", "builder", "builder"),
 	B("paused", "s", "Wheee.", "scout", "paused scout, in the chair"),
@@ -145,7 +177,11 @@ export const BOARD_LINES: Line[] = [
 	B("coffeeQueue", "s", "It has one job.", "anyone", "first in line"),
 	B("coffeeQueue", "s", "The machine is thinking. We know the feeling.", "anyone", "second in line"),
 	B("coffeeQueue", "s", "Skipped the queue. Bold.", "anyone", "about the one running past"),
-	B("coffeeQueue", "n", "One cup per green build.", "room", "sign on the machine", { office: true, place: "kitchen:sign", themed: { factory: "One snack per green build." } }),
+	B("coffeeQueue", "n", "One cup per green build.", "room", "sign on the machine", {
+		office: true,
+		place: "kitchen:sign",
+		themed: { factory: "One snack per green build." },
+	}),
 	// Reactions to each other
 	B("reaction", "t", "Must be nice.", "anyone", "side-eye at feet up", { tag: "slacker" }),
 	B("reaction", "s", "It is one PR.", "anyone", "eye roll at the confetti", { tag: "pr" }),
@@ -182,7 +218,14 @@ export const NEW_LINES: Line[] = [
 	N("waiting", "s", "Small question. Tiny. Whenever.", "anyone", "at once", { max: 5 }),
 	N("waiting", "t", "Hand up. Polite face. Holding.", "anyone", "at once", { max: 5 }),
 	N("waiting", "s", "I have prepared a short speech for when you come back.", "lead", "5 min", { min: 5 }),
-	N("waiting", "t", "Counting ceiling tiles. There are forty. I recounted. Forty-one.", "lead", "15 min", { office: true, min: 15, themed: { factory: "Counting rivets on the girder. There are forty. I recounted. Forty-one.", bakery: "Counting sprinkles on the counter. There are forty. I recounted. Forty-one." } }),
+	N("waiting", "t", "Counting ceiling tiles. There are forty. I recounted. Forty-one.", "lead", "15 min", {
+		office: true,
+		min: 15,
+		themed: {
+			factory: "Counting rivets on the girder. There are forty. I recounted. Forty-one.",
+			bakery: "Counting sprinkles on the counter. There are forty. I recounted. Forty-one.",
+		},
+	}),
 	N("waiting", "s", "Switched arms. This one is fresher.", "anyone", "20 min", { min: 20 }),
 	N("waiting", "s", "I wrote you a little welcome-back card. It is mostly sighs.", "lead", "30 min", { min: 30 }),
 	N("waiting", "t", "When they return I will act surprised. Casual. Unbothered.", "lead", "45 min", { min: 45 }),
@@ -226,7 +269,11 @@ export const NEW_LINES: Line[] = [
 	// PR opened
 	N("prOpened", "s", "Is it hot in here or is it just my diff.", "lead", ""),
 	N("prOpened", "t", "I would like to be thanked in the release notes. By name.", "lead", ""),
-	N("prOpened", "s", "Another PR. I am basically a factory now. A cute factory.", "lead", "2+ PRs", { office: true, min: 2, themed: { factory: "Another PR. I am basically an assembly line now. A cute one." } }),
+	N("prOpened", "s", "Another PR. I am basically a factory now. A cute factory.", "lead", "2+ PRs", {
+		office: true,
+		min: 2,
+		themed: { factory: "Another PR. I am basically an assembly line now. A cute one." },
+	}),
 	N("prOpened", "s", "Up for review. Please be gentle. Or thorough. Gently thorough.", "lead", ""),
 	N("prOpened", "s", "Confetti budget: exhausted. Worth it.", "lead", "3+ PRs", { min: 3 }),
 	// Review comes back
@@ -235,7 +282,10 @@ export const NEW_LINES: Line[] = [
 	N("review", "s", "It is good. I hate that it is good.", "reviewer", "", { rare: true }),
 	// Hiring a subagent
 	N("hiring", "s", "You are hired. Benefits: none. Vibes: excellent.", "lead", "hiring", { max: 2 }),
-	N("hiring", "s", "Welcome aboard. Do not touch my stapler.", "anyone", "hiring", { office: true, themed: { factory: "Welcome aboard. Do not touch my wrench.", bakery: "Welcome aboard. Do not touch my piping bag." } }),
+	N("hiring", "s", "Welcome aboard. Do not touch my stapler.", "anyone", "hiring", {
+		office: true,
+		themed: { factory: "Welcome aboard. Do not touch my wrench.", bakery: "Welcome aboard. Do not touch my piping bag." },
+	}),
 	N("hiring", "t", "Middle management. I have arrived.", "anyone", "depth 2+", { min: 2 }),
 	// A big crew
 	N("bigCrew", "s", "Everybody in! Grab a task! Any task!", "lead", "4+ at once"),
@@ -247,7 +297,11 @@ export const NEW_LINES: Line[] = [
 	// Stalled
 	N("stalled", "t", "Loading thoughts. Please hold.", "anyone", "5 min", { min: 5 }),
 	N("stalled", "s", "I am not stuck. I am savouring.", "anyone", "6 min", { min: 6 }),
-	N("stalled", "t", "A cobweb has asked if I am using this desk.", "anyone", "12 min", { office: true, min: 12, themed: { factory: "A cobweb has asked if I am using this bench." } }),
+	N("stalled", "t", "A cobweb has asked if I am using this desk.", "anyone", "12 min", {
+		office: true,
+		min: 12,
+		themed: { factory: "A cobweb has asked if I am using this bench." },
+	}),
 	N("stalled", "s", "Any minute now. That is a promise. A loose one.", "anyone", "8 min", { min: 8 }),
 	// Idle: comically lazy
 	N("idle", "s", "I am conserving energy for a future emergency.", "lead", "feet up", { max: 10 }),
@@ -257,7 +311,12 @@ export const NEW_LINES: Line[] = [
 	N("idle", "s", "Do not wake me unless it is a green build or cake.", "lead", "asleep, mumbling", { min: 15 }),
 	N("idle", "t", "zzz… refactor… everything… zzz", "lead", "asleep", { min: 20 }),
 	N("idle", "s", "I have achieved a perfect nap. Science should study me.", "lead", "long idle", { min: 30 }),
-	N("idle", "n", "Out of office. In the office.", "room", "wall sign, long-idle room", { office: true, place: "sign", min: 30, themed: { factory: "Off shift. On the floor." } }),
+	N("idle", "n", "Out of office. In the office.", "room", "wall sign, long-idle room", {
+		office: true,
+		place: "sign",
+		min: 30,
+		themed: { factory: "Off shift. On the floor." },
+	}),
 	// Back to work after a long idle
 	N("woken", "s", "I am up. I was always up. Where am I.", "lead", "after 10+ min idle"),
 	N("woken", "s", "Back! Refreshed! Slightly creased!", "lead", "after 10+ min idle"),
@@ -265,7 +324,10 @@ export const NEW_LINES: Line[] = [
 	N("woken", "s", "Did I miss anything. Do not answer that.", "lead", "after 30+ min idle", { min: 30 }),
 	N("woken", "s", "My keyboard has a face-shaped dent. Unrelated.", "lead", "after 20+ min idle", { min: 20 }),
 	// Compacting
-	N("compacting", "s", "Into the shredder you go, small memories. You were loved.", "lead", "", { office: true, themed: { factory: "Into the crusher you go, small memories. You were loved." } }),
+	N("compacting", "s", "Into the shredder you go, small memories. You were loved.", "lead", "", {
+		office: true,
+		themed: { factory: "Into the crusher you go, small memories. You were loved." },
+	}),
 	N("compacting", "t", "What was I doing. Something brilliant, probably.", "lead", "2nd+", { min: 2 }),
 	N("compacting", "s", "Fresh mind. Same opinions.", "lead", "3rd+", { min: 3 }),
 	// Crashed
@@ -281,7 +343,10 @@ export const NEW_LINES: Line[] = [
 	N("paused", "t", "Benched. Mid-sentence. The drama.", "anyone", ""),
 	N("paused", "s", "I was just getting to the good part.", "anyone", ""),
 	// The coffee queue
-	N("coffeeQueue", "s", "Is this the line for coffee or the line for the line.", "anyone", "4+ in the kitchen", { min: 4, themed: { factory: "Is this the line for snacks or the line for the line.", bakery: "Is this the queue for coffee or for the queue for coffee." } }),
+	N("coffeeQueue", "s", "Is this the line for coffee or the line for the line.", "anyone", "4+ in the kitchen", {
+		min: 4,
+		themed: { factory: "Is this the line for snacks or the line for the line.", bakery: "Is this the queue for coffee or for the queue for coffee." },
+	}),
 	N("coffeeQueue", "t", "I finished my task just to stand here. Worth it.", "anyone", ""),
 	N("coffeeQueue", "s", "Whoever took the last oat milk: we know.", "anyone", "", { rare: true }),
 	// Reactions to each other
@@ -289,7 +354,10 @@ export const NEW_LINES: Line[] = [
 	N("reaction", "s", "Oh look, confetti. Again.", "anyone", "at a PR", { tag: "pr" }),
 	N("reaction", "s", "Green! Everybody freeze!", "anyone", "green build", { tag: "green" }),
 	N("reaction", "t", "I will pretend I did not see that.", "anyone", "near a crash", { tag: "crash" }),
-	N("reaction", "s", "Proud of you. Do not let it go to your hat.", "anyone", "at a PR", { tag: "pr", themed: { office: "Proud of you. Do not let it go to your tie." } }),
+	N("reaction", "s", "Proud of you. Do not let it go to your hat.", "anyone", "at a PR", {
+		tag: "pr",
+		themed: { office: "Proud of you. Do not let it go to your tie." },
+	}),
 	N("reaction", "s", "There, there. Tests are just suggestions.", "anyone", "near a failing test", { tag: "red" }),
 	// The bill
 	N("bill", "s", "Cup two. Warming up.", "lead", "2 cups", { min: 2, max: 4 }),
@@ -298,22 +366,38 @@ export const NEW_LINES: Line[] = [
 	N("bill", "n", "Cups today: {n}.", "room", "mug pile", { place: "mugs" }),
 	// Notes on the fridge
 	N("fridge", "n", "Whoever is on fail number {n}: we believe in you. Mostly.", "room", "", { place: "fridge", tag: "red" }),
-	N("fridge", "n", "Reminder: the sofa is for finished sessions. You know who you are.", "room", "", { office: true, place: "fridge", tag: "done", themed: { factory: "Reminder: the break bench is for finished sessions. You know who you are." } }),
+	N("fridge", "n", "Reminder: the sofa is for finished sessions. You know who you are.", "room", "", {
+		office: true,
+		place: "fridge",
+		tag: "done",
+		themed: { factory: "Reminder: the break bench is for finished sessions. You know who you are." },
+	}),
 	N("fridge", "n", "{name} has been mysterious for {min} minutes.", "room", "", { place: "fridge", tag: "stalled" }),
 	N("fridge", "n", "It is late. The mochis are still typing. Somebody call their parents.", "room", "", { place: "fridge", tag: "late" }),
 	// Crew chatter: a big crew talking shop while it works (the office's shop is paperwork)
 	N("chatter", "s", "Pass the clamp.", "builder", "big crew, busy", { themed: { office: "Pass the hole punch.", bakery: "Pass the piping bag." } }),
-	N("chatter", "s", "Is this wall load-bearing?", "builder", "big crew, busy", { themed: { office: "Is this binder load-bearing?", bakery: "Is this tier load-bearing?" } }),
+	N("chatter", "s", "Is this wall load-bearing?", "builder", "big crew, busy", {
+		themed: { office: "Is this binder load-bearing?", bakery: "Is this tier load-bearing?" },
+	}),
 	N("chatter", "s", "Left a bit. No, your left.", "anyone", "big crew, busy"),
-	N("chatter", "t", "Who moved my hammer.", "builder", "big crew, busy", { themed: { office: "Who moved my stapler.", bakery: "Who moved my rolling pin." } }),
+	N("chatter", "t", "Who moved my hammer.", "builder", "big crew, busy", {
+		themed: { office: "Who moved my stapler.", bakery: "Who moved my rolling pin." },
+	}),
 	N("chatter", "s", "Mine compiles. Yours?", "anyone", "big crew, busy"),
-	N("chatter", "s", "That is not a nail. That is a test.", "builder", "big crew, busy", { themed: { office: "That is not paperwork. That is a test.", bakery: "That is not a sprinkle. That is a test." } }),
+	N("chatter", "s", "That is not a nail. That is a test.", "builder", "big crew, busy", {
+		themed: { office: "That is not paperwork. That is a test.", bakery: "That is not a sprinkle. That is a test." },
+	}),
 	N("chatter", "t", "If I look busy, nobody gives me the migration.", "anyone", "big crew, busy"),
 	N("chatter", "s", "Somebody touched my file. I can feel it.", "anyone", "big crew, busy"),
-	N("chatter", "s", "Two more nails and it is a release.", "builder", "big crew, busy", { themed: { office: "Two more staples and it is a release.", bakery: "Two more layers and it is a release." } }),
+	N("chatter", "s", "Two more nails and it is a release.", "builder", "big crew, busy", {
+		themed: { office: "Two more staples and it is a release.", bakery: "Two more layers and it is a release." },
+	}),
 	// Late at night
 	N("lateNight", "s", "Is it night? I do not believe in night.", "anyone", "after 23:00"),
-	N("lateNight", "t", "The office is spooky after dark. I love it here.", "anyone", "after 23:00", { office: true, themed: { factory: "The shop floor is spooky after dark. I love it here." } }),
+	N("lateNight", "t", "The office is spooky after dark. I love it here.", "anyone", "after 23:00", {
+		office: true,
+		themed: { factory: "The shop floor is spooky after dark. I love it here." },
+	}),
 	N("lateNight", "s", "Midnight snack and a merge conflict. Living the dream.", "lead", "after 23:00"),
 	N("lateNight", "s", "The moon is out. The tests are not.", "anyone", "after 23:00"),
 	N("lateNight", "t", "If I finish before sunrise, it did not happen.", "lead", "after midnight", { min: 0, max: 6 }),

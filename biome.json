@@ -62,11 +62,7 @@
 	},
 	"overrides": [
 		{
-			"includes": [
-				"src/watcher/**",
-				"src/shared/**",
-				"src/bun/**"
-			],
+			"includes": ["src/watcher/**", "src/shared/**", "src/bun/**"],
 			"linter": {
 				"rules": {
 					"style": {
@@ -78,9 +74,7 @@
 								},
 								"patterns": [
 									{
-										"group": [
-											"**/scene/**"
-										],
+										"group": ["**/scene/**"],
 										"message": "The watcher, shared code and the main process sit below the scene and never import it. See AGENTS.md, Architecture."
 									}
 								]

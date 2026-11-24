@@ -43,8 +43,12 @@ function orderBoard(r: Rect, rows: PlannerRow[]): Container {
 	const c = new Container();
 	const g = batched();
 	c.addChild(g);
-	g.roundRect(r.x - 2, r.y - 2, r.w + 4, r.h + 4, 8).fill(PINK).stroke(line(4));
-	g.roundRect(r.x + 4, r.y + 4, r.w - 8, r.h - 8, 4).fill(CHALK).stroke(thin(2));
+	g.roundRect(r.x - 2, r.y - 2, r.w + 4, r.h + 4, 8)
+		.fill(PINK)
+		.stroke(line(4));
+	g.roundRect(r.x + 4, r.y + 4, r.w - 8, r.h - 8, 4)
+		.fill(CHALK)
+		.stroke(thin(2));
 	scallops(g, r.x + 8, r.x + r.w - 8, r.y - 2, 5, [PINK, PINK_LIGHT], 1.3);
 	const colW = (r.w - 12) / 3;
 	const tw = 8;
@@ -64,18 +68,24 @@ function orderBoard(r: Rect, rows: PlannerRow[]): Container {
 		// A string for each line of cards.
 		for (let l = 0; l < lines; l++) {
 			const ry = r.y + head + l * (th + gap + 2);
-			g.moveTo(cx + 1, ry - 0.5).quadraticCurveTo(cx + colW / 2, ry + 1.5, cx + colW - 3, ry - 0.5).stroke({ width: 0.9, color: 0xffffff, alpha: 0.75 });
+			g.moveTo(cx + 1, ry - 0.5)
+				.quadraticCurveTo(cx + colW / 2, ry + 1.5, cx + colW - 3, ry - 0.5)
+				.stroke({ width: 0.9, color: 0xffffff, alpha: 0.75 });
 		}
 		notes.slice(0, notes.length > fit ? fit - 1 : fit).forEach((band, i) => {
 			const nx = cx + 2 + (i % perRow) * (tw + gap);
 			const ny = r.y + head + Math.floor(i / perRow) * (th + gap + 2);
 			const tilt = k === 1 ? ((i % 3) - 1) * 0.7 : 0;
-			g.poly([nx, ny, nx + tw, ny, nx + tw + tilt, ny + th, nx + tilt, ny + th]).fill(0xfffdf4).stroke({ width: 0.9, color: INK });
+			g.poly([nx, ny, nx + tw, ny, nx + tw + tilt, ny + th, nx + tilt, ny + th])
+				.fill(0xfffdf4)
+				.stroke({ width: 0.9, color: INK });
 			g.rect(nx + 0.6, ny + 0.8, tw - 1.2, 2.2).fill(band);
 			g.rect(nx + tw / 2 - 0.8, ny - 1.6, 1.6, 3).fill(BRASS);
 			if (k === 2) {
 				g.rect(nx + tw / 2 - 0.7, ny + 3, 1.4, th - 3).fill(RASPBERRY);
-				g.circle(nx + tw / 2 - 1.4, ny + 6, 1.2).circle(nx + tw / 2 + 1.4, ny + 6, 1.2).fill(RASPBERRY);
+				g.circle(nx + tw / 2 - 1.4, ny + 6, 1.2)
+					.circle(nx + tw / 2 + 1.4, ny + 6, 1.2)
+					.fill(RASPBERRY);
 			}
 		});
 		if (notes.length > fit) {

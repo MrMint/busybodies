@@ -14,7 +14,9 @@ const { values: o, positionals } = parseArgs({ allowPositionals: true, options: 
 const [a, b] = positionals;
 if (!a || !b) throw new Error("usage: bun tools/shot-diff.ts <before dir> <after dir> [--out dir]");
 
-const names = readdirSync(a).filter((f) => f.endsWith(".png") && f !== "contact-sheet.png").sort();
+const names = readdirSync(a)
+	.filter((f) => f.endsWith(".png") && f !== "contact-sheet.png")
+	.sort();
 const browser = await chromium.launch({ channel: "chrome", headless: true });
 let bad = 0;
 try {
@@ -45,7 +47,8 @@ try {
 				let box = [Infinity, Infinity, -1, -1];
 				const out = p.x.createImageData(p.w, p.h);
 				for (let i = 0; i < p.data.length; i += 4) {
-					const same = p.data[i] === q.data[i] && p.data[i + 1] === q.data[i + 1] && p.data[i + 2] === q.data[i + 2] && p.data[i + 3] === q.data[i + 3];
+					const same =
+						p.data[i] === q.data[i] && p.data[i + 1] === q.data[i + 1] && p.data[i + 2] === q.data[i + 2] && p.data[i + 3] === q.data[i + 3];
 					const k = i / 4;
 					if (!same) {
 						n++;

@@ -56,7 +56,11 @@ function pointAt(path: Point[], d: number): { p: Point; dir: Point; i: number } 
 		const seg = Math.hypot(b.x - a.x, b.y - a.y);
 		if (left <= seg || i === path.length - 1) {
 			const t = seg > 0 ? Math.min(1, left / seg) : 0;
-			return { p: { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }, dir: seg > 0 ? { x: (b.x - a.x) / seg, y: (b.y - a.y) / seg } : { x: 1, y: 0 }, i };
+			return {
+				p: { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t },
+				dir: seg > 0 ? { x: (b.x - a.x) / seg, y: (b.y - a.y) / seg } : { x: 1, y: 0 },
+				i,
+			};
 		}
 		left -= seg;
 	}

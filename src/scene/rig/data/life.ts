@@ -125,7 +125,11 @@ export function lifeAt(id: string, ms: number, eyes: Eyes): LifeBeat {
 	const blink = BLINKS.has(eyes) && blinking(id, ms);
 	// One shared beat per glance and blink: nothing made per character per frame.
 	let pair = BEATS.get(where);
-	if (!pair) BEATS.set(where, (pair = [Object.freeze({ blink: false, lookX: where[0], lookY: where[1] }), Object.freeze({ blink: true, lookX: where[0], lookY: where[1] })]));
+	if (!pair)
+		BEATS.set(
+			where,
+			(pair = [Object.freeze({ blink: false, lookX: where[0], lookY: where[1] }), Object.freeze({ blink: true, lookX: where[0], lookY: where[1] })]),
+		);
 	return pair[blink ? 1 : 0];
 }
 const BEATS = new Map<readonly [number, number], readonly [LifeBeat, LifeBeat]>();

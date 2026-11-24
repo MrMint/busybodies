@@ -165,7 +165,9 @@ if (import.meta.main) {
 	else if (cmd === "uninstall") console.log(await uninstall(home));
 	else if (cmd === "status") {
 		const s = await status(home);
-		console.log(s.missing.length === 0 && s.script ? "installed" : s.installed.length ? `partly installed (missing ${s.missing.join(", ")})` : "not installed");
+		console.log(
+			s.missing.length === 0 && s.script ? "installed" : s.installed.length ? `partly installed (missing ${s.missing.join(", ")})` : "not installed",
+		);
 		if (s.events !== undefined) console.log(`${s.events} events recorded`);
 	} else {
 		console.error("usage: bun tools/hooks.ts status|install|uninstall [--home DIR]");

@@ -42,7 +42,9 @@ function frame(world: Floor, stop: Stop): Rect | undefined {
 		// Take in the room's threshold, where its name is painted in the hallway (and its counts
 		// show): below a room above the hallway, above one below it.
 		if (!a) return undefined;
-		return a.band === "top" ? { x: a.rect.x - 10, y: a.rect.y - 10, w: a.rect.w + 20, h: a.rect.h + 64 } : { x: a.rect.x - 10, y: a.rect.y - 54, w: a.rect.w + 20, h: a.rect.h + 64 };
+		return a.band === "top"
+			? { x: a.rect.x - 10, y: a.rect.y - 10, w: a.rect.w + 20, h: a.rect.h + 64 }
+			: { x: a.rect.x - 10, y: a.rect.y - 54, w: a.rect.w + 20, h: a.rect.h + 64 };
 	}
 	const d = world.desks.get(stop.id);
 	return d && { x: d.cell.x - 50, y: d.cell.y - 60, w: d.cell.w + 100, h: d.cell.h + 90 };
@@ -64,7 +66,11 @@ export class CameraMove {
 	#from: View;
 	#to: View;
 	#t = 0;
-	constructor(from: View, to: View, readonly ms = MOVE_MS) {
+	constructor(
+		from: View,
+		to: View,
+		readonly ms = MOVE_MS,
+	) {
 		this.#from = { ...from };
 		this.#to = { ...to };
 	}

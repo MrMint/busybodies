@@ -64,7 +64,12 @@ try {
 			(window as unknown as { gc?: () => void }).gc?.();
 			const m = (performance as unknown as { memory: { usedJSHeapSize: number } }).memory;
 			const b = window.__busybodies!;
-			return { heapMB: m.usedJSHeapSize / 1048576, textures: (window as unknown as { __textures: number }).__textures, characters: b.entities().length, renders: b.counters().renders };
+			return {
+				heapMB: m.usedJSHeapSize / 1048576,
+				textures: (window as unknown as { __textures: number }).__textures,
+				characters: b.entities().length,
+				renders: b.counters().renders,
+			};
 		});
 	const minutes = Number(o.minutes);
 	const rows: { min: number; heapMB: number; textures: number; characters: number; renders: number }[] = [];
@@ -73,7 +78,9 @@ try {
 		const s = await sample();
 		const min = (Date.now() - t0) / 60_000;
 		rows.push({ min, ...s });
-		console.log(`${min.toFixed(1).padStart(5)} min  heap ${s.heapMB.toFixed(1).padStart(6)} MB  textures ${String(s.textures).padStart(4)}  characters ${String(s.characters).padStart(3)}  renders ${s.renders}`);
+		console.log(
+			`${min.toFixed(1).padStart(5)} min  heap ${s.heapMB.toFixed(1).padStart(6)} MB  textures ${String(s.textures).padStart(4)}  characters ${String(s.characters).padStart(3)}  renders ${s.renders}`,
+		);
 		await page.waitForTimeout(30_000);
 	}
 	const warm = rows.find((r) => r.min >= 5) ?? rows[0]!;

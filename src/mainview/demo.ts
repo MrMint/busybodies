@@ -50,7 +50,13 @@ const relevel = (a: Agent, depth: number): Agent => ({ ...a, depth, children: a.
 /** A context this full of a 1M window, as of `at` (metrics: the in-tray). */
 const ctx = (share: number, at = NOW) => ({ used: Math.round(share * 1_000_000), window: 1_000_000, at });
 /** A last test result (metrics: the desk's lamp). */
-const tested = (ok: boolean, at = min(2)): Agent["commands"] => ({ failStreak: ok ? 0 : 1, repeats: 1, failed: ok ? 0 : 1, testsFailed: ok ? 0 : 1, last: { kind: "test", exitCode: ok ? 0 : 1, at } });
+const tested = (ok: boolean, at = min(2)): Agent["commands"] => ({
+	failStreak: ok ? 0 : 1,
+	repeats: 1,
+	failed: ok ? 0 : 1,
+	testsFailed: ok ? 0 : 1,
+	last: { kind: "test", exitCode: ok ? 0 : 1, at },
+});
 
 function session(title: string, project: string, state: string, started: number, extra: Partial<Session> = {}): Session {
 	const id = `demo-session-${++n}`;
@@ -85,7 +91,9 @@ function floorBusy(): Snapshot {
 				todos: { pending: 3, active: 2, done: 6 },
 				cost: { outputTokens: 520_000 },
 				agents: [
-					agent("scout", "Find callers of saveDraft", "running", [agent("scout", "Also find callers", "running", [agent("scout", "Actually looking")])]),
+					agent("scout", "Find callers of saveDraft", "running", [
+						agent("scout", "Also find callers", "running", [agent("scout", "Actually looking")]),
+					]),
 					agent("reviewer", "PR #212, round 2"),
 					agent("designer", "Empty state for exports"),
 					agent("verifier", "Staging walkthrough", "stalled"),
@@ -93,12 +101,29 @@ function floorBusy(): Snapshot {
 					agent("scout", "Count the flags", "finished"),
 				],
 				children: [
-					session("Export endpoint", "lanternfish", "busy", 200, { worktree: "export-endpoint", family: "sonnet", context: ctx(0.42), changes: { files: 6, added: 140, removed: 20 }, commands: tested(true), agents: [agent("verifier", "Run export tests")] }),
-					session("Settings screen", "lanternfish", "busy", 190, { worktree: "settings-screen", family: "haiku", context: ctx(0.18), agents: [agent("scout", "Where is the toggle read?")] }),
+					session("Export endpoint", "lanternfish", "busy", 200, {
+						worktree: "export-endpoint",
+						family: "sonnet",
+						context: ctx(0.42),
+						changes: { files: 6, added: 140, removed: 20 },
+						commands: tested(true),
+						agents: [agent("verifier", "Run export tests")],
+					}),
+					session("Settings screen", "lanternfish", "busy", 190, {
+						worktree: "settings-screen",
+						family: "haiku",
+						context: ctx(0.18),
+						agents: [agent("scout", "Where is the toggle read?")],
+					}),
 					session("Fork: slow CI?", "lanternfish", "idle", 150, { branch: "fork/slow-ci" }),
 				],
 			}),
-			session("Flaky login test", "lanternfish", "busy", 100, { branch: "fix/flaky-login", family: "sonnet", context: ctx(0.55), agents: [agent("verifier", "Same red. Hello again.")] }),
+			session("Flaky login test", "lanternfish", "busy", 100, {
+				branch: "fix/flaky-login",
+				family: "sonnet",
+				context: ctx(0.55),
+				agents: [agent("verifier", "Same red. Hello again.")],
+			}),
 			session("Pagination for /orbits", "orbit-kit", "busy", 260, {
 				branch: "feat/pagination",
 				// Over 80%: papers sliding off. It compacts at +17 s and walks the pile to the shredder.
@@ -111,11 +136,23 @@ function floorBusy(): Snapshot {
 				commands: tested(true),
 				agents: [agent("builder", "Page two"), agent("verifier", "Page two loads"), agent("verifier", "Old cursor test", "finished")],
 			}),
-			session("Rename everything", "orbit-kit", "busy", 90, { branch: "chore/rename", family: "fable", context: ctx(0.3), changes: { files: 48, added: 60, removed: 610 }, agents: [agent("scout", "Find usages of paginate")] }),
+			session("Rename everything", "orbit-kit", "busy", 90, {
+				branch: "chore/rename",
+				family: "fable",
+				context: ctx(0.3),
+				changes: { files: 48, added: 60, removed: 610 },
+				agents: [agent("scout", "Find usages of paginate")],
+			}),
 			session("Crumb cache rewrite", "breadbox", "idle", 240, { branch: "crumb-cache", agents: [agent("scout", "Paused by you", "stalled")] }),
 			session("Changelog draft", "mossy-docs", "idle", 230, { branch: "docs/changelog", agents: [agent("builder", "Sent home by you", "stopped")] }),
 			// Buried to the eyebrows in its in-tray.
-			session("Docs sweep", "mossy-docs", "busy", 60, { branch: "docs/sweep", family: "sonnet", context: ctx(0.97), changes: { files: 22, added: 90, removed: 40 }, cost: { outputTokens: 160_000 } }),
+			session("Docs sweep", "mossy-docs", "busy", 60, {
+				branch: "docs/sweep",
+				family: "sonnet",
+				context: ctx(0.97),
+				changes: { files: 22, added: 90, removed: 40 },
+				cost: { outputTokens: 160_000 },
+			}),
 			session("Webhook spike", "kettle-api", "idle", 210, { branch: "spike/webhooks" }),
 		],
 	};
@@ -232,7 +269,12 @@ const FAMILIES: Agent["family"][] = ["haiku", "sonnet", "opus", "fable", "haiku"
 
 const crewOf = (script: [string, Script][], rate: number) =>
 	script.map(([task, play], i) => {
-		const a: Agent = { ...agent("general-purpose", task), tools: { calls: rate, errors: 0, windowMs: 60_000 }, family: FAMILIES[i % FAMILIES.length], changes: { files: 2 + i, added: 30 + i * 12, removed: 6 + i * 3 } };
+		const a: Agent = {
+			...agent("general-purpose", task),
+			tools: { calls: rate, errors: 0, windowMs: 60_000 },
+			family: FAMILIES[i % FAMILIES.length],
+			changes: { files: 2 + i, added: 30 + i * 12, removed: 6 + i * 3 },
+		};
 		perform(a, play(0), min(0.05 + i * 0.1), true);
 		return a;
 	});
@@ -269,7 +311,12 @@ function release(): Snapshot {
 				cost: { outputTokens: 120_000 },
 				agents: crewOf(HOTFIX_SCRIPT, 20),
 			}),
-			session("Docs sweep", "mossy-docs", "idle", 60, { branch: "docs/sweep", family: "fable", context: ctx(0.22), changes: { files: 9, added: 120, removed: 45 } }),
+			session("Docs sweep", "mossy-docs", "idle", 60, {
+				branch: "docs/sweep",
+				family: "fable",
+				context: ctx(0.22),
+				changes: { files: 9, added: 120, removed: 45 },
+			}),
 		],
 	};
 }
@@ -298,7 +345,9 @@ export function releaseDay(): { after: number; snapshot: Snapshot }[] {
 		});
 		hotfix.agents.forEach((a, k) => perform(a, HOTFIX_SCRIPT[k]![1](t), at - 1500 - k * 50, (i + k) % 2 === 0));
 		// Every edit adds lines: the towers count them.
-		for (const a of [...ship.agents, ...hotfix.agents]) if (a.activity && a.activity.at > at - 3000 && /Edit|Write/.test(a.activity.tool)) a.changes = { ...a.changes!, added: a.changes!.added + 14, removed: a.changes!.removed + 3 };
+		for (const a of [...ship.agents, ...hotfix.agents])
+			if (a.activity && a.activity.at > at - 3000 && /Edit|Write/.test(a.activity.tool))
+				a.changes = { ...a.changes!, added: a.changes!.added + 14, removed: a.changes!.removed + 3 };
 		if (t === 21) ship.agents[2]!.commands = { failStreak: 1, repeats: 1, failed: 1, testsFailed: 1, last: { kind: "test", exitCode: 1, at } };
 		if (t === 30) ship.prs = [{ number: 300, url: "https://example.invalid/pull/300", at }];
 		// The in-tray fills until it buries the lead at 9 s; a compaction at 12 s sends it to the shredder (back well before the PR at 30 s).
@@ -444,7 +493,13 @@ export function demoDay(): { after: number; snapshot: Snapshot }[] {
 /** The story demo's office: a release with a PR up and a verifier on a red streak; a long refactor
  * winding down next door, with a teammate to wave it off. */
 function story(): Snapshot {
-	const red = (k: number, at: number): Agent["commands"] => ({ failStreak: k, repeats: 1, failed: k, testsFailed: k, last: { kind: "test", exitCode: 1, at } });
+	const red = (k: number, at: number): Agent["commands"] => ({
+		failStreak: k,
+		repeats: 1,
+		failed: k,
+		testsFailed: k,
+		last: { kind: "test", exitCode: 1, at },
+	});
 	const kettle = session("Ship the whistle", "kettle-works", "busy", 50, {
 		branch: "release/whistle",
 		prs: [{ number: 31, url: "https://example.invalid/pull/31", state: "OPEN", at: min(4) }],
@@ -506,7 +561,13 @@ export function demoDiary(snapshot: Snapshot): Diary {
 			// Not every project comes in every day: a pattern from its place in the list.
 			if ((back + i) % 3 === 0) continue;
 			const k = projectKey(p);
-			const c = { sessions: 1 + ((back + i) % 3), prsOpened: (back + i) % 2, prsMerged: (back * (i + 1)) % 3 === 1 ? 1 : 0, testsRed: (back + 2 * i) % 4, redeemed: back === 2 + (i % 3) ? 1 : 0 };
+			const c = {
+				sessions: 1 + ((back + i) % 3),
+				prsOpened: (back + i) % 2,
+				prsMerged: (back * (i + 1)) % 3 === 1 ? 1 : 0,
+				testsRed: (back + 2 * i) % 4,
+				redeemed: back === 2 + (i % 3) ? 1 : 0,
+			};
 			d.projects[k] = Object.fromEntries(Object.entries(c).filter(([, v]) => v > 0));
 			for (const kind of DIARY_KINDS) if (d.projects[k]![kind]) d.counts[kind] = (d.counts[kind] ?? 0) + d.projects[k]![kind]!;
 			d.regulars.push(`${k}:lead`);

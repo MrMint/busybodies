@@ -67,8 +67,7 @@ export class SnapshotBuilder {
 		const dir = join(this.roots.home, "sessions");
 		const names = (await readdir(dir).catch(() => [] as string[])).filter((n) => n.endsWith(".json"));
 		const entries = (await Promise.all(names.map((n) => this.files.json<unknown>(join(dir, n))))).map(registryEntry);
-		this.#hooks =
-			(await this.files.fromTail(join(this.roots.home, HOOK_DIR, HOOK_EVENTS), hookEvents, [64 * 1024])) ?? new Map();
+		this.#hooks = (await this.files.fromTail(join(this.roots.home, HOOK_DIR, HOOK_EVENTS), hookEvents, [64 * 1024])) ?? new Map();
 		this.liveProjectDirs = new Set();
 		this.liveHostIds = new Set();
 
@@ -197,13 +196,7 @@ export class SnapshotBuilder {
 			if (!meta) continue;
 			const log = join(dir, `agent-${id}.jsonl`);
 			const lastWriteAt = (await this.files.mtime(log)) ?? (await this.files.mtime(join(dir, name))) ?? 0;
-			const status: AgentStatus = meta.stoppedByUser
-				? "stopped"
-				: meta.finished
-					? "finished"
-					: at - lastWriteAt > STALL_MS
-						? "stalled"
-						: "running";
+			const status: AgentStatus = meta.stoppedByUser ? "stopped" : meta.finished ? "finished" : at - lastWriteAt > STALL_MS ? "stalled" : "running";
 			const quiet = at - lastWriteAt;
 			if (status === "stalled" ? quiet > ABANDON_MS : status !== "running" && quiet > LINGER_MS) continue;
 			const activity = status === "running" ? await this.files.fromTail(log, lastToolCall) : undefined;
@@ -271,7 +264,6 @@ async function nestedDirs(root: string, depth: number): Promise<string[]> {
 	return level;
 }
 
-
 /**
  * Waiting on the person: the hook's last word for this session was a prompt that nothing has
  * answered yet (the transcript hasn't moved since), or a tool that asks the person is open.
@@ -298,7 +290,12 @@ function mergePrs(fromTranscript: PullRequest[], fromDesk: DesktopEntry["prs"]):
 		if (known) {
 			if (typeof d.state === "string") known.state = d.state;
 		} else {
-			out.push({ number: d.prNumber, url: d.url, ...(typeof d.repo === "string" ? { repo: d.repo } : {}), ...(typeof d.state === "string" ? { state: d.state } : {}) });
+			out.push({
+				number: d.prNumber,
+				url: d.url,
+				...(typeof d.repo === "string" ? { repo: d.repo } : {}),
+				...(typeof d.state === "string" ? { state: d.state } : {}),
+			});
 		}
 	}
 	return out;

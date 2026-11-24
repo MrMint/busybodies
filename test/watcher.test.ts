@@ -101,7 +101,11 @@ describe("SnapshotBuilder", () => {
 	};
 
 	const build = (alive: number[]) =>
-		new SnapshotBuilder({ home, desktopIndex: desk }, (pid) => alive.includes(pid), () => NOW).build();
+		new SnapshotBuilder(
+			{ home, desktopIndex: desk },
+			(pid) => alive.includes(pid),
+			() => NOW,
+		).build();
 
 	beforeEach(async () => {
 		home = await mkdtemp(join(tmpdir(), "bb-home-"));
@@ -198,14 +202,17 @@ describe("SnapshotBuilder", () => {
 		await write(join(home, "sessions", "506.json"), "null");
 		await write(join(home, "sessions", "507.json"), "");
 		await write(join(home, "sessions", "notes.txt"), "not a registry file");
-		await write(join(home, "projects", projectSlug(cwd), "s-good.jsonl"), [
-			'{"type":"some-new-record","payload":{"x":1}}',
-			toolLine("Edit", 3000),
-			"[]",
-			"42",
-			'{"type":"assistant","message":{"content":"not an array","usage":"none"}}',
-			'{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t1","name":"Re',
-		].join("\n"));
+		await write(
+			join(home, "projects", projectSlug(cwd), "s-good.jsonl"),
+			[
+				'{"type":"some-new-record","payload":{"x":1}}',
+				toolLine("Edit", 3000),
+				"[]",
+				"42",
+				'{"type":"assistant","message":{"content":"not an array","usage":"none"}}',
+				'{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t1","name":"Re',
+			].join("\n"),
+		);
 		const dir = join(home, "projects", projectSlug(cwd), "s-good", "subagents");
 		await write(join(dir, "agent-a.meta.json"), { agentType: 5, description: ["x"], spawnDepth: "deep", finished: "yes", parentAgentId: {} });
 		await write(join(dir, "agent-a.jsonl"), `${toolLine("Read", 1000)}\n`);

@@ -225,15 +225,16 @@ ApplicationMenu.setApplicationMenu([
 			{ label: "Quit Busybodies", role: "quit", accelerator: "q" },
 		],
 	},
-	{ label: "Edit", submenu: [{ role: "copy", accelerator: "c" }, { role: "selectAll", accelerator: "a" }] },
+	{
+		label: "Edit",
+		submenu: [
+			{ role: "copy", accelerator: "c" },
+			{ role: "selectAll", accelerator: "a" },
+		],
+	},
 	{
 		label: "Window",
-		submenu: [
-			{ role: "minimize", accelerator: "m" },
-			{ role: "close", accelerator: "w" },
-			{ type: "divider" },
-			{ role: "bringAllToFront" },
-		],
+		submenu: [{ role: "minimize", accelerator: "m" }, { role: "close", accelerator: "w" }, { type: "divider" }, { role: "bringAllToFront" }],
 	},
 ]);
 ApplicationMenu.on("application-menu-clicked", (event) => {

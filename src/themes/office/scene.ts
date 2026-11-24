@@ -1,4 +1,3 @@
-
 import { INK } from "../../scene/office/paper";
 import { mix } from "../../scene/office/light";
 import type { Who } from "../../scene/contract";

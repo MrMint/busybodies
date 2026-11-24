@@ -3,7 +3,13 @@ import type { ThemeWords } from "../../scene/theme/words";
 
 export const BAKERY_WORDS: ThemeWords = {
 	areas: { meeting: "tasting table", lobby: "shop front", yours: "pick-up counter", kitchen: "the café", vacant: "closed for icing" },
-	subs: { meeting: "tasted before it's boxed", lobby: "in and out the door", yours: "Order up! waiting on you", kitchen: "idle, finished and on a coffee break", vacant: "back soon" },
+	subs: {
+		meeting: "tasted before it's boxed",
+		lobby: "in and out the door",
+		yours: "Order up! waiting on you",
+		kitchen: "idle, finished and on a coffee break",
+		vacant: "back soon",
+	},
 	signs: {
 		"meeting:sign": { title: "NO CRUMB UNTASTED", body: "Every batch. Every time." },
 		"kitchen:sign": { title: "1 ÉCLAIR PER GREEN BUILD", body: "Finished? Hang up your apron." },

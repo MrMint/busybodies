@@ -32,24 +32,38 @@ export class RobotArm extends Container {
 		super();
 		this.plan = new ArmPlan(left, floorY);
 		// The carriage on the rail, its shoulder hub on top.
-		this.#carriage.roundRect(-17, -ARM.shoulder - 6, 34, ARM.shoulder + 10, 5).fill(STEEL_DARK).stroke(line(3));
+		this.#carriage
+			.roundRect(-17, -ARM.shoulder - 6, 34, ARM.shoulder + 10, 5)
+			.fill(STEEL_DARK)
+			.stroke(line(3));
 		this.#carriage.circle(-10, 4, 3.5).circle(10, 4, 3.5).fill(INK);
 		this.#carriage.circle(0, -ARM.shoulder, 8).fill(STEEL).stroke(line(3));
 		// The upper arm, from its shoulder along +x, its elbow hub at the far end.
-		this.#upper.roundRect(-6, -7, ARM.upper + 12, 14, 7).fill(YELLOW).stroke(line(3));
-		this.#upper.moveTo(10, 0).lineTo(ARM.upper - 10, 0).stroke({ width: 1.5, color: INK, alpha: 0.35 });
+		this.#upper
+			.roundRect(-6, -7, ARM.upper + 12, 14, 7)
+			.fill(YELLOW)
+			.stroke(line(3));
+		this.#upper
+			.moveTo(10, 0)
+			.lineTo(ARM.upper - 10, 0)
+			.stroke({ width: 1.5, color: INK, alpha: 0.35 });
 		this.#upper.circle(ARM.upper, 0, 7).fill(STEEL).stroke(line(2.5));
 		this.#upper.circle(0, 0, 4).fill(INK);
 		// The forearm's sleeve, and the rod that telescopes out of it (a unit long, stretched along x:
 		// only its long edges are drawn, so stretching keeps them crisp).
-		this.#sleeve.roundRect(-4, -6, SLEEVE + 4, 12, 5).fill(YELLOW).stroke(line(3));
+		this.#sleeve
+			.roundRect(-4, -6, SLEEVE + 4, 12, 5)
+			.fill(YELLOW)
+			.stroke(line(3));
 		this.#rod.rect(0, -3, 1, 6).fill(STEEL);
 		this.#rod.rect(0, -3.75, 1, 1.5).rect(0, 2.25, 1, 1.5).fill(INK);
 		// The wrist and the gripper's two fingers (each pivots at the wrist).
 		this.#hand.roundRect(-8, -3, 16, 7, 3).fill(STEEL_DARK).stroke(line(2.5));
 		for (const [i, f] of this.#fingers.entries()) {
 			const s = i ? 1 : -1;
-			f.poly([0, 0, s * 3, 0, s * 4, 11, s * 1, 13]).fill(STEEL).stroke(line(2));
+			f.poly([0, 0, s * 3, 0, s * 4, 11, s * 1, 13])
+				.fill(STEEL)
+				.stroke(line(2));
 		}
 		// What it carries: a crate, middle at the origin.
 		this.#load.rect(-6, -4.5, 12, 9).fill(CRATE).stroke({ width: 1.5, color: INK });
