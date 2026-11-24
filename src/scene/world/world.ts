@@ -162,7 +162,7 @@ export interface Station {
 	queue: Slot[];
 }
 
-export interface World {
+export interface Floor {
 	bounds: Rect;
 	hallway: Rect;
 	/** Every area, in reading order: the top band left to right, then the bottom band. */
@@ -449,7 +449,7 @@ const openInFront = (area: Pick<Area, "cells" | "desks">, cell: Rect) =>
 
 /** The own spots of a desk's cell (or a lent desk row cell) in this world's staging: the aisle's
  * row, or a line's: its pair in front of the belt only where the floor in front is open. */
-function ownPattern(world: Pick<World, "staging">, area: Pick<Area, "cells" | "desks"> | undefined, cell: Rect) {
+function ownPattern(world: Pick<Floor, "staging">, area: Pick<Area, "cells" | "desks"> | undefined, cell: Rect) {
 	if (world.staging?.bay !== "line") return WIDE;
 	return area && openInFront(area, cell) ? LINE : LINE_ABREAST;
 }
@@ -476,7 +476,7 @@ const BARE_LINE_LIFT = 14;
  * A bare cell (its row has no desks) gives four spots; a free desk's cell gives the four in front of
  * that desk. Past these, the crowd (`crowdSlot`) takes the overflow.
  */
-export function crewSpots(world: World, desk: Desk): Slot[] {
+export function crewSpots(world: Floor, desk: Desk): Slot[] {
 	const area = world.areas.find((a) => a.id === desk.areaId);
 	const out: Slot[] = [];
 	const wide = (x: number, y: number, cell: Rect) => {
@@ -573,7 +573,7 @@ const CREW_HALF = (BODY.halfW * STATION_CREW_PX) / BODY.unit;
 
 /** A desk's own end places (SQUEEZE), right end first, each with the desk whose build spot is in
  * its gap (`buildSlot` is just past a desk's left end): the right-hand neighbour's, or its own. */
-export function endGaps(world: World, desk: Desk): { slot: Slot; builder?: string }[] {
+export function endGaps(world: Floor, desk: Desk): { slot: Slot; builder?: string }[] {
 	const area = world.areas.find((a) => a.id === desk.areaId);
 	if (!area) return [];
 	const [lo, hi] = inside(area, CREW_HALF);
@@ -596,7 +596,7 @@ export function endGaps(world: World, desk: Desk): { slot: Slot; builder?: strin
 }
 
 /** The places beside a desk's ends that are its own (`endGaps`). */
-export const endPlaces = (world: World, desk: Desk): Slot[] => endGaps(world, desk).map((g) => g.slot);
+export const endPlaces = (world: Floor, desk: Desk): Slot[] => endGaps(world, desk).map((g) => g.slot);
 
 /** Where the one on an end place steps aside to while a brick run to the build spot in its gap is
  * under way: a short step forward (SQUEEZE.yieldDy), clear of the builder's face and both name
@@ -614,7 +614,7 @@ export function yieldFrom(end: Slot): Slot {
  * the crowd's places held at the room's foot. Spot `crew:i` is the i-th; once the row tightens, its
  * places move as the crew grows (they walk there).
  */
-export function crewPlaces(world: World, desk: Desk, n: number): Slot[] {
+export function crewPlaces(world: Floor, desk: Desk, n: number): Slot[] {
 	const spots = crewSpots(world, desk);
 	const normal = Array.from({ length: n }, (_, i) => crewSpot(spots, desk, i));
 	const area = world.areas.find((a) => a.id === desk.areaId);

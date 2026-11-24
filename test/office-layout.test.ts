@@ -5,7 +5,7 @@ import { FloorPlan } from "../src/scene/world/layout";
 import { demo } from "../src/mainview/demo";
 import { LEAD_SIZE } from "../src/scene/world/placement";
 import { KITCHEN_WALL, MONITOR, ceilingPanels, deskParts } from "../src/scene/world/propspots";
-import { BUILD, DESK_TOP, SEAT, STATIONS_BASE, STATION_CREW, STRIP, type Rect, type World, bodyRect, crewPlaces, crewSlot, endPlaces, faceZone, meets } from "../src/scene/world/world";
+import { BUILD, DESK_TOP, SEAT, STATIONS_BASE, STATION_CREW, STRIP, type Rect, type Floor, bodyRect, crewPlaces, crewSlot, endPlaces, faceZone, meets } from "../src/scene/world/world";
 import type { Agent } from "../src/watcher/model";
 import type { Session, Snapshot } from "../src/watcher/model";
 
@@ -35,7 +35,7 @@ const overlaps = (a: Rect, b: Rect) => a.x < b.x + b.w && b.x < a.x + a.w && a.y
 const inside = (a: Rect, b: Rect) => a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h;
 const flat = (list: Session[]): Session[] => list.flatMap((s) => [s, ...flat(s.children)]);
 
-function checkSane(world: World, sessions: Session[]): void {
+function checkSane(world: Floor, sessions: Session[]): void {
 	const ids = flat(sessions).map((s) => s.id);
 	expect([...world.desks.keys()].sort()).toEqual([...ids].sort());
 	for (const [i, a] of world.areas.entries()) {
@@ -64,7 +64,7 @@ function checkSane(world: World, sessions: Session[]): void {
 	for (const s of flat(sessions)) expect(world.areas.find((a) => a.desks.some((d) => d.id === s.id))!.name).toBe(s.project);
 }
 
-const deskCells = (w: World) => new Map([...w.desks].map(([id, d]) => [id, JSON.stringify(d.cell)]));
+const deskCells = (w: Floor) => new Map([...w.desks].map(([id, d]) => [id, JSON.stringify(d.cell)]));
 
 describe("layout stability", () => {
 	test("adding a session moves no other desk", () => {
@@ -131,7 +131,7 @@ describe("layout stability", () => {
 		const b = session("orbit-kit");
 		const c = session("breadbox");
 		const w1 = plan.update(snap([a, b, c]));
-		const xOf = (w: World, name: string) => w.areas.find((r) => r.name === name)!.rect.x;
+		const xOf = (w: Floor, name: string) => w.areas.find((r) => r.name === name)!.rect.x;
 		const w2 = plan.update(snap([a, c]));
 		expect(xOf(w2, "lanternfish")).toBe(xOf(w1, "lanternfish"));
 		expect(xOf(w2, "breadbox")).toBe(xOf(w1, "breadbox"));
@@ -224,7 +224,7 @@ describe("layout scaling", () => {
 describe("stations", () => {
 	const crew = (count: number): Agent[] =>
 		Array.from({ length: count }, (_, i) => ({ id: `c${i}`, role: "general-purpose", task: "invented", depth: 1, status: "running", lastWriteAt: 0, children: [] }));
-	const where = (w: World, project: string) =>
+	const where = (w: Floor, project: string) =>
 		new Map(w.areas.find((a) => a.name === project)!.stations.map((st) => [st.id, JSON.stringify([st.base, st.use, st.queue])]));
 
 	test("stations never move as sessions come and go, above the hallway or below it", () => {

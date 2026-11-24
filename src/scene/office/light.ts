@@ -16,7 +16,7 @@ import { LAMPS_ON, type Phase, SUNLIGHT, flicker } from "../world/daylight";
 
 import { hash } from "./paper";
 import type { SceneLight } from "../theme/types";
-import type { Area, Rect, World } from "../world/world";
+import type { Area, Rect, Floor } from "../world/world";
 
 /** Light-map texels per world pixel, at most (a big office gets fewer, to stay under MAX_SIDE). */
 const SCALE = 1 / 6;
@@ -29,7 +29,7 @@ const FOCUS_DIM = 0.66;
 export interface LightInput {
 	light: SceneLight;
 	phase: Phase;
-	world: World;
+	world: Floor;
 	/** The area the camera is on (a room stop, or a desk's room), if any. */
 	focus?: string;
 	/** Each session's desk, and its state ("busy", "idle"). */

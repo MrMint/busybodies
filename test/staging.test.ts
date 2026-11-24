@@ -9,7 +9,7 @@ import { FloorPlan } from "../src/scene/world/layout";
 import { DEFAULT_STAGING, habitsFor, stagingOf } from "../src/scene/world/staging";
 import { FACTORY_STAGING } from "../src/scene/theme/factory-staging";
 import { CRATE, crateAt, crateRide } from "../src/scene/world/crate";
-import { AISLE, BELT, DESK_TOP, type Desk, OVERLAP, ROW, type Rect, SQUEEZE, type World, bodyRect, crewPlaces, crewSpots, endPlaces, faceZone, meets, overlapX } from "../src/scene/world/world";
+import { AISLE, BELT, DESK_TOP, type Desk, OVERLAP, ROW, type Rect, SQUEEZE, type Floor, bodyRect, crewPlaces, crewSpots, endPlaces, faceZone, meets, overlapX } from "../src/scene/world/world";
 import { LEAD_SIZE } from "../src/scene/world/placement";
 import { demo } from "../src/mainview/demo";
 import { HABITS, POSE } from "../src/scene/rig/poses";
@@ -35,12 +35,12 @@ const snap = (sessions: Session[]): Snapshot => ({ at: 0, sessions });
 const LINE = { bay: "line", hall: "conveyor", ambient: [], habits: ["drumSit", "palletCards", "vendingKick"] } as const;
 
 /** The same sessions in two plans, one per staging. */
-function both(sessions: Session[]): { office: World; line: World } {
+function both(sessions: Session[]): { office: Floor; line: Floor } {
 	return { office: new FloorPlan().update(snap(sessions)), line: new FloorPlan().update(snap(sessions), LINE) };
 }
 
 /** Every desk's crew spots, from the office's view of the world. */
-const spotsOf = (w: World) => Object.fromEntries([...w.desks.values()].map((d) => [d.id, crewSpots(w, d)]));
+const spotsOf = (w: Floor) => Object.fromEntries([...w.desks.values()].map((d) => [d.id, crewSpots(w, d)]));
 
 describe("the staging grammar", () => {
 	const sessions = [...Array.from({ length: 5 }, () => session("lanternfish")), session("orbit-kit"), session("orbit-kit")];
@@ -89,7 +89,7 @@ describe("the staging grammar", () => {
 	});
 
 	/** True if the cell in front of a desk's (a row nearer the room's front) is open floor. */
-	const openInFront = (w: World, d: Desk) => {
+	const openInFront = (w: Floor, d: Desk) => {
 		const a = w.areas.find((x) => x.id === d.areaId)!;
 		return a.cells.some((c) => c.x === d.cell.x && c.y === d.cell.y + ROW) && !a.desks.some((o) => o.cell.x === d.cell.x && o.cell.y === d.cell.y + ROW);
 	};
@@ -214,7 +214,7 @@ describe("the staging grammar", () => {
 		const plan = new FloorPlan();
 		const list = Array.from({ length: 2 }, () => session("pebble"));
 		const one = plan.update(snap(list), LINE);
-		const room = (w: World) => w.areas.find((a) => a.id === "room:pebble")!;
+		const room = (w: Floor) => w.areas.find((a) => a.id === "room:pebble")!;
 		expect(room(one).belts!.map((b) => b.row)).toEqual([0]);
 		const more = [...list, session("pebble"), session("pebble")];
 		const two = plan.update(snap(more), LINE);

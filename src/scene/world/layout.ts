@@ -35,7 +35,7 @@ import {
 	type Slot,
 	WALL,
 	type WallItem,
-	type World,
+	type Floor,
 	type Yard,
 	beltsFor,
 	roomHeight,
@@ -88,7 +88,7 @@ export class FloorPlan {
 
 	/** Fold a snapshot into the plan and return the world it gives, staged as the theme says
 	 * (world/staging.ts): the rooms and desks are the same in every staging. */
-	update(snapshot: Snapshot, staging: Staging = DEFAULT_STAGING): World {
+	update(snapshot: Snapshot, staging: Staging = DEFAULT_STAGING): Floor {
 		this.#staging = { bay: staging.bay, hall: staging.hall, ...(staging.habits ? { habits: staging.habits } : {}), ...(staging.leadHabits ? { leadHabits: staging.leadHabits } : {}) };
 		const all = seats(snapshot.sessions);
 		const live = new Set(all.map((s) => s.session.id));
@@ -164,7 +164,7 @@ export class FloorPlan {
 		return room;
 	}
 
-	#world(): World {
+	#world(): Floor {
 		const areas: Area[] = [];
 		const desks = new Map<string, Desk>();
 		const signs: SignSlot[] = [];

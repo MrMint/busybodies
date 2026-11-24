@@ -10,7 +10,7 @@ import type { Agent, Session, Snapshot } from "../../watcher/model";
 import { roleFor } from "../rig/roles";
 import { seats } from "./layout";
 import type { Cue, Mood, Who } from "../contract";
-import { type Slot, type World, crewSlot } from "./world";
+import { type Slot, type Floor, crewSlot } from "./world";
 
 export interface Placed {
 	who: Who;
@@ -40,7 +40,7 @@ export class Placement {
 	/** Per session: agent id -> crew spot index. */
 	#spots = new Map<string, Map<string, number>>();
 
-	place(snapshot: Snapshot, world: World): Placed[] {
+	place(snapshot: Snapshot, world: Floor): Placed[] {
 		const out: Placed[] = [];
 		const common = (kind: string, spot: string) => {
 			const area = world.areas.find((a) => a.kind === kind);

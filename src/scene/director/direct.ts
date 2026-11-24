@@ -11,7 +11,7 @@ import { seats } from "../world/layout";
 import { LEAD_SIZE, crewSize } from "../world/placement";
 import { habitsFor } from "../world/staging";
 import type { Mood } from "../contract";
-import type { Area, Slot, World as Floor } from "../world/world";
+import type { Area, Slot, Floor } from "../world/world";
 import { OVERLAP, buildSlot, crewPlaces, crewSlot, crewSpots, endGaps, useFor, yieldFrom } from "../world/world";
 import { choosePose, hash } from "../rig/player";
 import { POSE, poseMs } from "../rig/poses";

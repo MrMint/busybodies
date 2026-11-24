@@ -18,7 +18,7 @@
 // The memory the beats need between snapshots (merged PRs seen, each one's red tests in a row, which
 // sessions are long) lives in `World.story`, so a replay gives the same story.
 import { LEAD_SIZE } from "../world/placement";
-import type { Slot, World as Floor } from "../world/world";
+import type { Slot, Floor } from "../world/world";
 import { useFor } from "../world/world";
 import { poseMs } from "../rig/poses";
 import { roleFor } from "../rig/roles";

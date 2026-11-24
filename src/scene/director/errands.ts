@@ -9,7 +9,7 @@
 // arrives `walkMs` later, plays its pose until `until`, then the director walks it home as it
 // would anyone whose spot changed.
 import { plannerNote, posterFor } from "../world/rigpoints";
-import { type Slot, type World as Floor, shredderUse } from "../world/world";
+import { type Slot, type Floor, shredderUse } from "../world/world";
 import { poseMs } from "../rig/poses";
 import type { Session } from "../../watcher/model";
 import type { Metrics, Ticket } from "./metrics";

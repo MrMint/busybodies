@@ -4,7 +4,7 @@ import { Container, Graphics } from "pixi.js";
 export * from "../world/decor-plan";
 import { DECOR, type RoomDecor, type StoryStyle, type StoryView, decorFor, storyStyle } from "../world/decor-plan";
 import type { SceneTheme } from "../theme/types";
-import type { World } from "../world/world";
+import type { Floor } from "../world/world";
 
 function star(g: Graphics, x: number, y: number, r: number, fill: number, ink: number): void {
 	const pts: number[] = [];
@@ -53,7 +53,7 @@ export class DecorLayer extends Container {
 	}
 
 	/** Bring the decor up to date. True when anything was redrawn. */
-	update(world: World, theme: SceneTheme, view: StoryView | undefined): boolean {
+	update(world: Floor, theme: SceneTheme, view: StoryView | undefined): boolean {
 		const style = storyStyle(theme);
 		const seen = new Set<string>();
 		let changed = false;
@@ -80,7 +80,7 @@ export class DecorLayer extends Container {
 	}
 
 	/** Each decorated room's decor, for the inspector. */
-	info(world: World | undefined, view: StoryView | undefined): RoomDecor[] {
+	info(world: Floor | undefined, view: StoryView | undefined): RoomDecor[] {
 		return (world?.areas ?? []).map((a) => decorFor(a, view)).filter((d): d is RoomDecor => !!d);
 	}
 

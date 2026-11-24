@@ -1,6 +1,6 @@
 // The camera: fixed stops (the whole office, a room, a desk) and a smooth move between them. Pure
 // math on a {scale, x, y} view, so the office can drive it from the ticker and tests can check it.
-import type { Rect, World } from "./world";
+import type { Rect, Floor } from "./world";
 
 export type Stop = { kind: "office" } | { kind: "room"; id: string } | { kind: "desk"; id: string };
 
@@ -31,7 +31,7 @@ function fit(r: Rect, vp: Viewport, maxScale: number, pad = 16): View {
 }
 
 /** The world rectangle a stop frames, or undefined if its room or desk is gone. */
-function frame(world: World, stop: Stop): Rect | undefined {
+function frame(world: Floor, stop: Stop): Rect | undefined {
 	if (stop.kind === "office") {
 		// The building and the edge of its lawn (the name tabs that stood over the top rooms are gone).
 		const b = world.bounds;
@@ -48,7 +48,7 @@ function frame(world: World, stop: Stop): Rect | undefined {
 	return d && { x: d.cell.x - 50, y: d.cell.y - 60, w: d.cell.w + 100, h: d.cell.h + 90 };
 }
 
-export function viewFor(world: World, stop: Stop, vp: Viewport): View | undefined {
+export function viewFor(world: Floor, stop: Stop, vp: Viewport): View | undefined {
 	const r = frame(world, stop);
 	return r && fit(r, vp, MAX_SCALE[stop.kind]);
 }

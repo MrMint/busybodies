@@ -35,7 +35,7 @@ import type { Metrics } from "../director/metrics";
 import type { DeskProps } from "../contract";
 import { deskProps, plannerSig, propsSig } from "./props";
 import type { Character, CharacterFactory } from "./slot";
-import { AISLE, type Area, BUILD, DESK_TOP, type Desk, type Rect, SEAT, type World } from "../world/world";
+import { AISLE, type Area, BUILD, DESK_TOP, type Desk, type Rect, SEAT, type Floor } from "../world/world";
 import { trayOnDesk } from "../world/rigpoints";
 import { CARD, MONITOR } from "../world/propspots";
 import { DecorLayer, type RoomDecor, type StoryView, boardText, regularNames, storyStyle } from "./decor";
@@ -81,7 +81,7 @@ export interface OfficeOptions {
 	 * Who stands where, and what they do: the director (S4). Without one, the provisional
 	 * placement stands everyone at their spot and the office bubbles busy leads' tool names itself.
 	 */
-	cast?: (snapshot: Snapshot, floor: World, opts: { life: boolean }) => Placed[];
+	cast?: (snapshot: Snapshot, floor: Floor, opts: { life: boolean }) => Placed[];
 	/** Screen pixels kept clear above the office for the top bar (default 64). */
 	top?: number;
 	/** Each session's crew build, drawn on its desk (the director's). */
@@ -155,11 +155,11 @@ export class Office extends Container {
 
 	#plan = new FloorPlan();
 	#placement = new Placement();
-	#data?: World;
+	#data?: Floor;
 	#snapshot?: Snapshot;
 
 	#areas = new Map<string, Item>();
-	/** The footprint's gaps made places (World.yards, the theme's `patio`), by their rect. */
+	/** The footprint's gaps made places (Floor.yards, the theme's `patio`), by their rect. */
 	#yards = new Map<string, Item & { rect: Rect }>();
 	#halls: Container[] = [];
 	#items = new Map<string, Item>();
@@ -292,7 +292,7 @@ export class Office extends Container {
 		return this.#stop;
 	}
 
-	get layoutData(): World | undefined {
+	get layoutData(): Floor | undefined {
 		return this.#data;
 	}
 
@@ -646,7 +646,7 @@ export class Office extends Container {
 		this.#outside?.parallax((c.x - v.x) / v.scale, (c.y - v.y) / v.scale);
 	}
 
-	#draw(world: World, snapshot: Snapshot): void {
+	#draw(world: Floor, snapshot: Snapshot): void {
 		const b = world.bounds;
 		const slabRect = { x: b.x - 14, y: b.y - 14, w: b.w + 28, h: b.h + 28 };
 		const slab = JSON.stringify(b);
@@ -675,7 +675,7 @@ export class Office extends Container {
 	/** The staging and the theme's ambient life (ambient.ts), from what the cast holds and runs:
 	 * the kinds of work held at each desk (parts on its line's belt), the bays with a build running
 	 * (the press's beacon), and the crew builds topped by a PR (a crate down the conveyor). */
-	#drawAmbient(world: World, snapshot: Snapshot): void {
+	#drawAmbient(world: Floor, snapshot: Snapshot): void {
 		const held = new Map<string, string[]>();
 		for (const p of this.#placed) {
 			if (!p.desk || !p.work) continue;
@@ -705,7 +705,7 @@ export class Office extends Container {
 	}
 
 	/** The light layer: re-baked only if what it shows changed; the rush rooms' flickers. */
-	#drawLight(world: World, snapshot = this.#snapshot): void {
+	#drawLight(world: Floor, snapshot = this.#snapshot): void {
 		if (!snapshot) return;
 		const occupied = new Set(this.#placed.map((p) => p.area).filter((a): a is string => !!a));
 		const desks = flatSessions(snapshot.sessions).map((s) => ({ id: s.id, state: s.state }));
@@ -723,7 +723,7 @@ export class Office extends Container {
 
 	/** A cloud in each pane of each window, tinted for the phase: rebuilt when the windows or the
 	 * phase change, moved by `#moveClouds` on the life clock. */
-	#drawClouds(world: World): void {
+	#drawClouds(world: Floor): void {
 		const light = this.#theme.light;
 		const panes = world.areas.flatMap((a) => a.wall.filter((w) => w.kind === "window").flatMap((w) => panesOf(glassOf(w.rect, light), light)));
 		const sig = `${this.#phase}|${this.#theme.id}|${panes.map((p) => `${p.x},${p.y}`).join(";")}`;
@@ -782,7 +782,7 @@ export class Office extends Container {
 	}
 
 	/** The director's metrics on the walls: each room's planner, and NOW SERVING at your office. */
-	#drawMetrics(world: World): void {
+	#drawMetrics(world: Floor): void {
 		const m = this.#opts.metrics?.();
 		const sign = this.#theme.words.serving(m?.serving);
 		const was = this.#signs.get("yours:serving");
@@ -813,7 +813,7 @@ export class Office extends Container {
 
 	/** Story and continuity (decor.ts): the decor on the walls, and the lobby's board. The board takes
 	 * the story's text while it has some, and gets back what it said before when that ends. */
-	#drawStory(world: World): void {
+	#drawStory(world: Floor): void {
 		const view = this.#opts.story?.();
 		this.#decor.update(world, this.#theme, view);
 		const text = boardText(view, storyStyle(this.#theme).words, this.#phase);
@@ -853,7 +853,7 @@ export class Office extends Container {
 	}
 
 	/** Rooms' floors, walls and wall items: one cached texture per room, rebuilt when it changes. */
-	#drawFloor(world: World): void {
+	#drawFloor(world: Floor): void {
 		const seen = new Set<string>();
 		const sun = sunSpot(
 			world.areas.flatMap((a) => a.wall.filter((w) => w.kind === "window").map((w) => w.rect)),
@@ -940,7 +940,7 @@ export class Office extends Container {
 	}
 
 	/** Desks (with their screens and name cards), chairs and floor furniture: depth-sorted. */
-	#drawFurniture(world: World, snapshot: Snapshot): void {
+	#drawFurniture(world: Floor, snapshot: Snapshot): void {
 		const sessions = new Map(flatSessions(snapshot.sessions).map((s) => [s.id, s]));
 		const builds = this.#opts.builds?.() ?? {};
 		const metrics = this.#opts.metrics?.().desks ?? {};
@@ -1000,7 +1000,7 @@ export class Office extends Container {
 	}
 
 	/** A robot arm per project room, when the theme has them; rebuilt (idle) when its room moves. */
-	#drawArms(world: World): void {
+	#drawArms(world: Floor): void {
 		const seen = new Set<string>();
 		if (this.#theme.arms) {
 			for (const a of world.areas) {
@@ -1168,7 +1168,7 @@ export class Office extends Container {
 		for (const item of this.#yards.values()) this.#cache(item.view, item.rect);
 	}
 
-	#drawPeople(world: World, snapshot: Snapshot): void {
+	#drawPeople(world: Floor, snapshot: Snapshot): void {
 		const placed = this.#opts.cast ? this.#opts.cast(snapshot, world, { life: this.#life }) : this.#placement.place(snapshot, world);
 		this.#placed = placed;
 		this.#names = regularNames(placed.map((p) => p.who), this.#opts.story?.());
@@ -1252,7 +1252,7 @@ export class Office extends Container {
 	/** The counts for the room the camera is on (a room or desk stop): a pill in the hallway at the
 	 * room's threshold, at the far end from its painted name. At office zoom there are none: the
 	 * names are painted on the rooms (material.ts) and the counts would be clutter. */
-	#drawLabels(world: World, snapshot: Snapshot): void {
+	#drawLabels(world: Floor, snapshot: Snapshot): void {
 		const focus = this.#focus();
 		const a = focus ? world.areas.find((x) => x.id === focus) : undefined;
 		let sub = "";

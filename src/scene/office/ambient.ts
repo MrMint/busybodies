@@ -32,7 +32,7 @@ import { KITCHEN_WALL, ceilingPanels } from "../world/propspots";
 import { type AmbientKind, stagingOf } from "../world/staging";
 import { DOCK_W } from "../world/layout";
 import { setDepth } from "./depth";
-import { BELT, type Belt, type Fixture, type Rect, type World } from "../world/world";
+import { BELT, type Belt, type Fixture, type Rect, type Floor } from "../world/world";
 
 /** The belt's speed (world px per second of the life clock) and how fast the other things go. */
 const AMBIENT = {
@@ -161,7 +161,7 @@ export class Ambient {
 	}
 
 	/** Bring everything in line with the world: build what is new, drop what went, keep the rest. */
-	update(world: World, theme: SceneTheme, facts: AmbientFacts): void {
+	update(world: Floor, theme: SceneTheme, facts: AmbientFacts): void {
 		const staging = stagingOf(theme);
 		const kinds = staging.ambient;
 		this.#kinds = kinds;

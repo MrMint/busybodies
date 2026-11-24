@@ -11,7 +11,7 @@
 //   lampFor(members, was)     -> the desk's test lamp, from the last test result seen
 //   deskMetrics(...)          -> all of a desk's things, and the planner's notes, for the office
 import { cups } from "../sass/detect";
-import type { Area, World as Floor } from "../world/world";
+import type { Area, Floor } from "../world/world";
 import type { Agent, Changes, Context, ModelFamily, Session, Todos } from "../../watcher/model";
 import type { Queue } from "./errands";
 import { traitOf } from "./traits";
