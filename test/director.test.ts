@@ -8,7 +8,7 @@ import type { World } from "../src/scene/director/types";
 import { demo, demoDay, releaseDay, stock } from "../src/mainview/demo";
 import { FloorPlan } from "../src/scene/office/layout";
 import { CARD } from "../src/scene/office/propspots";
-import { AISLE, SQUEEZE, bodyRect, crewPlaces, crewSpot, crewSpots, endGaps, faceZone, floorFoot, meets, overlapX, yieldFrom } from "../src/scene/office/world";
+import { AISLE, SQUEEZE, bodyRect, crewPlaces, crewSpots, endGaps, faceZone, floorFoot, meets, overlapX, yieldFrom } from "../src/scene/office/world";
 import { HABITS, POSE } from "../src/scene/rig/poses";
 import { roleFor } from "../src/scene/rig/roles";
 import { parseRecording } from "../src/watcher/replay";

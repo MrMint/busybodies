@@ -174,7 +174,7 @@ export function nextShot(prev: ShotState | undefined, input: ShotInput): ShotSta
 
 /** When the shot changes on its own: a news hold ending. (Rest shots change only with new input.) */
 export function shotWake(s: ShotState | undefined, now: number): number | undefined {
-	return s && s.shot.news && Number.isFinite(s.shot.until) && s.shot.until > now ? s.shot.until : undefined;
+	return s?.shot.news && Number.isFinite(s.shot.until) && s.shot.until > now ? s.shot.until : undefined;
 }
 
 /**

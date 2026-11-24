@@ -23,7 +23,7 @@ import type { Phase } from "./daylight";
 import type { SignText } from "../theme/words";
 import type { SceneTheme } from "../theme/types";
 import type { Who } from "./slot";
-import type { Area, World } from "./world";
+import type { Area } from "./world";
 
 /** A regular is recognised (its name shows on its desk card or task tag) once the diary has seen
  * it come in on this many days. */

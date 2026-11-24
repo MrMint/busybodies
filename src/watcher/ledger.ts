@@ -266,7 +266,7 @@ export class TranscriptLedger {
 
 	/** The model and context of a response record. A placeholder model (an error record) is not a request. */
 	#response(model: string | undefined, used: number | undefined, at: number, sidechain: boolean): void {
-		if (sidechain || (model !== undefined && model.startsWith("<"))) return;
+		if (sidechain || model?.startsWith("<")) return;
 		if (model) this.#model = model;
 		if (used !== undefined && Number.isFinite(at)) this.context = { used, ...optional("window", contextWindow(this.#model)), at };
 	}

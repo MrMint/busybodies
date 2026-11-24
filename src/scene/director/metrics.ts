@@ -41,7 +41,7 @@ export const METRICS = {
 
 /** How full the context is, 0 to 1; undefined without a window (an unknown model: no pile). */
 export function contextShare(c: Context | undefined): number | undefined {
-	if (!c || !c.window || c.window <= 0) return undefined;
+	if (!c?.window || c.window <= 0) return undefined;
 	return Math.max(0, Math.min(1, c.used / c.window));
 }
 
@@ -106,7 +106,7 @@ export function lampFor(members: { commands?: Session["commands"] }[], was?: { l
 	let best: { lamp?: Lamp; at?: number } = { lamp: was?.lamp, at: was?.at };
 	for (const m of members) {
 		const last = m.commands?.last;
-		if (!last || last.kind !== "test") continue;
+		if (last?.kind !== "test") continue;
 		if (best.at === undefined || last.at > best.at) best = { lamp: last.exitCode === 0 ? "green" : "red", at: last.at };
 	}
 	return best;

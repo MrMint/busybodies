@@ -45,7 +45,7 @@ const BUILD_H = BUILD.brickH;
  * just under the desk top's back edge (DESK_TOP), so it stands on the desk instead of floating. */
 const BURIED_DROP = Math.ceil(DESK_TOP + 2 - trayOnDesk(SEAT, LEAD_SIZE).y);
 import { OFFICE_THEME } from "../theme/office";
-import { FALLEN, buildTop } from "../theme/build";
+import { buildTop } from "../theme/build";
 import { areaLabel } from "../theme/words";
 import { RobotArm } from "../theme/arm";
 import { type CrewBuild, FURNITURE_KINDS, type SceneTheme } from "../theme/types";

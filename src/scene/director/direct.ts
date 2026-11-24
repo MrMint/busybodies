@@ -8,7 +8,7 @@
 // and who is walking; the events say what changed. `wake` is the next time the world changes with
 // no new snapshot (an acted pose ends, a habit rotates, a build turns long): call again then.
 import { seats } from "../office/layout";
-import { LEAD_SIZE, crewOf } from "../office/placement";
+import { LEAD_SIZE } from "../office/placement";
 import { habitsFor } from "../office/staging";
 import type { Mood } from "../office/slot";
 import type { Area, Slot, World as Floor } from "../office/world";
@@ -413,7 +413,7 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 		const want = s.busy ? workKind(s.running, s.activity) : undefined;
 		const work = s.busy ? nextWork(live?.work, want, now) : undefined;
 		// A quick model's acted pose is over a touch early: the next one overlaps its end (beats.ts).
-		const continuing = live && live.acted && now < live.poseSince + poseMs(live.pose, live.as) - overlapOf(traitFor(s), live.pose) ? live : undefined;
+		const continuing = live?.acted && now < live.poseSince + poseMs(live.pose, live.as) - overlapOf(traitFor(s), live.pose) ? live : undefined;
 		pre.set(s.key, { want, work, news: acted(s, was?.seen, now), continuing, follow: followUp(s, live, continuing) ?? flourishAfter(live, continuing, traitFor(s)) });
 	}
 
@@ -1330,7 +1330,7 @@ function buildsFor(
 		}
 		// The brick run: set down at the end of `place`; dropped if the runner stopped or left.
 		let run = runs.active.get(id);
-		if (run && run.carried && !started && !members.some((m) => m.key === run!.key && m.busy)) {
+		if (run?.carried && !started && !members.some((m) => m.key === run!.key && m.busy)) {
 			runs.dropped.add(id);
 			run = undefined;
 		}

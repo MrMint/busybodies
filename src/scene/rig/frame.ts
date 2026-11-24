@@ -74,7 +74,7 @@ export function parseFrame(tokens: string): Frame {
 		const i = tok.indexOf("-");
 		const spec = i > 0 ? TOKENS[tok.slice(0, i)] : undefined;
 		const value = tok.slice(i + 1);
-		if (!spec || !spec.values.includes(value)) throw new Error(`unknown frame token "${tok}" in "${tokens}"`);
+		if (!spec?.values.includes(value)) throw new Error(`unknown frame token "${tok}" in "${tokens}"`);
 		if (spec.key.startsWith("props.")) (f.props as Record<string, string>)[spec.key.slice(6)] = value;
 		else (f as unknown as Record<string, string>)[spec.key] = value;
 	}

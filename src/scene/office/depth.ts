@@ -13,7 +13,7 @@ export function setDepth(view: Container, z: number): void {
 	if (view.zIndex === z) return;
 	const parent = view.parent;
 	// Not in a sorted layer, or a sort is already due: the plain way.
-	if (!parent || !parent.sortableChildren || parent.sortDirty) {
+	if (!parent?.sortableChildren || parent.sortDirty) {
 		view.zIndex = z;
 		return;
 	}
