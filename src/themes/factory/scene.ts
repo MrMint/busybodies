@@ -6,15 +6,16 @@
 // work there: the press's ram, the gauge's needle, the bins, the radio's handset). Still cut paper:
 // flat shapes and the same ink, so the cast reads the same in both.
 import { type Container, Graphics } from "pixi.js";
-import type { Lamp, Tray } from "../contract";
-import { GREEN, INK, RED, SHADOW, type SignStyle, batched, hash, label, line, noise, signboard, wob } from "../office/paper";
-import { MONITOR, PROPS } from "../world/propspots";
-import { type Area, type Band, DESK_TOP, type Rect } from "../world/world";
-import { crewBuild } from "./build";
-import { COMMON_COLOURS, NIGHT_WATCH, plannerOf } from "../../themes/office/scene";
-import { FACTORY_STAGING } from "./factory-staging";
-import type { FurnitureKind, SceneLight, SceneTheme, StagePainters } from "./types";
-import { FACTORY_WORDS, type SignText } from "./words";
+import type { Lamp, Tray } from "../../scene/contract";
+import { GREEN, INK, RED, SHADOW, type SignStyle, batched, hash, label, line, noise, signboard, wob } from "../../scene/office/paper";
+import { MONITOR, PROPS } from "../../scene/world/propspots";
+import { type Area, type Band, DESK_TOP, type Rect } from "../../scene/world/world";
+import { crewBuild } from "../../scene/theme/build";
+import { COMMON_COLOURS, NIGHT_WATCH, plannerOf } from "../office/scene";
+import { FACTORY_STAGING } from "./staging";
+import type { FurnitureKind, SceneLight, SceneTheme, StagePainters } from "../../scene/theme/types";
+import type { SignText } from "../../scene/theme/words";
+import { FACTORY_WORDS } from "./words";
 import { mix } from "../../shared/colour";
 
 const STEEL = 0x9aa5b1;
@@ -86,7 +87,7 @@ function shell(g: Graphics, a: Area, wall: number, floor: number, joints = true)
 	g.roundRect(x + 2.5, y + 2.5, w - 5, h - 5, 10).stroke(line(5));
 }
 
-/** The rail the bay's robot arm rides, along the foot of the back wall (theme/arm.ts ARM.rail). */
+/** The rail the bay's robot arm rides, along the foot of the back wall (themes/factory/arm.ts ARM.rail). */
 function armRail(g: Graphics, a: Area): void {
 	const y = a.floorY - 6;
 	g.roundRect(a.rect.x + 16, y - 4, a.rect.w - 32, 8, 3).fill(STEEL_DARK).stroke(line(2.5));
@@ -179,7 +180,7 @@ function room(g: Graphics, c: Container, a: Area, sign: (slot: string) => SignTe
 	if (a.kind === "yours") foremanCorner(g, a);
 }
 
-/** The foreman's corner, where the office keeps the boss's (theme/office.ts `bossCorner`, the same
+/** The foreman's corner, where the office keeps the boss's (themes/office/scene.ts `bossCorner`, the same
  * footprint, so it meets nothing the room has): a clipboard on the wall, a hazard-striped mat with a
  * two-door locker on it (one door ajar on a hi-vis sleeve, a hard hat on a hook at its side), and a
  * crate for a side table with a thermos and a lunch tin. A little worn. Baked with the room. */
@@ -234,7 +235,7 @@ function foremanCorner(g: Graphics, a: Area): void {
 	for (let k = 0; k < 3; k++) g.roundRect(cx + 9, cy - 70 + k * 4, 12, 1.8, 0.9);
 	g.fill({ color: INK, alpha: 0.6 });
 	g.roundRect(cx + 7, cy - 46, 3, 10, 1.5).fill(STEEL_LIGHT).stroke({ width: 1.2, color: INK });
-	// The sleeve in the foreman's vest's hi-vis (rig/factory.ts FACTORY.hivis), a reflective band on it.
+	// The sleeve in the foreman's vest's hi-vis (themes/factory/rig.ts FACTORY.hivis), a reflective band on it.
 	g.poly([cx, cy - 50, cx + 6, cy - 50, cx + 9, cy - 26, cx + 2, cy - 25]).fill(0xd4ef3a).stroke({ width: 1.6, color: INK, join: "round" });
 	g.poly([cx + 1.2, cy - 40, cx + 7.4, cy - 40, cx + 7.9, cy - 36, cx + 1.6, cy - 36]).fill(STEEL_LIGHT);
 	g.roundRect(cx + 1, cy - 27, 9, 4, 1.5).fill(ORANGE).stroke({ width: 1.2, color: INK });

@@ -9,7 +9,7 @@
 //   ambient  the staging's floor things and the theme's ambient life under the cast (ambient.ts:
 //            the dock, vents, steam, the fan); its belts, parts, booths and lights sort into depth
 //   depth    desks, furniture and characters, sorted by their feet (zIndex = y)
-//   arms     the factory's robot arms, overhead (theme/arm.ts; none in the office theme)
+//   arms     the factory's robot arms, overhead (themes/factory/arm.ts; none in the office theme)
 //   light    time of day, lamps, focus and rush: a baked light map, multiplied; glow added (light.ts)
 //   pulse    the outline of a room waiting on you, unlit so it shows at night
 //   bubbles  speech bubbles
@@ -48,7 +48,7 @@ const BURIED_DROP = Math.ceil(DESK_TOP + 2 - trayOnDesk(SEAT, LEAD_SIZE).y);
 import { OFFICE_THEME } from "../../themes/office/scene";
 import { buildTop } from "../theme/build";
 import { areaLabel } from "../theme/words";
-import { RobotArm } from "../theme/arm";
+import { RobotArm } from "../../themes/factory/arm";
 import { type CrewBuild, FURNITURE_KINDS, type SceneTheme } from "../theme/types";
 import { flatSessions } from "../../watcher/model";
 
@@ -175,7 +175,7 @@ export class Office extends Container {
 	/** Bricks moving on crew builds, by desk item; and what each desk's build last moved for. */
 	#bricks = new Map<string, BrickMove[]>();
 	#brickSeen = new Map<string, { added?: number; fell?: number; topped?: boolean }>();
-	/** The factory's robot arms, one per project bay (theme/arm.ts), over everything on the floor. */
+	/** The factory's robot arms, one per project bay (themes/factory/arm.ts), over everything on the floor. */
 	#armLayer = new Container();
 	#arms = new Map<string, { arm: RobotArm; sig: string }>();
 	/** Where an arm just set a PR's crate down, by session, for the conveyor to take it from there. */

@@ -28,7 +28,7 @@ export interface Staging {
 	hall: "corridor" | "conveyor";
 	/** The idle habits, in rotation order (pose names). None: the rig's seven (rig/data/poses.ts HABITS). */
 	habits?: readonly string[];
-	/** A line bay's lead stands up in its booth behind its bench (theme/factory.ts booth), which
+	/** A line bay's lead stands up in its booth behind its bench (themes/factory/scene.ts booth), which
 	 * comes to its chin: its habits, played at head height, in place of `habits` (which sit on drums
 	 * and kick vending machines on the floor). None: the lead plays `habits` like the rest. */
 	leadHabits?: readonly string[];

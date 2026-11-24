@@ -569,7 +569,7 @@ mock.module("pixi.js", () => ({ Graphics: FakeGraphics, Text: FakeText, Containe
 
 describe("themes", async () => {
 	const { paperTheme } = await import("../src/scene/rig/theme");
-	const { factoryTheme, FACTORY_REPAINTS, FACTORY_EXTRAS } = await import("../src/scene/rig/factory");
+	const { factoryTheme, FACTORY_REPAINTS, FACTORY_EXTRAS } = await import("../src/themes/factory/rig");
 	const { ATLAS_WIDTH, PAD, RESOLUTION } = await import("../src/scene/rig/data/pack");
 	const paper = paperTheme();
 	const factory = factoryTheme();

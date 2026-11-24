@@ -1,7 +1,7 @@
 // The factory's own lines: the same roast, on the shop floor. Hard hats, the belt, the whistle,
 // crates, quotas, robot arms that help a bit too much, and a QA booth that rejects everything.
 // Spoken with the office's lines that fit anywhere (`bank.ts`); the same voice rules apply.
-import { type Line, themeLine as L } from "./lines";
+import { type Line, themeLine as L } from "../../scene/sass/lines";
 
 export const FACTORY_LINES: Line[] = [
 	// Waiting on you

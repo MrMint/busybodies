@@ -19,7 +19,7 @@
 // the crew's lines in the office are sass/lines.ts `themed`.
 //
 // The crew's tower on the desk (binders and reams) and the recycling bin are the scene theme's
-// (theme/office.ts). One part is new, and only themes with it paint it: `arm/upper/verifier`, the
+// (themes/office/scene.ts). One part is new, and only themes with it paint it: `arm/upper/verifier`, the
 // sleeve garter (the puppet uses it on the left arm when the atlas has one). One is dropped: the
 // designer's `front/scarf`, so its belly is bare (the puppet shows a front piece only when the
 // atlas has it).

@@ -1,5 +1,5 @@
 // A PR crate's ride (the factory's conveyor hall, world/staging.ts): the bay's robot arm lifts the
-// crate off the crew build and sets it down on the bay's loading dock (theme/armplan.ts `ship`). The
+// crate off the crew build and sets it down on the bay's loading dock (themes/factory/armplan.ts `ship`). The
 // moment it lets go, this crate takes over just where it was set down: it sits a beat, drops down the
 // dock's chute, pops up on the hallway's belt in line with the dock and rides the belt to the dock at
 // the hallway's end. (The bay's dock is a room's depth from the hallway, through a wall, so it goes
@@ -20,7 +20,7 @@ export const CRATE = {
 	/** The whole ride at most this long, and faded out over the last of it at the dock. */
 	maxMs: 8000,
 	fade: 300,
-	/** The arm carries it small (theme/arm.ts: 12 by 9, its middle in the gripper): it is set down
+	/** The arm carries it small (themes/factory/arm.ts: 12 by 9, its middle in the gripper): it is set down
 	 * at this scale, its base this far below the middle, and pops up on the belt at the belt's size. */
 	armScale: 0.5,
 	armHalf: 4.5,

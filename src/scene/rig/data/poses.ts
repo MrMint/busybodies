@@ -471,7 +471,7 @@ export const POSES: Pose[] = [
 		],
 	}),
 
-	// The factory's own habits (theme/factory.ts FACTORY_STAGING): played by name from the theme's
+	// The factory's own habits (themes/factory/scene.ts FACTORY_STAGING): played by name from the theme's
 	// habit rotation (director/habits.ts), never by the idle trigger, so the office keeps its seven.
 	pose({
 		name: "drumSit", title: "Sitting on an oil drum", trigger: "idle", rarity: 0, play: "once",
@@ -505,7 +505,7 @@ export const POSES: Pose[] = [
 		],
 	}),
 
-	// The foreman's booth habits (theme/factory-staging.ts `leadHabits`): up in the booth, its bench
+	// The foreman's booth habits (themes/factory/staging.ts `leadHabits`): up in the booth, its bench
 	// and screen come to the foreman's chin, so these play at head height (binoculars, a phone at the
 	// ear, hands behind the head, a mug at the lips), looking out over the line. Played by name,
 	// never by the idle trigger.

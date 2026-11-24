@@ -7,7 +7,7 @@ import { FloorPlan, SIGN_FOOT } from "../src/scene/world/layout";
 import { WALL } from "../src/scene/world/world";
 import { LEAD_SIZE } from "../src/scene/world/placement";
 
-/** The two themes' windows (theme/office.ts, theme/factory.ts OFFICE_LIGHT / FACTORY_LIGHT). */
+/** The two themes' windows (themes/office/scene.ts, themes/factory/scene.ts OFFICE_LIGHT / FACTORY_LIGHT). */
 const WINDOWS = [
 	{ window: { inset: 5, panes: 2, transom: false, bar: 5 } },
 	{ window: { inset: 4, height: 42, panes: 4, transom: true, bar: 2.5 } },

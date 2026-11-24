@@ -3,8 +3,8 @@
 // events: when a piece lands on a crew build it brings the piece over and sets it on; when a session
 // opens a PR it lifts the PR's crate off the build onto the bay's loading dock. Each job is a short
 // run of tweened moves (rig/data/motion.ts's easing, no GSAP), then it is still: it costs frames only
-// while it moves. Pixi-free and deterministic, so tests can step it; theme/arm.ts draws it.
-import { ease, lerp } from "../rig/data/motion";
+// while it moves. Pixi-free and deterministic, so tests can step it; themes/factory/arm.ts draws it.
+import { ease, lerp } from "../../scene/rig/data/motion";
 
 export interface Point {
 	x: number;

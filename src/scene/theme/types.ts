@@ -105,7 +105,7 @@ export interface SceneTheme {
 	crewBuild(b: CrewBuild, seed: string): DrawnBuild;
 	/** Who keeps an empty office company (napping in the lobby's pod). */
 	nightWatch: Who;
-	/** The factory's robot arms: one per project room, helping with the build (theme/arm.ts). */
+	/** The factory's robot arms: one per project room, helping with the build (themes/factory/arm.ts). */
 	arms: boolean;
 	/** Light, the view out of the windows, floor materials and the room names (office/light.ts). */
 	light: SceneLight;

@@ -2,7 +2,7 @@
 // joint, and only moved by its transform: a move costs no redraw and no tessellation, and every
 // part joins the batch. Cut paper like the rest: safety-yellow arms, steel joints, the same ink.
 import { Container, Graphics } from "pixi.js";
-import { INK, line } from "../office/paper";
+import { INK, line } from "../../scene/office/paper";
 import { ARM, ArmPlan, type Point, solve } from "./armplan";
 
 const YELLOW = 0xffc928;

@@ -7,7 +7,7 @@ import { direct } from "../src/scene/director/direct";
 import { HABIT, habitAt } from "../src/scene/director/habits";
 import { FloorPlan } from "../src/scene/world/layout";
 import { DEFAULT_STAGING, habitsFor, stagingOf } from "../src/scene/world/staging";
-import { FACTORY_STAGING } from "../src/scene/theme/factory-staging";
+import { FACTORY_STAGING } from "../src/themes/factory/staging";
 import { CRATE, crateAt, crateRide } from "../src/scene/world/crate";
 import { AISLE, BELT, DESK_TOP, type Desk, OVERLAP, ROW, type Rect, SQUEEZE, type Floor, bodyRect, crewPlaces, crewSpots, endPlaces, faceZone, meets, overlapX } from "../src/scene/world/world";
 import { LEAD_SIZE } from "../src/scene/world/placement";

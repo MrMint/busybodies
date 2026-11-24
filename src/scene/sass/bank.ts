@@ -5,7 +5,7 @@
 // the office. A theme without a bank of its own gets the office's.
 import type { ThemeId } from "../../themes/ids";
 import { BAKERY_LINES } from "./lines-bakery";
-import { FACTORY_LINES } from "./lines-factory";
+import { FACTORY_LINES } from "../../themes/factory/lines";
 import { type Line, LINES, linesIn } from "./lines";
 
 /** What the counters write (signs.ts). The first three are sign lines in the bank. */

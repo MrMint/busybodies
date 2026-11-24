@@ -12,7 +12,7 @@ export const OFFICE_WORDS: ThemeWords = {
 	serving: (n) => ({ title: "NOW SERVING", body: n === undefined ? "Nobody. Yet." : `No. ${n}` }),
 	columns: ["TO DO", "DOING", "DONE"],
 	door: "YOU",
-	// The builder's work is paperwork here (rig/office.ts): the workshop words go with the workshop.
+	// The builder's work is paperwork here (themes/office/rig.ts): the workshop words go with the workshop.
 	poses: {
 		hammer: { title: "Stapling until it compiles" },
 		thumb: { title: "Stapled the thumb" },

@@ -62,7 +62,7 @@ const CHALK = 0x34584a;
 /** Sprinkles, icings, macaron shells, boxes: the bakery's candy colours, in turn. */
 const CANDY = [PINK, MINT, LEMON, LILAC, BLUEBERRY, ORANGE] as const;
 
-/** The common rooms' wall and floor colours, as the project rooms' (theme/office.ts ROOM_COLOURS):
+/** The common rooms' wall and floor colours, as the project rooms' (themes/office/scene.ts ROOM_COLOURS):
  * the wall carries the colour, the floor is a pale tint of it. The tasting table pink, the shop
  * front butter, the pick-up counter mint, the café latte, a vacant room in dust sheets. */
 const COMMON: Record<Exclude<Area["kind"], "project">, [number, number]> = {

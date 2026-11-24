@@ -326,7 +326,7 @@ export const WORKS = [
 	/** Copier feud: the start button jabbed while jammed (the red light flashing), and kicked
 	 * with the crumpled corner poking out of the jam door's seam. */
 	"jabbed", "kickSpit",
-	// Wave 3: the factory's habits (theme/factory.ts FACTORY_STAGING).
+	// Wave 3: the factory's habits (themes/factory/scene.ts FACTORY_STAGING).
 	/** Cards on a pallet: the pallet with the game laid out on it, and a card slapped down. */
 	"pallet", "palletSlap",
 	/** The vending machine: standing there, rocked by a kick, and the snack finally dropping. */

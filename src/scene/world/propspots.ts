@@ -28,7 +28,7 @@ export const PROPS = {
 } as const;
 
 /**
- * The office kitchen's back wall (theme/office.ts, office/ambient.ts): the mug wall, from the room's
+ * The office kitchen's back wall (themes/office/scene.ts, office/ambient.ts): the mug wall, from the room's
  * top-left corner (its banner's top to its shelf's underside), and the coffee machine and its steam,
  * from the counter's fixture point. The mug wall hangs under the ceiling panel (its glow ends
  * `ceiling` px down), between the fridge and the sign, above the machine; the steam rises off the
@@ -45,7 +45,7 @@ export const KITCHEN_WALL = {
 	wisp: { r: 5.5 * 1.4, fadeFrom: 0.85 },
 } as const;
 
-/** The office's fluorescent ceiling panels along a room's back wall (theme/office.ts draws them; one
+/** The office's fluorescent ceiling panels along a room's back wall (themes/office/scene.ts draws them; one
  * in each room flickers now and then, office/ambient.ts): about one per 190 px, evenly spaced, each
  * a tube 66 px long, `y` px below the wall's top. */
 export function ceilingPanels(r: { x: number; y: number; w: number }): { cx: number; y: number }[] {

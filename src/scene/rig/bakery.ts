@@ -281,7 +281,7 @@ export function bakeryTheme(p: Palette = PAPER_PALETTE): Theme {
 		sprinkles(g, x - w * 0.4, y - h - w * 0.45, x + w * 0.4, y - h - w * 0.08, 5, seed, w / 14);
 	};
 
-	// Costumes: accessories, not wigs (as the office's, rig/office.ts). The body keeps its role
+	// Costumes: accessories, not wigs (as the office's, themes/office/rig.ts). The body keeps its role
 	// colour (the paper rig's own body: no jackets, smocks, bib aprons or stripes over it); each role
 	// gets one over-the-top sweet idea on the dome, clear of the brows and the big eyes, and one small
 	// thing pinned low on the belly, clear of the mouth and the cheeks (reach.ts ANCHORS).
