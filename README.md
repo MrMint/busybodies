@@ -56,16 +56,8 @@ rm -rf /Applications/Busybodies.app ~/Library/Application\ Support/app.busybodie
 - **The menu bar** shows a mochi face: busy, all idle, or someone waiting on you. Its menu opens
   the office, **compact mode** (a small floating window that stays on top; also **⌘⌥B**), the
   theme, About, and Quit. Closing the office window keeps Busybodies in the menu bar.
-- **Sound** (off until you turn it on in the menu): a desk bell when someone starts waiting on
-  you, a stamp for a green test, a sad two-note for a red one, a paper rustle for a compaction, a
-  chime for a PR, and the copier grinding through a long build, over a very quiet room tone. All
-  made in code, never more than one of a kind every few seconds, and silent while the window is
-  off screen. **Calm office** in the same menu stops the cast's idle fidgeting and the sound
-  (your system's Reduce motion setting does the same). With sound on, a character also speaks
-  on the beats that matter (waiting on you, done, back to work), at most a few lines a minute: a
-  line with a time or a name in it is cute babble made on your machine, and the rest are voices
-  recorded ahead of time with an AI text-to-speech model and shipped with the app. Nothing is
-  sent anywhere to make them.
+- **Calm office** in the same menu stops the cast's idle fidgeting (your system's Reduce motion
+  setting does the same). Busybodies is silent: it makes no sound.
 
 ## What it reads, and privacy
 

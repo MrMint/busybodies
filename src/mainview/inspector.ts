@@ -10,8 +10,6 @@ import type { SignText } from "../scene/office/paper";
 import type { Snapshot } from "../watcher/model";
 import type { ThemeId } from "../scene/theme/id";
 import type { Visibility } from "./visibility";
-import type { SoundState } from "./sound";
-import type { SpeechState } from "./speech";
 import type { Camerawork, ShotReport } from "./shots";
 import type { Story } from "../scene/director/story";
 import type { RoomDecor } from "../scene/office/decor";
@@ -64,13 +62,8 @@ export interface Inspector {
 	staging(): Office["staging"];
 	/** Crew-build pieces moving now (or waiting on an arm). */
 	bricks(): Office["bricks"];
-	/** Sound: on or off, the AudioContext's state, the last earcons scheduled (undefined in the
-	 * compact window, which never plays sound). Set by main.ts. */
-	sound(): SoundState | undefined;
-	/** Voiced lines (mainview/speech.ts): the manifest, the room loop, the last lines spoken. Set by main.ts. */
-	speech(): SpeechState | undefined;
-	/** The tray's Sound and Calm office toggles, as the app sends them over RPC. Set by main.ts. */
-	setToggles(change: { sound?: boolean; calm?: boolean }): void;
+	/** The tray's Calm office toggle, as the app sends it over RPC. Set by main.ts. */
+	setToggles(change: { calm?: boolean }): void;
 	/** The following camera (compact, or ?follow): its stop, why, until when, pinned, cuts made,
 	 * and the room tiles. Undefined when the camera doesn't follow. */
 	shot(): ShotReport | undefined;
@@ -204,8 +197,6 @@ export function installInspector(
 		arms: () => office.arms,
 		staging: () => office.staging,
 		bricks: () => office.bricks,
-		sound: () => undefined,
-		speech: () => undefined,
 		setToggles: () => {},
 		shot: () => shots?.report(),
 		pin: (area) => {

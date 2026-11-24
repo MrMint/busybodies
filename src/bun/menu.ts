@@ -12,14 +12,12 @@ export interface TrayStatus {
 	snapshot: Snapshot | undefined | null;
 	compact: boolean;
 	theme: ThemeId;
-	sound: boolean;
 	calm: boolean;
 }
 
 export type TrayAction =
 	| { kind: "office" }
 	| { kind: "compact" }
-	| { kind: "sound" }
 	| { kind: "calm" }
 	| { kind: "about" }
 	| { kind: "quit" }
@@ -39,7 +37,6 @@ export function trayMenu(s: TrayStatus, shortcut: string): MenuItemConfig[] {
 			label: "Theme",
 			submenu: THEME_IDS.map((id) => ({ type: "normal" as const, label: THEME_NAMES[id], action: `theme:${id}`, checked: id === s.theme })),
 		},
-		{ type: "normal", label: "Sound", action: "sound", checked: s.sound },
 		{ type: "normal", label: "Calm office", action: "calm", checked: s.calm },
 		{ type: "divider" },
 		{ type: "normal", label: "About Busybodies", action: "about" },
@@ -53,6 +50,6 @@ export function trayAction(action: string | undefined): TrayAction | undefined {
 		const id = action.slice(6);
 		return (THEME_IDS as readonly string[]).includes(id) ? { kind: "theme", id: id as ThemeId } : undefined;
 	}
-	const plain = ["office", "compact", "sound", "calm", "about", "quit"] as const;
+	const plain = ["office", "compact", "calm", "about", "quit"] as const;
 	return (plain as readonly string[]).includes(action ?? "") ? { kind: action as (typeof plain)[number] } : undefined;
 }

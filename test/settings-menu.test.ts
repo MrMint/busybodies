@@ -1,6 +1,6 @@
-// The app's settings file and the tray menu built from them: sound and calm office default off,
-// only a real `true` turns them on, a retired look is dropped, they reach new windows as query
-// flags, and the menu shows them as checked toggles. Everything here is invented, in a temp folder.
+// The app's settings file and the tray menu built from them: calm office defaults off, only a real
+// `true` turns it on, a retired look or sound setting is dropped, it reaches new windows as a query
+// flag, and the menu shows it as a checked toggle. Everything here is invented, in a temp folder.
 import { afterAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -14,16 +14,16 @@ let n = 0;
 const fresh = () => settingsFile(join(dir, `case-${++n}`));
 
 describe("settings", () => {
-	test("no file: the defaults, sound and calm off", () => {
+	test("no file: the defaults, calm off", () => {
 		expect(readSettings(fresh())).toEqual({ ...DEFAULT_SETTINGS });
-		expect(DEFAULT_SETTINGS).toEqual({ theme: "office", sound: false, calm: false });
+		expect(DEFAULT_SETTINGS).toEqual({ theme: "office", calm: false });
 	});
 
-	test("a torn or hand-edited file: only a real true turns a toggle on, unknown keys kept", () => {
+	test("a torn or hand-edited file: only a real true turns calm on, unknown keys kept", () => {
 		const file = fresh();
 		writeSettings(file, {});
-		writeFileSync(file, JSON.stringify({ theme: "factory", sound: "yes", calm: 1, extra: 7 }));
-		expect(readSettings(file)).toEqual({ theme: "factory", sound: false, calm: false, extra: 7 });
+		writeFileSync(file, JSON.stringify({ theme: "factory", calm: 1, extra: 7 }));
+		expect(readSettings(file)).toEqual({ theme: "factory", calm: false, extra: 7 });
 		writeFileSync(file, "{ not json");
 		expect(readSettings(file)).toEqual({ ...DEFAULT_SETTINGS });
 	});
@@ -31,43 +31,40 @@ describe("settings", () => {
 	test("a change is saved and the rest kept", () => {
 		const file = fresh();
 		writeSettings(file, { theme: "factory" });
-		writeSettings(file, { sound: true });
 		writeSettings(file, { calm: true });
-		expect(readSettings(file)).toEqual({ theme: "factory", sound: true, calm: true });
-		expect(JSON.parse(readFileSync(file, "utf8"))).toEqual({ theme: "factory", sound: true, calm: true });
-		writeSettings(file, { sound: false });
-		expect(readSettings(file).sound).toBe(false);
+		expect(readSettings(file)).toEqual({ theme: "factory", calm: true });
+		expect(JSON.parse(readFileSync(file, "utf8"))).toEqual({ theme: "factory", calm: true });
+		writeSettings(file, { calm: false });
+		expect(readSettings(file).calm).toBe(false);
 	});
 
-	test("a saved pixel or night look (from an older version) is dropped: the default scene, and gone at the next save", () => {
-		for (const look of ["pixel", "night", "plain"]) {
+	test("a saved look or sound setting (from an older version) is dropped, and gone at the next save", () => {
+		for (const old of [{ look: "pixel" }, { look: "night" }, { sound: true }, { sound: false, look: "plain" }]) {
 			const file = fresh();
 			writeSettings(file, {});
-			writeFileSync(file, JSON.stringify({ theme: "bakery", sound: true, calm: false, look }));
-			expect(readSettings(file)).toEqual({ theme: "bakery", sound: true, calm: false });
-			expect(settingsQuery(readSettings(file))).toEqual(["theme=bakery", "sound"]);
+			writeFileSync(file, JSON.stringify({ theme: "bakery", calm: false, ...old }));
+			expect(readSettings(file)).toEqual({ theme: "bakery", calm: false });
+			expect(settingsQuery(readSettings(file))).toEqual(["theme=bakery"]);
 			writeSettings(file, { calm: true });
-			expect(JSON.parse(readFileSync(file, "utf8"))).toEqual({ theme: "bakery", sound: true, calm: true });
+			expect(JSON.parse(readFileSync(file, "utf8"))).toEqual({ theme: "bakery", calm: true });
 		}
 	});
 
-	test("a new window gets them as query flags, only when on", () => {
+	test("a new window gets them as query flags, calm only when on", () => {
 		expect(settingsQuery(DEFAULT_SETTINGS)).toEqual(["theme=office"]);
-		expect(settingsQuery({ theme: "factory", sound: true, calm: true })).toEqual(["theme=factory", "sound", "calm"]);
-		expect(settingsQuery({ theme: "office", sound: false, calm: true })).toEqual(["theme=office", "calm"]);
+		expect(settingsQuery({ theme: "factory", calm: true })).toEqual(["theme=factory", "calm"]);
 	});
 });
 
 describe("tray menu", () => {
-	const status = { snapshot: null, compact: false, theme: "office" as const, sound: false, calm: false };
+	const status = { snapshot: null, compact: false, theme: "office" as const, calm: false };
 	const item = (menu: ReturnType<typeof trayMenu>, label: string) => menu.find((m) => "label" in m && m.label === label) as { action?: string; checked?: boolean } | undefined;
 
-	test("Sound and Calm office are toggles that show their state", () => {
+	test("Calm office is a toggle that shows its state; there is no Sound", () => {
 		const off = trayMenu(status, "CommandOrControl+Alt+B");
-		expect(item(off, "Sound")).toMatchObject({ action: "sound", checked: false });
 		expect(item(off, "Calm office")).toMatchObject({ action: "calm", checked: false });
-		const on = trayMenu({ ...status, sound: true, calm: true }, "CommandOrControl+Alt+B");
-		expect(item(on, "Sound")?.checked).toBe(true);
+		expect(item(off, "Sound")).toBeUndefined();
+		const on = trayMenu({ ...status, calm: true }, "CommandOrControl+Alt+B");
 		expect(item(on, "Calm office")?.checked).toBe(true);
 		expect(item(on, "Compact mode (⌘⌥B)")).toBeDefined();
 	});
@@ -83,12 +80,12 @@ describe("tray menu", () => {
 		expect(menu.some((m) => "label" in m && m.label === "Look")).toBe(false);
 	});
 
-	test("a click names its action; unknown ones are ignored", () => {
-		expect(trayAction("sound")).toEqual({ kind: "sound" });
+	test("a click names its action; unknown ones (sound among them, now) are ignored", () => {
 		expect(trayAction("calm")).toEqual({ kind: "calm" });
 		expect(trayAction("theme:factory")).toEqual({ kind: "theme", id: "factory" });
 		expect(trayAction("theme:bakery")).toEqual({ kind: "theme", id: "bakery" });
 		expect(trayAction("theme:moon")).toBeUndefined();
+		expect(trayAction("sound")).toBeUndefined();
 		expect(trayAction("look:pixel")).toBeUndefined();
 		expect(trayAction("nope")).toBeUndefined();
 		expect(trayAction(undefined)).toBeUndefined();

@@ -12,8 +12,6 @@ import { TILES_H, installHud } from "./hud";
 import { type Camerawork, installCamerawork } from "./shots";
 import { installInspector } from "./inspector";
 import { watchVisibility } from "./visibility";
-import { Sound } from "./sound";
-import { Speech } from "./speech";
 import { type Bridge, installShell } from "./shell";
 import { placeholders } from "./placeholder";
 import { Atlas, buildPoseSheet, rigCharacters, rigTheme } from "../scene/rig";
@@ -125,7 +123,7 @@ function blank(): void {
 		if (!office.animating || !visibility.visible) app.ticker.stop();
 	});
 
-	// Calm mode: no life, and no sound. From ?calm (the tray's Calm office, as saved; switched live
+	// Calm mode: no life. From ?calm (the tray's Calm office, as saved; switched live
 	// over RPC), or the system's "reduce motion" setting.
 	const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)");
 	let calmOn = params.has("calm");
@@ -136,8 +134,6 @@ function blank(): void {
 	let hiddenAt: number | undefined;
 	const visibility = watchVisibility((visible) => {
 		office.life = visible && !calm();
-		sound?.update();
-		speech?.update();
 		if (!visible) {
 			hiddenAt = performance.now();
 			app.ticker.stop();
@@ -154,53 +150,14 @@ function blank(): void {
 	});
 	reduced?.addEventListener?.("change", () => {
 		office.life = visibility.visible && !calm();
-		sound?.update();
-		speech?.update();
 		// Life on or off changes how idle habits run: direct again, not just redraw.
 		if (scene.current) scene.direct();
 		else scene.redraw();
 	});
-	// Sound (src/mainview/sound.ts): from ?sound (the tray's Sound, as saved). Only the full office
-	// window plays it, so the compact one never doubles it.
-	const sound = compact
-		? undefined
-		: new Sound({
-				enabled: params.has("sound"),
-				visible: () => visibility.visible,
-				calm,
-				theme: () => theme,
-				floor: () => office.layoutData,
-				view: () => office.view,
-				stop: () => office.stop,
-				width: () => app.screen.width,
-			});
-	director.on((events, world) => sound?.hear(events, world));
-	// Voiced lines (src/mainview/speech.ts): clips that shipped, babble for the rest, on key beats
-	// only, through Sound's context. ?voicebase=<url/> reads the clips from elsewhere and
-	// ?speechgrace=<ms> sets how long it stays quiet once live (tests).
-	const speech = sound
-		? new Speech({
-				sound,
-				theme: () => theme,
-				floor: () => office.layoutData,
-				view: () => office.view,
-				stop: () => office.stop,
-				width: () => app.screen.width,
-				areaOf: (key) => {
-					const a = director.world?.actors[key];
-					return a ? (a.homeArea ?? a.area) : undefined;
-				},
-				base: params.get("voicebase") ?? "",
-				graceMs: params.has("speechgrace") ? Number(params.get("speechgrace")) : undefined,
-			})
-		: undefined;
-	/** The tray's Sound and Calm office toggles, live. */
-	const setToggles = (change: { sound?: boolean; calm?: boolean }) => {
+	/** The tray's Calm office toggle, live. */
+	const setToggles = (change: { calm?: boolean }) => {
 		if (change.calm !== undefined) calmOn = change.calm;
 		office.life = visibility.visible && !calm();
-		if (change.sound !== undefined) sound?.setEnabled(change.sound);
-		else sound?.update();
-		speech?.update();
 		// Life on or off changes how idle habits run: direct again, not just redraw.
 		if (scene.current) scene.direct();
 		else scene.redraw();
@@ -255,7 +212,7 @@ function blank(): void {
 		if (!snap) return;
 		office.show(snap, app.screen.width, app.screen.height);
 		const world = director.world;
-		if (voice) speech?.hear(voice.run(snap, director.now, viewOf()).says);
+		if (voice) voice.run(snap, director.now, viewOf());
 		else if (world) placeholderVoice(world, snap, (k, t, kind) => office.say(k, t, kind), director.now);
 		const waiting = director.waiting();
 		office.pulse(waiting.map((w) => w.area));
@@ -286,15 +243,13 @@ function blank(): void {
 		voice?.setTheme(id, sceneTheme(id).words.signs);
 		old.destroy();
 		if (!compact) app.renderer.background.color = sceneTheme(id).lawn;
-		sound?.themeChanged();
-		speech?.update();
 		direct();
 		scene.redraw();
 	};
 	const show = scene.show;
 	const redraw = scene.redraw;
 	const inspector = import.meta.env.DEV || params.has("inspect") ? installInspector(app, office, scene, director, voice && { voice, now: () => director.now }, { current: () => theme, set: setTheme }, visibility) : undefined;
-	if (inspector) Object.assign(inspector, { sound: () => sound?.state(), speech: () => speech?.state(), setToggles });
+	if (inspector) Object.assign(inspector, { setToggles });
 	// The diary (src/shared/diary.ts): counts and kinds only, from the Bun process (or, in a demo,
 	// kept here from the demo's snapshots). The walls and the lobby board read it (office/decor.ts).
 	const setDiary = (d: unknown) => {
@@ -318,7 +273,7 @@ function blank(): void {
 		live: !params.has("demo") && !params.has("replay"),
 		compact,
 		theme: { current: () => theme, set: (id) => setTheme(id) },
-		toggles: { current: () => ({ sound: sound?.enabled ?? params.has("sound"), calm: calmOn }), set: (change) => setToggles(change) },
+		toggles: { current: () => ({ calm: calmOn }), set: (change) => setToggles(change) },
 		// ?demo=nohome: the "no coding agent found" state, without a real home folder.
 		status: params.get("demo") === "nohome" ? { homeFound: false, home: "~/.claude" } : undefined,
 	});

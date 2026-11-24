@@ -44,7 +44,6 @@ const extra = process.env.BUSYBODIES_SCENE_QUERY ?? "";
 const SETTINGS = settingsFile(Utils.paths.userData);
 const saved = readSettings(SETTINGS);
 let theme: ThemeId = saved.theme;
-let sound = saved.sound;
 let calm = saved.calm;
 /** The office's diary: counts and kinds only, next to settings.json (diary.ts). */
 const diarist = new Diarist(diaryFile(Utils.paths.userData));
@@ -52,9 +51,9 @@ const diarist = new Diarist(diaryFile(Utils.paths.userData));
 const exit = shutdown();
 Electrobun.events.on("before-quit", () => void exit.run("quit"));
 process.on("exit", () => exit.run("exit"));
-// A window opens with the saved choices (as ?theme=, &sound, &calm); one already open switches over RPC.
+// A window opens with the saved choices (as ?theme= and &calm); one already open switches over RPC.
 const urlFor = (compact: boolean) => {
-	const q = [compact ? "compact" : "", ...settingsQuery({ theme, sound, calm }), extra].filter(Boolean).join("&");
+	const q = [compact ? "compact" : "", ...settingsQuery({ theme, calm }), extra].filter(Boolean).join("&");
 	return q ? `${baseUrl}?${q}` : baseUrl;
 };
 
@@ -82,7 +81,7 @@ function makeRpc() {
 				showOffice: () => (showOffice(), true),
 				openProjectPage: () => Utils.openExternal(PROJECT_URL),
 				setTheme: ({ id }) => (setTheme(themeId(id)), true),
-				setToggles: (change) => (setToggles({ sound: change.sound, calm: change.calm }), true),
+				setToggles: (change) => (setToggles({ calm: change.calm }), true),
 				diary: () => diarist.diary,
 			},
 		},
@@ -184,13 +183,12 @@ function setTheme(id: ThemeId): void {
 	tray.refresh();
 }
 
-/** Sound and calm office: saved, and both windows hear (only the office window plays sound). */
-function setToggles(change: { sound?: boolean; calm?: boolean }): void {
-	sound = change.sound ?? sound;
+/** Calm office: saved, and both windows hear. */
+function setToggles(change: { calm?: boolean }): void {
 	calm = change.calm ?? calm;
-	save({ sound, calm });
-	office?.rpc.send.settings({ sound, calm });
-	compact?.rpc.send.settings({ sound, calm });
+	save({ calm });
+	office?.rpc.send.settings({ calm });
+	compact?.rpc.send.settings({ calm });
 	tray.refresh();
 }
 
@@ -200,9 +198,8 @@ function about(): void {
 }
 
 const tray = installTray({
-	status: () => ({ snapshot: watcher.snapshot, compact: compactOn, theme, sound, calm }),
+	status: () => ({ snapshot: watcher.snapshot, compact: compactOn, theme, calm }),
 	setTheme,
-	toggleSound: () => setToggles({ sound: !sound }),
 	toggleCalm: () => setToggles({ calm: !calm }),
 	showOffice,
 	toggleCompact: () => setCompact(!compactOn),

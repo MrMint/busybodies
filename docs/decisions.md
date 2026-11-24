@@ -1808,3 +1808,28 @@ next 3 s over its head so it loops without a seam, and records its source and li
 (`LYRIA_OK`, the same carve-out); its request shape is the `:predict` one and is unverified until
 the first paid run, and since Lyria is a music model a CC0 recording is the better first try. The
 app plays a theme's loop under the synth's tone if one shipped; none has.
+
+## 2026-11-23: sound is gone
+
+**Busybodies is silent.** Sound was opt-in from the start (wave 2, stream F: earcons and a room
+tone synthesised in WebAudio), was made calmer and click-free (#30), and gained voiced lines from an
+offline Gemini TTS pipeline with on-device babble (#32). A follow-up branch then tried, by ear with
+the owner in a sound lab: syllable babble cut from cartoon-voiced Gemini 3.8 takes, a crowd murmur,
+per-character work sounds on a soft pulse, and Lyria 3 music beds that leaned from calm to busy with
+the office. The voices got close; the rest (the low end, the ambience, the rhythm) never did, and
+the owner decided to drop audio altogether rather than ship something that grates on the hundredth
+hearing.
+
+**Removed:** `mainview/sound.ts` and `mainview/speech.ts`, `sass/voiced.ts`, the tray's **Sound**
+item and the settings sheet's Sound switch, the `sound` setting (a saved one is dropped when
+`settings.json` is read, like the retired `look`), the `?sound` flag, the RPC's sound fields,
+`tools/voice*.ts` and `tools/ambience.ts`, the shipped (empty) voice manifest, and the sound and
+speech tests. **Calm office** stays: it stills the idle cast. The experiment branch
+(`claude/voice-sound-lab`) was closed unmerged; what it learned is in its commits. `voice-takes/`
+stays in `.gitignore` so a developer's old local takes are never committed.
+
+**If sound comes back:** start from a reference the owner likes and a brief, not from layers.
+Lessons kept: synthesised beds and foley read as thin and toy-like; recorded voices need pitch
+correction and phrasing to sound intentional; anything always-on has to be judged over minutes, not
+seconds; Lyria 3 on Vertex answers only stateless, streamed interactions; and the terms for Gemini
+TTS and Lyria output are in the AI-generated audio entry above.
