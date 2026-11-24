@@ -82,6 +82,7 @@ export function startLab(host: LabHost): () => void {
 		<label style="display:flex;gap:6px;align-items:center">murmur <input type="range" data-under min="0" max="3" step="0.05" value="${mix.under}" style="flex:1"></label>
 		<label style="display:flex;gap:6px;align-items:center">pitch <input type="range" data-pitch min="-2" max="10" step="0.5" value="" style="flex:1"><span data-pitchv>theme</span></label>
 		<div style="display:flex;gap:6px;margin:8px 0"><button data-beat style="font:inherit;flex:1;padding:4px;border-radius:6px;border:1px solid #555;background:#2a2623;color:inherit;cursor:pointer">key beat now</button><button data-pause style="font:inherit;flex:1;padding:4px;border-radius:6px;border:1px solid #555;background:#2a2623;color:inherit;cursor:pointer">pause</button></div>
+		<div data-meters style="display:grid;grid-template-columns:52px 1fr 34px;gap:2px 6px;align-items:center;margin-bottom:8px"></div>
 		<div data-log style="max-height:120px;overflow:auto;opacity:.8"></div>`;
 	document.body.append(el);
 	const q = <T extends HTMLElement>(sel: string) => el.querySelector(sel) as T;
@@ -119,11 +120,22 @@ export function startLab(host: LabHost): () => void {
 		paint();
 	};
 	const ticker = setInterval(paint, 1_000);
+	// Live levels per layer, so you can see what you're (not) hearing. -60 dBFS is an empty bar.
+	const meters = setInterval(() => {
+		const m = { work: host.work?.meter(), ...host.speech.meters() };
+		q("[data-meters]").innerHTML = Object.entries(m)
+			.map(([k, db]) => {
+				const w = db === undefined ? 0 : Math.max(0, Math.min(100, ((db + 60) / 50) * 100));
+				return `<span>${k}</span><span style="height:6px;background:#3a3430;border-radius:3px;overflow:hidden"><span style="display:block;height:100%;width:${w}%;background:#c9a45c"></span></span><span style="text-align:right">${db ?? "–"}</span>`;
+			})
+			.join("");
+	}, 150);
 	paint();
 	return () => {
 		running = false;
 		timers.forEach(clearTimeout);
 		clearInterval(ticker);
+		clearInterval(meters);
 		el.remove();
 	};
 }

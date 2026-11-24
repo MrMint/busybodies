@@ -23,7 +23,7 @@ import { type Say, keyFor } from "../scene/sass";
 import type { TriggerKind } from "../scene/sass/types";
 import { EMPTY_MANIFEST, type GrainStep, type ThemeVoices, corpus, Mouth, type VoiceManifest, type VoiceMode, babbleHz, babbleOf, grainPlan, lineKey, ownVoice, pickTake, pitchCents, templated } from "../scene/sass/voiced";
 import type { ThemeId } from "../scene/theme/id";
-import { type Sound, hashId, loudness, panFor, seq, zoomedArea } from "./sound";
+import { type Sound, hashId, loudness, meterDb, panFor, seq, zoomedArea } from "./sound";
 
 export interface SpeechHost {
 	sound: Sound;
@@ -112,19 +112,21 @@ const BABBLE_GAIN = 0.22;
 /** Syllable babble in front: a little under a clip, as it's busier. */
 const GRAIN_GAIN = 0.8;
 /** The murmur, against the front. */
-const UNDER_GAIN = 0.28;
+const UNDER_GAIN = 0.18;
 /** The murmur is one short phrase: at most this many syllables. */
 const MURMUR_SYLLABLES = 8;
 /** Key beats sit in the crowd and the work, not on top of them (design/sound.md: voices are a small part). */
-const FRONT_LEVEL = 0.55;
+const FRONT_LEVEL = 0.3;
 /**
- * The crowd: a soft, distant murmur of the office at work, from the same syllable banks. Up to
- * `CROWD_TALKERS` talkers chat on and off (more of them the busier it is), each phrase panned
- * somewhere on the floor, all of it muffled and sent to the room.
+ * The crowd: a wash of distant chatter, almost a texture (owner, 2026-11-23: "way back, like white
+ * noise"). Up to `CROWD_TALKERS` soft talkers chat on and off (more of them the busier it is), each
+ * phrase panned somewhere on the floor, so many overlap and smear; all of it muffled below
+ * `CROWD_HZ`, mostly the room, and well under the work.
  */
-const CROWD_GAIN = 0.09;
-const CROWD_TALKERS = 6;
-const CROWD_SEND = 0.8;
+const CROWD_GAIN = 0.008;
+const CROWD_TALKERS = 8;
+const CROWD_SEND = 1.4;
+const CROWD_HZ = 800;
 /** A syllable's rounded edges: in, and out (they overlap within a word, so it's a little longer). */
 const GRAIN_IN = 0.014;
 const GRAIN_OUT = 0.045;
@@ -146,7 +148,7 @@ export class Speech {
 	#mouth: Mouth;
 	#murmur: Mouth;
 	#mix: SpeechMix;
-	#vbus?: { ctx: AudioContext; input: AudioNode };
+	#vbus?: { ctx: AudioContext; input: AudioNode; meter: AnalyserNode };
 	#crowd?: Crowd;
 	#manifest?: VoiceManifest;
 	#loading?: Promise<void>;
@@ -184,6 +186,11 @@ export class Speech {
 		if (!zoomed) return;
 		const under = this.#murmur.choose(heard.filter((h) => h !== front && this.#host.areaOf(h.who) === zoomed), now);
 		if (under) void this.#say(under, "murmur", bus);
+	}
+
+	/** The voices' and the crowd's levels now, in dBFS, for the lab's meters. */
+	meters(): { voices?: number; crowd?: number } {
+		return { voices: this.#vbus && meterDb(this.#vbus.meter), crowd: this.#crowd?.meter() };
 	}
 
 	/** The lab's knobs (mainview/lab.ts). */
@@ -224,7 +231,10 @@ export class Speech {
 		comp.connect(low).connect(top);
 		top.connect(bus.out);
 		top.connect(send).connect(bus.room);
-		this.#vbus = { ctx, input: comp };
+		const meter = ctx.createAnalyser();
+		meter.fftSize = 2048;
+		top.connect(meter);
+		this.#vbus = { ctx, input: comp, meter };
 		return comp;
 	}
 
@@ -521,6 +531,7 @@ class Crowd {
 	readonly theme: ThemeId;
 	#out: GainNode;
 	#in: AudioNode;
+	#meter: AnalyserNode;
 	#timer: ReturnType<typeof setInterval>;
 	#talkers: { next: number; n: number }[] = [];
 	#level: number;
@@ -546,12 +557,15 @@ class Crowd {
 		// Far off: the highs go, and much of it is the room.
 		const far = ctx.createBiquadFilter();
 		far.type = "lowpass";
-		far.frequency.value = 1_700;
+		far.frequency.value = CROWD_HZ;
 		far.Q.value = 0.5;
 		const send = ctx.createGain();
 		send.gain.value = CROWD_SEND;
 		far.connect(this.#out);
 		this.#out.connect(bus.out);
+		this.#meter = ctx.createAnalyser();
+		this.#meter.fftSize = 2048;
+		this.#out.connect(this.#meter);
 		this.#out.connect(send).connect(bus.room);
 		this.#in = far;
 		const banks = Object.entries(voices.grains ?? {});
@@ -579,7 +593,7 @@ class Crowd {
 				const text = lines[Math.floor(this.#r() * lines.length)]!;
 				const base = (voices.pitch ?? 0) * 100 + pitchCents(who);
 				const steps = grainPlan(`${who}:${talker.n++}`, text, bank, { phrase: true, max: 9, base, raw: !o.smooth() }).filter((s) => buffers.has(s.file));
-				const pause = (1.2 + this.#r() * 3.5) * (1.6 - heat);
+				const pause = (0.6 + this.#r() * 2) * (1.6 - heat);
 				if (!steps.length) {
 					talker.next = at + pause;
 					continue;
@@ -598,6 +612,10 @@ class Crowd {
 				}, (at - now + secs + 1) * 1000);
 			}
 		}, 250);
+	}
+
+	meter(): number {
+		return meterDb(this.#meter);
 	}
 
 	level(level: number): void {

@@ -322,6 +322,15 @@ function glide(param: AudioParam, to: number, now: number, tau: number): void {
 
 /** The room tone's level while a character speaks (speech.ts). */
 const DUCK = 0.35;
+/** A level meter's reading: the RMS of the analyser's last window, in dBFS (-100 for silence). For the sound lab. */
+export function meterDb(a: AnalyserNode): number {
+	const d = new Float32Array(a.fftSize);
+	a.getFloatTimeDomainData(d);
+	let s = 0;
+	for (const v of d) s += v * v;
+	return Math.max(-100, Math.round(10 * Math.log10(s / d.length + 1e-12)));
+}
+
 /** How much of the shared room each earcon sends (design/sound.md: everything in one small room). */
 const EARCON_SEND = 0.22;
 
@@ -676,7 +685,7 @@ type Earcon = (k: Kit, at: number, pitch: number, seed: number) => void;
  */
 export const LEVEL: Record<EarconKind, number> = { bell: 0.64, stamp: 1.1, red: 0.87, rustle: 7, chime: 0.72, grind: 0.96 };
 
-const EARCONS: Record<EarconKind, Earcon> = {
+export const EARCONS: Record<EarconKind, Earcon> = {
 	// The desk bell: a bright strike with inharmonic partials (a small bell's 1 : 2.76 : 5.4), the
 	// high ones dying first, and a tick of noise for the striker.
 	bell(k, at, p) {

@@ -34,7 +34,7 @@ music or a call, or sounds like people talking in the room.
 |---|---|---|---|
 | Room | The theme's bed: hum and typing, the belt's clack, the oven and the shop door (sound.ts), or a recorded loop (tools/ambience.ts) | Always, while live | Lowest; dips under a voice in front |
 | Work | The main body: every busy character's work in its theme's palette (office: key taps, page flips, a card riffle, the stapler, a rubber stamp, a phone burble, a sheaf dropped, the shredder; the factory's rivets, press and gauge; the bakery's whisk, jar lids, oven door and spoon). On a soft pulse (16ths, 96 bpm calm to 120 in a rush), pitched ones in the key, at most 3 a step (4 zoomed), the room in view first and clear, the rest through the wall, taking turns (mainview/worksound.ts) | Whenever anyone works; more and quicker the busier it is | The loudest layer after the earcons |
-| Crowd | A distant murmur of the office at work: a few talkers chatting on and off from the syllable banks, muffled and mostly room; more talkers and shorter pauses the busier it is | Always, in the babble modes; fades in and out over seconds | Under everything but the room; dips under a key beat |
+| Crowd | A faint wash of distant chatter, almost a texture (owner: "way back, like white noise"), about 10 dB under the work: a few talkers chatting on and off from the syllable banks, muffled and mostly room; more talkers and shorter pauses the busier it is | Always, in the babble modes; fades in and out over seconds | Under everything but the room; dips under a key beat |
 | Murmur | Babble for the ordinary said bubbles of the room the camera is zoomed into (zoomed out, the crowd stands in) | A few every 10 s at most, one whole phrase each | Well under the front, never on top of each other |
 | Earcons | The bell, chime, stamp, two-note red, rustle, grind | On their events, rate-limited | Clear, short |
 | Front voice | A key beat: waiting on you, done, back to work | One at a time, at most 3 a minute | The loudest voice; the room dips |
@@ -54,6 +54,10 @@ plain or "small" deliveries). Babble still felt closer to a crowd of mochis than
   "Hm?") is the next step up; full spoken lines are the last, and likeliest to tire.
 - **The synthesised babble** (the first cut) stays as the fallback: lines with nothing recorded, a
   clip that won't decode.
+
+**Levels, measured (the lab's meters, busy demo office):** work about -49 dBFS typical and -37 at
+its loud moments; the crowd about -58; event sounds and key beats peak higher but rarely. Each
+work sound's own level is set by rendering it offline to a target (worksound.ts `WORK_LEVEL`).
 
 **Work is the body; voices are seasoning (owner, 2026-11-23).** The office should mostly sound
 like the work happening, getting busier and more hectic as more agents run in parallel; voices

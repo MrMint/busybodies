@@ -15,7 +15,7 @@ import type { Stop, View } from "../scene/office/camera";
 import type { World as Floor } from "../scene/office/world";
 import { MOCHI_KEY } from "../scene/sass/voiced";
 import type { ThemeId } from "../scene/theme/id";
-import { type Kit, type Sound, hashId, kit, makeNoise, panFor, seq, zoomedArea } from "./sound";
+import { type Kit, type Sound, hashId, kit, makeNoise, meterDb, panFor, seq, zoomedArea } from "./sound";
 
 /** What a working character sounds like: its work, or the station it's at. */
 export type WorkSoundKind = "type" | "flip" | "riffle" | "machine" | "stamp" | "chirp" | "drop" | "shred";
@@ -225,6 +225,20 @@ export const PALETTE: Record<ThemeId, Record<WorkSoundKind, Play>> = {
 	},
 };
 
+/**
+ * Each sound's level, so its loudest tenth of a second lands on its target: about -32 dBFS for a
+ * key tap up to -28 for a stamp or a machine on the beat (the earcons sit near -19, front voices
+ * near -26, the crowd near -38; design/sound.md). Measured by rendering each one offline (the sound
+ * lab's console: see `measure` in mainview/lab.ts); noise through a narrow band keeps only a sliver
+ * of its energy, so the soft ones need a lot.
+ */
+export const WORK_TARGET: Record<WorkSoundKind, number> = { type: -32, flip: -30, riffle: -30, chirp: -31, drop: -30, machine: -28, stamp: -28, shred: -34 };
+export const WORK_LEVEL: Record<ThemeId, Record<WorkSoundKind, number>> = {
+	office: { chirp: 9.7, drop: 10.2, flip: 19.7, machine: 5.5, riffle: 25.7, shred: 22.1, stamp: 3.9, type: 29.5 },
+	factory: { chirp: 18, drop: 3.6, flip: 29.9, machine: 2.8, riffle: 15.8, shred: 21.4, stamp: 82.2, type: 16 },
+	bakery: { chirp: 5.4, drop: 12.7, flip: 30.5, machine: 4.2, riffle: 9.2, shred: 58.9, stamp: 10.8, type: 49 },
+};
+
 /** The work layer's level against the master, and its share of the shared room. */
 const WORK_GAIN = 0.9;
 const WORK_SEND = 0.25;
@@ -257,6 +271,7 @@ interface Run {
 	next: number;
 	step: number;
 	noise: AudioBuffer;
+	meter: AnalyserNode;
 }
 
 export class WorkSound {
@@ -279,6 +294,11 @@ export class WorkSound {
 			r.out.gain.cancelScheduledValues(r.ctx.currentTime);
 			r.out.gain.setTargetAtTime(WORK_GAIN * level, r.ctx.currentTime, 0.2);
 		}
+	}
+
+	/** The layer's level now, in dBFS, for the lab's meter. */
+	meter(): number | undefined {
+		return this.#run && meterDb(this.#run.meter);
 	}
 
 	state(): WorkSoundState {
@@ -304,7 +324,10 @@ export class WorkSound {
 		send.gain.value = WORK_SEND;
 		out.connect(bus.out);
 		out.connect(send).connect(bus.room);
-		const run: Run = { ctx, out, next: ctx.currentTime + 0.3, step: 0, noise: makeNoise(ctx), timer: undefined as unknown as ReturnType<typeof setInterval> };
+		const meter = ctx.createAnalyser();
+		meter.fftSize = 2048;
+		out.connect(meter);
+		const run: Run = { ctx, out, next: ctx.currentTime + 0.3, step: 0, noise: makeNoise(ctx), meter, timer: undefined as unknown as ReturnType<typeof setInterval> };
 		run.timer = setInterval(() => this.#tick(run), 100);
 		this.#run = run;
 	}
@@ -328,22 +351,24 @@ export class WorkSound {
 		// The pulse: about 96 bpm calm, up to 120 in a rush.
 		const heat = this.#host.sound.heat;
 		const step = 60 / (96 + 24 * heat) / 4;
-		const palette = PALETTE[this.#host.theme()] ?? PALETTE.office;
+		const theme = this.#host.theme();
+		const palette = PALETTE[theme] ?? PALETTE.office;
+		const levels = WORK_LEVEL[theme] ?? WORK_LEVEL.office;
 		while (run.next < now + 0.3) {
-			for (const h of hitsOn(sources, run.step, zoomed !== undefined)) this.#play(run, palette, h, run.next + Math.max(0, h.nudge));
+			for (const h of hitsOn(sources, run.step, zoomed !== undefined)) this.#play(run, palette, levels[h.kind], h, run.next + Math.max(0, h.nudge));
 			run.next += step;
 			run.step++;
 		}
 	}
 
-	#play(run: Run, palette: Record<WorkSoundKind, Play>, h: Hit, at: number): void {
+	#play(run: Run, palette: Record<WorkSoundKind, Play>, level: number, h: Hit, at: number): void {
 		const ctx = run.ctx;
 		const floor = this.#host.floor();
 		const rect = h.area ? floor?.areas.find((a) => a.id === h.area)?.rect : undefined;
 		const pan = ctx.createStereoPanner();
 		pan.pan.value = panFor(rect, this.#host.view(), this.#host.width());
 		const g = ctx.createGain();
-		g.gain.value = h.near ? 1 : FAR.gain;
+		g.gain.value = level * (h.near ? 1 : FAR.gain);
 		let head: AudioNode = g;
 		if (!h.near) {
 			const wall = ctx.createBiquadFilter();
