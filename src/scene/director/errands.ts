@@ -10,7 +10,7 @@
 // would anyone whose spot changed.
 import { plannerNote, posterFor } from "../office/rigpoints";
 import { type Slot, type World as Floor, shredderUse } from "../office/world";
-import { POSE, duration } from "../rig/poses";
+import { poseMs } from "../rig/poses";
 import type { Session } from "../../watcher/model";
 import type { Metrics, Ticket } from "./metrics";
 import { pathBetween, walkMs } from "./paths";
@@ -67,7 +67,6 @@ export interface Member {
 	seen: { waiting?: number };
 }
 
-const poseMs = (name: string) => duration(POSE[name]?.frames ?? []);
 const familyOf = (m: Member) => (m.kind === "lead" ? m.session.family : m.agent?.family);
 export const pauseOf = (m: Member): number => traitOf(familyOf(m)).pauseMs;
 

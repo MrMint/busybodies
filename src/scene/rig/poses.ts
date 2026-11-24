@@ -1282,3 +1282,9 @@ export const HABITS = POSES.filter((p) => p.habit);
 
 /** How long one pass through a pose takes. */
 export const duration = (frames: { ms: number }[]): number => frames.reduce((n, f) => n + f.ms, 0);
+
+/** How long one pass through a pose takes for its lead, or for its partner (0 for an unknown pose). */
+export const poseMs = (name: string, as: "lead" | "partner" = "lead") => {
+	const p = POSE[name];
+	return p ? duration(as === "partner" && p.partner ? p.partner.frames : p.frames) : 0;
+};

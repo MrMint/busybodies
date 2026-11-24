@@ -8,13 +8,13 @@
 // and who is walking; the events say what changed. `wake` is the next time the world changes with
 // no new snapshot (an acted pose ends, a habit rotates, a build turns long): call again then.
 import { seats } from "../office/layout";
-import { LEAD_SIZE } from "../office/placement";
+import { LEAD_SIZE, crewSize } from "../office/placement";
 import { habitsFor } from "../office/staging";
 import type { Mood } from "../office/slot";
 import type { Area, Slot, World as Floor } from "../office/world";
 import { OVERLAP, buildSlot, crewPlaces, crewSlot, crewSpots, endGaps, useFor, yieldFrom } from "../office/world";
 import { choosePose, hash } from "../rig/player";
-import { POSE, duration } from "../rig/poses";
+import { POSE, poseMs } from "../rig/poses";
 import { type Role, roleFor } from "../rig/roles";
 import type { Activity, Agent, Commands, RunningTool, Session, Snapshot } from "../../watcher/model";
 import { beat, flourishAfter, overlapOf } from "./beats";
@@ -102,7 +102,6 @@ interface Spec {
 	task?: string;
 }
 
-const crewSize = (depth: number) => Math.max(40, 58 - (depth - 1) * 8);
 /** A character's model personality (traits.ts): crew by their own model, leads by the session's. */
 const traitFor = (s: Spec) => traitOf(s.kind === "lead" ? s.session.family : s.agent?.family);
 /** How fast a character walks now: its heat pace (pace.ts) times its trait. */
@@ -285,11 +284,6 @@ function assign(list: Spec[], floor: Floor, prev: Record<string, Actor>): Map<st
 
 // --- Poses -----------------------------------------------------------------------------------------
 
-const poseMs = (name: string, as: "lead" | "partner") => {
-	const p = POSE[name];
-	if (!p) return 0;
-	return duration(as === "partner" && p.partner ? p.partner.frames : p.frames);
-};
 
 interface Choice {
 	pose: string;

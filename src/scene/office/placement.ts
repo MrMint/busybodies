@@ -28,7 +28,8 @@ export interface Placed {
 }
 
 export const LEAD_SIZE = 72;
-const crewSize = (depth: number) => Math.max(40, 58 - (depth - 1) * 8);
+/** A crew member's size at a depth in the session tree: smaller the deeper, down to 40. */
+export const crewSize = (depth: number) => Math.max(40, 58 - (depth - 1) * 8);
 
 const agentMood = (a: Agent): Mood => (a.status === "running" ? "busy" : a.status === "stalled" ? "stalled" : "done");
 const sessionMood = (s: Session): Mood => (s.state === "busy" ? "busy" : "idle");

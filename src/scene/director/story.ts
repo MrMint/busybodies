@@ -20,7 +20,7 @@
 import { LEAD_SIZE } from "../office/placement";
 import type { Slot, World as Floor } from "../office/world";
 import { useFor } from "../office/world";
-import { POSE, duration } from "../rig/poses";
+import { poseMs } from "../rig/poses";
 import { roleFor } from "../rig/roles";
 import { DIARY, projectKey } from "../../shared/diary";
 import type { Commands, Session, Snapshot } from "../../watcher/model";
@@ -185,10 +185,6 @@ export function storyNews(was: Story | undefined, list: Member[], before: Record
 	return out;
 }
 
-const poseMs = (name: string, as: "lead" | "partner" = "lead") => {
-	const p = POSE[name];
-	return p ? duration(as === "partner" && p.partner ? p.partner.frames : p.frames) : 0;
-};
 const cheerMs = () => Math.max(poseMs(STORY.cheer, "lead"), poseMs(STORY.cheer, "partner"), poseMs(STORY.alone));
 
 /** A lead that might fetch a reply. */
