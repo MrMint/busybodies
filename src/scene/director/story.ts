@@ -27,6 +27,7 @@ import type { Commands, Session, Snapshot } from "../../watcher/model";
 import { pathBetween, walkMs } from "./paths";
 import type { View } from "./social";
 import type { Actor, WorldEvent } from "./types";
+import { flatSessions } from "../../watcher/model";
 
 export const STORY = {
 	/** The lead's part at the outbox: reaching in for the reply. */
@@ -334,8 +335,7 @@ export function sendOffLooks(sendoffs: Record<string, SendOff>, actors: Record<s
  * order of their keys. Characters whose session the snapshot no longer has get none.
  */
 export function regularsOf(actors: Pick<Actor, "key" | "kind" | "role" | "session" | "task">[], snap: Snapshot): Map<string, string> {
-	const flat = (l: Session[]): Session[] => l.flatMap((s) => [s, ...flat(s.children)]);
-	const projects = new Map(flat(snap.sessions).map((s) => [s.id, projectKey(s.project)]));
+	const projects = new Map(flatSessions(snap.sessions).map((s) => [s.id, projectKey(s.project)]));
 	const groups = new Map<string, string[]>();
 	for (const a of [...actors].sort((p, q) => (p.key < q.key ? -1 : p.key > q.key ? 1 : 0))) {
 		const p = projects.get(a.session);

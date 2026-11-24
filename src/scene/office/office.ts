@@ -49,6 +49,7 @@ import { buildTop } from "../theme/build";
 import { areaLabel } from "../theme/words";
 import { RobotArm } from "../theme/arm";
 import { type CrewBuild, FURNITURE_KINDS, type SceneTheme } from "../theme/types";
+import { flatSessions } from "../../watcher/model";
 
 export type { CrewBuild };
 
@@ -682,7 +683,7 @@ export class Office extends Container {
 			held.set(p.desk, list);
 		}
 		for (const list of held.values()) list.sort();
-		const running = new Set(flat(snapshot.sessions).filter(buildRunning).map((s) => s.id));
+		const running = new Set(flatSessions(snapshot.sessions).filter(buildRunning).map((s) => s.id));
 		const building = new Set(world.areas.filter((a) => a.desks.some((d) => running.has(d.id))).map((a) => a.id));
 		const topped = new Map(Object.entries(this.#opts.builds?.() ?? {}).map(([id, b]) => [id, b.topped] as const));
 		const facts: AmbientFacts = { held, building, topped, setDown: this.#setDown };
@@ -706,7 +707,7 @@ export class Office extends Container {
 	#drawLight(world: World, snapshot = this.#snapshot): void {
 		if (!snapshot) return;
 		const occupied = new Set(this.#placed.map((p) => p.area).filter((a): a is string => !!a));
-		const desks = flat(snapshot.sessions).map((s) => ({ id: s.id, state: s.state }));
+		const desks = flatSessions(snapshot.sessions).map((s) => ({ id: s.id, state: s.state }));
 		this.#light.update({ light: this.#theme.light, phase: this.#phase, world, focus: this.#focus(), desks, occupied });
 		const rushing = new Set(this.#opts.rush?.() ?? []);
 		const rooms = world.areas.filter((a) => a.desks.some((d) => rushing.has(d.id)));
@@ -939,7 +940,7 @@ export class Office extends Container {
 
 	/** Desks (with their screens and name cards), chairs and floor furniture: depth-sorted. */
 	#drawFurniture(world: World, snapshot: Snapshot): void {
-		const sessions = new Map(flat(snapshot.sessions).map((s) => [s.id, s]));
+		const sessions = new Map(flatSessions(snapshot.sessions).map((s) => [s.id, s]));
 		const builds = this.#opts.builds?.() ?? {};
 		const metrics = this.#opts.metrics?.().desks ?? {};
 		const seen = new Set<string>();
@@ -1177,7 +1178,7 @@ export class Office extends Container {
 		}
 		const seen = new Set<string>();
 		const bubbles = new Set<string>();
-		const sessions = new Map(flat(snapshot.sessions).map((s) => [s.id, s]));
+		const sessions = new Map(flatSessions(snapshot.sessions).map((s) => [s.id, s]));
 		for (const { who, slot, desk, cue } of placed) {
 			seen.add(who.key);
 			let p = this.#people.get(who.key);
@@ -1257,7 +1258,7 @@ export class Office extends Container {
 		if (a) {
 			sub = a.kind === "project" ? "" : this.#theme.words.subs[a.kind];
 			if (a.kind === "project") {
-				const list = flat(snapshot.sessions).filter((s) => s.project === a.name);
+				const list = flatSessions(snapshot.sessions).filter((s) => s.project === a.name);
 				const out = list.reduce((n, s) => n + crewOf(s.agents).filter((x) => x.status === "running").length, 0);
 				sub = `${list.length} session${list.length === 1 ? "" : "s"}${out ? ` · ${out} agent${out === 1 ? "" : "s"} out` : ""}`;
 			}
@@ -1295,7 +1296,6 @@ const roomBounds = (r: Rect): Rect => ({ x: r.x, y: r.y - 70, w: r.w, h: r.h + 1
 
 const differs = (a: View, b: View) => Math.abs(a.scale - b.scale) > 1e-4 || Math.abs(a.x - b.x) > 0.5 || Math.abs(a.y - b.y) > 0.5;
 
-const flat = (list: Session[]): Session[] => list.flatMap((s) => [s, ...flat(s.children)]);
 
 /** A build running in a session: its own shell command, or one of its agents'. */
 const buildRunning = (s: Session): boolean => {

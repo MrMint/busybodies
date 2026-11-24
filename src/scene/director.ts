@@ -18,6 +18,7 @@ import type { Snapshot } from "../watcher/model";
 import type { Diary } from "../shared/diary";
 import type { StoryView } from "./office/decor";
 import { regularsOf } from "./director/story";
+import { flatSessions } from "../watcher/model";
 
 export { NOTICE, type View } from "./director/social";
 export type { Actor, Build, World, WorldEvent } from "./director/types";
@@ -29,8 +30,7 @@ export type Listener = (events: WorldEvent[], world: World) => void;
 
 /** The built-in voice: each busy lead says the tool it is using; everyone else is quiet. */
 export function placeholderVoice(world: World, snap: Snapshot, say: SayHook, now: number): void {
-	const flat = (l: Snapshot["sessions"]): Snapshot["sessions"] => l.flatMap((s) => [s, ...flat(s.children)]);
-	const tools = new Map(flat(snap.sessions).map((s) => [`s:${s.id}`, s.state === "busy" ? s.activity?.tool : undefined]));
+	const tools = new Map(flatSessions(snap.sessions).map((s) => [`s:${s.id}`, s.state === "busy" ? s.activity?.tool : undefined]));
 	for (const a of Object.values(world.actors)) {
 		const tool = a.kind === "lead" && !a.gone && !(a.walk && now < a.walk.since + a.walk.ms) ? tools.get(a.key) : undefined;
 		say(a.key, tool?.replace(/^mcp__[^_]+__/, ""), "said");

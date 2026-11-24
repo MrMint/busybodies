@@ -7,6 +7,7 @@
 // keeps one in memory from its invented snapshots with the same code.
 import { roleFor } from "../scene/rig/roles";
 import type { Agent, Session, Snapshot } from "../watcher/model";
+import { flatSessions } from "../watcher/model";
 
 /** What the diary counts. */
 export const DIARY_KINDS = ["sessions", "hires", "prsOpened", "prsMerged", "testsRed", "redeemed", "finished", "longFinished", "compactions"] as const;
@@ -82,7 +83,6 @@ export interface NoteOptions {
 	day?: (ms: number) => string;
 }
 
-const flat = (l: Session[]): Session[] => l.flatMap((s) => [s, ...flat(s.children)]);
 const agentsOf = (l: Agent[]): Agent[] => l.flatMap((a) => [a, ...agentsOf(a.children)]);
 
 /**
@@ -124,7 +124,7 @@ export function noteSnapshot(diary: Diary, mem: DiaryMemory, snap: Snapshot, opt
 		changed = true;
 	};
 
-	const sessions = flat(snap.sessions);
+	const sessions = flatSessions(snap.sessions);
 	const live = new Map<string, { project: string; startedAt: number }>();
 	for (const s of sessions) {
 		const p = projectKey(s.project);

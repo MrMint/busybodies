@@ -18,6 +18,7 @@ import type { Session } from "../../watcher/model";
 import { type Stop, sameStop } from "../office/camera";
 import { heatOf } from "./rush";
 import type { Build, World, WorldEvent } from "./types";
+import { flatSessions } from "../../watcher/model";
 
 export type NewsReason = "waiting" | "red" | "pr" | "rush" | "compaction" | "buried" | "feud";
 /** Why the camera is where it is: news, or resting (the busiest room, waiting, all idle), or pinned. */
@@ -200,12 +201,11 @@ export function newsFrom(events: WorldEvent[], world: World | undefined, areaOf:
 	return out;
 }
 
-const flat = (l: Session[]): Session[] => l.flatMap((s) => [s, ...flat(s.children)]);
 
 /** How busy each project room is: its sessions' heat (rush.ts), plus a little per busy session. */
 export function scoreByArea(sessions: Session[], builds: Record<string, Build>, areaOf: (session: string) => string | undefined, now: number): Record<string, number> {
 	const score: Record<string, number> = {};
-	for (const s of flat(sessions)) {
+	for (const s of flatSessions(sessions)) {
 		const area = areaOf(s.id);
 		if (!area) continue;
 		const n = heatOf(s, builds[s.id]?.edits, now) + (s.state === "busy" ? SHOTS.busyScore : 0);

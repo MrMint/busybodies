@@ -3,7 +3,8 @@
 // what it can. Fixtures: ?demo=empty (nobody's in), ?demo=nohome (no coding agent found), ?about.
 import type { AppStatus } from "../shared/rpc";
 import { THEME_IDS, type ThemeId } from "../scene/theme/id";
-import type { Session, Snapshot } from "../watcher/model";
+import type { Snapshot } from "../watcher/model";
+import { flatSessions } from "../watcher/model";
 
 /** What the shell can ask of the Bun process. */
 export interface Bridge {
@@ -71,7 +72,6 @@ html:has(body.compact),body.compact{background:transparent}
  padding:5px 14px;cursor:pointer;box-shadow:2px 3px 0 #1b2140}
 `;
 
-const flat = (list: Session[]): Session[] => list.flatMap((s) => [s, ...flat(s.children)]);
 
 export function installShell(opts: {
 	bridge: Bridge;
@@ -237,7 +237,7 @@ Start a coding session there, or point <code>BUSYBODIES_AGENT_HOME</code> at the
 		togglesChanged: () => markToggles(),
 		/** Each snapshot: show or hide the empty-state sign. */
 		update(snapshot: Snapshot) {
-			const n = flat(snapshot.sessions).length;
+			const n = flatSessions(snapshot.sessions).length;
 			if (n === sessions) return;
 			sessions = n;
 			// The agent's folder may have appeared since: ask again whenever the office empties.

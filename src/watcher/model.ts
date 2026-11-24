@@ -191,3 +191,6 @@ export interface Snapshot {
 	at: number;
 	sessions: Session[];
 }
+
+/** Every session in a tree, side sessions included, depth first. */
+export const flatSessions = (list: Session[]): Session[] => list.flatMap((s) => [s, ...flatSessions(s.children)]);
