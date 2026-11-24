@@ -98,6 +98,11 @@
 				"src/scene/world/**",
 				"src/scene/rig/data/**",
 				"src/scene/contract.ts",
+				"src/scene/theme/words.ts",
+				"src/themes/*/words.ts",
+				"src/themes/*/lines.ts",
+				"src/themes/factory/staging.ts",
+				"src/themes/factory/armplan.ts",
 				"src/themes/ids.ts"
 			],
 			"linter": {

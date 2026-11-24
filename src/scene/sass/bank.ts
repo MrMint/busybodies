@@ -4,7 +4,7 @@
 // (everything not marked `office`) and add their own, so "Out of office. In the office." stays in
 // the office. A theme without a bank of its own gets the office's.
 import type { ThemeId } from "../../themes/ids";
-import { BAKERY_LINES } from "./lines-bakery";
+import { BAKERY_LINES } from "../../themes/bakery/lines";
 import { FACTORY_LINES } from "../../themes/factory/lines";
 import { type Line, LINES, linesIn } from "./lines";
 

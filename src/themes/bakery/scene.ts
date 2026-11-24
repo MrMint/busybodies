@@ -15,15 +15,16 @@
 // tester's stand, web the order phone, the outbox the pick-up shelf of boxes, the shredder the crumb
 // bin. Still cut paper: flat shapes and the same ink, so the cast reads the same as in the office.
 import { Container, Graphics } from "pixi.js";
-import type { Lamp, PlannerRow, Tray } from "../contract";
-import { GREEN, INK, RED, SHADOW, type SignStyle, batched, hash, label, line, signboard, wob } from "../office/paper";
-import { MONITOR, PROPS } from "../world/propspots";
-import type { SceneStaging } from "../world/staging";
-import { type Area, type Band, DESK_TOP, type Rect } from "../world/world";
-import { crewBuild } from "./build";
-import { NIGHT_WATCH, ROOM_COLOURS } from "../../themes/office/scene";
-import type { FurnitureKind, SceneLight, SceneTheme, StagePainters } from "./types";
-import { BAKERY_WORDS, type SignText } from "./words";
+import type { Lamp, PlannerRow, Tray } from "../../scene/contract";
+import { GREEN, INK, RED, SHADOW, type SignStyle, batched, hash, label, line, signboard, wob } from "../../scene/office/paper";
+import { MONITOR, PROPS } from "../../scene/world/propspots";
+import type { SceneStaging } from "../../scene/world/staging";
+import { type Area, type Band, DESK_TOP, type Rect } from "../../scene/world/world";
+import { crewBuild } from "../../scene/theme/build";
+import { NIGHT_WATCH, ROOM_COLOURS } from "../office/scene";
+import type { FurnitureKind, SceneLight, SceneTheme, StagePainters } from "../../scene/theme/types";
+import type { SignText } from "../../scene/theme/words";
+import { BAKERY_WORDS } from "./words";
 import { mix } from "../../shared/colour";
 
 // --- Paint ------------------------------------------------------------------------------------

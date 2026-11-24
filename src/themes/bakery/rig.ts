@@ -40,8 +40,8 @@
 //             cherry), a prize doughnut rosette
 //   designer  the cake decorator: a tiny tiered cake on a headband, a piping bag pinned on
 import type { Graphics } from "pixi.js";
-import { AT, BELL, PLANNER, STATION, STICKY, TRAY, WORK, handAt } from "./data/reach";
-import { ANCHORS, type Painter, type Palette, PAPER_PALETTE, RED, type Theme, TRAY_FULL, W, burstAt, line, paperTheme, rotRect, sparkle, text } from "./theme";
+import { AT, BELL, PLANNER, STATION, STICKY, TRAY, WORK, handAt } from "../../scene/rig/data/reach";
+import { ANCHORS, type Painter, type Palette, PAPER_PALETTE, RED, type Theme, TRAY_FULL, W, burstAt, line, paperTheme, rotRect, sparkle, text } from "../../scene/rig/theme";
 import { mix } from "../../shared/colour";
 
 /** Bakery colours, on top of the paper palette. */

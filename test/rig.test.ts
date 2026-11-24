@@ -685,7 +685,7 @@ describe("themes", async () => {
 	});
 
 	describe("the bakery", async () => {
-		const { bakeryTheme, BAKERY_REPAINTS } = await import("../src/scene/rig/bakery");
+		const { bakeryTheme, BAKERY_REPAINTS } = await import("../src/themes/bakery/rig");
 		const { rigTheme } = await import("../src/scene/rig/themes");
 		const { THEME_IDS } = await import("../src/themes/ids");
 		const bakery = bakeryTheme();

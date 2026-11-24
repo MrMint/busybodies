@@ -55,7 +55,7 @@ const AMBIENT = {
 	sparks: { burst: 380, period: [1100, 1900] },
 	/** A vent every this many px of hallway, from its left end. */
 	ventPitch: 640,
-	/** The bakery's deck oven window, from its build station's base (theme/bakery.ts OVEN_WINDOW),
+	/** The bakery's deck oven window, from its build station's base (themes/bakery/scene.ts OVEN_WINDOW),
 	 * and its flicker's period (ms). */
 	oven: { x: -19, y: -29, w: 38, h: 15, period: 1700 },
 	/** Marquee bulbs: this far apart round the sign, this far out from it, a step of the chase (ms),

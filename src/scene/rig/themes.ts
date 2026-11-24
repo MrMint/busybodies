@@ -3,7 +3,7 @@
 // (office.ts), the factory as a workshop (factory.ts), the bakery (bakery.ts).
 import type { ThemeId } from "../../themes/ids";
 import { factoryTheme } from "../../themes/factory/rig";
-import { bakeryTheme } from "./bakery";
+import { bakeryTheme } from "../../themes/bakery/rig";
 import { officeTheme } from "../../themes/office/rig";
 import type { Theme } from "./theme";
 

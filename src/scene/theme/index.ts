@@ -1,7 +1,7 @@
 // The scene themes by id (src/themes/ids.ts). The rig's painters per theme are rig/themes.ts `rigTheme`.
 import { FACTORY_THEME } from "../../themes/factory/scene";
 import type { ThemeId } from "../../themes/ids";
-import { BAKERY_THEME } from "./bakery";
+import { BAKERY_THEME } from "../../themes/bakery/scene";
 import { OFFICE_THEME } from "../../themes/office/scene";
 import type { SceneTheme } from "./types";
 

@@ -553,7 +553,7 @@ export const POSES: Pose[] = [
 		],
 	}),
 
-	// The bakery's own habits (theme/bakery.ts BAKERY_STAGING): played by name from the theme's habit
+	// The bakery's own habits (themes/bakery/scene.ts BAKERY_STAGING): played by name from the theme's habit
 	// rotation, never by the idle trigger. The bakery's rig paints the mug as a cappuccino, the bolt
 	// as a macaron, the stamp as a cake fork with a morsel on it, and the drum as a flour sack.
 	pose({
