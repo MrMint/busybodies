@@ -15,6 +15,7 @@ import { COMMON_COLOURS, NIGHT_WATCH, plannerOf } from "./office";
 import { FACTORY_STAGING } from "./factory-staging";
 import type { FurnitureKind, SceneLight, SceneTheme, StagePainters } from "./types";
 import { FACTORY_WORDS, type SignText } from "./words";
+import { mix } from "../../shared/colour";
 
 const STEEL = 0x9aa5b1;
 const STEEL_LIGHT = 0xc7ced6;
@@ -26,12 +27,6 @@ const WOOD = 0xd9a066;
 const WOOD_TOP = 0xf0c48a;
 const GLASS = 0xcfe6f2;
 
-/** Mix two colours: `t` of the way from a to b. */
-function mix(a: number, b: number, t: number): number {
-	const ch = (c: number, s: number) => (c >> s) & 0xff;
-	const m = (s: number) => Math.round(ch(a, s) + (ch(b, s) - ch(a, s)) * t) << s;
-	return m(16) | m(8) | m(0);
-}
 
 /** A strip of hazard stripes: yellow with black diagonals. */
 function hazard(g: Graphics, x: number, y: number, w: number, h: number, step = 14): void {

@@ -24,6 +24,7 @@ import { crewBuild } from "./build";
 import { NIGHT_WATCH, ROOM_COLOURS } from "./office";
 import type { FurnitureKind, SceneLight, SceneTheme, StagePainters } from "./types";
 import { BAKERY_WORDS, type SignText } from "./words";
+import { mix } from "../../shared/colour";
 
 // --- Paint ------------------------------------------------------------------------------------
 
@@ -85,12 +86,6 @@ function rugOf(a: Area): { fill: number; edge: number } | undefined {
 	return { fill: mix(floor, wall, 0.4), edge: mix(wall, RASPBERRY, 0.3) };
 }
 
-/** Mix two colours: `t` of the way from a to b. */
-function mix(a: number, b: number, t: number): number {
-	const ch = (c: number, s: number) => (c >> s) & 0xff;
-	const m = (s: number) => Math.round(ch(a, s) + (ch(b, s) - ch(a, s)) * t) << s;
-	return m(16) | m(8) | m(0);
-}
 
 const thin = (w: number) => ({ width: w, color: INK, join: "round" as const, cap: "round" as const });
 

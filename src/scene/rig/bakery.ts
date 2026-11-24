@@ -42,6 +42,7 @@
 import type { Graphics } from "pixi.js";
 import { AT, BELL, PLANNER, STATION, STICKY, TRAY, WORK, handAt } from "./reach";
 import { ANCHORS, type Painter, type Palette, PAPER_PALETTE, RED, type Theme, TRAY_FULL, W, burstAt, line, paperTheme, rotRect, sparkle, text } from "./theme";
+import { mix } from "../../shared/colour";
 
 /** Bakery colours, on top of the paper palette. */
 const BAKERY = {
@@ -113,12 +114,6 @@ export const BAKERY_REPAINTS = [
 	"fx/ding", "fx/toss", "fx/conf1", "fx/conf2", "fx/conf3",
 ] as const;
 
-/** `c` moved `t` of the way toward `to`, per channel. */
-const mix = (c: number, to: number, t: number) => {
-	const ch = (v: number, s: number) => (v >> s) & 0xff;
-	const m = (s: number) => Math.round(ch(c, s) + (ch(to, s) - ch(c, s)) * t) << s;
-	return m(16) | m(8) | m(0);
-};
 
 /** Clip a polygon to a convex one (Sutherland-Hodgman), both as flat [x, y, ...] lists. */
 function clipConvex(subject: number[], clip: number[]): number[] {

@@ -29,6 +29,7 @@ import {
 	sparkle,
 	text,
 } from "./theme";
+import { mix } from "../../shared/colour";
 
 /** Factory colours, on top of the paper palette. */
 const FACTORY = {
@@ -74,12 +75,6 @@ export const FACTORY_REPAINTS = [
 /** Parts only the factory has (see the header). */
 export const FACTORY_EXTRAS = ["leg/explorer", "arm/upper/verifier"] as const;
 
-/** `c` moved `t` of the way toward `to`, per channel. */
-const mix = (c: number, to: number, t: number) => {
-	const ch = (v: number, s: number) => (v >> s) & 0xff;
-	const m = (s: number) => Math.round(ch(c, s) + (ch(to, s) - ch(c, s)) * t) << s;
-	return m(16) | m(8) | m(0);
-};
 
 /** Where the mochi's outline is at height `y` (torso space, -70 to 0): its half-width. */
 function bodyEdge(y: number): number {
