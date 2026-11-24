@@ -3,7 +3,7 @@
 import type { Container, Graphics } from "pixi.js";
 import { GREEN, INK, SHADOW, type SignStyle, hash, label, line, signboard } from "../../scene/office/paper";
 import type { Area, Rect } from "../../scene/world/world";
-import { COMMON_COLOURS } from "../office/scene";
+import { COMMON_COLOURS } from "../office/palette";
 import type { SignText } from "../../scene/theme/words";
 import { FACTORY_WORDS } from "./words";
 import { mix } from "../../shared/colour";

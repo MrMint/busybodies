@@ -1,6 +1,6 @@
 
 import type { Area } from "../../scene/world/world";
-import { ROOM_COLOURS } from "../office/scene";
+import { ROOM_COLOURS } from "../office/palette";
 
 // --- Paint ------------------------------------------------------------------------------------
 

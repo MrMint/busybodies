@@ -23,24 +23,7 @@ import { crewBuild } from "../../scene/theme/build";
 import type { FurnitureKind, SceneLight, SceneTheme } from "../../scene/theme/types";
 import type { SignText } from "../../scene/theme/words";
 import { OFFICE_WORDS } from "./words";
-
-const LAWN = 0xbfe8c6;
-const SLAB = 0x46536f;
-const HALL_FLOOR = 0xf3efe2;
-
-/** Wall and floor colours. Projects take them in the order their rooms were built. The back wall
- * carries the project's colour and the floor is only a pale tint of it: the floor is the cast's
- * background, so a blue builder never stands on a blue floor (the rug, a shade deeper, and the side
- * walls carry the colour down the room). */
-export const ROOM_COLOURS: [number, number][] = [
-	[0xffd9a8, 0xfff1dc], // orange
-	[0xc4dcff, 0xe9f2ff], // blue
-	[0xbfecd6, 0xe8f8f0], // green
-	[0xffcfe0, 0xffeef4], // pink
-	[0xdccfff, 0xf2edff], // lilac
-	[0xffeaa6, 0xfff8dc], // yellow
-	[0xbfe6f7, 0xe6f6fd], // cyan
-];
+import { BLOOMS, COMMON_COLOURS, HALL_FLOOR, LAWN, NOTE_COLOURS, PAPER, PAPER_EDGE, PLANT_LEAVES, ROOM_COLOURS, SLAB, STONE, WOOD, WOOD_TOP } from "./palette";
 
 /** A project room's rug under its desks: a step deeper than its floor, never near a body colour,
  * edged in the wall's colour so the room reads as its project's from the whole-office stop. */
@@ -49,13 +32,6 @@ function rugOf(a: Area): { fill: number; edge: number } | undefined {
 	const [wall, floor] = ROOM_COLOURS[a.hue % ROOM_COLOURS.length]!;
 	return { fill: mix(floor, wall, 0.35), edge: mix(wall, INK, 0.12) };
 }
-export const COMMON_COLOURS = {
-	meeting: [0xf1f3fa, 0xcfd6ea],
-	lobby: [0xf6f1e4, 0xe8dfc8],
-	yours: [0xfff1e0, 0xe9d6c0],
-	kitchen: [0xf6f1e4, 0xffffff],
-	vacant: [0xeef0f4, 0xd9dde6],
-} as const;
 
 /** Who keeps an empty office company. */
 export const NIGHT_WATCH: Who = { key: "night-watch", kind: "lead", role: "lead", mood: "idle", size: 72, tint: "night-watch" };
@@ -92,10 +68,6 @@ function hallway(g: Graphics, r: Rect): void {
 	g.fill({ color: INK, alpha: 0.1 });
 	g.moveTo(r.x, r.y + 2.5).lineTo(r.x + r.w, r.y + 2.5).moveTo(r.x, r.y + r.h - 2.5).lineTo(r.x + r.w, r.y + r.h - 2.5).stroke(line(5));
 }
-
-// --- The patio ----------------------------------------------------------------------------------
-
-const STONE = 0xebe5d6;
 
 /** A gap in the footprint as a small paved patio: pale stone flags, a bench, planters in the
  * corners; whatever its size, with as much as fits. Drawn in world coordinates, baked. */
@@ -144,8 +116,6 @@ function patio(g: Graphics, r: Rect, _band: Band): void {
 	if (wide) things.push([p.y + p.h * 0.4, () => parasol(g, p.x + p.w * 0.3, p.y + p.h * 0.4)]); else if (!corner) things.push([p.y + p.h - 6, () => planter(g, p.x + p.w / 2, p.y + p.h - 6, 0)]);
 	for (const [, draw] of things.sort((a, b) => a[0] - b[0])) draw();
 }
-
-const BLOOMS = [0xff8fa3, 0xffd166, 0xb69cff, 0xffffff];
 
 /** A wooden planter box with a round shrub and a few flowers, its base's centre at (x, y). */
 function planter(g: Graphics, x: number, y: number, k: number): void {
@@ -199,7 +169,6 @@ function door(g: Graphics, { x, y, w, h }: Rect): void {
 	g.moveTo(x, y + h).lineTo(x, y + r).arc(x + r, y + r, r, Math.PI, 0).lineTo(x + w, y + h).closePath().fill(SLAB).stroke(line(5));
 	g.circle(x + w - 12, y + h * 0.52, 4.5).fill(SUN);
 }
-
 
 /** A room: its shell in its colours, the fluorescent panels, then its wall items (the planner has
  * its own layer), and a motivational poster in any stretch of bare wall wide enough for one. */
@@ -257,9 +226,6 @@ function mugWall(g: Graphics, a: Area): Container {
 	t.position.set(x + w / 2, y + 0.6);
 	return t;
 }
-
-/** The ficus's leaves (`ficus`), left and right of its base x, and the air a poster keeps from them. */
-const PLANT_LEAVES = { left: 24, right: 22, air: 8 } as const;
 
 /** Bare stretches of back wall, between the wall items and the room's ends: a poster's place in
  * each one wide enough (the layout decides what hangs where; this only fills what it left). */
@@ -379,11 +345,6 @@ const OFFICE_SIGNS: SignStyle = {
 		}
 	},
 };
-
-// --- Desk props ---------------------------------------------------------------------------------
-
-const PAPER = 0xffffff;
-const PAPER_EDGE = 0xdfe4f2;
 
 /** The in-tray: a wire tray and its pile, sheets off it past 80%, empty while the lead has it out.
  * While the lead plays `buried` the rig draws the tray and pile (and the sheets going), so the
@@ -505,10 +466,6 @@ function skip(load: number): Graphics {
 	return g;
 }
 
-// --- The planner -------------------------------------------------------------------------------
-
-const NOTE_COLOURS = [SUN, 0xffbdd6, 0x9be3ff, 0xa5e6c9, 0xd2c0ff, 0xffc47f];
-
 /** The room's planner on its back wall: a board in three columns of sticky notes, a colour per
  * session, as many as fit and a "+n" for the rest. Another theme takes it with its own board
  * colour, column words and dressing. */
@@ -610,7 +567,6 @@ function bossCorner(g: Graphics, a: Area): void {
 }
 
 // --- Furniture ------------------------------------------------------------------------------
-
 
 /** A desk: the top surface behind, the front panel below. 150 wide, its front 44 tall; the top's
  * back edge at `back` (a work desk's is DESK_TOP, low enough that its lead's face shows over it). */
@@ -760,14 +716,6 @@ function waterCooler(g: Graphics): void {
 	g.poly([22.5, -52, 30.5, -52, 26.5, -43]).stroke({ width: 1.2, color: INK, alpha: 0.5 });
 }
 
-// Stations: shared equipment along a project room's left wall (world.ts STRIP). The office draws
-// only each station's body, around its base, with its user standing to the right facing it; the rig
-// draws the moving parts (the top drawer, the card tray, the copier's lid, button, light, jam door
-// and out-tray, the ink pad and forms) at the working point, (+20, -40) from the base, in every frame.
-// So each body's top surface is at that height, starting a few px past the point on the user's side
-// and running back toward the wall, and nothing is drawn there that the rig draws.
-const WOOD = 0xd9a066;
-const WOOD_TOP = 0xf0c48a;
 /** Body extents, from the base: left edge (toward the wall) and right edge (toward the user). */
 const ST_L = -24;
 const ST_R = 24;
