@@ -20,6 +20,7 @@ import type { Diary } from "../shared/diary";
 import type { StoryView } from "./office/decor";
 import { regularsOf } from "./director/story";
 import { flatSessions } from "../watcher/model";
+import { type Dossier, dossiers } from "./director/doing";
 
 export { NOTICE, type View } from "./director/social";
 export type { Actor, Build, World, WorldEvent } from "./director/types";
@@ -42,6 +43,8 @@ export class Director {
 	#world?: World;
 	#last?: Direction;
 	#listeners = new Set<Listener>();
+	/** Everyone's details this snapshot, for the chips and the card a click opens (director/doing.ts). */
+	#dossiers = new Map<string, Dossier>();
 	/** The time the next cast is for. The app sets it from the snapshot (and to `wake` on a wake-up). */
 	now = 0;
 	/** What the director knows about the viewer: when the window last came back on screen after a
@@ -64,6 +67,7 @@ export class Director {
 		if (d.events.length) for (const fn of this.#listeners) fn(d.events, d.world);
 		// Regulars (director/story.ts): the same project and role, the same character every day.
 		const regulars = regularsOf(Object.values(d.world.actors), snap);
+		this.#dossiers = dossiers(snap);
 		return Object.values(d.world.actors).map((a) => ({
 			who: {
 				key: a.key,
@@ -73,6 +77,8 @@ export class Director {
 				mood: a.mood,
 				size: a.size,
 				tint: a.tint,
+				...(a.plump ? { plump: a.plump } : {}),
+				...(a.weather ? { weather: a.weather } : {}),
 				...(regulars.has(a.key) ? { regular: regulars.get(a.key)! } : {}),
 			},
 			slot: a.slot,
@@ -80,6 +86,7 @@ export class Director {
 			area: a.area,
 			cue: cueFor(a, now),
 			...(a.kind === "crew" && a.task ? { task: a.task } : {}),
+			...(this.#dossiers.has(a.key) ? { doing: this.#dossiers.get(a.key)!.doing } : {}),
 			...(a.work && a.mood === "busy" && !a.gone ? { work: a.work.kind } : {}),
 		}));
 	};
@@ -110,6 +117,11 @@ export class Director {
 	on(fn: Listener): () => void {
 		this.#listeners.add(fn);
 		return () => this.#listeners.delete(fn);
+	}
+
+	/** One character's details, for the card a click opens. */
+	dossier(key: string): Dossier | undefined {
+		return this.#dossiers.get(key);
 	}
 
 	/** One actor, for the inspector. */

@@ -155,9 +155,9 @@ export class SnapshotBuilder {
 		};
 	}
 
-	async #ledger(path: string): Promise<TranscriptLedger> {
+	async #ledger(path: string, sidechain = false): Promise<TranscriptLedger> {
 		let l = this.#ledgers.get(path);
-		if (!l) this.#ledgers.set(path, (l = new TranscriptLedger()));
+		if (!l) this.#ledgers.set(path, (l = new TranscriptLedger({ sidechain })));
 		this.#ledgersUsed.add(path);
 		const s = await this.files.stat(path);
 		if (s) await l.update(path, s).catch(() => {});
@@ -201,7 +201,8 @@ export class SnapshotBuilder {
 			if (status === "stalled" ? quiet > ABANDON_MS : status !== "running" && quiet > LINGER_MS) continue;
 			const activity = status === "running" ? await this.files.fromTail(log, lastToolCall) : undefined;
 			// Every agent still shown keeps its counts; only a running one has a running tool.
-			const ledger = await this.#ledger(log);
+			// A subagent's transcript is all sidechain records, and they are its own.
+			const ledger = await this.#ledger(log, true);
 			const live = status === "running";
 			const running = live ? ledger.running : undefined;
 			const agent: Agent = {
@@ -216,6 +217,7 @@ export class SnapshotBuilder {
 				...(running ? { running } : {}),
 				...(live && ledger.commands.repeats > 0 ? { commands: ledger.commands } : {}),
 				...optional("family", ledger.family ?? modelFamily(meta.model)),
+				...optional("context", ledger.context),
 				...optional("changes", ledger.changes),
 				...optional("tools", ledger.toolRate(at)),
 				children: [],

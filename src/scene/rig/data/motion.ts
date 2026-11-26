@@ -54,6 +54,8 @@ export const FEEL = {
 	face: { stiffness: 620, damping: 0.85, epsilon: 0.01 },
 	/** Something arriving (a prop in the hand, an effect): a quick ease in with a small settle. */
 	pop: { stiffness: 600, damping: 0.62, epsilon: 0.002 },
+	/** A body changing plump: a slow, wobbly swell (or a deflate that jiggles as it lands). */
+	plump: { stiffness: 140, damping: 0.32, epsilon: 0.002 },
 } as const satisfies Record<string, SpringFeel>;
 
 /** The fixed sub-step. Whatever the frame rate, a spring integrates in steps of this size. */

@@ -13,6 +13,7 @@
 //   ?demo=story   story and continuity: a red streak goes green, a merged PR's reply is fetched from
 //                 the outbox, a long session is waved off; the rooms wear a week of decor from an
 //                 invented diary (`__busybodies.away(ms)` then shows "while you were out")
+//   ?demo=plum    every role at every plump: a plain mochi to a ripe plum (context drives the body)
 //   ?demo=stock   someone else's setup: stock subagent types, terminal sessions, no desktop app
 //   ?demo=empty   nobody's in; ?demo=nohome: no coding agent found (add &compact for the small window)
 // The clock is fixed, so the same demo always draws the same frames.
@@ -30,6 +31,7 @@ const NOW = new Date(2026, 10, 19, 14, 32).getTime();
 const min = (m: number) => NOW - m * 60_000;
 
 let n = 0;
+const AGENT_FAMILIES: Agent["family"][] = ["haiku", "sonnet", "haiku", "opus"];
 const TOOLS = ["Edit", "Bash", "Read", "Grep"];
 
 function agent(role: string, task: string, status: Agent["status"] = "running", children: Agent[] = [], depth = 1): Agent {
@@ -42,6 +44,8 @@ function agent(role: string, task: string, status: Agent["status"] = "running", 
 		status,
 		lastWriteAt: min(status === "stalled" ? 40 : 0.2),
 		activity: status === "running" ? { tool: TOOLS[n % 4]!, at: min(0.1) } : undefined,
+		// Subagents often run a smaller model than their session: one from the id.
+		family: AGENT_FAMILIES[n % AGENT_FAMILIES.length],
 		children: children.map((c) => relevel(c, depth + 1)),
 	};
 }
@@ -94,8 +98,15 @@ function floorBusy(): Snapshot {
 					agent("scout", "Find callers of saveDraft", "running", [
 						agent("scout", "Also find callers", "running", [agent("scout", "Actually looking")]),
 					]),
-					agent("reviewer", "PR #212, round 2"),
-					agent("designer", "Empty state for exports"),
+					// A long review: its own context is nearly full, so it is a ripe plum (plump.ts).
+					{ ...agent("reviewer", "PR #212, round 2"), family: "opus", context: ctx(0.97) },
+					// Nine minutes into one docs lookup: it has nodded off on its feet (RULES.dozeMin).
+					{
+						...agent("designer", "Empty state for exports"),
+						family: "sonnet",
+						context: ctx(0.5),
+						running: { tool: "mcp__docs__lookup", since: min(9) },
+					},
 					agent("verifier", "Staging walkthrough", "stalled"),
 					agent("Explore", "Map the export module", "finished"),
 					agent("scout", "Count the flags", "finished"),
@@ -113,7 +124,8 @@ function floorBusy(): Snapshot {
 						worktree: "settings-screen",
 						family: "haiku",
 						context: ctx(0.18),
-						agents: [agent("scout", "Where is the toggle read?")],
+						// Its scout swells through the day as its context fills (plump.ts): plain to plum.
+						agents: [{ ...agent("scout", "Where is the toggle read?"), family: "haiku", context: ctx(0.3) }],
 					}),
 					session("Fork: slow CI?", "lanternfish", "idle", 150, { branch: "fork/slow-ci" }),
 				],
@@ -134,7 +146,11 @@ function floorBusy(): Snapshot {
 				todos: { pending: 3, active: 1, done: 2 },
 				cost: { outputTokens: 210_000 },
 				commands: tested(true),
-				agents: [agent("builder", "Page two"), agent("verifier", "Page two loads"), agent("verifier", "Old cursor test", "finished")],
+				agents: [
+					{ ...agent("builder", "Page two"), family: "haiku", context: ctx(0.3) },
+					{ ...agent("verifier", "Page two loads"), family: "haiku", context: ctx(0.7) },
+					agent("verifier", "Old cursor test", "finished"),
+				],
 			}),
 			session("Rename everything", "orbit-kit", "busy", 90, {
 				branch: "chore/rename",
@@ -403,6 +419,29 @@ export function stock(): Snapshot {
 	};
 }
 
+/** Every role at every plump (rig/data/plump.ts), one desk per level: a plain mochi to a ripe
+ * plum. For reviewing the painted sizes; click a room, then poke one for its card. */
+function plum(): Snapshot {
+	n = 0;
+	const shares = [0.1, 0.5, 0.75, 0.9, 0.98];
+	const titles = ["Fresh start", "Settling in", "Getting round", "Plum", "Ripe plum"];
+	const roles = ["scout", "builder", "verifier", "reviewer", "designer", "Explore"];
+	return {
+		at: NOW,
+		sessions: shares.map((share, i) =>
+			session(titles[i]!, i < 3 ? "plum-parade" : "plum-orchard", "busy", 60 - i * 5, {
+				branch: `plump-${i}`,
+				family: "opus",
+				context: ctx(share),
+				agents: [0, 1].map((k) => ({
+					...agent(roles[(i * 2 + k) % roles.length]!, `${Math.round(share * 100)}% full`, "running"),
+					context: ctx(share),
+				})),
+			}),
+		),
+	};
+}
+
 /** 200 characters: 40 sessions, each a lead and four crew in every role and state. The rig's load
  * test (e2e/rig.test.ts); `crowd-idle` is the same crowd after hours. */
 function crowd(): Snapshot {
@@ -425,7 +464,10 @@ function crowd(): Snapshot {
  *   +8 s   the flaky login test waits on you (paddle, pulsing room, top pill); its verifier fails
  *   +12 s  the release opens a PR and celebrates with a scout; Explore, long finished, goes home
  *   +17 s  the wait is answered; the review ends; the webhook spike closes and its lead leaves
- *   +23 s  the new session's build has run long: grumpy
+ *   +20 s  two nested scouts finish together and cheer
+ *   +23 s  the new session's build has run long: grumpy; the flaky test goes green (a sunbeam)
+ * Through the day the settings scout's context fills, so it swells to a ripe plum (8, 17, 23 s), and
+ * orbit-kit's lead deflates when it compacts (17 s). The designer has dozed off in a long fetch.
  * Every name is invented; times run from the demo's clock.
  */
 export function demoDay(): { after: number; snapshot: Snapshot }[] {
@@ -457,7 +499,9 @@ export function demoDay(): { after: number; snapshot: Snapshot }[] {
 		const flaky = find(s, "Flaky login test");
 		flaky.state = "idle";
 		flaky.waiting = { reason: "permission", since: at(7900), source: "hook" };
+		// Red twice in a row: a rain cloud over its head (director/weather.ts).
 		flaky.agents[0]!.commands = { failStreak: 2, repeats: 1, failed: 2, testsFailed: 2, last: { kind: "test", exitCode: 1, at: at(7800) } };
+		find(s, "Settings screen").agents[0]!.context = ctx(0.6, at(7900));
 	});
 	beat(12000, (s) => {
 		const ship = find(s, "Ship release 2.4");
@@ -478,9 +522,27 @@ export function demoDay(): { after: number; snapshot: Snapshot }[] {
 		// A compaction: the pile goes to the shredder.
 		orbit.compactions = { count: 2, lastAt: at(16900), trigger: "auto" };
 		orbit.context = ctx(0.09, at(16900));
+		find(s, "Settings screen").agents[0]!.context = ctx(0.8, at(16900));
 		s.sessions = s.sessions.filter((x) => x.title !== "Webhook spike");
 	});
+	beat(20000, (s) => {
+		// Two nested scouts finish together: a high-five before they head off.
+		const scout = find(s, "Ship release 2.4").agents[0]!;
+		const done = (a: Agent) => Object.assign(a, { status: "finished", activity: undefined, lastWriteAt: at(19900) });
+		done(scout.children[0]!);
+		done(scout.children[0]!.children[0]!);
+	});
 	beat(23000, (s) => {
+		// The flaky test goes green: the cloud gives way to a sunbeam.
+		find(s, "Flaky login test").agents[0]!.commands = {
+			failStreak: 0,
+			repeats: 1,
+			failed: 2,
+			testsFailed: 2,
+			last: { kind: "test", exitCode: 0, at: at(22900) },
+		};
+		// And the swelling scout is ripe: a plum.
+		find(s, "Settings screen").agents[0]!.context = ctx(0.97, at(22900));
 		const hot = find(s, "Hotfix: cursor");
 		hot.running = { tool: "Bash", since: at(23000) - 25 * 60_000, kind: "build" };
 		const rename = find(s, "Rename everything");
@@ -601,6 +663,8 @@ export function demo(name: string | null, theme: ThemeId = DEFAULT_THEME): DemoD
 			return { snapshot: story(), signs: {} };
 		case "stock":
 			return { snapshot: stock(), signs: {} };
+		case "plum":
+			return { snapshot: plum(), signs: {} };
 		case "crowd-idle":
 			return { snapshot: asleep(crowd()), signs: {} };
 		// Nobody's in; and nobody's in because no coding agent was found (the shell says which).

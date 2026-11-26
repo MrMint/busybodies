@@ -46,12 +46,25 @@ import { here, rippleFor, roundFor, stage } from "./direct/cue";
 export { runCooldown };
 export type { View };
 
+/** Crew that just finished alongside a teammate from the same session: a cheer together. */
+function finishedTogether(s: Spec, list: Spec[], now: number): boolean {
+	if (s.kind !== "crew" || now - s.since > RULES.cheerMs || now < s.since) return false;
+	return list.some(
+		(m) => m !== s && m.kind === "crew" && m.mood === "done" && m.session.id === s.session.id && Math.abs(m.since - s.since) <= RULES.togetherMs,
+	);
+}
+
 /** When signals turn into poses. */
 export const RULES = {
 	/** A shell command running this long makes its owner grumpy at the build. */
 	longBuildMin: 20,
 	/** Any other tool running this long reads as thinking hard. */
 	thinkingMin: 2,
+	/** ...and this long, it nods off on its feet, then jolts awake (`asleep`). */
+	dozeMin: 8,
+	/** Crew that finish within this of a teammate celebrate together, for this long after. */
+	togetherMs: 10_000,
+	cheerMs: 30_000,
 	/** An idle character moves on to its next slacking habit this often. */
 	habitRotateMin: 10,
 	/** The same command this many times in a row is a retry streak: grumpy. */
@@ -107,7 +120,7 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 	// at once, not walked to, since the whole office was just drawn again.
 	const staged = `${floor.staging?.bay ?? "desks"}/${floor.staging?.hall ?? "corridor"}`;
 	const restaged = prev !== undefined && (prev.stage ?? "desks/corridor") !== staged;
-	const list = specs(snap);
+	const list = specs(snap, now);
 	const places = assign(list, floor, before);
 	const events: WorldEvent[] = [];
 	const actors: Record<string, Actor> = {};
@@ -410,7 +423,10 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 		// One wait keeps one pose: the rare roll happens once, when the wait starts.
 		if (st.trigger === "waiting" && was && !was.gone && was.seen.waiting === s.seen.waiting) st = { ...st, pose: was.pose };
 		const round = roundFor(s, actors, before, places, trip, continuing, now, wakes);
-		if (s.mood === "stalled" || s.mood === "done" || st.trigger === "waiting") choice = st;
+		// Seen finishing (busy last time, or already cheering): a crew found finished just stands.
+		if (s.mood === "done" && (was?.mood === "busy" || was?.pose === "celebrate") && finishedTogether(s, list, now))
+			choice = { pose: "celebrate", as: "lead", acted: true, trigger: "together", since: s.since };
+		else if (s.mood === "stalled" || s.mood === "done" || st.trigger === "waiting") choice = st;
 		else if (hiredBy.has(s.key)) choice = { pose: "handover", as: "partner", acted: true, trigger: "hired" };
 		else if (handing.has(s.key)) choice = { pose: "handover", as: "lead", acted: true, trigger: "hire" };
 		else if (mailing.has(s.key)) choice = mailChoice(mail[s.session.id]!, now, news);
@@ -639,6 +655,8 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 			work,
 			tempo: pace,
 			task: s.task,
+			...(s.plump ? { plump: s.plump } : {}),
+			...(s.weather ? { weather: s.weather } : {}),
 			...(run ? { home: run.run.from, walkPose: "carry" } : trip ? { home: homes.get(s.key)!, trip } : {}),
 			...(walk && walk === was?.walk ? (was.pace ? { pace: was.pace } : {}) : walk && gait.name !== "stroll" ? { pace: gait.name } : {}),
 			...(!run && Object.hasOwn(handoffs, s.key) ? { home: handoffs[s.key]!.home } : {}),

@@ -22,6 +22,9 @@ import type { Session, Snapshot } from "../../watcher/model";
 import { CameraMove, type Stop, type View, type Viewport, viewFor } from "../world/camera";
 import { type Phase, SHADOW, msToNextPhase, phaseOf } from "../world/daylight";
 import { Light, type LightInfo } from "./light";
+import { DetailLayer } from "./detail";
+import { PLUMP_SHAPE } from "../rig/data/plump";
+import { PUPPET_HEIGHT } from "../rig/data/reach";
 import { DECAL, dressRoom } from "./material";
 import { CLOUD, cloudTexture, glassOf, panesOf, type SunSpot, sunSpot } from "./outlook";
 import { Outside } from "./outside";
@@ -35,7 +38,7 @@ import type { Metrics } from "../director/metrics";
 import type { DeskProps } from "../contract";
 import { deskProps, plannerSig, propsSig } from "./props";
 import type { Character, CharacterFactory } from "./slot";
-import { AISLE, type Area, BUILD, DESK_TOP, type Desk, type Rect, SEAT, type Floor } from "../world/world";
+import { type Area, BUILD, DESK_TOP, type Desk, type Rect, SEAT, type Floor } from "../world/world";
 import { trayOnDesk } from "../world/rigpoints";
 import { CARD, MONITOR } from "../world/propspots";
 import { DecorLayer, type RoomDecor, type StoryView, boardText, regularNames, storyStyle } from "./decor";
@@ -73,6 +76,9 @@ interface Item {
 }
 
 export interface OfficeOptions {
+	/** The closer look at room and desk stops: chips, task tags, team rings (detail.ts). Off in the
+	 * compact window, where it would be too small to read. Default on. */
+	detail?: boolean;
 	renderer: Renderer;
 	characters: CharacterFactory;
 	/** Ask for a render, or frames if something started moving (a camera move, a sign changed). */
@@ -149,8 +155,11 @@ export class Office extends Container {
 	#depth = new Container({ sortableChildren: true, isRenderGroup: true });
 	#bubbles = new Container();
 	#labels = new Container();
-	#tasks = new Container();
-	#tasksSig = "";
+	/** The closer look at a room or desk stop: chips, task tags and threads (detail.ts). */
+	#tasks = new DetailLayer();
+	/** A team photo's flash over a room (photo()), fading out. */
+	#flash = new Graphics();
+	#flashMs = 0;
 	#placed: Placed[] = [];
 
 	#plan = new FloorPlan();
@@ -236,11 +245,14 @@ export class Office extends Container {
 			this.#decor,
 			this.#shade,
 			this.#ambientLayer,
+			// The closer look's team rings lie on the floor, under the characters (detail.ts).
+			this.#tasks.floor,
 			this.#depth,
 			this.#armLayer,
 			this.#light,
 			this.#pulse,
 			this.#tasks,
+			this.#flash,
 			this.#bubbles,
 			this.#labels,
 		);
@@ -281,6 +293,7 @@ export class Office extends Container {
 	get acting(): boolean {
 		if (this.#move) return true;
 		if (this.#pulsing.length) return true;
+		if (this.#flashMs > 0) return true;
 		if (this.#bricks.size) return true;
 		// A PR crate riding the hallway's conveyor to the dock.
 		if (this.#ambient.acting) return true;
@@ -462,6 +475,10 @@ export class Office extends Container {
 	}
 
 	tick(dt: number): void {
+		if (this.#flashMs > 0) {
+			this.#flashMs = Math.max(0, this.#flashMs - dt * (1000 / 60));
+			this.#flash.alpha = 0.85 * (this.#flashMs / PHOTO.flashMs) ** 2;
+		}
 		if (this.#pulsing.length) {
 			this.#pulseT += dt * 0.09;
 			this.#pulse.alpha = 0.65 + 0.35 * Math.sin(this.#pulseT);
@@ -489,9 +506,15 @@ export class Office extends Container {
 			this.#ambient.tick(this.#lifeMs);
 			this.#light.tick(dt * (1000 / 60));
 		}
+		let moving = false;
 		for (const p of this.#people.values()) p.tick(dt);
-		// Bubbles follow walkers.
-		for (const [key, p] of this.#people) if (p.moving) this.#anchor(key);
+		// Bubbles, chips and threads follow walkers.
+		for (const [key, p] of this.#people)
+			if (p.moving) {
+				moving = true;
+				this.#anchor(key);
+			}
+		if (moving && this.#stop.kind !== "office") this.#tasks.follow();
 	}
 
 	// --- Input ---------------------------------------------------------------------------------
@@ -505,6 +528,68 @@ export class Office extends Container {
 		const area = w.areas.find((a) => inside(a.rect));
 		const desk = area?.desks.find((d) => inside(d.cell));
 		return { area, desk };
+	}
+
+	/**
+	 * The character under a screen point, at a room or desk stop (at the whole office they are too
+	 * small to aim at): of those whose body box holds it, the nearest to its body's middle.
+	 */
+	pick(x: number, y: number): string | undefined {
+		if (this.#stop.kind === "office") return undefined;
+		const p = { x: (x - this.#view.x) / this.#view.scale, y: (y - this.#view.y) / this.#view.scale };
+		const who = new Map(this.#placed.map((q) => [q.who.key, q.who]));
+		let best: { key: string; d: number } | undefined;
+		for (const [key, c] of this.#people) {
+			const w = who.get(key);
+			if (!w || !c.view.visible) continue;
+			const g = PLUMP_SHAPE[w.plump?.level ?? 0]!;
+			const half = (w.size * 0.62 * g.w) / 100;
+			const tall = w.size * (1 + (g.h - PLUMP_SHAPE[0]!.h) / PUPPET_HEIGHT);
+			const v = c.view;
+			if (p.x < v.x - half || p.x > v.x + half || p.y < v.y - tall || p.y > v.y + 4) continue;
+			// Of everyone whose box holds the point, the one whose body's middle is nearest it (in
+			// its own size): a click on a plum's middle picks the plum, not the small one in front.
+			const d = Math.hypot((p.x - v.x) / half, (p.y - (v.y - tall / 2)) / (tall / 2));
+			if (!best || d < best.d) best = { key, d };
+		}
+		return best?.key;
+	}
+
+	/**
+	 * A team photo in a room (a PR opened there): a camera flash over the room, and everyone in it
+	 * turns to look out at you for a moment.
+	 */
+	photo(area: string): void {
+		const a = this.#data?.areas.find((x) => x.id === area);
+		if (!a) return;
+		for (const p of this.#placed) if (p.area === area) this.#people.get(p.who.key)?.smile?.(PHOTO.smileMs);
+		this.#flash.clear().roundRect(a.rect.x, a.rect.y, a.rect.w, a.rect.h, 18).fill(0xffffff);
+		this.#flashMs = PHOTO.flashMs;
+		this.#flash.alpha = 0.85;
+		this.#opts.wake();
+	}
+
+	/** The character whose card is open (or none): its team's rings brighten (detail.ts). */
+	highlight(key: string | undefined): void {
+		this.#tasks.focus(key);
+		this.#opts.wake();
+	}
+
+	/** Poke a character: it jiggles and reacts (character.ts). */
+	poke(key: string): void {
+		const c = this.#people.get(key);
+		if (!c?.poke) return;
+		c.poke();
+		this.#opts.wake();
+	}
+
+	/** Where a character's feet are on screen, for a card beside it. */
+	screenOf(key: string): { x: number; y: number; size: number } | undefined {
+		const c = this.#people.get(key);
+		const w = this.#placed.find((q) => q.who.key === key)?.who;
+		if (!c || !w) return undefined;
+		const s = this.#view.scale;
+		return { x: c.view.x * s + this.#view.x, y: c.view.y * s + this.#view.y, size: w.size * s };
 	}
 
 	/** A click: zoom into the room under it, or the desk if already in that room. */
@@ -1263,23 +1348,18 @@ export class Office extends Container {
 		}
 	}
 
-	/** Zoomed into a desk: a small tag under each of its crew saying what it is working on. */
+	/** Zoomed into a room or a desk: what each of its crew is up to (detail.ts). */
 	#drawTasks(): void {
 		const stop = this.#stop;
-		const list = stop.kind === "desk" ? this.#placed.filter((p) => p.desk === stop.id && p.task && p.who.kind === "crew" && p.who.mood !== "done") : [];
-		const sig = list.map((p) => `${p.who.key}|${this.#names.get(p.who.key) ?? ""}|${p.task}|${p.slot.x},${p.slot.y}`).join(";");
-		if (sig === this.#tasksSig) return;
-		this.#tasksSig = sig;
-		for (const c of this.#tasks.removeChildren()) c.destroy({ children: true });
-		for (const p of list) {
-			const name = this.#names.get(p.who.key);
-			const t = pill(name ? `${name} · ${clipText(p.task!, 13)}` : clipText(p.task!, 14), 6.5);
-			// Just under its owner's feet: the crew's rows (world.ts AISLE) leave a pill's height
-			// between one row's feet and the next row's faces.
-			t.position.set(p.slot.x - t.width / 2, p.slot.y + AISLE.pill.gap);
-			this.#tasks.addChild(t);
-		}
-		this.#opts.wake();
+		const changed = this.#tasks.draw({
+			area: this.#opts.detail === false ? undefined : this.#focus(),
+			...(stop.kind === "desk" ? { desk: stop.id } : {}),
+			placed: this.#placed,
+			bodies: this.#people,
+			now: this.#snapshot?.at ?? 0,
+			names: this.#names,
+		});
+		if (changed) this.#opts.wake();
 	}
 
 	/** The counts for the room the camera is on (a room or desk stop): a pill in the hallway at the
@@ -1360,7 +1440,8 @@ function clip(t: { text: string; width: number }, max: number): void {
 	}
 }
 
-const clipText = (s: string, max: number) => (s.length > max ? `${s.slice(0, max - 1).trimEnd()}…` : s);
+/** A team photo: how long the flash fades, and how long everyone looks out at you. */
+const PHOTO = { flashMs: 450, smileMs: 2600 } as const;
 
 /** A brick set down on the tower: a short drop onto its place, a tiny rebound, still. No squash. */
 function setDown(view: Graphics, delay = 0): BrickMove {

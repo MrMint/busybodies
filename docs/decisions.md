@@ -1862,3 +1862,45 @@ theme is one folder, and the registries that pick by `ThemeId` stay apart by lay
    `lines.ts` globs check it.
 5. Run the theme parity e2e (`e2e/parity.test.ts`) and `tools/shoot.ts --theme <id>`; the tests
    that loop over `THEME_IDS` pick it up.
+
+## 2026-11-25: delight, round one (a prototype for feedback)
+
+**Context fullness is worn as the body: a plum.** A character's context (a lead's is the session's,
+a subagent's its own; the watcher now reads `Agent.context` from the subagent's transcript, whose
+records are all marked sidechain and are its own requests, so its ledger counts them) picks a
+plump level: under 40% the plain mochi, then 40%, 65% and 85% (`rig/data/plump.ts`). Each level is
+*painted*, not scaled (`body/<role>~g1..3`, in the paper rig and the factory's repaint), so the ink
+line keeps its weight; the face, arms and legs stay the size they were, so on a plum they look
+small. Cheeks, shoulders and hat move out and up with the body; the legs spread a touch and stay
+short, and the shoulders go only part of the way out, so the arms' solved reaches still land. Past
+95% the plum is ripe, painted in plum (`body/<role>~ripe`). A plum waddles on a walk.
+
+**This is not the squash "acting is hands and tools" ruled out.** That decision was about the body
+squishing *as animation*. Plump is a shape that only changes when the context does: a swell, or a
+deflate on a compaction, each a single wobble on its own spring (`FEEL.plump`), outside the pose
+channels, so the test that holds every frame's body scale within 5% of 1 still holds. A poke's
+jelly wobble (9%) rides the same spring, and only on a click.
+
+**The closer look.** At a room or desk stop each subagent shows a chip over its head (a glyph and a
+verb for what it is doing, and how long once a call passes two minutes), its task under its feet,
+and a team ring on the floor under a session's lead and all its subagents, a colour per session in
+the room (`office/detail.ts`, from `director/doing.ts`). A first try drew a thread from each
+subagent to its boss; across a busy room it crossed everything and read as an overlay, not part
+of the office, so it went. Opening a card brightens its team's rings and fades the rest. Chips,
+tags and rings follow walkers; chips that would overlap keep only their glyph. All of it draws as
+one Graphics under one text layer (two batches, inside the room-stop draw budget), and none of it
+in the compact window. A click on a character at those stops (the one whose body's middle is nearest the click) pokes it (a wave, a look up or a
+nod; poked three times in four seconds, a grump) and opens a card beside it: role, model, task,
+context meter, doing, tool calls, changes, red streak, crew out, who spawned it, and a line from
+the plum about itself (`mainview/card.ts`). At a room stop the click still zooms to the desk under
+it, as before. At the whole-office stop there is none of it.
+
+**Small beats.** Rain over a head on a red streak (two in a row) or three failed tool results; a
+sunbeam for 90 s after a test goes green, when tests had failed before (`director/weather.ts`). A
+call running eight minutes (not a build, which stays grumpy at 20) nods off on its feet (`asleep`),
+unless a station trip has it. Crew finishing within 10 s of a teammate cheer together for 30 s
+(`celebrate`, its high-five arm). A new hire buds: it swells from a bead as the hand-over starts. A
+PR opened is a team photo: a flash over the room, and everyone in it looks out at you.
+
+`?demo` plays all of it through the day; `?demo=plum` lines up every role at every plump. Still
+open from the brainstorm: milestone treats, and cobwebs on long-idle desks.

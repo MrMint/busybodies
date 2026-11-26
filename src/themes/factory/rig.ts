@@ -11,6 +11,7 @@
 // when the atlas has one, so the paper atlas, which has neither, draws as before.
 import type { Graphics } from "pixi.js";
 import { ROLES } from "../../scene/rig/data/roles";
+import { bodyVariants, ripeColour } from "../../scene/rig/data/plump";
 import { AT, BELL, BELL_BASE, PLANNER, STATION, STICKY, TRAY, handAt } from "../../scene/rig/data/reach";
 import {
 	ANCHORS,
@@ -52,7 +53,7 @@ const FACTORY = {
 /** The costumes and station parts the factory repaints; everything else (faces, hands, limbs, the
  * effects, the builder's own work) is the paper rig's, on purpose. The tests hold this list. */
 export const FACTORY_REPAINTS = [
-	...ROLES.map((r) => `body/${r}`),
+	...ROLES.flatMap((r) => bodyVariants(r).map((v) => v.part)),
 	"hat/lead",
 	"hat/lead-cup",
 	"hat/builder",
@@ -201,21 +202,28 @@ export function factoryTheme(p: Palette = PAPER_PALETTE): Theme {
 
 	// Bodies: the mochi in coveralls. The lower body takes a workwear shade of the role's colour,
 	// with a collar seam and a zip; the face and the role colour above stay as they were.
-	const lower: number[] = [];
-	const outline = mochiPath();
-	for (let i = 0; i < outline.length; i += 2) if (outline[i + 1]! >= -21) lower.push(outline[i]!, outline[i + 1]!);
+	// Each plum size (plump.ts) is painted too, with the seam and zip at the same place on the belly.
 	for (const role of ROLES) {
-		const col = p.role[role];
-		const work = mix(col, 0x46506e, 0.2);
-		parts[`body/${role}`] = (g) => {
-			g.poly(outline).fill(col);
-			g.poly(lower).fill(work);
-			line(g, [-bodyEdge(-21) + 1, -21, bodyEdge(-21) - 1, -21], 1.4, mix(work, ink, 0.35));
-			line(g, [0, -20, 0, -4], 1.2, mix(work, ink, 0.35));
-			g.ellipse(-19, -54, 12, 7).fill({ color: 0xffffff, alpha: 0.26 });
-			g.ellipse(0, -7, 38, 6).fill({ color: p.shadow, alpha: 0.06 });
-			g.poly(outline).stroke({ width: W.body, color: ink, join: "round" });
-		};
+		for (const { part, w, h, ripe } of bodyVariants(role)) {
+			const col = ripe ? ripeColour(p.role[role]) : p.role[role];
+			const work = mix(col, 0x46506e, 0.2);
+			const kx = w / 100;
+			const ky = h / 70;
+			const outline = mochiPath(w, h);
+			const seam = -21 * ky;
+			const lower: number[] = [];
+			for (let i = 0; i < outline.length; i += 2) if (outline[i + 1]! >= seam) lower.push(outline[i]!, outline[i + 1]!);
+			const edge = bodyEdge(-21) * kx;
+			parts[part] = (g) => {
+				g.poly(outline).fill(col);
+				g.poly(lower).fill(work);
+				line(g, [-edge + 1, seam, edge - 1, seam], 1.4, mix(work, ink, 0.35));
+				line(g, [0, seam + 1, 0, -4], 1.2, mix(work, ink, 0.35));
+				g.ellipse(-19 * kx, -54 * ky, 12 * kx, 7 * ky).fill({ color: 0xffffff, alpha: 0.26 });
+				g.ellipse(0, -7, 38 * kx, 6).fill({ color: p.shadow, alpha: 0.06 });
+				g.poly(outline).stroke({ width: W.body, color: ink, join: "round" });
+			};
+		}
 	}
 
 	/** A hard hat's crown, ridge and brim (the builder's silhouette), in `shell` with `ridge`. */

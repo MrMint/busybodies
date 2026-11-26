@@ -7,6 +7,8 @@ import { type Role, roleFor } from "../../rig/data/roles";
 import type { Activity, Agent, Commands, RunningTool, Session, Snapshot } from "../../../watcher/model";
 import { paceOf } from "../pace";
 import { traitOf } from "../traits";
+import { type Plump, plumpOf } from "../../rig/data/plump";
+import { type Weather, weatherOf } from "../weather";
 import type { Seen } from "../types";
 
 /** Facts about one character from the snapshot, before the director decides anything. */
@@ -30,6 +32,9 @@ export interface Spec {
 	commands?: Commands;
 	seen: Seen;
 	task?: string;
+	/** Its context's fullness as a body (plump.ts): a lead's the session's, crew their own. */
+	plump?: Plump;
+	weather?: Weather;
 }
 
 /** A character's model personality (traits.ts): crew by their own model, leads by the session's. */
@@ -42,9 +47,11 @@ export function gaitBase(s: Spec, now: number) {
 	return { ...g, speed: g.speed * traitFor(s).walk };
 }
 
+const opt = <K extends string, V>(k: K, v: V | undefined) => (v === undefined ? {} : ({ [k]: v } as Record<K, V>));
+
 const agentMood = (a: Agent): Mood => (a.status === "running" ? "busy" : a.status === "stalled" ? "stalled" : "done");
 
-export function specs(snap: Snapshot): Spec[] {
+export function specs(snap: Snapshot, now = snap.at): Spec[] {
 	const out: Spec[] = [];
 	for (const { session: s } of seats(snap.sessions)) {
 		const lead = `s:${s.id}`;
@@ -65,6 +72,8 @@ export function specs(snap: Snapshot): Spec[] {
 			activity: s.activity,
 			commands: s.commands,
 			task: s.title,
+			...opt("plump", plumpOf(s.context)),
+			...opt("weather", weatherOf(s.commands, s.tools, now)),
 			seen: {
 				waiting: s.waiting?.since,
 				failAt,
@@ -97,6 +106,8 @@ export function specs(snap: Snapshot): Spec[] {
 					activity: a.activity,
 					commands: a.commands,
 					task: a.task,
+					...opt("plump", plumpOf(a.context)),
+					...opt("weather", a.status === "running" ? weatherOf(a.commands, a.tools, now) : undefined),
 					seen: {
 						failAt: a.commands?.last && a.commands.last.exitCode !== 0 ? a.commands.last.at : undefined,
 						prs: [],

@@ -81,7 +81,7 @@ export interface ApiRetry {
 	at: number;
 }
 
-/** How full the session's context is, from the last API request's input tokens. */
+/** How full a session's (or an agent's) context is, from the last API request's input tokens. */
 export interface Context {
 	/** Tokens the last request sent: input plus cache reads and writes. */
 	used: number;
@@ -147,6 +147,8 @@ export interface Agent {
 	commands?: Commands;
 	/** Plan-next stream A: optional, absent until the watcher fills them. */
 	family?: ModelFamily;
+	/** How full its own context is: a subagent has a window of its own. */
+	context?: Context;
 	changes?: Changes;
 	tools?: ToolRate;
 	children: Agent[];

@@ -14,8 +14,12 @@ import { ANCHORS as A, ACCENTS, PAPER_PALETTE } from "./theme";
 import { CHEEKS, LOOKS } from "./data/vocab";
 import { type LifeBeat, STILL, lifeAt } from "./data/life";
 import { type Aim, SIDE_EYES, WORK_LOOKS } from "./data/gaze";
+import { PLUMP_SHAPE, type Plump, WADDLE_DEG, bodyPart, plumpOffsets } from "./data/plump";
 
 const RAD = Math.PI / 180;
+/** The poses that walk: a plum waddles in them. */
+const WALKS = new Set(["walk", "carry", "rushRun", "slowWalk", "envelopeCarry", "stickyCarry"]);
+const PLAIN: Plump = { level: 0, ripe: false };
 const MS_PER_TICK = 1000 / 60;
 
 /** Spring feel per channel: limbs are quick and land, the hand's angle (so a held tool) trails the
@@ -33,6 +37,8 @@ export interface PuppetOptions {
 	/** Stable id: picks the loop phase and any variation, so the same id always acts the same. */
 	id: string;
 	role: Role;
+	/** How full its context is, worn as its body (plump.ts). Defaults to the plain mochi. */
+	plump?: Plump;
 	/** The lead's tie and headset colour (the project's). Defaults to one picked from the id. */
 	accent?: number;
 	/** Draw the rig's own desk when a pose asks for one. The office turns this off at a real desk. */
@@ -67,6 +73,9 @@ export interface PuppetState {
 	settled: boolean;
 	/** The current frame's parts that differ from rest. */
 	params: Record<string, string>;
+	/** The body's plump level (plump.ts), and whether it is ripe. */
+	plump: number;
+	ripe: boolean;
 	/** The variant pass playing (`Pose.beats`), by name; "" for the pose's own frames. */
 	beat: string;
 }
@@ -91,6 +100,11 @@ export class Puppet extends Container {
 		heldR: new Spring(1, FEEL.pop),
 		front: new Spring(1, FEEL.pop),
 		fx: new Spring(1, FEEL.pop),
+		/** A change of plump: the body swells or deflates to its new size with a wobble. Never a
+		 * squash to act: it only moves when the context does. */
+		plump: new Spring(1, FEEL.plump),
+		/** A new hire buds off its boss like a pinch of mochi dough: it swells from a bead. */
+		bud: new Spring(1, FEEL.plump),
 	};
 	/** The pops as a list, for the per-frame loops (no array made each frame). */
 	#pops: Spring[] = Object.values(this.#pop);
@@ -116,6 +130,8 @@ export class Puppet extends Container {
 	#holding = true;
 	#frame: Frame = REST;
 	#legsUp = false;
+	#plump: Plump = PLAIN;
+	#off = plumpOffsets(0);
 	#played?: { pose: Pose; opts: PlayOptions };
 	/** Life (src/scene/rig/life.ts): blinks and glances on top of the pose, while the app is on
 	 * screen. Its own clock, so a pose change doesn't restart it. */
@@ -156,6 +172,9 @@ export class Puppet extends Container {
 	#armL: ArmParts;
 	#armR: ArmParts;
 	#fx: Sprite;
+	/** Weather over the head (director/weather.ts): rides the torso, above the hat. */
+	#over: Sprite;
+	#weather?: "rain" | "sun";
 
 	constructor(atlas: Atlas, opts: PuppetOptions) {
 		super();
@@ -206,12 +225,14 @@ export class Puppet extends Container {
 			this.#on.add(this.#costumeWear);
 		}
 		this.#hat = s(costume.hat);
+		this.#over = s("over/sun1");
+		this.#over.alpha = 0;
 		if (opts.role === "lead") {
 			this.#cup = s("hat/lead-cup");
 			this.#cup.tint = this.accent;
 		}
 		this.#torso.addChild(
-			...[this.#body, this.#costume, this.#cheekL, this.#cheekR, this.#face, this.#costumeWear, this.#wear, this.#hat, this.#cup].filter(
+			...[this.#over, this.#body, this.#costume, this.#cheekL, this.#cheekR, this.#face, this.#costumeWear, this.#wear, this.#hat, this.#cup].filter(
 				(x): x is Sprite | Container => !!x,
 			),
 		);
@@ -234,6 +255,8 @@ export class Puppet extends Container {
 		this.#fx.alpha = 0;
 
 		this.#back.alpha = 0;
+		this.#over.y = A.bodyTop - 22;
+		if (opts.plump) this.#setPlump(opts.plump, false);
 		this.rig.addChild(this.#shadow, this.#back, this.#legL, this.#legR, this.#torso, this.#deskSprite, this.#work, this.#upper, this.#fx);
 		this.addChild(this.rig);
 
@@ -259,6 +282,85 @@ export class Puppet extends Container {
 		fore.addChild(foreSprite, hand);
 		root.addChild(upper, fore);
 		return { root, upper, fore, foreSprite, hand, handSprite, held };
+	}
+
+	// Plump -----------------------------------------------------------------------------------------
+
+	get plump(): Plump {
+		return this.#plump;
+	}
+
+	/** Wear a context's fullness as the body (plump.ts): a new size swells or deflates in with a
+	 * wobble; a ripe plum blushes. */
+	set plump(g: Plump | undefined) {
+		this.#setPlump(g ?? PLAIN, true);
+	}
+
+	#setPlump(g: Plump, wobble: boolean): void {
+		const was = this.#plump;
+		if (g.level === was.level && g.ripe === was.ripe) return;
+		this.#plump = g;
+		const o = (this.#off = plumpOffsets(g.level));
+		const ripe = g.ripe && this.#atlas.has(bodyPart(this.role, 3, true));
+		this.#body.texture = this.#atlas.get(bodyPart(this.role, g.level, ripe));
+		this.#body.anchor.copyFrom(this.#body.texture.defaultAnchor ?? { x: 0, y: 0 });
+		this.#cheekL.position.set(-A.cheekX - o.cheekX, A.cheekY + o.cheekY);
+		this.#cheekR.position.set(A.cheekX + o.cheekX, A.cheekY + o.cheekY);
+		this.#hat.y = o.top;
+		this.#over.y = A.bodyTop + o.top - 22;
+		if (this.#cup) this.#cup.y = o.top;
+		this.#wear.y = o.face;
+		if (this.#costumeWear) this.#costumeWear.y = o.face;
+		this.#armL.root.position.set(-A.shoulderX - o.shoulderX, A.shoulderY + o.shoulderY);
+		this.#armR.root.position.set(A.shoulderX + o.shoulderX, A.shoulderY + o.shoulderY);
+		this.#shadow.scale.x = PLUMP_SHAPE[g.level]!.w / 100;
+		if (wobble && g.level !== was.level) {
+			// Start at the old width and spring to the new: a puff out, or a deflate.
+			const p = this.#pop.plump;
+			p.value = PLUMP_SHAPE[was.level]!.w / PLUMP_SHAPE[g.level]!.w;
+			p.velocity = 0;
+			p.target = 1;
+		}
+		this.#apply();
+	}
+
+	/** The weather over its head, or none. It drifts and drips on the life clock. */
+	set weather(w: "rain" | "sun" | undefined) {
+		if (w === this.#weather) return;
+		this.#weather = w;
+		this.#over.alpha = w ? 1 : 0;
+		this.#drift();
+	}
+
+	get weather(): "rain" | "sun" | undefined {
+		return this.#weather;
+	}
+
+	/** The weather's frame for the life clock: rain falls and the sun turns, a step every 280 ms. */
+	#drift(): void {
+		if (!this.#weather) return;
+		const k = Math.floor(this.#lifeMs / 280) % 2;
+		const tex = this.#atlas.get(`over/${this.#weather}${k + 1}`);
+		if (this.#over.texture !== tex) {
+			this.#over.texture = tex;
+			this.#over.anchor.copyFrom(tex.defaultAnchor ?? { x: 0, y: 0 });
+		}
+	}
+
+	/** Bud: start as a small bead and swell, wobbling, to full size (a new hire). */
+	bud(): void {
+		const p = this.#pop.bud;
+		p.value = 0.18;
+		p.velocity = 0;
+		p.target = 1;
+	}
+
+	/** A poke: the body wobbles like jelly once, about its own size. */
+	jiggle(): void {
+		const p = this.#pop.plump;
+		p.value = 1.09;
+		p.velocity = 0;
+		p.target = 1;
 	}
 
 	// Playing -------------------------------------------------------------------------------------
@@ -303,6 +405,11 @@ export class Puppet extends Container {
 
 	get tempo(): number {
 		return this.#tempo;
+	}
+
+	/** How long the pose plays through once its passes are done, ms (Infinity for a loop). */
+	get playMs(): number {
+		return Number.isFinite(this.#loops) ? (duration(this.#frames) * this.#loops) / this.#tempo : Infinity;
 	}
 
 	/** Replay the current pose from its start, settled in place: the inspector's freeze() uses this
@@ -386,6 +493,7 @@ export class Puppet extends Container {
 		if (this.#life) {
 			this.#lifeMs += ms;
 			this.#setBeat(this.#lifeBeat());
+			this.#drift();
 		}
 		if (!this.animating) return;
 		this.#advance(ms * this.#tempo);
@@ -404,6 +512,8 @@ export class Puppet extends Container {
 			holding: this.#holding,
 			settled: this.settled,
 			params: diff(this.#frame),
+			plump: this.#plump.level,
+			ripe: this.#plump.ripe,
 			beat: this.#beatPass > 0 ? (this.#pose.beats?.passes[this.#beatPass - 1]?.name ?? "") : "",
 		};
 	}
@@ -561,23 +671,31 @@ export class Puppet extends Container {
 		// A two-hander's second character walks between spots and fades in.
 		this.rig.x = v("spotX");
 		this.rig.alpha = Math.max(0, Math.min(1, v("spotA")));
-		this.rig.scale.set(Math.max(0.01, v("spotS")));
+		this.rig.scale.set(Math.max(0.01, v("spotS") * pop.bud.value));
 
 		const hop = v("hop");
-		this.#shadow.scale.set(1 + Math.min(0, hop) / 60, 1 + Math.min(0, hop) / 60);
+		const o = this.#off;
+		const wide = PLUMP_SHAPE[this.#plump.level]!.w / 100;
+		this.#shadow.scale.set(wide * (1 + Math.min(0, hop) / 60), 1 + Math.min(0, hop) / 60);
 		this.#shadow.x = v("bodyX") * 0.5;
-		this.#legL.position.set(-A.legX, A.legY + hop + v("liftL"));
+		this.#legL.position.set(-A.legX - o.legX, A.legY + hop + v("liftL"));
 		this.#legL.rotation = v("legL") * RAD;
-		this.#legR.position.set(A.legX, A.legY + hop + v("liftR"));
+		this.#legR.position.set(A.legX + o.legX, A.legY + hop + v("liftR"));
 		this.#legR.rotation = v("legR") * RAD;
 
+		// A plum waddles: a walk rocks it from foot to foot, once each way per stride.
+		const waddle =
+			WADDLE_DEG[this.#plump.level]! && WALKS.has(this.#pose.name)
+				? WADDLE_DEG[this.#plump.level]! * Math.sin((2 * Math.PI * this.#ms) / Math.max(1, duration(this.#frames)))
+				: 0;
+		const g = pop.plump.value;
 		for (const c of [this.#torso, this.#upper]) {
 			c.position.set(v("bodyX"), v("bodyY") + A.base);
-			c.rotation = v("bodyR") * RAD;
-			c.scale.set(v("bodySX"), v("bodySY"));
+			c.rotation = (v("bodyR") + waddle) * RAD;
+			c.scale.set(v("bodySX") * g, v("bodySY") * (1 + (1 - g) * 0.4));
 		}
 
-		this.#face.position.set(v("lookX"), v("lookY"));
+		this.#face.position.set(v("lookX"), v("lookY") + o.face);
 		this.#face.scale.set(pop.face.value, 2 - pop.face.value);
 		this.#browL.position.set(-A.eyeX, A.browY + v("browLY"));
 		this.#browL.rotation = v("browLR") * RAD;
