@@ -22,7 +22,7 @@ import type { Session, Snapshot } from "../../watcher/model";
 import { CameraMove, type Stop, type View, type Viewport, viewFor } from "../world/camera";
 import { type Phase, SHADOW, msToNextPhase, phaseOf } from "../world/daylight";
 import { Light, type LightInfo } from "./light";
-import { DetailLayer } from "./detail";
+import { type DeskFoot, DetailLayer } from "./detail";
 import { PLUMP_SHAPE } from "../rig/data/plump";
 import { PUPPET_HEIGHT } from "../rig/data/reach";
 import { DECAL, dressRoom } from "./material";
@@ -198,6 +198,14 @@ export class Office extends Container {
 	#textures = new Map<FurnitureKind, Texture>();
 	#anchors = new Map<FurnitureKind, { x: number; y: number }>();
 	#res = 0;
+	/** What each cached room, hallway chunk and yard covers and the resolution it was cached at. */
+	#cached = new WeakMap<Container, { r: Rect; res: number }>();
+	/** The world the camera shows at its stop: what is cached at `#res`. Everything
+	 * else keeps the resolution it has, or the whole office's when it is new (`#rebake`). */
+	#sharp?: Rect;
+	#baseRes = 0;
+	/** Re-caches waiting for a frame, one a frame, what is on screen first (`#rebake`). */
+	#recache: Container[] = [];
 
 	/** Time of day: the phase now, and the hour it was worked out from. */
 	#phase: Phase;
@@ -292,6 +300,7 @@ export class Office extends Container {
 	 * arm. The app gives these the ambient rate and life alone a lower one. */
 	get acting(): boolean {
 		if (this.#move) return true;
+		if (this.#recache.length) return true;
 		if (this.#pulsing.length) return true;
 		if (this.#flashMs > 0) return true;
 		if (this.#bricks.size) return true;
@@ -314,6 +323,11 @@ export class Office extends Container {
 	/** True while the camera is moving: the app raises the frame rate for it. */
 	get moving(): boolean {
 		return this.#move !== undefined;
+	}
+
+	/** True after a camera move while the rooms it now shows are re-cached at its scale (`#rebake`). */
+	get settling(): boolean {
+		return this.#recache.length > 0;
 	}
 
 	get stop(): Stop {
@@ -490,7 +504,7 @@ export class Office extends Container {
 				this.#move = undefined;
 				this.#rebake();
 			}
-		}
+		} else this.#recacheOne();
 		for (const [key, list] of this.#bricks) {
 			for (const m of list) moveBrick(m, (m.t = Math.min(m.ms, m.t + dt * (1000 / 60))));
 			const left = list.filter((m) => m.t < m.ms);
@@ -721,7 +735,12 @@ export class Office extends Container {
 		this.#data = this.#plan.update(snapshot, stagingOf(this.#theme));
 		this.#screen = { w: width, h: height };
 		const first = this.#res === 0;
-		if (first) this.#bake(this.#targetRes(viewFor(this.#data, this.#stop, this.#viewport())!.scale));
+		if (first) {
+			const v = viewFor(this.#data, this.#stop, this.#viewport())!;
+			this.#bake(this.#targetRes(v.scale));
+			this.#sharp = this.#sharpRect(v);
+			this.#baseRes = this.#officeRes();
+		}
 		this.#draw(this.#data, snapshot);
 		// Keep the camera on its stop as rooms grow; fall back to the whole office if it vanished.
 		const to = viewFor(this.#data, this.#stop, this.#viewport());
@@ -1047,11 +1066,32 @@ export class Office extends Container {
 		return c;
 	}
 
-	/** Cache a static container as a texture at the current bake resolution. */
-	#cache(c: Container, r: Rect): void {
-		const res = Math.min(this.#res, MAX_TEXTURE / Math.max(r.w + 20, r.h + 20));
-		for (const t of texts(c)) t.resolution = res;
-		c.cacheAsTexture({ resolution: res, antialias: true });
+	/** Cache a static container as a texture: at the bake resolution where the camera looks, at the
+	 * whole office's elsewhere (a room drawn while the camera is on another one). */
+	#cache(c: Container, r: Rect, res = this.#resFor(r, 0)): void {
+		this.#cached.set(c, { r, res });
+		const at = Math.min(res, MAX_TEXTURE / Math.max(r.w + 20, r.h + 20));
+		for (const t of texts(c)) t.resolution = at;
+		c.cacheAsTexture({ resolution: at, antialias: true });
+	}
+
+	/** The resolution a cached thing covering `r` wants now, given the one it has (`had`, 0 for
+	 * none). On screen: the bake resolution. Off screen: what it had, if no sharper than that (a room
+	 * the camera left stays sharp for when it comes back), else the whole office's. */
+	#resFor(r: Rect, had: number): number {
+		if (!this.#sharp || overlapsRect(r, this.#sharp)) return this.#res;
+		return had && had <= this.#res ? had : Math.min(this.#res, this.#baseRes || this.#res);
+	}
+
+	/** The world the screen shows at view `v`. */
+	#sharpRect(v: View): Rect {
+		return { x: -v.x / v.scale, y: -v.y / v.scale, w: this.#screen.w / v.scale, h: this.#screen.h / v.scale };
+	}
+
+	/** The bake resolution the whole-office stop needs. */
+	#officeRes(): number {
+		const v = this.#data && viewFor(this.#data, { kind: "office" }, this.#viewport());
+		return v ? this.#targetRes(v.scale) : this.#res;
 	}
 
 	/** Desks (with their screens and name cards), chairs and floor furniture: depth-sorted. */
@@ -1276,14 +1316,41 @@ export class Office extends Container {
 		return STEPS.find((s) => s >= want * 0.95) ?? STEPS[STEPS.length - 1]!;
 	}
 
-	/** After a camera move: re-bake everything static at the new scale, if it changed. */
+	/**
+	 * After a camera move: re-bake what the camera now shows at the new scale. Furniture is small and
+	 * shared, so it re-bakes at once. Rooms, hallway chunks and yards are big: only the ones on screen
+	 * are re-cached sharp (a desk stop at 6x would otherwise redraw every room, hundreds of megabytes
+	 * of texture, in one frame), and one a frame, so settling never stalls. One that is off screen
+	 * keeps its resolution, or comes down to the new one when the camera zooms out.
+	 */
 	#rebake(): void {
+		if (!this.#data) return;
 		const res = this.#targetRes(this.#view.scale);
-		if (res === this.#res || !this.#data) return;
-		this.#bake(res);
-		for (const [id, item] of this.#areas) this.#cache(item.view, roomBounds(this.#data.areas.find((a) => a.id === id)!.rect));
-		for (const c of this.#halls) this.#cache(c, { x: 0, y: 0, w: HALL_CHUNK, h: this.#data.hallway.h });
-		for (const item of this.#yards.values()) this.#cache(item.view, item.rect);
+		if (res !== this.#res) this.#bake(res);
+		this.#sharp = this.#sharpRect(this.#view);
+		this.#baseRes = this.#officeRes();
+		const all = [...[...this.#areas.values(), ...this.#yards.values()].map((i) => i.view), ...this.#halls];
+		const stale = all.filter((c) => {
+			const at = this.#cached.get(c);
+			return at && this.#resFor(at.r, at.res) !== at.res;
+		});
+		const sharp = this.#sharp;
+		const onScreen = (c: Container) => (overlapsRect(this.#cached.get(c)!.r, sharp) ? 0 : 1);
+		this.#recache = stale.sort((a, b) => onScreen(a) - onScreen(b));
+		if (this.#recache.length) this.#opts.wake();
+	}
+
+	/** Re-cache the next waiting room, chunk or yard (`#rebake`), unless it has gone. */
+	#recacheOne(): void {
+		while (this.#recache.length) {
+			const c = this.#recache.shift()!;
+			const at = this.#cached.get(c);
+			if (c.destroyed || !at) continue;
+			const res = this.#resFor(at.r, at.res);
+			if (res === at.res) continue;
+			this.#cache(c, at.r, res);
+			return;
+		}
 	}
 
 	#drawPeople(world: Floor, snapshot: Snapshot): void {
@@ -1361,8 +1428,18 @@ export class Office extends Container {
 			bodies: this.#people,
 			now: this.#snapshot?.at ?? 0,
 			names: this.#names,
+			desks: this.#deskFeet(),
 		});
 		if (changed) this.#opts.wake();
+	}
+
+	/** Every desk's footprint on the floor, for the lead's ring (detail.ts): the baked desk's width. */
+	#deskFeet(): Map<string, DeskFoot> {
+		const w = this.#textures.get("desk")?.width ?? 0;
+		const out = new Map<string, DeskFoot>();
+		if (!w) return out;
+		for (const d of this.#data?.desks.values() ?? []) out.set(d.id, { x: d.at.x, y: d.at.y, w });
+		return out;
 	}
 
 	/** The counts for the room the camera is on (a room or desk stop): a pill in the hallway at the
@@ -1409,6 +1486,8 @@ function drop(view: Container | undefined): void {
 }
 
 /** A room's cached layer's extent: the room, and its name painted in the hallway beyond it. */
+const overlapsRect = (a: Rect, b: Rect) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+
 const roomBounds = (r: Rect): Rect => ({ x: r.x, y: r.y - 70, w: r.w, h: r.h + 140 });
 
 const differs = (a: View, b: View) => Math.abs(a.scale - b.scale) > 1e-4 || Math.abs(a.x - b.x) > 0.5 || Math.abs(a.y - b.y) > 0.5;

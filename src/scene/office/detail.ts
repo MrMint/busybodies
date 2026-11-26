@@ -25,6 +25,16 @@ interface Body {
 const CHIP = { h: 11, icon: 7, text: 5.6, gap: 3, pad: 3 } as const;
 /** A team's ring on the floor: an ellipse round the feet, a little wider than the body. */
 const RING = { pad: 5, squash: 0.3, width: 2.4, lead: 3.4, fill: 0.2, faded: 0.25 } as const;
+/** A lead at its desk stands behind it, feet hidden: its ring goes round the whole desk instead,
+ * wider than the desk by `pad` each side, flatter than a body's, its centre `lift` up the floor. */
+const DESK_RING = { pad: 10, squash: 0.2, lift: 10, reach: 90 } as const;
+
+/** Where a desk stands on the floor: its front edge's centre and its width, in world units. */
+export interface DeskFoot {
+	x: number;
+	y: number;
+	w: number;
+}
 /** Team colours, handed out in a room by session, in a stable order. Cut-paper brights that read on
  * every theme's floor. */
 const TEAM = [0xff8a1f, 0x19b87a, 0x3d7dff, 0xff5c9a, 0x8c5cff, 0x00a8b5] as const;
@@ -32,7 +42,7 @@ const TEAM = [0xff8a1f, 0x19b87a, 0x3d7dff, 0xff5c9a, 0x8c5cff, 0x00a8b5] as con
 /** The session a character belongs to, from its key (`s:<id>` or `a:<id>:<agent>`). */
 const teamOf = (key: string) => key.split(":")[1] ?? key;
 
-type Ring = { key: string; size: number; plump: number; team: string; color: number; lead: boolean };
+type Ring = { key: string; size: number; plump: number; team: string; color: number; lead: boolean; desk?: DeskFoot };
 
 type Entry = {
 	key: string;
@@ -89,6 +99,8 @@ export class DetailLayer extends Container {
 		bodies: ReadonlyMap<string, Body>;
 		now: number;
 		names: ReadonlyMap<string, string>;
+		/** The desks' footprints, by id: a lead's ring goes round its desk while it stands there. */
+		desks?: ReadonlyMap<string, DeskFoot>;
 	}): boolean {
 		const { area, desk, placed, now, names } = opts;
 		this.#bodies = opts.bodies;
@@ -121,6 +133,7 @@ export class DetailLayer extends Container {
 				team: teamOf(p.who.key),
 				color: TEAM[teams.indexOf(teamOf(p.who.key)) % TEAM.length]!,
 				lead: p.who.kind === "lead",
+				...(p.who.kind === "lead" && p.desk && opts.desks?.get(p.desk) ? { desk: opts.desks.get(p.desk)! } : {}),
 			}));
 		for (const p of crew) {
 			const e: Entry = { key: p.who.key, size: p.who.size, plump: p.who.plump?.level ?? 0, chipW: 0 };
@@ -173,9 +186,10 @@ export class DetailLayer extends Container {
 			const b = this.#bodies.get(r.key);
 			if (!b) continue;
 			const on = this.#focus === undefined || this.#focus === r.team;
-			const rx = (r.size * 0.5 * PLUMP_SHAPE[r.plump]!.w) / 100 + RING.pad;
-			const ry = rx * RING.squash;
-			f.ellipse(b.view.x, b.view.y, rx, ry)
+			const d = r.desk && atDesk(b.view, r.desk) ? r.desk : undefined;
+			const rx = d ? d.w / 2 + DESK_RING.pad : (r.size * 0.5 * PLUMP_SHAPE[r.plump]!.w) / 100 + RING.pad;
+			const ry = rx * (d ? DESK_RING.squash : RING.squash);
+			f.ellipse(d ? d.x : b.view.x, d ? d.y - DESK_RING.lift : b.view.y, rx, ry)
 				.fill({ color: r.color, alpha: on ? RING.fill : RING.fill * RING.faded })
 				.stroke({ width: r.lead ? RING.lead : RING.width, color: r.color, alpha: on ? 0.9 : RING.faded });
 		}
@@ -219,6 +233,9 @@ export class DetailLayer extends Container {
 }
 
 type Box = { x: number; y: number; w: number; h: number };
+
+/** True while a lead stands behind its desk (not off on a walk). */
+const atDesk = (at: { x: number; y: number }, d: DeskFoot) => Math.abs(at.x - d.x) <= d.w / 2 && at.y <= d.y + 4 && at.y >= d.y - DESK_RING.reach;
 
 /** No body has moved this far since the layer last drew: nothing on it would move a pixel. */
 const STILL_PX = 0.01;

@@ -231,7 +231,15 @@ describe("camera", () => {
 			});
 			expect(during.tickerRunning).toBe(true);
 			expect(during.maxFPS).toBe(60);
-			await page.waitForFunction(() => !window.__busybodies!.camera().moving, undefined, { timeout: 10_000 });
+			// Landed, then a few frames re-cache the room it shows at the new scale.
+			await page.waitForFunction(
+				() => {
+					const cam = window.__busybodies!.camera();
+					return !cam.moving && !cam.settling;
+				},
+				undefined,
+				{ timeout: 10_000 },
+			);
 			const c = await measure(page);
 			expect(c.tickerRunning).toBe(false);
 			expect(c.animationFrames).toBe(0);
