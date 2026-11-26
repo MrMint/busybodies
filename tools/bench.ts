@@ -1,6 +1,6 @@
 // What a frame of the scene costs, in headless Chrome on the GPU: main-thread CPU per second of
 // wall time, renders, and (with --profile) where that time goes, by function.
-//   bun tools/bench.ts [--dist dist] [--secs 6] [--theme office,factory,bakery] [--only idle,busy] [--profile] [--top 30]
+//   bun tools/bench.ts [--dist dist] [--secs 6] [--theme office,factory,bakery] [--only idle,busy,plum] [--profile] [--top 30]
 // Each scene is a ?demo fixture. `cpu` is Chrome's TaskDuration (everything the renderer's main
 // thread ran: script, style, layout, GL calls) over the window, as % of one core; `script` is the
 // JavaScript part of it. tools/profile.sh measures the real app (Bun and WebContent); this one
@@ -31,6 +31,8 @@ const SCENES: { name: string; query: string }[] = [
 	{ name: "crowd-idle", query: "demo=crowd-idle" },
 	{ name: "crowd", query: "demo=crowd" },
 	{ name: "room", query: "demo&settle=600000&room=1" },
+	// Plums at a room stop: their bodies, springs and the closer look's rings and chips.
+	{ name: "plum", query: "demo=plum&room=1" },
 ];
 
 const DIST = resolve(o.dist!);
