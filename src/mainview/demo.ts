@@ -29,6 +29,8 @@ import type { Agent, Session, Snapshot } from "../watcher/model";
 /** 14:32 on an invented Thursday, local time. */
 const NOW = new Date(2026, 10, 19, 14, 32).getTime();
 const min = (m: number) => NOW - m * 60_000;
+/** A day, in minutes. */
+const DAY_MIN = 24 * 60;
 
 let n = 0;
 const AGENT_FAMILIES: Agent["family"][] = ["haiku", "sonnet", "haiku", "opus"];
@@ -100,12 +102,14 @@ function floorBusy(): Snapshot {
 					]),
 					// A long review: its own context is nearly full, so it is a ripe plum (plump.ts).
 					{ ...agent("reviewer", "PR #212, round 2"), family: "opus", context: ctx(0.97) },
-					// Nine minutes into one docs lookup: it has nodded off on its feet (RULES.dozeMin).
+					// Nine minutes into one web fetch: it walks to the phone and nods off on hold there
+					// (RULES.dozeMin; a very long call wins over the station's pose).
 					{
 						...agent("designer", "Empty state for exports"),
 						family: "sonnet",
 						context: ctx(0.5),
-						running: { tool: "mcp__docs__lookup", since: min(9) },
+						activity: { tool: "WebFetch", at: min(9) },
+						running: { tool: "WebFetch", since: min(9) },
 					},
 					agent("verifier", "Staging walkthrough", "stalled"),
 					agent("Explore", "Map the export module", "finished"),
@@ -132,6 +136,8 @@ function floorBusy(): Snapshot {
 			}),
 			session("Flaky login test", "lanternfish", "busy", 100, {
 				branch: "fix/flaky-login",
+				// Four of the room's PRs today: the release's PR at +12 s is the fifth, a cake on its desk.
+				prs: [210, 213, 215, 217].map((number, i) => ({ number, url: `https://example.invalid/pull/${number}`, at: min(95 - i * 20) })),
 				family: "sonnet",
 				context: ctx(0.55),
 				agents: [agent("verifier", "Same red. Hello again.")],
@@ -159,8 +165,18 @@ function floorBusy(): Snapshot {
 				changes: { files: 48, added: 60, removed: 610 },
 				agents: [agent("scout", "Find usages of paginate")],
 			}),
-			session("Crumb cache rewrite", "breadbox", "idle", 240, { branch: "crumb-cache", agents: [agent("scout", "Paused by you", "stalled")] }),
-			session("Changelog draft", "mossy-docs", "idle", 230, { branch: "docs/changelog", agents: [agent("builder", "Sent home by you", "stopped")] }),
+			// Reopened this afternoon but idle for days: cobwebs in a corner of their desks
+			// (director/cobwebs.ts). Their start times stay as they were, so the floor plan does too.
+			session("Crumb cache rewrite", "breadbox", "idle", 240, {
+				branch: "crumb-cache",
+				stateSince: min(3 * DAY_MIN),
+				agents: [agent("scout", "Paused by you", "stalled")],
+			}),
+			session("Changelog draft", "mossy-docs", "idle", 230, {
+				branch: "docs/changelog",
+				stateSince: min(2.5 * DAY_MIN),
+				agents: [agent("builder", "Sent home by you", "stopped")],
+			}),
 			// Buried to the eyebrows in its in-tray.
 			session("Docs sweep", "mossy-docs", "busy", 60, {
 				branch: "docs/sweep",
@@ -526,6 +542,8 @@ export function demoDay(): { after: number; snapshot: Snapshot }[] {
 		s.sessions = s.sessions.filter((x) => x.title !== "Webhook spike");
 	});
 	beat(20000, (s) => {
+		// The rename crosses a thousand lines changed: a lemon cake on its desk (director/treats.ts).
+		find(s, "Rename everything").changes = { files: 52, added: 70, removed: 960 };
 		// Two nested scouts finish together: a high-five before they head off.
 		const scout = find(s, "Ship release 2.4").agents[0]!;
 		const done = (a: Agent) => Object.assign(a, { status: "finished", activity: undefined, lastWriteAt: at(19900) });

@@ -1182,11 +1182,13 @@ export class Office extends Container {
 			}
 		}
 		// The metrics as things on and by the desk (props.ts): the small ones only zoomed in.
+		let over: Container | undefined;
 		if (s && props) {
-			const { always, detail } = deskProps(this.#theme, props, s.id);
-			detail.label = "detail";
-			detail.visible = this.#stop.kind !== "office";
-			c.addChild(always, detail);
+			const parts = deskProps(this.#theme, props, s.id);
+			parts.detail.label = "detail";
+			parts.detail.visible = this.#stop.kind !== "office";
+			c.addChild(parts.always, parts.detail);
+			over = parts.over;
 		}
 		if (s) {
 			const [title, sub] = deskCard(s, this.#names.get(`s:${s.id}`));
@@ -1217,6 +1219,7 @@ export class Office extends Container {
 			card.visible = this.#stop.kind !== "office";
 			c.addChild(card);
 		}
+		if (over?.children.length) c.addChild(over);
 		return c;
 	}
 

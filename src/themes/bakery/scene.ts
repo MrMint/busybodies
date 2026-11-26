@@ -26,7 +26,7 @@ import { mix } from "../../shared/colour";
 import { BRASS, CHALK, PINK, PINK_LIGHT, RASPBERRY, coloursOf } from "./palette";
 import { patio } from "./outside";
 import { BAKERY_STAGE, BAKERY_STAGING, BANDS, CAKE_BUILD } from "./stage";
-import { cakeBoxes, cappuccinos, clocheLamp, crumbBin, furniture, macaronStand } from "./furniture";
+import { cakeBoxes, cappuccinos, clocheLamp, croquembouche, crumbBin, furniture, macaronStand } from "./furniture";
 import { hallway, room, scallops } from "./room";
 
 /** Under a project room's desks: a rug a step deeper than its checks, edged in a deeper shade of
@@ -137,7 +137,7 @@ export const BAKERY_THEME: SceneTheme = {
 	room,
 	hallway,
 	furniture,
-	desk: { tray: macaronStand, mugs: cappuccinos, lamp: clocheLamp, drawers: cakeBoxes, skip: crumbBin },
+	desk: { tray: macaronStand, mugs: cappuccinos, lamp: clocheLamp, drawers: cakeBoxes, skip: crumbBin, treat: croquembouche },
 	planner: orderBoard,
 	rug: rugOf,
 	patio,

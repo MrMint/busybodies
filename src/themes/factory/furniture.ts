@@ -1,7 +1,7 @@
 // The factory's furniture: benches, the hopper, tool chests, scrap bins and the rest, drawn by
 // kind. Split out of scene.ts.
 import { Graphics } from "pixi.js";
-import type { Lamp, Tray } from "../../scene/contract";
+import type { Lamp, Milestone, Tray } from "../../scene/contract";
 import { GREEN, INK, RED, SHADOW, batched, hash, line, wob } from "../../scene/office/paper";
 import { MONITOR, PROPS } from "../../scene/world/propspots";
 import { DESK_TOP } from "../../scene/world/world";
@@ -452,5 +452,64 @@ export function furniture(kind: FurnitureKind): Graphics {
 			break;
 		}
 	}
+	return g;
+}
+
+/** A milestone treat (director/treats.ts), the factory's take: a frosted hex-nut doughnut on a
+ * steel saucer with a candle in its hole. Ten PRs, two of them stacked; a thousand lines changed,
+ * gold frosting. */
+export function nutDonut(m: Milestone): Graphics {
+	const g = batched();
+	const { x, y } = PROPS.treat;
+	g.ellipse(x, y - 1, 12, 2.4)
+		.fill(STEEL_LIGHT)
+		.stroke(line(1.2));
+	const nut = (base: number, frost: number) => {
+		const r = 9.5;
+		const h = 3.5;
+		// A hex nut seen from the front: its three faces, frosted over the top.
+		g.poly([x - r, base - h, x - r / 2, base - h - 1.6, x + r / 2, base - h - 1.6, x + r, base - h, x + r, base, x - r, base])
+			.fill(STEEL)
+			.stroke(line(1.3));
+		g.moveTo(x - r / 2, base - h + 0.2)
+			.lineTo(x - r / 2, base)
+			.moveTo(x + r / 2, base - h + 0.2)
+			.lineTo(x + r / 2, base)
+			.stroke({ width: 0.8, color: INK, alpha: 0.6 });
+		g.poly([
+			x - r + 0.6,
+			base - h,
+			x - r / 2,
+			base - h - 1.6,
+			x + r / 2,
+			base - h - 1.6,
+			x + r - 0.6,
+			base - h,
+			x + r / 2,
+			base - h + 2.2,
+			x - r / 2,
+			base - h + 1.6,
+		]).fill(frost);
+		g.ellipse(x, base - h - 0.4, 2.8, 1).fill(INK);
+	};
+	const frost = m === "lines" ? SAFETY : 0xff9ec4;
+	nut(y - 2, frost);
+	let top = y - 7.5;
+	if (m === "prs10") {
+		nut(y - 6.6, ORANGE);
+		top = y - 12.2;
+	}
+	for (const [dx, c] of [
+		[-5.5, 0x9be3ff],
+		[4.5, 0xffffff],
+		[-2.5, 0xa5e6c9],
+	] as const)
+		g.rect(x + dx - 0.7, top + 1.4, 1.4, 0.8).fill(c);
+	g.rect(x - 0.8, top - 3, 1.6, 3.4)
+		.fill(0xffffff)
+		.stroke({ width: 0.8, color: INK });
+	g.ellipse(x, top - 4.3, 1.1, 1.5)
+		.fill(SAFETY)
+		.stroke({ width: 0.6, color: INK });
 	return g;
 }

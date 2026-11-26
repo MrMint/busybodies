@@ -3,7 +3,7 @@
 // a theme says what the floor, walls, furniture, stations and props look like, and what the places
 // are called. Plan: docs/plan-next.md stream D.
 import type { Container, Graphics } from "pixi.js";
-import type { Lamp, PlannerRow, Tray } from "../contract";
+import type { Lamp, Milestone, PlannerRow, Tray } from "../contract";
 import type { Who } from "../contract";
 import type { Phase } from "../world/daylight";
 import type { Area, AreaKind, Band, Fixture, Rect } from "../world/world";
@@ -75,6 +75,8 @@ interface DeskPainters {
 	lamp(lamp: Lamp): Graphics;
 	drawers(n: number, full: number): Graphics;
 	skip(load: number): Graphics;
+	/** A milestone treat on the desk (director/treats.ts), around propspots.ts PROPS.treat. */
+	treat(m: Milestone): Graphics;
 }
 
 export interface SceneTheme {

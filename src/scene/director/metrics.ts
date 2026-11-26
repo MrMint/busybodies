@@ -17,6 +17,8 @@ import type { Queue } from "./errands";
 import { traitOf } from "./traits";
 import type { Actor } from "./types";
 import type { DeskProps, Drawers, Lamp, PlannerRow, Tray } from "../contract";
+import { type LinesSeen, type Treat, linesTreat, prTreats, treatEnds, treatOn } from "./treats";
+import { cobwebAt, cobwebFor } from "./cobwebs";
 
 export const METRICS = {
 	/** The in-tray: this many sheets when the context is full. */
@@ -115,6 +117,8 @@ interface DeskState extends DeskProps {
 	todos?: Todos;
 	/** When the lamp's test result came in. */
 	testAt?: number;
+	/** Lines changed as last seen, and the treat for crossing a thousand (treats.ts). */
+	lines?: LinesSeen;
 }
 
 /** Your office: who holds which ticket, the next number, and the lowest ticket in the queue. */
@@ -143,12 +147,17 @@ export interface Metrics {
 export const NO_METRICS: Metrics = { desks: {}, planners: {}, tickets: {}, next: 1 };
 
 /** A desk's things this snapshot. `out`: its lead is off at the shredder with the pile. */
-function deskState(s: Session, was: DeskState | undefined, out: boolean, rig = false): DeskState {
+function deskState(s: Session, was: DeskState | undefined, out: boolean, rig: boolean, pr: Treat | undefined, now: number, wakes?: number[]): DeskState {
 	const found = trayFor(s.context);
 	const tray = found && rig ? { ...found, rig: true } : found;
 	const ch = changesOf(s);
 	const lamp = lampFor([s, ...agentsOf(s.agents)], was && { lamp: was.lamp, at: was.testAt });
 	const word = familyWord(s.family);
+	const lines = linesTreat(s.changes, was?.lines, now);
+	const treat = treatOn(pr, lines.treat, now);
+	const cobweb = cobwebFor(s, now);
+	if (treat) wakes?.push(treatEnds(treat));
+	else if (!cobweb && s.state === "idle" && !s.waiting) wakes?.push(cobwebAt(s.stateSince));
 	return {
 		...(tray ? { tray: out ? { ...tray, out: true } : tray } : {}),
 		...(word ? { word } : {}),
@@ -159,6 +168,9 @@ function deskState(s: Session, was: DeskState | undefined, out: boolean, rig = f
 		...(lamp.at !== undefined ? { testAt: lamp.at } : {}),
 		compactions: s.compactions?.count ?? 0,
 		...(s.todos ? { todos: s.todos } : {}),
+		lines,
+		...(treat ? { treat: treat.milestone } : {}),
+		...(cobweb ? { cobweb } : {}),
 	};
 }
 
@@ -183,14 +195,23 @@ function planners(floor: Floor, sessions: Map<string, Session>, carried: Set<str
 const hasPlanner = (a: Area) => a.wall.some((w) => w.kind === "planner");
 
 /** This direction's metrics: every desk's things, the planners, and your office's tickets. */
-export function metricsFor(sessions: Map<string, Session>, was: Metrics, actors: Record<string, Actor>, floor: Floor, queue: Queue, now: number): Metrics {
+export function metricsFor(
+	sessions: Map<string, Session>,
+	was: Metrics,
+	actors: Record<string, Actor>,
+	floor: Floor,
+	queue: Queue,
+	now: number,
+	wakes?: number[],
+): Metrics {
 	const desks: Record<string, DeskState> = {};
+	const prs = prTreats(sessions.values(), now);
 	const carried = new Set<string>();
 	for (const a of Object.values(actors)) if (a.errand?.kind === "sticky" && now < a.errand.until) carried.add(a.errand.session);
 	for (const [id, s] of sessions) {
 		const lead = actors[`s:${id}`];
 		const e = lead?.errand;
-		desks[id] = deskState(s, was.desks[id], e?.kind === "shred" && now < e.until, lead?.pose === "buried");
+		desks[id] = deskState(s, was.desks[id], e?.kind === "shred" && now < e.until, lead?.pose === "buried", prs.get(id), now, wakes);
 	}
 	return {
 		desks,

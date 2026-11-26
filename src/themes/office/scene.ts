@@ -7,7 +7,7 @@ import type { SceneLight, SceneTheme } from "../../scene/theme/types";
 import { OFFICE_WORDS } from "./words";
 import { LAWN, ROOM_COLOURS, SLAB } from "./palette";
 import { hallway, room } from "./room";
-import { drawers, inTray, mugPile, plannerOf, skip, testLamp } from "./desk";
+import { cake, drawers, inTray, mugPile, plannerOf, skip, testLamp } from "./desk";
 import { BINDERS, drawFurniture } from "./furniture";
 import { patio } from "./outside";
 
@@ -62,7 +62,7 @@ export const OFFICE_THEME: SceneTheme = {
 	room,
 	hallway,
 	furniture: drawFurniture,
-	desk: { tray: inTray, mugs: mugPile, lamp: testLamp, drawers, skip },
+	desk: { tray: inTray, mugs: mugPile, lamp: testLamp, drawers, skip, treat: cake },
 	planner: (r, rows) => plannerOf(r, rows),
 	rug: rugOf,
 	patio,

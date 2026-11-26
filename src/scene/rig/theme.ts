@@ -7,6 +7,7 @@ import { EYES, FX, HELD, MOUTHS, WORKS } from "./data/vocab";
 import { paintAccessories } from "./accessories";
 import { ROLES, type Role } from "./data/roles";
 import { bodyVariants, ripeColour } from "./data/plump";
+import { web } from "./data/web";
 import { ANCHORS, AT, BELL, BELL_BASE, HANDOFF, PLANNER, STATION, STICKY, TRAY, WORK, handAt } from "./data/reach";
 
 export interface Palette {
@@ -1585,23 +1586,13 @@ export function paperTheme(p: Palette = PAPER_PALETTE): Theme {
 			for (const a of [-0.5, 0, 0.5]) line(g, [x + Math.cos(a) * 7, y + Math.sin(a) * 7, x + Math.cos(a) * 11, y + Math.sin(a) * 11], 1.4, ink);
 		},
 		cobweb: (g) => {
-			// A web strung from the hat to the air, and a small spider.
-			const cx = -58;
-			const cy = -92;
-			for (let i = 0; i <= 4; i++) {
-				const a = Math.PI * 0.05 + (i / 4) * Math.PI * 0.45;
-				line(g, [cx, cy, cx + Math.cos(a) * 40, cy + Math.sin(a) * 40], 1.1, ink);
-			}
-			for (const r of [12, 22, 32]) {
-				const pts: number[] = [];
-				for (let i = 0; i <= 4; i++) {
-					const a = Math.PI * 0.05 + (i / 4) * Math.PI * 0.45;
-					pts.push(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
-				}
-				line(g, pts, 1, ink);
-			}
-			line(g, [cx + 30, cy + 28, cx + 30, cy + 44], 0.9, ink);
-			g.circle(cx + 30, cy + 47, 3).fill(ink);
+			// A web strung from the hat to the air, and a small spider (rig/data/web.ts: a long-idle
+			// desk's cobweb is the same web).
+			const w = web(-58, -92, 40, Math.PI * 0.05, Math.PI * 0.45, { dx: 0.75, dy: 0.7, drop: 0.4, r: 3 });
+			for (const s of w.spokes) line(g, s, 1.1, ink);
+			for (const r of w.rings) line(g, r, 1, ink);
+			line(g, w.thread!, 0.9, ink);
+			g.circle(w.spider!.x, w.spider!.y, w.spider!.r).fill(ink);
 		},
 	};
 	for (const f of FX) parts[`fx/${f}`] = fx[f];

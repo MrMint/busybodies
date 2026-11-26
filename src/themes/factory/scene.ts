@@ -7,7 +7,7 @@ import { FACTORY_STAGING } from "./staging";
 import type { SceneLight, SceneTheme } from "../../scene/theme/types";
 import { FACTORY_WORDS } from "./words";
 import { hallway, rivets, room } from "./room";
-import { beacon, cans, furniture, hopper, scrapBin, toolChest } from "./furniture";
+import { beacon, cans, furniture, hopper, nutDonut, scrapBin, toolChest } from "./furniture";
 import { CRATE_BUILD, FACTORY_STAGE } from "./stage";
 import { yard } from "./outside";
 
@@ -55,7 +55,7 @@ export const FACTORY_THEME: SceneTheme = {
 	room,
 	hallway,
 	furniture,
-	desk: { tray: hopper, mugs: cans, lamp: beacon, drawers: toolChest, skip: scrapBin },
+	desk: { tray: hopper, mugs: cans, lamp: beacon, drawers: toolChest, skip: scrapBin, treat: nutDonut },
 	planner: jobBoard,
 	patio: yard,
 	crewBuild: (b, seed) => crewBuild(b, seed, CRATE_BUILD),

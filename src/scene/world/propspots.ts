@@ -25,6 +25,20 @@ export const PROPS = {
 	lamp: { x: 84, y: -66 },
 	drawers: { x: 88, w: 20, h: 11 },
 	skip: { x: 85, y: 16, w: 28, h: 12 },
+	/** A milestone treat (director/treats.ts): between the mugs and the in-tray, its base on the
+	 * desk top's front edge; `x` its middle. At most `w` wide and `h` tall, candle and flame
+	 * included, so it stays under the lead's face as the mugs do. */
+	treat: { x: 18, y: -50, w: 24, h: 18 },
+} as const;
+
+/** A long-idle desk's cobweb (director/cobwebs.ts): the corner it is strung in, how far its spokes
+ * reach, and which way they fan (radians, y down, from `from` through a quarter turn). The screen's
+ * top corners are inside its ink outline; the desk front's corner is its top left, under the desk
+ * top's lip. */
+export const COBWEB_CORNERS = {
+	screenL: { x: MONITOR.x - MONITOR.w / 2 + 2, y: MONITOR.y - MONITOR.neck - MONITOR.h + 2, r: 15, from: 0 },
+	screenR: { x: MONITOR.x + MONITOR.w / 2 - 2, y: MONITOR.y - MONITOR.neck - MONITOR.h + 2, r: 15, from: Math.PI / 2 },
+	desk: { x: -73, y: -42, r: 14, from: 0 },
 } as const;
 
 /**
@@ -81,6 +95,16 @@ export function deskParts(): Record<string, Rect> {
 		// The name card, at its widest and tallest (office.ts).
 		card: { x: -CARD.maxW / 2, y: CARD.top, w: CARD.maxW, h: CARD.foot - CARD.top },
 		skip: { x: PROPS.skip.x - 1, y: PROPS.skip.y - PROPS.skip.h - 4, w: PROPS.skip.w + 2, h: PROPS.skip.h + 5 },
+		treat: { x: PROPS.treat.x - PROPS.treat.w / 2 - 1, y: PROPS.treat.y - PROPS.treat.h, w: PROPS.treat.w + 2, h: PROPS.treat.h + 1 },
+		...Object.fromEntries(
+			Object.entries(COBWEB_CORNERS).map(([k, c]) => {
+				const xs = [c.x, c.x + Math.cos(c.from) * c.r, c.x + Math.cos(c.from + Math.PI / 2) * c.r];
+				const ys = [c.y, c.y + Math.sin(c.from) * c.r, c.y + Math.sin(c.from + Math.PI / 2) * c.r];
+				const x = Math.min(...xs) - 1;
+				const y = Math.min(...ys) - 1;
+				return [`cobweb:${k}`, { x, y, w: Math.max(...xs) + 1 - x, h: Math.max(...ys) + 6 - y }];
+			}),
+		),
 	};
 }
 
