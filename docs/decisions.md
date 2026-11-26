@@ -1904,3 +1904,96 @@ PR opened is a team photo: a flash over the room, and everyone in it looks out a
 
 `?demo` plays all of it through the day; `?demo=plum` lines up every role at every plump. Still
 open from the brainstorm: milestone treats, and cobwebs on long-idle desks.
+
+## 2026-11-25: delight, round two
+
+**Milestone treats.** When a milestone happens, a treat sits on the desk that hit it for ten minutes
+(`director/treats.ts`): a room's fifth and tenth PR today (on the desk of the session whose PR it
+was; PRs with no time can't say when they were opened, so they don't count), or a session's own
+lines changed (`Session.changes`, added and removed) crossing 1,000. Crossing has to be *seen*: a
+session already over a thousand on the first look (the app just opened) gets no cake, since nobody
+watched it happen. The PR milestone needs no memory, since the PR that made the count carries its own
+time. The director wakes to clear a treat away. Each theme paints its own (`DeskPainters.treat`): the
+office a small cake with a candle (two tiers and two candles for ten PRs, a lemon cake with
+sprinkles for the lines), the factory a frosted hex-nut doughnut on a steel saucer (two stacked for
+ten), the patisserie a little croquembouche with a sparkler. It sits between the mugs and the in-tray,
+at most 18 high, so it stays under the lead's face (the keep-out test holds it, `deskParts().treat`).
+The name card covers the desk top's front edge, so the treat draws over the card (`deskProps().over`)
+or only the candle would show. Static: the flame doesn't flicker, so a treat costs nothing while it
+sits there.
+
+**Cobwebs on long-idle desks.** A desk whose session has been idle two days or more (`stateSince`),
+and isn't waiting on you, has a cobweb in a corner of its screen (top left or right) or of its desk
+front (`director/cobwebs.ts`; the corner comes from the session's id). It is the rig's own cobweb (the
+stalled pose's `fx/cobweb`): both now draw from one shape, `rig/data/web.ts` (five spokes, three rings, a
+spider on a thread), so the desk's web and the stalled character's read as the same web. The desk's is
+in pale silk, not ink, because an idle desk's screen is dark. It is static, and drawn only zoomed in,
+with the mugs and drawers. In `?demo`, two desks reopened this afternoon but idle for days have one
+(their start times stay as they were, so the floor plan doesn't move).
+
+**Dozing beats the station.** A call running past `RULES.dozeMin` (8 minutes) used to doze on its
+feet only if no station trip had it: a long web fetch walked to the phone and played the phone pose
+as if nothing was wrong. Now a very long call wins, and the character **dozes at the station**
+(`atStation`: `asleep` passes through, in the queue too). We chose that over not going: on hold at
+the phone and nodded off is the gag everyone knows, and it keeps both facts on screen. Where it is
+(the phone: the web) says what it is doing; the doze says it has been going on far too long.
+Staying at the desk would drop the first. `?demo`'s designer is nine minutes into a `WebFetch` now
+(it was an MCP lookup, which no station serves), so it walks to the phone and nods off there.
+
+**Plum hands on their work.** Round one moved a plum's shoulders only part of the way out, so the
+hands landed near the keyboard and the tools, not on them. Now every arm that works on something is
+re-solved per plump level (`reach.ts plumpArm`, memoised; `frame.ts channelsAt` hands the puppet the
+re-solved targets). The station reaches, the bench's tools, the keyboard, a held sheet and the buried
+lead's in-tray all land exactly (the tests hold every work arm the poses use, at every level, to
+within half a unit). Arms that ride the body (an ear, a clipboard held up) are left as they are.
+Neither offered approach was enough on its own. The arms are 29 units long, and on the biggest plum
+the shoulder sits 22 out and 14 up, so a plain re-solve can't reach the keyboard or a sheet held in
+front of the belly, and offsetting the targets by the shoulder shift would lift the work off the
+desk. So it is both:
+- **Work out to the side** (stations, the bench, the crate) keeps the plain mochi's points, re-solved.
+- **Work in front of the body** (the keyboard, a sheet held by its corners, the in-tray) spreads out
+  by the shoulder shift, as a wider body holds things wider (`frontSpread`). The props come in wider
+  paintings per level (`prop/plan~g3`, `prop/desk~g3`, ... in every theme; the puppet picks them),
+  and the buried lead's pile moves out under its right hand.
+- **Where a short arm still can't reach** (typing and holding a sheet on the two biggest sizes, the
+  crate and the wrench on the biggest), it **stretches just as far as it must**, keeping a little
+  bend: two new channels, `stretchL/R`, at most 1.48 (a left hand typing on a ripe plum). Arms that
+  take turns at one piece of work (typing's three, the sheet and the trace) share one stretch, so an
+  arm doesn't pump in length as it types.
+
+Plums at rest look as they did: the shoulders stay where round one put them. The pose sheet takes
+`&plump=1..3` (`bun tools/pose-sheet.ts --plump=3`) to check them all. Still open: a big plum's body
+overlaps the station furniture, because the director stands everyone at the plain mochi's distance
+from a station. Its hands are right, its belly is in the cabinet.
+
+**A performance pass over both rounds.** Measured with `bun tools/bench.ts` (headless Chrome,
+1440×900 at 2×, 8 s windows) and `tools/profile.sh` (the real app on a fake home). The bench has a
+new scene, `plum` (`?demo=plum` at a room stop: plum bodies, their springs, the closer look's rings
+and chips over them). Where rounds one and two spend frames:
+- **The closer look's layer** (`office/detail.ts`) rebuilt every ring, chip and tag on any frame
+  where *anyone in the office* walked, even with nobody in the room in focus moving. `follow` now
+  redraws only when one of the bodies it draws for has moved (or the card's focus changed). Before
+  and after, three interleaved runs each, ms of main thread per frame:
+
+  | scene | before | after |
+  |---|---|---|
+  | office plum | 1.00, 0.98, 0.99 | 0.89, 0.84, 0.89 (−12%) |
+  | bakery plum | 1.26, 1.16, 1.28 | 0.98, 0.96, 0.96 (−21%) |
+  | office room | 1.64, 1.61, 1.54 | 1.70, 1.59, 1.66 (no change) |
+  | office busy | 1.23, 1.22, 1.26 | 1.23, 1.27, 1.21 (no change) |
+
+  At `room` the walkers are in the room in focus, so its redraws are real. There the layer's own cost is now
+  under 1% of the sampled time (`buildLine` 0.8%). Drawing each ring and chip as its own moved
+  Graphics would trade that for more batches, so it stays one Graphics.
+- **Plump springs and the poke** settle like every other spring: a still plum doesn't animate, and the
+  wobble runs only on a change of size or a click. **Weather** swaps one sprite's texture every 280 ms
+  on the life clock. Neither showed in a profile, so neither changed.
+- What does show at a room stop (batch rebuilds) comes from walkers changing depth (`setDepth`), which
+  is older than both rounds and out of this pass's scope.
+
+The real app (`tools/profile.sh`, % of one core, Bun / WebContent), before and after: idle
+3.0 / 9.3 → 3.6 / 8.4; calm idle 0.4 / 0.0 → 0.5 / 0.0; heavy (12 sessions, 8 agents) 5.9 / 31.0 →
+6.0 / 26.6. That scene runs at the whole-office stop, where the closer look is off, so those
+differences are the machine, not the change. A full bench sweep before and after (every scene, every
+theme) is within the same noise outside the plum scene. Calm idle stays at zero animation frames,
+and every e2e frame and draw budget holds. No effect was removed or dulled.
