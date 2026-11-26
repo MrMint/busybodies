@@ -1,5 +1,12 @@
 # busybodies
 
+## 0.8.0
+
+### Minor Changes
+
+- f968585: Delight, round two: a treat appears on the desk when a room's fifth or tenth PR of the day goes up, or a session crosses a thousand lines changed (a cake in the office, a frosted hex-nut doughnut in the factory, a croquembouche in the patisserie). Desks idle for days gather a cobweb. A very long call now dozes off at the station it went to, on hold at the phone. Plum hands land on their keyboard, sheets and tools at every size, and the closer look draws less often.
+- d4fdd1d: Delight, round one: a character's context fills its body out like a plum (and a compaction deflates it); zoomed into a room, each subagent shows what it is doing and its task, and a session's crew stand on a team-coloured ring; click one to poke it and open its card; rain on a red streak, a sunbeam when tests go green, dozing on very long calls, crew who finish together cheer, new hires bud in, and a PR is a team photo. Try ?demo, or ?demo=plum for every size. The README's GIF is re-recorded to show it.
+
 ## 0.7.0
 
 ### Minor Changes
