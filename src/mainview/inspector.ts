@@ -54,7 +54,9 @@ export interface Inspector {
 	/** The office as data: every area (rect, desks, fixtures, wall slots) and every desk's slot. */
 	layout(): ReturnType<typeof summarise> | undefined;
 	/** Where the camera is, and how sharp static layers are baked. */
-	camera(): { stop: Stop; scale: number; x: number; y: number; moving: boolean; bake: number };
+	/** `settling`: the camera has landed and the rooms it shows are still being re-cached sharp, a
+	 * few frames. */
+	camera(): { stop: Stop; scale: number; x: number; y: number; moving: boolean; settling: boolean; bake: number };
 	/** Move the camera to a stop. `animate: false` jumps there (for screenshots). */
 	goTo(stop: Stop, animate?: boolean): void;
 	/** Every named sign slot, with its text. */
@@ -206,7 +208,7 @@ export function installInspector(
 		events: () => [...log],
 		pulsing: () => office.pulsing,
 		layout: () => summarise(office),
-		camera: () => ({ stop: office.stop, ...office.view, moving: office.moving, bake: office.bakeResolution }),
+		camera: () => ({ stop: office.stop, ...office.view, moving: office.moving, settling: office.settling, bake: office.bakeResolution }),
 		goTo: (stop, animate = true) => {
 			office.goTo(stop, animate);
 			scene.redraw();
