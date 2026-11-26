@@ -1,10 +1,11 @@
-// tools/pose-sheet.ts [out.png] [--only=a,b] [--zoom=3] [--theme=factory] [--base=http://localhost:5194]:
+// tools/pose-sheet.ts [out.png] [--only=a,b] [--zoom=3] [--theme=factory] [--plump=3] [--base=http://localhost:5194]:
 // render every pose's frames into one PNG, in headless Chrome against the bundled scene (as e2e/
 // does). Build first: `hutch pm exec -- vite build`. Default output: docs/rig/pose-sheet.png, or
 // docs/rig/pose-sheet-<theme>.png with `--theme` (the rig's parts for that theme). `--only` and
 // `--zoom` shoot a close-up of some poses (the sheet's own ?only= and &zoom=); `--base` shoots a
 // running dev server instead of dist/, for a quick look while posing. `--parts=n` renders the sheet in n
 // pieces and stitches them (default 3 for the full sheet, which is too tall for one canvas).
+// `--plump=1..3` draws every puppet a plum of that size, to check its hands still land on its work.
 // For the same poses as text: bun tools/pose-dump.ts
 import { existsSync, mkdirSync } from "node:fs";
 import { dirname, join, normalize } from "node:path";
@@ -19,6 +20,7 @@ const query = new URLSearchParams({ sheet: "" });
 if (theme) query.set("theme", theme);
 if (flag("only")) query.set("only", flag("only")!);
 if (flag("zoom")) query.set("zoom", flag("zoom")!);
+if (flag("plump")) query.set("plump", flag("plump")!);
 const base = flag("base");
 
 if (!base && !existsSync(join(DIST, "index.html"))) {

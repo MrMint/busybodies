@@ -13,7 +13,8 @@
 //   ?demo=story   story and continuity: a red streak goes green, a merged PR's reply is fetched from
 //                 the outbox, a long session is waved off; the rooms wear a week of decor from an
 //                 invented diary (`__busybodies.away(ms)` then shows "while you were out")
-//   ?demo=plum    every role at every plump: a plain mochi to a ripe plum (context drives the body)
+//   ?demo=plum    every role at every plump: a plain mochi to a ripe plum (context drives the body),
+//                 its hands on its keyboard, sheets and tools at every size (zoom to a desk)
 //   ?demo=stock   someone else's setup: stock subagent types, terminal sessions, no desktop app
 //   ?demo=empty   nobody's in; ?demo=nohome: no coding agent found (add &compact for the small window)
 // The clock is fixed, so the same demo always draws the same frames.
@@ -483,7 +484,10 @@ function crowd(): Snapshot {
  *   +20 s  two nested scouts finish together and cheer
  *   +23 s  the new session's build has run long: grumpy; the flaky test goes green (a sunbeam)
  * Through the day the settings scout's context fills, so it swells to a ripe plum (8, 17, 23 s), and
- * orbit-kit's lead deflates when it compacts (17 s). The designer has dozed off in a long fetch.
+ * orbit-kit's lead deflates when it compacts (17 s). The designer, nine minutes into a web fetch,
+ * walks to the phone and dozes off on hold there. Treats: the release's PR at +12 s is lanternfish's
+ * fifth today (a cake on its desk), and the rename crosses a thousand lines changed at +20 s (a lemon
+ * cake). Two desks idle for days have cobwebs (breadbox's and the changelog's).
  * Every name is invented; times run from the demo's clock.
  */
 export function demoDay(): { after: number; snapshot: Snapshot }[] {

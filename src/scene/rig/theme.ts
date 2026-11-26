@@ -8,7 +8,7 @@ import { paintAccessories } from "./accessories";
 import { ROLES, type Role } from "./data/roles";
 import { bodyVariants, ripeColour } from "./data/plump";
 import { web } from "./data/web";
-import { ANCHORS, AT, BELL, BELL_BASE, HANDOFF, PLANNER, STATION, STICKY, TRAY, WORK, handAt } from "./data/reach";
+import { ANCHORS, AT, BELL, BELL_BASE, HANDOFF, PLANNER, STATION, STICKY, TRAY, WORK, frontSpread, handAt } from "./data/reach";
 
 export interface Palette {
 	ink: number;
@@ -68,6 +68,14 @@ const BRASS = 0xf2bd3c;
 
 /** Stroke weights. */
 export const W = { body: 3.4, part: 2.6, fine: 1.8 };
+
+/** The plump levels that have their own, wider paintings of the props held or typed on in front of
+ * the body (reach.ts frontSpread). */
+export const PLUMP_LEVELS = [1, 2, 3] as const;
+/** A prop's painting for a plump level: `prop/plan~g2` (puppet.ts picks it when the atlas has it). */
+export const sized = (name: string, level: number) => `${name}~g${level}`;
+/** Every plump painting of these props, for a theme's list of repaints. */
+export const sizedAll = (names: readonly string[]) => names.flatMap((n) => PLUMP_LEVELS.map((l) => sized(n, l)));
 
 export type Painter = (g: Graphics, add: (c: Container) => void) => void;
 
@@ -677,9 +685,11 @@ export function paperTheme(p: Palette = PAPER_PALETTE): Theme {
 	for (const h of HELD) parts[`held/${h}`] = held[h];
 
 	// A blueprint held in both hands by its top corners (vocab ARMS.sheet), in torso space.
-	const plan = (g: Graphics, flip: boolean) => {
+	const plan = (g: Graphics, flip: boolean, w = 0) => {
 		// Held low, under the mouth, so the face stays readable over it.
-		g.roundRect(-29, -14, 58, 25, 2).fill(0x4f8ff0).stroke({ width: W.part, color: ink });
+		g.roundRect(-29 - w, -14, 58 + 2 * w, 25, 2)
+			.fill(0x4f8ff0)
+			.stroke({ width: W.part, color: ink });
 		// A little house in white lines, and a dimension line beside it. Turned, it stands on its roof.
 		const k = flip ? -1 : 1;
 		const cy = -1;
@@ -689,18 +699,22 @@ export function paperTheme(p: Palette = PAPER_PALETTE): Theme {
 		line(g, [-22, cy - 8 * k, -22, cy + 8 * k], 1.2, 0xcfe0ff);
 		line(g, [15, cy + 8 * k, 23, cy + 8 * k], 1.2, 0xcfe0ff);
 		// The curl along the top edge, where it was rolled.
-		g.roundRect(-30, -17, 60, 6, 3).fill(0x3d7de0).stroke({ width: 2, color: ink });
+		g.roundRect(-30 - w, -17, 60 + 2 * w, 6, 3)
+			.fill(0x3d7de0)
+			.stroke({ width: 2, color: ink });
 	};
 	parts["prop/plan"] = (g) => plan(g, false);
 	parts["prop/plan2"] = (g) => plan(g, true);
 	// An open folder held in both hands like the blueprint (ARMS.sheet on its top corners), and a
 	// page of it turning: lifted by its corner (ARMS.flip), then laid over to show the next.
-	const folder = (g: Graphics, step: 0 | 1 | 2) => {
-		g.roundRect(18, -17, 9, 5, 1.5).fill(MANILA).stroke({ width: 1.6, color: ink });
-		g.roundRect(-29, -13, 29, 23, 2)
+	const folder = (g: Graphics, step: 0 | 1 | 2, w = 0) => {
+		g.roundRect(18 + w, -17, 9, 5, 1.5)
+			.fill(MANILA)
+			.stroke({ width: 1.6, color: ink });
+		g.roundRect(-29 - w, -13, 29 + w, 23, 2)
 			.fill(MANILA)
 			.stroke({ width: W.fine + 0.4, color: ink });
-		g.roundRect(0, -13, 29, 23, 2)
+		g.roundRect(0, -13, 29 + w, 23, 2)
 			.fill(MANILA)
 			.stroke({ width: W.fine + 0.4, color: ink });
 		const page = (x: number, lines: number[]) => {
@@ -722,12 +736,29 @@ export function paperTheme(p: Palette = PAPER_PALETTE): Theme {
 	parts["prop/folder"] = (g) => folder(g, 0);
 	parts["prop/folderT"] = (g) => folder(g, 1);
 	parts["prop/folder2"] = (g) => folder(g, 2);
-	parts["prop/roll"] = (g) => {
-		g.roundRect(-31, -18, 62, 12, 6).fill(0x4f8ff0).stroke({ width: W.part, color: ink });
+	const roll = (g: Graphics, w = 0) => {
+		g.roundRect(-31 - w, -18, 62 + 2 * w, 12, 6)
+			.fill(0x4f8ff0)
+			.stroke({ width: W.part, color: ink });
 		line(g, [-18, -15, 14, -15], 1.4, 0xcfe0ff);
-		g.ellipse(-31, -12, 3, 6).fill(0xcfe0ff).stroke({ width: 1.6, color: ink });
-		g.ellipse(31, -12, 3, 6).fill(0xcfe0ff).stroke({ width: 1.6, color: ink });
+		g.ellipse(-31 - w, -12, 3, 6)
+			.fill(0xcfe0ff)
+			.stroke({ width: 1.6, color: ink });
+		g.ellipse(31 + w, -12, 3, 6)
+			.fill(0xcfe0ff)
+			.stroke({ width: 1.6, color: ink });
 	};
+	parts["prop/roll"] = (g) => roll(g);
+	// A plum holds them wider: its hands spread with its shoulders (reach.ts frontSpread).
+	for (const level of PLUMP_LEVELS) {
+		const w = frontSpread(level);
+		parts[sized("prop/plan", level)] = (g) => plan(g, false, w);
+		parts[sized("prop/plan2", level)] = (g) => plan(g, true, w);
+		parts[sized("prop/folder", level)] = (g) => folder(g, 0, w);
+		parts[sized("prop/folderT", level)] = (g) => folder(g, 1, w);
+		parts[sized("prop/folder2", level)] = (g) => folder(g, 2, w);
+		parts[sized("prop/roll", level)] = (g) => roll(g, w);
+	}
 
 	// The work, on the floor out front, in puppet space (see WORK). ------------------------------------
 	const bench = (g: Graphics) => {
@@ -1453,13 +1484,18 @@ export function paperTheme(p: Palette = PAPER_PALETTE): Theme {
 		t.position.set(0, -100);
 		add(t);
 	};
-	parts["prop/desk"] = (g) => {
-		// In the puppet's own space: covers the legs and the base of the body.
-		g.roundRect(-22, -33, 44, 6, 2).fill(0xdfe4ef).stroke({ width: 2, color: ink });
+	const desk = (g: Graphics, w = 0) => {
+		// In the puppet's own space: covers the legs and the base of the body. A plum types with its
+		// hands further apart (reach.ts frontSpread): its keyboard is wider.
+		g.roundRect(-22 - w, -33, 44 + 2 * w, 6, 2)
+			.fill(0xdfe4ef)
+			.stroke({ width: 2, color: ink });
 		g.roundRect(-72, -28, 144, 9, 3).fill(p.wood).stroke({ width: W.part, color: ink });
 		g.rect(-64, -19, 128, 23).fill(0xd8a868).stroke({ width: W.part, color: ink });
 		line(g, [-64, -10, 64, -10], 1.2, 0xb88a4c);
 	};
+	parts["prop/desk"] = (g) => desk(g);
+	for (const level of PLUMP_LEVELS) parts[sized("prop/desk", level)] = (g) => desk(g, frontSpread(level));
 	parts["prop/drum"] = (g) => {
 		// An oil drum to sit on: its rim at the seat, ribs round it, wider than the body so it shows.
 		g.roundRect(-44, -34, 88, 34, 6).fill(0x3d7dff).stroke({ width: W.part, color: ink });

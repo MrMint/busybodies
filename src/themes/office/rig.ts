@@ -24,8 +24,8 @@
 // designer's `front/scarf`, so its belly is bare (the puppet shows a front piece only when the
 // atlas has it).
 import type { Graphics } from "pixi.js";
-import { WORK } from "../../scene/rig/data/reach";
-import { ANCHORS, type Painter, type Palette, PAPER_PALETTE, RED, type Theme, W, line, paperTheme } from "../../scene/rig/theme";
+import { WORK, frontSpread } from "../../scene/rig/data/reach";
+import { ANCHORS, PLUMP_LEVELS, type Painter, type Palette, PAPER_PALETTE, RED, type Theme, W, line, paperTheme, sized, sizedAll } from "../../scene/rig/theme";
 
 /** Office colours, on top of the paper palette. */
 const OFFICE = {
@@ -93,6 +93,7 @@ export const OFFICE_REPAINTS = [
 	"prop/plan",
 	"prop/plan2",
 	"prop/roll",
+	...sizedAll(["prop/plan", "prop/plan2", "prop/roll"]),
 ] as const;
 
 /** Parts only the office (and the factory) have (see the header). */
@@ -488,10 +489,12 @@ export function officeTheme(p: Palette = PAPER_PALETTE): Theme {
 
 	// The green-bar printout (where the blueprint was): fan-fold paper with tractor holes, a bar
 	// chart up the middle. Turned, it hangs upside down.
-	const printout = (g: Graphics, flip: boolean) => {
-		g.roundRect(-29, -14, 58, 25, 1).fill(0xffffff).stroke({ width: W.part, color: ink });
-		for (let y = -12; y < 10; y += 4.4) g.rect(-23, y, 46, 2.2).fill(OFFICE.greenbar);
-		for (const x of [-26.4, 26.4]) for (let y = -11; y < 10; y += 3.6) g.circle(x, y, 0.9).fill(ink);
+	const printout = (g: Graphics, flip: boolean, w = 0) => {
+		g.roundRect(-29 - w, -14, 58 + 2 * w, 25, 1)
+			.fill(0xffffff)
+			.stroke({ width: W.part, color: ink });
+		for (let y = -12; y < 10; y += 4.4) g.rect(-23 - w, y, 46 + 2 * w, 2.2).fill(OFFICE.greenbar);
+		for (const x of [-26.4 - w, 26.4 + w]) for (let y = -11; y < 10; y += 3.6) g.circle(x, y, 0.9).fill(ink);
 		const k = flip ? -1 : 1;
 		const cy = -1;
 		const bars = [5, 9, 7, 13, 16];
@@ -503,17 +506,33 @@ export function officeTheme(p: Palette = PAPER_PALETTE): Theme {
 				.stroke({ width: 1, color: ink });
 		});
 		line(g, [-16, cy + 7 * k, 16, cy + 7 * k], 1.2, ink);
-		g.roundRect(-30, -17, 60, 6, 2).fill(0xf3f4f8).stroke({ width: 2, color: ink });
-		line(g, [-27, -14, 27, -14], 1, OFFICE.greenbar);
+		g.roundRect(-30 - w, -17, 60 + 2 * w, 6, 2)
+			.fill(0xf3f4f8)
+			.stroke({ width: 2, color: ink });
+		line(g, [-27 - w, -14, 27 + w, -14], 1, OFFICE.greenbar);
 	};
 	parts["prop/plan"] = (g) => printout(g, false);
 	parts["prop/plan2"] = (g) => printout(g, true);
-	parts["prop/roll"] = (g) => {
-		g.roundRect(-31, -18, 62, 12, 6).fill(0xffffff).stroke({ width: W.part, color: ink });
+	const roll = (g: Graphics, w = 0) => {
+		g.roundRect(-31 - w, -18, 62 + 2 * w, 12, 6)
+			.fill(0xffffff)
+			.stroke({ width: W.part, color: ink });
 		for (const x of [-20, -8, 4, 16]) g.rect(x, -17, 5, 10).fill(OFFICE.greenbar);
-		g.ellipse(-31, -12, 3, 6).fill(0xf3f4f8).stroke({ width: 1.6, color: ink });
-		g.ellipse(31, -12, 3, 6).fill(0xf3f4f8).stroke({ width: 1.6, color: ink });
+		g.ellipse(-31 - w, -12, 3, 6)
+			.fill(0xf3f4f8)
+			.stroke({ width: 1.6, color: ink });
+		g.ellipse(31 + w, -12, 3, 6)
+			.fill(0xf3f4f8)
+			.stroke({ width: 1.6, color: ink });
 	};
+	parts["prop/roll"] = (g) => roll(g);
+	// A plum holds them wider (reach.ts frontSpread).
+	for (const level of PLUMP_LEVELS) {
+		const w = frontSpread(level);
+		parts[sized("prop/plan", level)] = (g) => printout(g, false, w);
+		parts[sized("prop/plan2", level)] = (g) => printout(g, true, w);
+		parts[sized("prop/roll", level)] = (g) => roll(g, w);
+	}
 
 	// The work out front (reach.ts WORK) ---------------------------------------------------------
 

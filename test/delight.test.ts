@@ -14,6 +14,11 @@ import { TREATS, linesTreat, prTreats, treatOn } from "../src/scene/director/tre
 import { COBWEB, cobwebFor } from "../src/scene/director/cobwebs";
 import { TRIP } from "../src/scene/director/trips";
 import { localDay } from "../src/shared/diary";
+import { WORK_ARMS, frontSpread, handAt, plumpArm, workPoint } from "../src/scene/rig/data/reach";
+import { POSES } from "../src/scene/rig/data/poses";
+import { channels, channelsAt } from "../src/scene/rig/data/frame";
+import type { Arm, Body } from "../src/scene/rig/data/vocab";
+import type { PlumpLevel } from "../src/scene/rig/data/plump";
 
 const NOW = Date.UTC(2026, 10, 19, 14, 32);
 const MIN = 60_000;
@@ -62,7 +67,8 @@ describe("plump: context worn as the body", () => {
 		}
 		expect(plumpOffsets(0)).toEqual({ top: -0, face: -0, cheekX: 0, cheekY: -0, shoulderX: 0, shoulderY: -0, legX: 0 });
 		const plum = plumpOffsets(3);
-		// Shoulders go out, but only part of the way: the arms' reaches were solved for the plain body.
+		// Shoulders go out, but only part of the way: a plum's arms are re-solved onto their work
+		// (reach.ts plumpArm), and shoulders far out would make them stretch further to get there.
 		expect(plum.shoulderX).toBeGreaterThan(15);
 		expect(plum.shoulderX).toBeLessThan(plum.cheekX);
 		expect(plum.top).toBeLessThan(-30);
@@ -288,5 +294,70 @@ describe("dozing at a station", () => {
 		const a = d.world.actors["a:s1:a1"]!;
 		expect(a.trip?.kind).toBe("web");
 		expect(a.pose).toBe("asleep");
+	});
+});
+
+describe("plum hands on their work", () => {
+	// Every work arm as the poses use it: which arm, which side, on which body.
+	const uses = new Map<string, { arm: Arm; side: 1 | -1; body: Body }>();
+	for (const p of POSES)
+		for (const f of [...p.frames, ...(p.partner?.frames ?? [])])
+			for (const [arm, side] of [
+				[f.armR, 1],
+				[f.armL, -1],
+			] as const)
+				if (WORK_ARMS.has(arm)) uses.set(`${arm}|${side}|${f.body}`, { arm, side, body: f.body });
+	const LEVELS: PlumpLevel[] = [1, 2, 3];
+
+	test("at every plump, every hand on a station, the bench or the keyboard lands exactly on its work", () => {
+		expect(uses.size).toBeGreaterThan(40);
+		for (const level of LEVELS)
+			for (const { arm, side, body } of uses.values()) {
+				const r = plumpArm(arm, body, side, level)!;
+				const at = handAt(r.arm, body, side, undefined, { level, stretch: r.stretch });
+				const want = workPoint(arm, body, side, level);
+				const miss = Math.hypot(at.x - want.x, at.y - want.y);
+				if (miss > 0.5) throw new Error(`plump ${level}: ${arm} (side ${side}, ${body}) misses its work by ${miss.toFixed(2)}`);
+			}
+	});
+
+	test("stations and the bench are the plain mochi's points; work in front spreads with the shoulders", () => {
+		for (const level of LEVELS) {
+			const phone = workPoint("jot1", "up", 1, level);
+			expect(phone).toEqual(handAt("jot1", "up", 1));
+			expect(workPoint("hit2", "rest", 1, level)).toEqual(handAt("hit2", "rest", 1));
+			const plain = handAt("type1", "rest", -1);
+			const typing = workPoint("type1", "rest", -1, level);
+			expect(typing.x).toBeCloseTo(plain.x - frontSpread(level), 6);
+			expect(typing.y).toBeCloseTo(plain.y, 6);
+		}
+		expect(frontSpread(1)).toBeLessThan(frontSpread(2));
+		expect(frontSpread(2)).toBeLessThan(frontSpread(3));
+	});
+
+	test("a short arm stretches only as far as it must, and a family of arms stretches as one", () => {
+		let stretched = 0;
+		for (const level of LEVELS)
+			for (const { arm, side, body } of uses.values()) {
+				const r = plumpArm(arm, body, side, level)!;
+				expect(r.stretch).toBeGreaterThanOrEqual(1);
+				expect(r.stretch).toBeLessThan(1.6);
+				if (r.stretch > 1) stretched++;
+			}
+		// Most work is reached as the arm is.
+		expect(stretched).toBeLessThan((uses.size * LEVELS.length) / 2);
+		// Typing hands share one stretch, so the arm doesn't pump in length as it types.
+		expect(plumpArm("type1", "rest", 1, 3)!.stretch).toBe(plumpArm("type3", "rest", 1, 3)!.stretch);
+		// The plain mochi is untouched, and so is an arm that isn't on any work.
+		expect(plumpArm("type1", "rest", 1, 0)).toBeUndefined();
+		expect(plumpArm("wave1", "rest", 1, 3)).toBeUndefined();
+	});
+
+	test("a frame's targets: the plain mochi's as written, a plum's work arms re-solved", () => {
+		const typing = POSES.find((p) => p.name === "typing")!.frames[0]!;
+		expect(channelsAt(typing, 0)).toEqual(channels(typing));
+		const plum = channelsAt(typing, 3);
+		expect(plum.shoulderL).not.toBe(channels(typing).shoulderL);
+		expect(plum.legL).toBe(channels(typing).legL);
 	});
 });

@@ -9,6 +9,7 @@ import { Puppet } from "./puppet";
 import { STATION_POSE, type StationKind } from "../world/stations";
 import { BELL, BELL_BASE, HANDOFF, PLANNER, STATION, STICKY } from "./data/reach";
 import { ROLES, type Role } from "./data/roles";
+import type { PlumpLevel } from "./data/plump";
 import { FACES } from "./data/vocab";
 import { THEME_IDS, type ThemeId } from "../../themes/ids";
 import { poseWords } from "../theme/words";
@@ -120,12 +121,14 @@ const FACING: Record<string, number> = { handOff: HANDOFF.slot };
 /** `?sheet&only=hammer,place&zoom=3`: just those poses, drawn bigger, for a close look.
  * `&part=1/2`: the second half of the poses only (the header and cast come with part 0), so
  * tools/pose-sheet.ts can render a sheet taller than one WebGL canvas in pieces and stitch them. */
-function closeUp(): { only?: string[]; zoom: number; part: [number, number] } {
+function closeUp(): { only?: string[]; zoom: number; part: [number, number]; plump: PlumpLevel } {
 	const q = typeof location === "undefined" ? undefined : new URLSearchParams(location.search);
 	const only = q?.get("only")?.split(",").filter(Boolean);
 	const [k, n] = (q?.get("part") ?? "0/1").split("/").map(Number);
 	const part: [number, number] = n! >= 1 && k! >= 0 && k! < n! ? [k!, n!] : [0, 1];
-	return { ...(only?.length ? { only } : {}), zoom: Math.max(1, Math.min(4, Number(q?.get("zoom")) || 1)), part };
+	// &plump=1..3: every puppet a plum of that size, to check its hands land on its work (reach.ts).
+	const plump = Math.max(0, Math.min(3, Math.round(Number(q?.get("plump")) || 0))) as PlumpLevel;
+	return { ...(only?.length ? { only } : {}), zoom: Math.max(1, Math.min(4, Number(q?.get("zoom")) || 1)), part, plump };
 }
 
 /** Every pose in a theme's words (theme/words.ts), each followed by its variant passes (Pose.beats)
@@ -141,7 +144,7 @@ const sheetPoses = (id: ThemeId | undefined): Pose[] =>
 	});
 
 export function buildPoseSheet(atlas: Atlas): { sheet: Container; width: number; height: number; puppets: Puppet[] } {
-	const { only, zoom, part } = closeUp();
+	const { only, zoom, part, plump } = closeUp();
 	// The rig's theme picks the words; the paper rig (the base both repaint) keeps the poses' own.
 	const SHEET_POSES = sheetPoses((THEME_IDS as readonly string[]).includes(atlas.theme.name) ? (atlas.theme.name as ThemeId) : undefined);
 	const shown = SHEET_POSES.filter((p) => p.name !== "rest" && (!only || only.includes(p.name)));
@@ -152,7 +155,7 @@ export function buildPoseSheet(atlas: Atlas): { sheet: Container; width: number;
 	const puppets: Puppet[] = [];
 	const partners: Puppet[] = [];
 	const make = (id: string, role: Role) => {
-		const p = new Puppet(atlas, { id, role, accent: 0x19b87a });
+		const p = new Puppet(atlas, { id, role, accent: 0x19b87a, ...(plump ? { plump: { level: plump, ripe: false } } : {}) });
 		p.scale.set(SCALE);
 		puppets.push(p);
 		return p;

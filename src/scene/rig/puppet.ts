@@ -5,7 +5,7 @@
 // the app ticker, and it reports `animating` so the owner can stop the ticker once it settles.
 import { Container, Sprite } from "pixi.js";
 import type { Atlas } from "./atlas";
-import { type ChannelName, type Frame, REST, type TimedFrame, channels, diff } from "./data/frame";
+import { type ChannelName, type Frame, REST, type TimedFrame, channels, channelsAt, diff } from "./data/frame";
 import { FEEL, Spring, SpringSet } from "./data/motion";
 import { type Passes, frameAt, passBeat, unit } from "./data/player";
 import { POSE, type Pose, duration } from "./data/poses";
@@ -15,6 +15,7 @@ import { CHEEKS, LOOKS } from "./data/vocab";
 import { type LifeBeat, STILL, lifeAt } from "./data/life";
 import { type Aim, SIDE_EYES, WORK_LOOKS } from "./data/gaze";
 import { PLUMP_SHAPE, type Plump, WADDLE_DEG, bodyPart, plumpOffsets } from "./data/plump";
+import { frontSpread } from "./data/reach";
 
 const RAD = Math.PI / 180;
 /** The poses that walk: a plum waddles in them. */
@@ -314,6 +315,11 @@ export class Puppet extends Container {
 		this.#armL.root.position.set(-A.shoulderX - o.shoulderX, A.shoulderY + o.shoulderY);
 		this.#armR.root.position.set(A.shoulderX + o.shoulderX, A.shoulderY + o.shoulderY);
 		this.#shadow.scale.x = PLUMP_SHAPE[g.level]!.w / 100;
+		// Hands stay on their work (reach.ts plumpArm), and the work in front spreads to meet them.
+		if (g.level !== was.level) {
+			this.#springs.setTargets(channelsAt(this.#frame, g.level));
+			this.#placeWork(this.#frame, true);
+		}
 		if (wobble && g.level !== was.level) {
 			// Start at the old width and spring to the new: a puff out, or a deflate.
 			const p = this.#pop.plump;
@@ -545,7 +551,7 @@ export class Puppet extends Container {
 	#setFrame(f: Frame): void {
 		const prev = this.#frame;
 		this.#frame = f;
-		this.#springs.setTargets(channels(f));
+		this.#springs.setTargets(channelsAt(f, this.#plump.level));
 		const a = this.#atlas;
 
 		if (f.eyes !== prev.eyes || f.mouth !== prev.mouth) {
@@ -567,7 +573,7 @@ export class Puppet extends Container {
 		this.#armL.held.tint = f.props.left === "finger" ? this.#skin : 0xffffff;
 		this.#armR.held.tint = f.props.right === "finger" ? this.#skin : 0xffffff;
 		const front = f.props.front === "desk" ? undefined : f.props.front;
-		this.#swap(this.#front, front && `prop/${front}`, (prev.props.front === "desk" ? undefined : prev.props.front) !== front, this.#pop.front);
+		this.#swap(this.#front, front && this.#sized(`prop/${front}`), (prev.props.front === "desk" ? undefined : prev.props.front) !== front, this.#pop.front);
 		this.#show(this.#deskSprite, this.#desk && f.props.front === "desk");
 		// The work changes state in place (the nail goes down): no pop, so the change is the effect.
 		this.#show(this.#work, !!f.props.work);
@@ -575,6 +581,7 @@ export class Puppet extends Container {
 			this.#work.texture = a.get(`work/${f.props.work}`);
 			this.#work.anchor.copyFrom(this.#work.texture.defaultAnchor ?? { x: 0, y: 0 });
 		}
+		this.#placeWork(f, false);
 		this.#show(this.#back, !!f.props.back);
 		if (f.props.back && f.props.back !== prev.props.back) this.#back.texture = a.get(`prop/${f.props.back}`);
 		// Feet up go on the desk, in front of it, and a kick swings out in front of the body;
@@ -635,6 +642,32 @@ export class Puppet extends Container {
 
 	/** Swap a sprite's texture (or hide it). Something arriving from nothing pops in; one thing
 	 * turning into another (a sheet unrolling, a brick changing hands) just changes. */
+	/** A prop painted wider for a plum's spread hands (`prop/plan~g2`), if the theme has one. */
+	#sized(name: string): string {
+		const wide = `${name}~g${this.#plump.level}`;
+		return this.#plump.level > 0 && this.#atlas.has(wide) ? wide : name;
+	}
+
+	/**
+	 * On a plum, the work in front of the body spreads with its shoulders (reach.ts `frontSpread`):
+	 * the held sheet and the desk's keyboard come in wider paintings, and the buried lead's in-tray
+	 * moves out under its right hand. `resize`: the plump changed, so repaint what is showing.
+	 */
+	#placeWork(f: Frame, resize: boolean): void {
+		const a = this.#atlas;
+		const front = f.props.front === "desk" ? undefined : f.props.front;
+		if (resize && front) {
+			this.#front.texture = a.get(this.#sized(`prop/${front}`));
+			this.#front.anchor.copyFrom(this.#front.texture.defaultAnchor ?? { x: 0, y: 0 });
+		}
+		const desk = this.#sized("prop/desk");
+		if (this.#deskSprite.texture !== a.get(desk)) {
+			this.#deskSprite.texture = a.get(desk);
+			this.#deskSprite.anchor.copyFrom(this.#deskSprite.texture.defaultAnchor ?? { x: 0, y: 0 });
+		}
+		this.#work.x = f.props.work?.startsWith("tray") ? frontSpread(this.#plump.level) : 0;
+	}
+
 	#swap(sprite: Sprite, name: string | undefined, changed: boolean, pop: Spring, from = 0.55): void {
 		if (!name) {
 			this.#show(sprite, false);
@@ -707,8 +740,8 @@ export class Puppet extends Container {
 		this.#cheekL.scale.set(v("cheek"));
 		this.#cheekR.scale.set(v("cheek"));
 
-		this.#armPose(this.#armL, v("shoulderL"), v("elbowL"), v("handL"), pop.heldL.value);
-		this.#armPose(this.#armR, v("shoulderR"), v("elbowR"), v("handR"), pop.heldR.value);
+		this.#armPose(this.#armL, v("shoulderL"), v("elbowL"), v("handL"), v("stretchL"), pop.heldL.value);
+		this.#armPose(this.#armR, v("shoulderR"), v("elbowR"), v("handR"), v("stretchR"), pop.heldR.value);
 		this.#front.scale.set(pop.front.value);
 
 		this.#fx.position.set(v("bodyX"), v("bodyY") + A.base);
@@ -716,9 +749,15 @@ export class Puppet extends Container {
 		this.#fx.alpha = this.#on.has(this.#fx) ? Math.max(0, Math.min(1, pop.fx.value)) : 0;
 	}
 
-	#armPose(arm: ArmParts, shoulder: number, elbow: number, hand: number, heldScale: number): void {
+	#armPose(arm: ArmParts, shoulder: number, elbow: number, hand: number, stretch: number, heldScale: number): void {
 		arm.root.rotation = shoulder * RAD;
 		arm.fore.rotation = elbow * RAD;
+		// A plum's short arm stretching to its work: both segments lengthen, the hand stays round.
+		const k = Math.max(1, stretch);
+		arm.upper.scale.y = k;
+		arm.fore.y = A.upper * k;
+		arm.foreSprite.scale.y = k;
+		arm.hand.y = A.fore * k;
 		// Whatever is held stays upright, then turns by the hand's own angle (a hammer swing).
 		arm.held.rotation = (-(shoulder + elbow) + hand) * RAD;
 		arm.held.scale.set(heldScale);
