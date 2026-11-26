@@ -60,6 +60,10 @@ export class DetailLayer extends Container {
 	#focus?: string;
 	/** The team rings, for the office to put under the characters. */
 	readonly floor = new Graphics();
+	/** Where the bodies stood when the layer last drew, in draw order (x, y, ...), and the focus
+	 * then: `follow` redraws only when one of them has moved or the focus changed. */
+	#drawnAt: number[] = [];
+	#drawnFocus?: string | null = null;
 
 	constructor() {
 		super();
@@ -99,6 +103,8 @@ export class DetailLayer extends Container {
 			return false;
 		}
 		this.#sig = sig;
+		// New entries: the next follow draws them, wherever their bodies are.
+		this.#drawnAt = [Number.NaN];
 		for (const c of this.#words.removeChildren()) c.destroy();
 		this.#entries = [];
 		// A ring per character whose session has more than one of its people here: a lone lead with
@@ -140,8 +146,28 @@ export class DetailLayer extends Container {
 		return true;
 	}
 
-	/** Draw the rings, pills and chips where everyone stands now, and move the words with them. */
+	/** True (and remembered) when any body the layer draws for has moved since it last drew, or
+	 * the focus changed; false when a redraw would draw the same thing again. */
+	#moved(): boolean {
+		const at: number[] = [];
+		for (const k of [...this.#rings.map((r) => r.key), ...this.#entries.map((e) => e.key)]) {
+			const b = this.#bodies.get(k);
+			at.push(b ? b.view.x : Number.NaN, b ? b.view.y : Number.NaN);
+		}
+		const focus = this.#focus ?? null;
+		const same =
+			focus === this.#drawnFocus &&
+			at.length === this.#drawnAt.length &&
+			at.every((v, i) => Math.abs(v - this.#drawnAt[i]!) < STILL_PX || (Number.isNaN(v) && Number.isNaN(this.#drawnAt[i]!)));
+		this.#drawnAt = at;
+		this.#drawnFocus = focus;
+		return !same;
+	}
+
+	/** Draw the rings, pills and chips where everyone stands now, and move the words with them.
+	 * Nothing to do when none of the bodies they belong to has moved (someone else walking). */
 	follow(): void {
+		if (!this.#moved()) return;
 		const f = this.floor.clear();
 		for (const r of this.#rings) {
 			const b = this.#bodies.get(r.key);
@@ -193,6 +219,9 @@ export class DetailLayer extends Container {
 }
 
 type Box = { x: number; y: number; w: number; h: number };
+
+/** No body has moved this far since the layer last drew: nothing on it would move a pixel. */
+const STILL_PX = 0.01;
 const overlaps = (a: Box, b: Box) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 
 /** Where the top of a character's head is in the world: its height grows with a plum's dome. */

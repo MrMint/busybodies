@@ -12,9 +12,10 @@
 import type { Graphics } from "pixi.js";
 import { ROLES } from "../../scene/rig/data/roles";
 import { bodyVariants, ripeColour } from "../../scene/rig/data/plump";
-import { AT, BELL, BELL_BASE, PLANNER, STATION, STICKY, TRAY, handAt } from "../../scene/rig/data/reach";
+import { AT, BELL, BELL_BASE, PLANNER, STATION, STICKY, TRAY, frontSpread, handAt } from "../../scene/rig/data/reach";
 import {
 	ANCHORS,
+	PLUMP_LEVELS,
 	type Painter,
 	type Palette,
 	PAPER_PALETTE,
@@ -27,6 +28,8 @@ import {
 	mochiPath,
 	paperTheme,
 	rotRect,
+	sized,
+	sizedAll,
 	sparkle,
 	text,
 } from "../../scene/rig/theme";
@@ -85,6 +88,7 @@ export const FACTORY_REPAINTS = [
 	"prop/plan",
 	"prop/plan2",
 	"prop/roll",
+	...sizedAll(["prop/plan", "prop/plan2", "prop/roll"]),
 	"prop/bigEnvelope",
 	"work/cabinet",
 	"work/drawer",
@@ -513,8 +517,10 @@ export function factoryTheme(p: Palette = PAPER_PALETTE): Theme {
 
 	// Held tools ------------------------------------------------------------------------------------
 	// The hammer, wrench and clipboard are the office's; the blueprint becomes a machine schematic.
-	const schematic = (g: Graphics, flip: boolean) => {
-		g.roundRect(-29, -14, 58, 25, 2).fill(FACTORY.schematic).stroke({ width: W.part, color: ink });
+	const schematic = (g: Graphics, flip: boolean, w = 0) => {
+		g.roundRect(-29 - w, -14, 58 + 2 * w, 25, 2)
+			.fill(FACTORY.schematic)
+			.stroke({ width: W.part, color: ink });
 		const k = flip ? -1 : 1;
 		const cy = -1;
 		const Y = (v: number) => cy + v * k;
@@ -525,16 +531,32 @@ export function factoryTheme(p: Palette = PAPER_PALETTE): Theme {
 		g.poly([6, Y(-7), 20, Y(-7), 20, Y(1), 6, Y(1)]).stroke({ width: 1.4, color: 0xffffff, join: "round" });
 		line(g, [-22, Y(-8), -22, Y(8)], 1.2, 0xbfe6e0);
 		line(g, [6, Y(7), 20, Y(7)], 1.2, 0xbfe6e0);
-		g.roundRect(-30, -17, 60, 6, 3).fill(0x245a5e).stroke({ width: 2, color: ink });
+		g.roundRect(-30 - w, -17, 60 + 2 * w, 6, 3)
+			.fill(0x245a5e)
+			.stroke({ width: 2, color: ink });
 	};
 	parts["prop/plan"] = (g) => schematic(g, false);
 	parts["prop/plan2"] = (g) => schematic(g, true);
-	parts["prop/roll"] = (g) => {
-		g.roundRect(-31, -18, 62, 12, 6).fill(FACTORY.schematic).stroke({ width: W.part, color: ink });
+	const roll = (g: Graphics, w = 0) => {
+		g.roundRect(-31 - w, -18, 62 + 2 * w, 12, 6)
+			.fill(FACTORY.schematic)
+			.stroke({ width: W.part, color: ink });
 		line(g, [-18, -15, 14, -15], 1.4, 0xbfe6e0);
-		g.ellipse(-31, -12, 3, 6).fill(0xbfe6e0).stroke({ width: 1.6, color: ink });
-		g.ellipse(31, -12, 3, 6).fill(0xbfe6e0).stroke({ width: 1.6, color: ink });
+		g.ellipse(-31 - w, -12, 3, 6)
+			.fill(0xbfe6e0)
+			.stroke({ width: 1.6, color: ink });
+		g.ellipse(31 + w, -12, 3, 6)
+			.fill(0xbfe6e0)
+			.stroke({ width: 1.6, color: ink });
 	};
+	parts["prop/roll"] = (g) => roll(g);
+	// A plum holds them wider (reach.ts frontSpread).
+	for (const level of PLUMP_LEVELS) {
+		const w = frontSpread(level);
+		parts[sized("prop/plan", level)] = (g) => schematic(g, false, w);
+		parts[sized("prop/plan2", level)] = (g) => schematic(g, true, w);
+		parts[sized("prop/roll", level)] = (g) => roll(g, w);
+	}
 
 	/** A bolt lying on its side, head toward `-x`: a hex head and a threaded shank. */
 	const bolt = (g: Graphics, x0: number, x1: number, y: number) => {

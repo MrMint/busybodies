@@ -102,7 +102,18 @@ export interface DeskProps {
 	skip: number;
 	mugs: number;
 	lamp?: Lamp;
+	/** A milestone treat on the desk for a while (director/treats.ts). */
+	treat?: Milestone;
+	/** A cobweb on a desk idle for days (director/cobwebs.ts), and which corner it hangs in. */
+	cobweb?: WebCorner;
 }
+
+/** What a desk's treat celebrates: the room's fifth or tenth PR today, or 1,000 lines changed. */
+export type Milestone = "prs5" | "prs10" | "lines";
+
+/** Where a desk's cobweb hangs: the screen's top left or top right corner, or the desk front's
+ * bottom left corner. */
+export type WebCorner = "screenL" | "screenR" | "desk";
 
 /** One session's notes on its room's planner, by column. */
 export interface PlannerRow {

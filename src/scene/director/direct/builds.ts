@@ -21,6 +21,9 @@ export const COPIER_FEUD = "copierFeud";
 
 /** At a station: its work pose (or the feud with the jammed copier on a long build); in its queue, waiting. */
 export function atStation(st: Choice, trip: Trip): Choice {
+	// A call running past RULES.dozeMin wins over the station's work: it nods off where it stands,
+	// on hold at the phone or in the queue for it (decisions.md, "delight, round two").
+	if (st.pose === "asleep") return st;
 	if (trip.queue > 0) return { pose: TRIP.queuePose, as: "lead", acted: false };
 	const pose = STATION_POSE[trip.kind];
 	if (st.pose === "grumpy") return trip.kind === "build" ? { pose: COPIER_FEUD, as: "lead", acted: false } : st;

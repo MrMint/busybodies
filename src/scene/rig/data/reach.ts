@@ -2,6 +2,7 @@
 // point, and the arm's kinematics (forward, to check a pose, and inverse, to solve one). Pixi-free,
 // so the unit tests check that every tool hand lands on what it works on.
 import { STATION_REACH } from "../../world/stations";
+import { type PlumpLevel, plumpOffsets } from "./plump";
 import { ARMS, BODIES, SPOTS, type Arm, type Body } from "./vocab";
 
 /** A standing mochi is about this tall in rig units, ground to the top of the body. */
@@ -171,10 +172,27 @@ const rot = (x: number, y: number, deg: number) => {
 	return { x: x * c - y * s, y: x * s + y * c };
 };
 
+/**
+ * An arm on a plum (plump.ts): its shoulder moved out and up with the body (`level`), and how far
+ * its two segments stretch to reach what they work on (1, their own length, unless a plum's short
+ * arm can't get there otherwise; puppet.ts draws it).
+ */
+export interface ArmRig {
+	level?: PlumpLevel;
+	stretch?: number;
+}
+
+/** Where a shoulder hangs in torso space (the left arm's; the right mirrors x) at a plump level. */
+function shoulderIn(level: PlumpLevel = 0) {
+	const o = plumpOffsets(level);
+	return { x: ANCHORS.shoulderX + o.shoulderX, y: ANCHORS.shoulderY + o.shoulderY };
+}
+
 /** The shoulder's place in puppet space for a body pose (`side` 1 is the right arm). */
-function shoulderAt(body: Body, side: 1 | -1 = 1) {
+function shoulderAt(body: Body, side: 1 | -1 = 1, level: PlumpLevel = 0) {
 	const [bx, by, br, sx, sy] = BODIES[body];
-	const p = rot(side * ANCHORS.shoulderX * sx, ANCHORS.shoulderY * sy, br);
+	const sh = shoulderIn(level);
+	const p = rot(side * sh.x * sx, sh.y * sy, br);
 	return { x: bx + p.x, y: by + ANCHORS.base + p.y };
 }
 
@@ -183,16 +201,24 @@ function shoulderAt(body: Body, side: 1 | -1 = 1) {
  * puppet's own transform chain (puppet.ts), without the springs. `side` 1 is the right arm, whose
  * channels mirror the ARMS numbers.
  */
-export function handAt(arm: Arm | readonly [number, number, number], body: Body = "rest", side: 1 | -1 = 1, grip: { x: number; y: number } = GRIP.palm) {
+export function handAt(
+	arm: Arm | readonly [number, number, number],
+	body: Body = "rest",
+	side: 1 | -1 = 1,
+	grip: { x: number; y: number } = GRIP.palm,
+	rig: ArmRig = {},
+) {
 	const [s, e, h] = typeof arm === "string" ? ARMS[arm] : arm;
 	const [bx, by, br, sx, sy] = BODIES[body];
+	const sh = shoulderIn(rig.level);
+	const k = rig.stretch ?? 1;
 	// Channel values: the right arm turns the other way.
 	const r1 = -side * s;
 	const r2 = -side * e;
 	const hand = -side * h;
-	const elbow = rot(0, ANCHORS.upper, r1);
-	const fore = rot(0, ANCHORS.fore, r1 + r2);
-	const local = { x: side * ANCHORS.shoulderX + elbow.x + fore.x, y: ANCHORS.shoulderY + elbow.y + fore.y };
+	const elbow = rot(0, ANCHORS.upper * k, r1);
+	const fore = rot(0, ANCHORS.fore * k, r1 + r2);
+	const local = { x: side * sh.x + elbow.x + fore.x, y: sh.y + elbow.y + fore.y };
 	const scaled = { x: local.x * sx, y: local.y * sy };
 	const w = rot(scaled.x, scaled.y, br);
 	// A held prop stays upright in the body's frame, then turns by the hand's own angle.
@@ -208,7 +234,17 @@ export function handAt(arm: Arm | readonly [number, number, number], body: Body 
  */
 export function solveArm(
 	target: { x: number; y: number },
-	opts: { body?: Body; side?: 1 | -1; grip?: { x: number; y: number }; hand?: number; bend?: 1 | -1 } = {},
+	opts: { body?: Body; side?: 1 | -1; grip?: { x: number; y: number }; hand?: number; bend?: 1 | -1 } & ArmRig = {},
+): [number, number, number] {
+	const round = (v: number) => Math.round(v) + 0;
+	const [s, e, h] = solveExact(target, opts);
+	return [round(s), round(e), round(h)];
+}
+
+/** solveArm, unrounded: the numbers a plum's arm springs to (plumpArm). */
+function solveExact(
+	target: { x: number; y: number },
+	opts: { body?: Body; side?: 1 | -1; grip?: { x: number; y: number }; hand?: number; bend?: 1 | -1 } & ArmRig = {},
 ): [number, number, number] {
 	const body = opts.body ?? "rest";
 	const side = opts.side ?? 1;
@@ -217,10 +253,11 @@ export function solveArm(
 	const [, , br] = BODIES[body];
 	// Take the grip off the target to find the hand's centre, then work in the shoulder's frame.
 	const g = rot(grip.x * side, grip.y, br - side * hand);
-	const sh = shoulderAt(body, side);
+	const sh = shoulderAt(body, side, opts.level);
 	const d = rot(target.x - g.x - sh.x, target.y - g.y - sh.y, -br);
-	const L1 = ANCHORS.upper;
-	const L2 = ANCHORS.fore;
+	const k = opts.stretch ?? 1;
+	const L1 = ANCHORS.upper * k;
+	const L2 = ANCHORS.fore * k;
 	const dist = Math.min(Math.hypot(d.x, d.y), L1 + L2 - 1e-6);
 	// The direction of a limb at channel angle r is (-sin r, cos r); the right arm's angle is -s.
 	const toward = Math.atan2(-d.x, d.y) / RAD;
@@ -232,13 +269,12 @@ export function solveArm(
 	// Channel angles, then back to ARMS form (negate for the right arm).
 	const r1 = toward + bend * side * inner;
 	const r2 = -bend * side * elbowBend;
-	const round = (v: number) => Math.round(v) + 0;
 	// One turn either way is the same arm, but the springs go the short way from rest: keep the
 	// shoulder in (-160, 240], where the arms above already live (a raised arm is 180, not -180).
 	let s = -side * r1;
 	while (s > 240) s -= 360;
 	while (s <= -160) s += 360;
-	return [round(s), round(-side * r2), round(hand)];
+	return [s, -side * r2, hand];
 }
 
 /** A station point in puppet space. */
@@ -345,3 +381,96 @@ export const REACH: Record<string, Reach> = {
 	// The finger-gun blown on, the hand at the mouth.
 	blow: { at: { x: 22, y: -38 }, body: "rest", hand: 90, bend: -1, torso: true },
 };
+
+// --- Hands on their work, on a plum -----------------------------------------------------------------
+//
+// A plum's shoulders move out and up with its body (plump.ts plumpOffsets), so an arm posed for the
+// plain mochi would put its hand beside the work, not on it. Every arm that works on something is
+// re-solved per plump level so the hand lands where the plain mochi's does. Work in front of the
+// body (the keyboard, a sheet held by its corners, the buried lead's in-tray) spreads with the
+// shoulders instead, as a wider body holds things wider; the rig paints those props wider to match
+// (theme.ts, `~g` parts). A plum's arms are short for its body: where one still can't reach, it
+// stretches just as far as it must (`stretch`), never more.
+
+/** Arms posed against the bench, the crate, the stack and the brick (WORK): re-solved on a plum. */
+const BENCH_ARMS: readonly Arm[] = ["hit1", "hit2", "hit3", "wr1", "wr2", "wr3", "dig", "lift", "poke", "draw", "set", "pat1", "pat2"];
+
+/** Work in front of the body that spreads with a plum's shoulders: the keyboard and the in-tray
+ * pile (in puppet space), and a sheet held by its corners (in torso space). */
+const SPREAD: Partial<Record<Arm, "puppet" | "torso">> = {
+	type1: "puppet",
+	type2: "puppet",
+	type3: "puppet",
+	steady: "puppet",
+	catch: "puppet",
+	sheet: "torso",
+	trace1: "torso",
+	trace2: "torso",
+};
+
+/** Every arm whose hand works on something, so it lands on it at any plump. Torso reaches (an
+ * ear, a clipboard held up) ride the body and are left as they are. */
+export const WORK_ARMS: ReadonlySet<Arm> = new Set<Arm>([
+	...(Object.entries(REACH)
+		.filter(([, r]) => !r.torso)
+		.map(([k]) => k) as Arm[]),
+	...BENCH_ARMS,
+	...(Object.keys(SPREAD) as Arm[]),
+]);
+
+/** How far a plum's work in front of it spreads each way (rig units): as far as its shoulders. */
+export const frontSpread = (level: PlumpLevel): number => plumpOffsets(level).shoulderX;
+
+/**
+ * Where an arm's hand should land on a plum: the plain mochi's point, or for work in front of the
+ * body, that point spread out with the shoulders (the right hand right, the left hand left).
+ */
+export function workPoint(arm: Arm, body: Body, side: 1 | -1, level: PlumpLevel): { x: number; y: number } {
+	const p = handAt(arm, body, side);
+	const how = SPREAD[arm];
+	if (!how || level === 0) return p;
+	const dx = side * frontSpread(level);
+	if (how === "puppet") return { x: p.x + dx, y: p.y };
+	// In torso space: along the body's own lean.
+	const [, , br, sx] = BODIES[body];
+	const d = rot(dx * sx, 0, br);
+	return { x: p.x + d.x, y: p.y + d.y };
+}
+
+/** Arms that take turns at one piece of work. */
+const FAMILY: readonly (readonly Arm[])[] = [
+	["type1", "type2", "type3"],
+	["sheet", "trace1", "trace2"],
+	["steady", "catch"],
+];
+
+/** How far an arm must stretch to put its hand on its work point (1: it reaches as it is). */
+function reachNeeded(arm: Arm, body: Body, side: 1 | -1, level: PlumpLevel): number {
+	const at = workPoint(arm, body, side, level);
+	const sh = shoulderAt(body, side, level);
+	return Math.hypot(at.x - sh.x, at.y - sh.y) / (REACH_LEN * STRETCH_SLACK);
+}
+
+const REACH_LEN = ANCHORS.upper + ANCHORS.fore;
+/** A stretched arm keeps a little bend at the elbow, so it still reads as an arm. */
+const STRETCH_SLACK = 0.96;
+const plumpArms = new Map<string, { arm: [number, number, number]; stretch: number } | undefined>();
+
+/**
+ * A work arm's numbers on a plum (ARMS form, and its stretch), so its hand lands on `workPoint`;
+ * undefined for the plain mochi, or an arm that isn't on any work.
+ */
+export function plumpArm(arm: Arm, body: Body, side: 1 | -1, level: PlumpLevel): { arm: [number, number, number]; stretch: number } | undefined {
+	if (level === 0 || !WORK_ARMS.has(arm)) return undefined;
+	const key = `${arm}|${body}|${side}|${level}`;
+	if (plumpArms.has(key)) return plumpArms.get(key);
+	const [, e, h] = ARMS[arm];
+	const at = workPoint(arm, body, side, level);
+	// Arms that alternate (typing, a finger tracing down a held sheet) share one stretch, the most
+	// any of them needs, so the arm doesn't grow and shrink as it works.
+	const family = FAMILY.find((f) => f.includes(arm)) ?? [arm];
+	const stretch = Math.max(1, ...family.map((a) => reachNeeded(a, body, side, level)));
+	const out = { arm: solveExact(at, { body, side, hand: h, bend: e < 0 ? -1 : 1, level, stretch }), stretch };
+	plumpArms.set(key, out);
+	return out;
+}

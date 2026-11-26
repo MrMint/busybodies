@@ -789,7 +789,7 @@ export function direct(prev: World | undefined, snap: Snapshot, now: number, flo
 
 	const builds = buildsFor(list, prev?.builds ?? {}, failed, runs, now, events, wakes);
 	const sessions = new Map(list.filter((s) => s.kind === "lead").map((s) => [s.session.id, s.session]));
-	const metrics = metricsFor(sessions, metricsWas, actors, floor, queue, now);
+	const metrics = metricsFor(sessions, metricsWas, actors, floor, queue, now, wakes);
 
 	// Story: the log, and "while you were out" on a fresh return (story.ts).
 	const log = logOf(prev?.story?.log, tale.entries, now);

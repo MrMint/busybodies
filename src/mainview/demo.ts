@@ -13,7 +13,8 @@
 //   ?demo=story   story and continuity: a red streak goes green, a merged PR's reply is fetched from
 //                 the outbox, a long session is waved off; the rooms wear a week of decor from an
 //                 invented diary (`__busybodies.away(ms)` then shows "while you were out")
-//   ?demo=plum    every role at every plump: a plain mochi to a ripe plum (context drives the body)
+//   ?demo=plum    every role at every plump: a plain mochi to a ripe plum (context drives the body),
+//                 its hands on its keyboard, sheets and tools at every size (zoom to a desk)
 //   ?demo=stock   someone else's setup: stock subagent types, terminal sessions, no desktop app
 //   ?demo=empty   nobody's in; ?demo=nohome: no coding agent found (add &compact for the small window)
 // The clock is fixed, so the same demo always draws the same frames.
@@ -29,6 +30,8 @@ import type { Agent, Session, Snapshot } from "../watcher/model";
 /** 14:32 on an invented Thursday, local time. */
 const NOW = new Date(2026, 10, 19, 14, 32).getTime();
 const min = (m: number) => NOW - m * 60_000;
+/** A day, in minutes. */
+const DAY_MIN = 24 * 60;
 
 let n = 0;
 const AGENT_FAMILIES: Agent["family"][] = ["haiku", "sonnet", "haiku", "opus"];
@@ -100,12 +103,14 @@ function floorBusy(): Snapshot {
 					]),
 					// A long review: its own context is nearly full, so it is a ripe plum (plump.ts).
 					{ ...agent("reviewer", "PR #212, round 2"), family: "opus", context: ctx(0.97) },
-					// Nine minutes into one docs lookup: it has nodded off on its feet (RULES.dozeMin).
+					// Nine minutes into one web fetch: it walks to the phone and nods off on hold there
+					// (RULES.dozeMin; a very long call wins over the station's pose).
 					{
 						...agent("designer", "Empty state for exports"),
 						family: "sonnet",
 						context: ctx(0.5),
-						running: { tool: "mcp__docs__lookup", since: min(9) },
+						activity: { tool: "WebFetch", at: min(9) },
+						running: { tool: "WebFetch", since: min(9) },
 					},
 					agent("verifier", "Staging walkthrough", "stalled"),
 					agent("Explore", "Map the export module", "finished"),
@@ -132,6 +137,8 @@ function floorBusy(): Snapshot {
 			}),
 			session("Flaky login test", "lanternfish", "busy", 100, {
 				branch: "fix/flaky-login",
+				// Four of the room's PRs today: the release's PR at +12 s is the fifth, a cake on its desk.
+				prs: [210, 213, 215, 217].map((number, i) => ({ number, url: `https://example.invalid/pull/${number}`, at: min(95 - i * 20) })),
 				family: "sonnet",
 				context: ctx(0.55),
 				agents: [agent("verifier", "Same red. Hello again.")],
@@ -159,8 +166,18 @@ function floorBusy(): Snapshot {
 				changes: { files: 48, added: 60, removed: 610 },
 				agents: [agent("scout", "Find usages of paginate")],
 			}),
-			session("Crumb cache rewrite", "breadbox", "idle", 240, { branch: "crumb-cache", agents: [agent("scout", "Paused by you", "stalled")] }),
-			session("Changelog draft", "mossy-docs", "idle", 230, { branch: "docs/changelog", agents: [agent("builder", "Sent home by you", "stopped")] }),
+			// Reopened this afternoon but idle for days: cobwebs in a corner of their desks
+			// (director/cobwebs.ts). Their start times stay as they were, so the floor plan does too.
+			session("Crumb cache rewrite", "breadbox", "idle", 240, {
+				branch: "crumb-cache",
+				stateSince: min(3 * DAY_MIN),
+				agents: [agent("scout", "Paused by you", "stalled")],
+			}),
+			session("Changelog draft", "mossy-docs", "idle", 230, {
+				branch: "docs/changelog",
+				stateSince: min(2.5 * DAY_MIN),
+				agents: [agent("builder", "Sent home by you", "stopped")],
+			}),
 			// Buried to the eyebrows in its in-tray.
 			session("Docs sweep", "mossy-docs", "busy", 60, {
 				branch: "docs/sweep",
@@ -467,7 +484,10 @@ function crowd(): Snapshot {
  *   +20 s  two nested scouts finish together and cheer
  *   +23 s  the new session's build has run long: grumpy; the flaky test goes green (a sunbeam)
  * Through the day the settings scout's context fills, so it swells to a ripe plum (8, 17, 23 s), and
- * orbit-kit's lead deflates when it compacts (17 s). The designer has dozed off in a long fetch.
+ * orbit-kit's lead deflates when it compacts (17 s). The designer, nine minutes into a web fetch,
+ * walks to the phone and dozes off on hold there. Treats: the release's PR at +12 s is lanternfish's
+ * fifth today (a cake on its desk), and the rename crosses a thousand lines changed at +20 s (a lemon
+ * cake). Two desks idle for days have cobwebs (breadbox's and the changelog's).
  * Every name is invented; times run from the demo's clock.
  */
 export function demoDay(): { after: number; snapshot: Snapshot }[] {
@@ -526,6 +546,8 @@ export function demoDay(): { after: number; snapshot: Snapshot }[] {
 		s.sessions = s.sessions.filter((x) => x.title !== "Webhook spike");
 	});
 	beat(20000, (s) => {
+		// The rename crosses a thousand lines changed: a lemon cake on its desk (director/treats.ts).
+		find(s, "Rename everything").changes = { files: 52, added: 70, removed: 960 };
 		// Two nested scouts finish together: a high-five before they head off.
 		const scout = find(s, "Ship release 2.4").agents[0]!;
 		const done = (a: Agent) => Object.assign(a, { status: "finished", activity: undefined, lastWriteAt: at(19900) });

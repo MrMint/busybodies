@@ -78,8 +78,8 @@ export function plumpOffsets(level: PlumpLevel) {
 		face: -dh * 0.3,
 		cheekX: dw * 0.8,
 		cheekY: -dh * 0.25,
-		// Not all the way out: the arms' reaches (vocab.ts ARMS) were solved for the plain body, so
-		// shoulders far out would leave the hands short of the keyboard and the tools.
+		// Not all the way out: a plum's work arms are re-solved onto their work (reach.ts plumpArm),
+		// and shoulders far out would have its short arms stretch further to get there.
 		shoulderX: dw * 0.55,
 		shoulderY: -dh * 0.35,
 		legX: dw * 0.35,

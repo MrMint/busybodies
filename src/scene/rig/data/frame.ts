@@ -33,6 +33,8 @@ import {
 	type Wear,
 	type Work,
 } from "./vocab";
+import type { PlumpLevel } from "./plump";
+import { plumpArm } from "./reach";
 
 interface Props {
 	/** Held in the left / right hand. */
@@ -144,6 +146,9 @@ export const CHANNELS = [
 	"shoulderR",
 	"elbowR",
 	"handR",
+	/** How far each arm stretches (1: its own length); only a plum's short arm reaching its work. */
+	"stretchL",
+	"stretchR",
 	"legL",
 	"liftL",
 	"legR",
@@ -185,6 +190,8 @@ export function channels(f: Frame): Channels {
 		shoulderR: -sr,
 		elbowR: -er,
 		handR: -hr,
+		stretchL: 1,
+		stretchR: 1,
 		legL: ll,
 		liftL: ly,
 		legR: lr,
@@ -207,4 +214,16 @@ export function channels(f: Frame): Channels {
 		spotA: pa,
 		spotS: ps,
 	};
+}
+
+/** A frame's targets on a body of plump `level` (plump.ts): every arm on its work is re-solved so
+ * the hand still lands on it (reach.ts plumpArm). */
+export function channelsAt(f: Frame, level: PlumpLevel): Channels {
+	const c = channels(f);
+	if (level === 0) return c;
+	const l = plumpArm(f.armL, f.body, -1, level);
+	if (l) [c.shoulderL, c.elbowL, c.handL, c.stretchL] = [l.arm[0], l.arm[1], l.arm[2], l.stretch];
+	const r = plumpArm(f.armR, f.body, 1, level);
+	if (r) [c.shoulderR, c.elbowR, c.handR, c.stretchR] = [-r.arm[0], -r.arm[1], -r.arm[2], r.stretch];
+	return c;
 }

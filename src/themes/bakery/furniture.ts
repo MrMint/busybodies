@@ -1,7 +1,7 @@
 // The bakery's furniture: benches, the till, ovens, the macaron stand and the rest, drawn by kind.
 // Split out of scene.ts.
 import { Graphics } from "pixi.js";
-import type { Lamp, Tray } from "../../scene/contract";
+import type { Lamp, Milestone, Tray } from "../../scene/contract";
 import { GREEN, INK, RED, SHADOW, batched, hash, line, wob } from "../../scene/office/paper";
 import { MONITOR, PROPS } from "../../scene/world/propspots";
 import { DESK_TOP } from "../../scene/world/world";
@@ -693,6 +693,47 @@ export function furniture(kind: FurnitureKind): Graphics {
 			g.circle(0, -41.5, 1.8).fill(INK);
 			break;
 		}
+	}
+	return g;
+}
+
+/** A milestone treat (director/treats.ts), the patisserie's take: a little croquembouche, choux
+ * puffs piled in a cone on a cake board, a sparkler on top. Ten PRs, a taller one wound in spun
+ * sugar; a thousand lines changed, the puffs glazed pink. */
+export function croquembouche(m: Milestone): Graphics {
+	const g = batched();
+	const { x, y } = PROPS.treat;
+	g.ellipse(x, y - 1, 12, 2.4)
+		.fill(IVORY)
+		.stroke(line(1.2));
+	const rows = m === "prs10" ? [4, 3, 2, 1] : [3, 2, 1];
+	const r = m === "prs10" ? 1.9 : 2.4;
+	const puff = m === "lines" ? PINK : CRUST_LIGHT;
+	let top = y - 2;
+	rows.forEach((n, row) => {
+		const cy = y - 2 - r - row * r * 1.45;
+		for (let i = 0; i < n; i++) {
+			const cx = x + (i - (n - 1) / 2) * r * 1.9;
+			g.circle(cx, cy, r).fill(puff).stroke({ width: 0.9, color: INK });
+			g.circle(cx - r * 0.35, cy - r * 0.35, r * 0.3).fill({ color: 0xffffff, alpha: 0.7 });
+		}
+		top = cy - r;
+	});
+	if (m === "prs10")
+		g.moveTo(x - 7, y - 4)
+			.quadraticCurveTo(x + 2, y - 7, x + 6, y - 9)
+			.moveTo(x - 4, y - 9)
+			.quadraticCurveTo(x + 1, y - 11, x + 3, y - 12.5)
+			.stroke({ width: 0.7, color: BRASS, alpha: 0.9 });
+	// The sparkler: a wire, and a star of sparks at its tip (static).
+	g.moveTo(x, top)
+		.lineTo(x, top - 1.5)
+		.stroke({ width: 0.8, color: CHROME_DARK });
+	for (let k = 0; k < 6; k++) {
+		const a = (k / 6) * Math.PI * 2;
+		g.moveTo(x + Math.cos(a) * 0.5, top - 2.4 + Math.sin(a) * 0.5)
+			.lineTo(x + Math.cos(a) * 1.6, top - 2.4 + Math.sin(a) * 1.6)
+			.stroke({ width: 0.7, color: LEMON, cap: "round" });
 	}
 	return g;
 }

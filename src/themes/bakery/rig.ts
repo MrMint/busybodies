@@ -40,9 +40,10 @@
 //             cherry), a prize doughnut rosette
 //   designer  the cake decorator: a tiny tiered cake on a headband, a piping bag pinned on
 import type { Graphics } from "pixi.js";
-import { AT, BELL, PLANNER, STATION, STICKY, TRAY, WORK, handAt } from "../../scene/rig/data/reach";
+import { AT, BELL, PLANNER, STATION, STICKY, TRAY, WORK, frontSpread, handAt } from "../../scene/rig/data/reach";
 import {
 	ANCHORS,
+	PLUMP_LEVELS,
 	type Painter,
 	type Palette,
 	PAPER_PALETTE,
@@ -54,6 +55,8 @@ import {
 	line,
 	paperTheme,
 	rotRect,
+	sized,
+	sizedAll,
 	sparkle,
 	text,
 } from "../../scene/rig/theme";
@@ -147,6 +150,7 @@ export const BAKERY_REPAINTS = [
 	"prop/plan",
 	"prop/plan2",
 	"prop/roll",
+	...sizedAll(["prop/plan", "prop/plan2", "prop/roll"]),
 	"prop/box",
 	"prop/bigEnvelope",
 	"prop/drum",
@@ -863,11 +867,13 @@ export function bakeryTheme(p: Palette = PAPER_PALETTE): Theme {
 
 	// The recipe card (where the blueprint was): a title band, a cake drawn on it, the steps ticked.
 	// Turned, it hangs upside down.
-	const recipe = (g: Graphics, flip: boolean) => {
-		g.roundRect(-29, -14, 58, 25, 1).fill(BAKERY.cream).stroke({ width: W.part, color: ink });
+	const recipe = (g: Graphics, flip: boolean, w = 0) => {
+		g.roundRect(-29 - w, -14, 58 + 2 * w, 25, 1)
+			.fill(BAKERY.cream)
+			.stroke({ width: W.part, color: ink });
 		const k = flip ? -1 : 1;
 		const Y = (v: number) => -1 + v * k;
-		g.rect(-26, Y(-8) - 1.8, 52, 3.6).fill(BAKERY.pink);
+		g.rect(-26 - w, Y(-8) - 1.8, 52 + 2 * w, 3.6).fill(BAKERY.pink);
 		// The cake on the left.
 		g.rect(-23, Math.min(Y(2), Y(8)), 13, 6)
 			.fill(BAKERY.pinkPale)
@@ -884,21 +890,37 @@ export function bakeryTheme(p: Palette = PAPER_PALETTE): Theme {
 			line(g, [-5, Y(v), -5 + w - 6, Y(v)], 1.1, ink);
 			line(g, [-5 + w - 3, Y(v), -5 + w, Y(v)], 1.1, BAKERY.mintDeep);
 		}
-		g.roundRect(-30, -17, 60, 6, 2).fill(BAKERY.pinkDeep).stroke({ width: 2, color: ink });
+		g.roundRect(-30 - w, -17, 60 + 2 * w, 6, 2)
+			.fill(BAKERY.pinkDeep)
+			.stroke({ width: 2, color: ink });
 	};
-	parts["prop/plan"] = (g) => recipe(g, false);
-	parts["prop/plan2"] = (g) => recipe(g, true);
-	parts["prop/roll"] = (g) => {
-		g.roundRect(-31, -18, 62, 12, 6).fill(BAKERY.cream).stroke({ width: W.part, color: ink });
+	const roll = (g: Graphics, w = 0) => {
+		g.roundRect(-31 - w, -18, 62 + 2 * w, 12, 6)
+			.fill(BAKERY.cream)
+			.stroke({ width: W.part, color: ink });
 		g.rect(-20, -14, 10, 3).fill(BAKERY.pink);
 		g.rect(10, -14, 10, 3).fill(BAKERY.pink);
-		g.ellipse(-31, -12, 3, 6).fill(BAKERY.pinkPale).stroke({ width: 1.6, color: ink });
-		g.ellipse(31, -12, 3, 6).fill(BAKERY.pinkPale).stroke({ width: 1.6, color: ink });
+		g.ellipse(-31 - w, -12, 3, 6)
+			.fill(BAKERY.pinkPale)
+			.stroke({ width: 1.6, color: ink });
+		g.ellipse(31 + w, -12, 3, 6)
+			.fill(BAKERY.pinkPale)
+			.stroke({ width: 1.6, color: ink });
 		// Tied with a ribbon and a bow.
 		g.rect(-2, -18, 4, 12).fill(BAKERY.mintDeep).stroke({ width: 1, color: ink });
 		g.poly([0, -18, -6, -20, -6, -15]).fill(BAKERY.mint).stroke({ width: 1, color: ink, join: "round" });
 		g.poly([0, -18, 6, -20, 6, -15]).fill(BAKERY.mint).stroke({ width: 1, color: ink, join: "round" });
 	};
+	parts["prop/plan"] = (g) => recipe(g, false);
+	parts["prop/plan2"] = (g) => recipe(g, true);
+	parts["prop/roll"] = (g) => roll(g);
+	// A plum holds them wider (reach.ts frontSpread).
+	for (const level of PLUMP_LEVELS) {
+		const w = frontSpread(level);
+		parts[sized("prop/plan", level)] = (g) => recipe(g, false, w);
+		parts[sized("prop/plan2", level)] = (g) => recipe(g, true, w);
+		parts[sized("prop/roll", level)] = (g) => roll(g, w);
+	}
 
 	/** A pastry box with a ribbon and a bow, `w` by `h`, standing on `y` at `x`, tilted `a`. */
 	const pastryBox = (g: Graphics, x: number, y: number, w: number, h: number, a = 0) => {

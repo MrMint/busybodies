@@ -1,7 +1,7 @@
 // The office's desks and what sits on them: the desk and screen, in-tray, mugs, test lamp,
 // drawers, the skip, the planner, and the stations. Split out of scene.ts.
 import { Container, type Graphics } from "pixi.js";
-import type { Lamp, PlannerRow, Tray } from "../../scene/contract";
+import type { Lamp, Milestone, PlannerRow, Tray } from "../../scene/contract";
 import { GREEN, INK, RED, SHADOW, SUN, batched, hash, label, line, wob } from "../../scene/office/paper";
 import { MONITOR, PROPS } from "../../scene/world/propspots";
 import type { Rect } from "../../scene/world/world";
@@ -310,4 +310,50 @@ export function station(g: Graphics, kind: FurnitureKind): void {
 			break;
 		}
 	}
+}
+
+/** A milestone treat (director/treats.ts): a small cake on a plate with a candle. Ten PRs is a
+ * two-tier cake with two candles; a thousand lines changed, a lemon cake with sprinkles. */
+export function cake(m: Milestone): Graphics {
+	const g = batched();
+	const { x, y } = PROPS.treat;
+	g.ellipse(x, y - 1, 12, 2.4)
+		.fill(0xffffff)
+		.stroke(line(1.2));
+	const tier = (w: number, h: number, base: number, sponge: number) => {
+		g.roundRect(x - w / 2, base - h, w, h, 1.5)
+			.fill(sponge)
+			.stroke(line(1.4));
+		// The icing along the top, with a drip or two down the side.
+		g.roundRect(x - w / 2 + 0.7, base - h + 0.7, w - 1.4, 2, 1)
+			.circle(x - w / 4, base - h + 2.8, 0.9)
+			.circle(x + w / 5, base - h + 3.2, 0.9)
+			.fill(0xff8fb1);
+	};
+	let top: number;
+	if (m === "prs10") {
+		tier(21, 5.5, y - 2, 0xffe3ec);
+		tier(13, 4, y - 7.5, 0xfff6e6);
+		top = y - 11.5;
+	} else {
+		tier(20, 8, y - 2, m === "lines" ? 0xfff1c9 : 0xffe3ec);
+		top = y - 10;
+	}
+	if (m === "lines")
+		for (const [dx, dy, c] of [
+			[-6, 4, 0x9be3ff],
+			[-1, 5, 0xa5e6c9],
+			[3, 4, 0xd2c0ff],
+			[7, 5.5, 0xffc47f],
+		] as const)
+			g.rect(x + dx - 0.8, top + dy, 1.6, 0.9).fill(c);
+	for (const dx of m === "prs10" ? [-3, 3] : [0]) {
+		g.rect(x + dx - 0.8, top - 3.6, 1.6, 3.6)
+			.fill(0x9be3ff)
+			.stroke({ width: 0.8, color: INK });
+		g.ellipse(x + dx, top - 5.2, 1.1, 1.7)
+			.fill(SUN)
+			.stroke({ width: 0.6, color: INK });
+	}
+	return g;
 }
