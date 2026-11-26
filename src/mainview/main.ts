@@ -11,6 +11,7 @@ import { type ThemeId, sceneTheme, themeId } from "../scene/theme";
 import { TILES_H, installHud } from "./hud";
 import { type Camerawork, installCamerawork } from "./shots";
 import { installInspector } from "./inspector";
+import { installCard } from "./card";
 import { watchVisibility } from "./visibility";
 import { type Bridge, installShell } from "./shell";
 import { placeholders } from "./placeholder";
@@ -102,10 +103,17 @@ function blank(): void {
 		metrics: director.metrics,
 		story: director.story,
 		top: compact ? 40 : 64,
+		detail: !compact,
 		theme: sceneTheme(theme),
 		...lightOptions(director),
 	});
 	app.stage.addChild(office);
+	// A click on a character at a room or desk stop: it reacts, and a card says what it is up to.
+	const card = installCard(
+		office,
+		(k) => director.dossier(k),
+		() => director.now,
+	);
 	// The office's voice (src/scene/sass): bubbles and signs from what the sessions are doing.
 	// ?toolvoice keeps the director's placeholder (each busy lead says its tool). A live scene lets
 	// the room settle a few seconds before the naps and waits start talking; a frozen one (tests,
@@ -113,7 +121,14 @@ function blank(): void {
 	const settleMs = params.has("settle") ? Number(params.get("settle")) : params.has("frozen") ? 0 : 6_000;
 	const voice = params.has("toolvoice") ? undefined : new Voice(office, { settleMs, theme });
 	director.on((events) => {
-		for (const e of events) if (e.type === "leave") voice?.gone(e.key);
+		for (const e of events) {
+			if (e.type === "leave") voice?.gone(e.key);
+			// A PR opened: a team photo in its room (a flash, and everyone looks out at you).
+			if (e.type === "pose" && e.pose === "prOpened") {
+				const a = director.actor(e.key);
+				if (a) office.photo(a.homeArea ?? a.area);
+			}
+		}
 	});
 
 	// Ambient motion doesn't need the display's full rate (120 Hz on ProMotion screens). A camera
@@ -130,6 +145,8 @@ function blank(): void {
 	app.ticker.maxFPS = AMBIENT_FPS;
 	app.ticker.add((t) => {
 		office.tick(t.deltaTime);
+		// The card rides along with the camera and with a walker.
+		if (card.open && (office.moving || office.walking)) card.update();
 		app.ticker.maxFPS = fps();
 		if (!office.animating || !visibility.visible) app.ticker.stop();
 	});
@@ -229,6 +246,7 @@ function blank(): void {
 		office.pulse(waiting.map((w) => w.area));
 		hud.waiting(waiting.length);
 		camerawork?.update(snap, director.now);
+		card.update();
 		scene.redraw();
 		// The world changes on its own when an acted pose ends or a habit rotates: wake for it.
 		// A timer, not frames, so an idle office still costs nothing in between.
@@ -332,6 +350,13 @@ function blank(): void {
 			camerawork.pin(office.hit(e.global.x, e.global.y).area?.id);
 			return direct();
 		}
+		const picked = office.pick(e.global.x, e.global.y);
+		if (picked) {
+			office.poke(picked);
+			card.show(picked);
+			// At a room stop the click still zooms, to the desk under it; the card rides the move.
+			if (office.stop.kind !== "room") return;
+		} else card.show(undefined);
 		office.click(e.global.x, e.global.y);
 		// Zoomed into a room, the longer lines can show: let the voice look again.
 		if (voice) direct();

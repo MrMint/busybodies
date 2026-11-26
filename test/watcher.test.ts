@@ -148,6 +148,31 @@ describe("SnapshotBuilder", () => {
 		expect(s.agents[0]!.children.map((a) => [a.id, a.depth, a.status])).toEqual([["kid", 2, "running"]]);
 	});
 
+	test("a subagent's context comes from its own transcript, whose records are all sidechains", async () => {
+		const cwd = "/Users/you/code/teapot";
+		await session(103, "s-plum", cwd);
+		await write(join(home, "projects", projectSlug(cwd), "s-plum.jsonl"), `${toolLine("Edit", 3000)}\n`);
+		const dir = join(home, "projects", projectSlug(cwd), "s-plum", "subagents");
+		await write(join(dir, "agent-swell.meta.json"), { agentType: "scout", description: "Read everything", spawnDepth: 1 }, 1000);
+		const reply = JSON.stringify({
+			type: "assistant",
+			isSidechain: true,
+			timestamp: iso(1500),
+			requestId: "req_swell",
+			message: {
+				model: "claude-sonnet-4-5-20250929",
+				content: [{ type: "tool_use", id: "toolu_swell", name: "Read", input: {} }],
+				usage: { input_tokens: 2000, cache_read_input_tokens: 150_000, cache_creation_input_tokens: 8000, output_tokens: 300 },
+			},
+		});
+		await write(join(dir, "agent-swell.jsonl"), `${reply}\n`, 1000);
+		const snap = await build([103]);
+		const a = snap.sessions[0]!.agents[0]!;
+		// 160K of sonnet 4.5's 200K window: 80% full, so a plum (rig/data/plump.ts).
+		expect(a.context).toMatchObject({ used: 160_000, window: 200_000 });
+		expect(a.family).toBe("sonnet");
+	});
+
 	test("asks git which repository and branch a session is on, for any worktree layout", async () => {
 		const code = await mkdtemp(join(tmpdir(), "bb-code-"));
 		try {

@@ -1,5 +1,7 @@
 // Records the README's GIF from the invented demo day: a frozen scene stepped frame by frame (so
-// two runs match, whatever the machine's load), touring the office, a busy room and the kitchen.
+// two runs match, whatever the machine's load), at the end of the day (plums, a ripe scout, a
+// sunbeam, a designer dozing), touring the office, a busy room (its chips, tags and team rings),
+// a click on the ripe plum for its card, and a second room.
 //   bun tools/record-gif.ts [--out docs/media/office.gif] [--fps 12] [--width 800]
 // Needs Google Chrome and ffmpeg. Every text the frames draw (the snapshot, the signs, the top
 // bar) is written beside the frames and run through tools/scan-private.sh, so the GIF's source
@@ -46,7 +48,7 @@ let n = 0;
 try {
 	const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: 1 });
 	// The hour is pinned (as tools/shoot.ts does), so the light never depends on when this runs.
-	await page.goto(`http://localhost:${server.port}/?inspect&frozen&demo=day-1&hour=14`);
+	await page.goto(`http://localhost:${server.port}/?inspect&frozen&demo=day-6&hour=14`);
 	await page.waitForFunction(() => window.__busybodies?.ready === true, undefined, { timeout: 20_000 });
 
 	const frame = async () => {
@@ -75,8 +77,21 @@ try {
 	);
 	await hold(2.5);
 	await go({ kind: "room", id: await room("lanternfish") });
+	await hold(2.5);
+	// In to the ripe scout's desk, then poke it: it reacts, and its card opens (mainview/card.ts).
+	const ripe = () =>
+		page.evaluate(() => {
+			const b = window.__busybodies!;
+			const e = b.entities().find((x) => x.role === "scout" && String(x.plump).includes("ripe"))!;
+			return { key: e.key, x: e.x, y: e.y - (Number(e.size) * b.camera().scale) / 2 };
+		});
+	await go({ kind: "desk", id: (await ripe()).key.split(":")[1] });
+	await hold(1);
+	const plum = await ripe();
+	await page.mouse.click(plum.x, plum.y);
 	await hold(3);
-	await go({ kind: "room", id: "kitchen" });
+	await page.keyboard.press("Escape");
+	await go({ kind: "room", id: await room("orbit-kit") });
 	await hold(2);
 	await go({ kind: "office" });
 	await hold(1.5);

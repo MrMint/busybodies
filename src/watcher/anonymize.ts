@@ -128,6 +128,7 @@ export class Anonymizer {
 				? { commands: { ...a.commands, ...(a.commands.last ? { last: { ...a.commands.last, at: this.#t(a.commands.last.at) } } : {}) } }
 				: {}),
 			...family(a.family),
+			...(a.context ? { context: this.#context(a.context) } : {}),
 			...(a.changes ? { changes: changes(a.changes) } : {}),
 			...(a.tools ? { tools: tools(a.tools) } : {}),
 			children: a.children.map((c) => this.#agent(c)),

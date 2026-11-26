@@ -9,7 +9,7 @@
 import type { Agent, Session, Snapshot } from "../../watcher/model";
 import { roleFor } from "../rig/data/roles";
 import { seats } from "./layout";
-import type { Cue, Mood, Who } from "../contract";
+import type { Cue, Doing, Mood, Who } from "../contract";
 import { type Slot, type Floor, crewSlot } from "./world";
 
 export interface Placed {
@@ -25,6 +25,8 @@ export interface Placed {
 	task?: string;
 	/** The kind of work it holds (director/work.ts), while busy: a line's belt carries its parts. */
 	work?: string;
+	/** What it is doing now, for the chip over its head at the closer stops. */
+	doing?: Doing;
 }
 
 export const LEAD_SIZE = 72;

@@ -75,6 +75,14 @@ const RE = {
 type Pending = { tool: string; at: number; command?: string; change?: Change };
 
 export class TranscriptLedger {
+	/** A subagent's own transcript: every record in it is marked a sidechain, and they are its
+	 * own requests. In a session's transcript a sidechain record is a subagent's, not the session's. */
+	readonly #own: boolean;
+
+	constructor(opts: { sidechain?: boolean } = {}) {
+		this.#own = opts.sidechain ?? false;
+	}
+
 	offset = 0;
 	#carry = "";
 	#skipping = false;
@@ -298,7 +306,7 @@ export class TranscriptLedger {
 
 	/** The model and context of a response record. A placeholder model (an error record) is not a request. */
 	#response(model: string | undefined, used: number | undefined, at: number, sidechain: boolean): void {
-		if (sidechain || model?.startsWith("<")) return;
+		if ((sidechain && !this.#own) || model?.startsWith("<")) return;
 		if (model) this.#model = model;
 		if (used !== undefined && Number.isFinite(at)) this.context = { used, ...optional("window", contextWindow(this.#model)), at };
 	}

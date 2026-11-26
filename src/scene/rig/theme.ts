@@ -6,6 +6,7 @@ import { type Container, type Graphics, Text } from "pixi.js";
 import { EYES, FX, HELD, MOUTHS, WORKS } from "./data/vocab";
 import { paintAccessories } from "./accessories";
 import { ROLES, type Role } from "./data/roles";
+import { bodyVariants, ripeColour } from "./data/plump";
 import { ANCHORS, AT, BELL, BELL_BASE, HANDOFF, PLANNER, STATION, STICKY, TRAY, WORK, handAt } from "./data/reach";
 
 export interface Palette {
@@ -128,13 +129,22 @@ export function paperTheme(p: Palette = PAPER_PALETTE): Theme {
 
 	for (const role of ROLES) {
 		const col = p.role[role];
-		parts[`body/${role}`] = (g) => {
-			g.poly(mochiPath()).fill(col);
-			// Cut-paper light: a soft highlight on the dome and a shade along the base.
-			g.ellipse(-19, -54, 12, 7).fill({ color: 0xffffff, alpha: 0.26 });
-			g.ellipse(0, -7, 38, 6).fill({ color: p.shadow, alpha: 0.06 });
-			g.poly(mochiPath()).stroke({ width: W.body, color: ink, join: "round" });
-		};
+		// The plain mochi and its plum sizes (plump.ts), each painted, not scaled: the ink line
+		// stays the same weight however round the body gets.
+		// A ripe plum is the biggest, painted plum.
+		for (const { part, w, h, level, ripe } of bodyVariants(role)) {
+			const kx = w / 100;
+			const ky = h / 70;
+			parts[part] = (g) => {
+				g.poly(mochiPath(w, h)).fill(ripe ? ripeColour(col) : col);
+				// Cut-paper light: a soft highlight on the dome and a shade along the base.
+				g.ellipse(-19 * kx, -54 * ky, 12 * kx, 7 * ky).fill({ color: 0xffffff, alpha: 0.26 });
+				g.ellipse(0, -7, 38 * kx, 6).fill({ color: p.shadow, alpha: 0.06 });
+				// A plum's dome catches a second, smaller shine.
+				if (level >= 2) g.ellipse(-30 * kx, -40 * ky, 4 * kx, 3 * ky).fill({ color: 0xffffff, alpha: 0.32 });
+				g.poly(mochiPath(w, h)).stroke({ width: W.body, color: ink, join: "round" });
+			};
+		}
 		parts[`hand/${role}`] = (g) => {
 			g.circle(0, 0, 6.2).fill(col).stroke({ width: W.part, color: ink });
 		};
@@ -1595,6 +1605,38 @@ export function paperTheme(p: Palette = PAPER_PALETTE): Theme {
 		},
 	};
 	for (const f of FX) parts[`fx/${f}`] = fx[f];
+
+	// Weather over a head (director/weather.ts), drawn about the puppet's crown (y = 0 is the top of
+	// the dome; the puppet lifts it with a plum's). Two frames each, swapped on the life clock.
+	const cloud = (g: Graphics) => {
+		g.circle(-12, -10, 9).circle(0, -16, 11).circle(13, -10, 9).fill(0xb9c0d6);
+		g.roundRect(-21, -12, 43, 12, 6).fill(0xb9c0d6);
+		g.circle(-12, -10, 9).circle(0, -16, 11).circle(13, -10, 9).stroke({ width: W.part, color: ink });
+		g.roundRect(-21, -12, 43, 12, 6).stroke({ width: W.part, color: ink });
+		g.roundRect(-19, -11, 39, 10, 5).fill(0xb9c0d6);
+		g.ellipse(-4, -19, 5, 2.6).fill({ color: 0xffffff, alpha: 0.45 });
+	};
+	const rain = (g: Graphics, k: number) => {
+		cloud(g);
+		for (const [x, y] of [
+			[-13, 6],
+			[-1, 10],
+			[11, 5],
+		] as const)
+			drop(g, x, y + (k ? 6 : 0) - 8, p.tear, ink, 0.55);
+	};
+	parts["over/rain1"] = (g) => rain(g, 0);
+	parts["over/rain2"] = (g) => rain(g, 1);
+	const sun = (g: Graphics, k: number) => {
+		for (let i = 0; i < 8; i++) {
+			const a = (i / 8) * Math.PI * 2 + (k ? Math.PI / 8 : 0);
+			line(g, [Math.cos(a) * 14, -12 + Math.sin(a) * 14, Math.cos(a) * 20, -12 + Math.sin(a) * 20], 2.2, ink);
+		}
+		g.circle(0, -12, 10).fill(p.sun).stroke({ width: W.part, color: ink });
+		g.ellipse(-3, -15, 3.4, 2).fill({ color: 0xffffff, alpha: 0.6 });
+	};
+	parts["over/sun1"] = (g) => sun(g, 0);
+	parts["over/sun2"] = (g) => sun(g, 1);
 
 	return { name: "paper", palette: p, parts };
 }

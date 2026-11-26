@@ -31,6 +31,7 @@ export function standing(s: Spec, now: number, count: Record<string, number>, wo
 		if (run?.kind && ranMin >= RULES.longBuildMin) return { pose: "grumpy", as: "lead", acted: false };
 		if ((s.commands?.repeats ?? 1) >= RULES.retries) return { pose: "grumpy", as: "lead", acted: false };
 		if (s.seen.apiRetryAt !== undefined && now - s.seen.apiRetryAt < RULES.apiRetryMin * MIN) return { pose: "grumpy", as: "lead", acted: false };
+		if (run && (!run.kind || run.kind === "other") && ranMin >= RULES.dozeMin) return { pose: "asleep", as: "lead", acted: false, since: run.since };
 		if (run && !run.kind && ranMin >= RULES.thinkingMin) return { pose: "thinking", as: "lead", acted: false };
 		const byTool = s.kind === "crew" && work ? WORK_POSE[s.rig]?.[work.kind] : undefined;
 		return { pose: byTool ?? choosePose("busy", s.key, s.rig).name, as: "lead", acted: false };

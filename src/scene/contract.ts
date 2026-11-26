@@ -3,6 +3,7 @@
 // stays Pixi-free and drawing code never imports the director's implementation.
 import type { Role } from "../shared/roles";
 import type { LookAt } from "./rig/data/gaze";
+import type { Plump } from "./rig/data/plump";
 
 export type Mood = "busy" | "idle" | "stalled" | "done";
 
@@ -23,6 +24,10 @@ export interface Who {
 	/** Optional: the regular it is (rig/data/roles.ts `regularOf`): the same face, accessory and name for
 	 * the same project and role, every day. */
 	regular?: string;
+	/** How full its context is, worn as its body (rig/data/plump.ts). Absent: the plain mochi. */
+	plump?: Plump;
+	/** Weather over its head (director/weather.ts): rain on a red streak, sun when it goes green. */
+	weather?: "rain" | "sun";
 }
 
 /** A point in world pixels. */
@@ -113,4 +118,19 @@ export interface Drawers {
 	drawers: number;
 	/** How many of them are full: those bulge open. */
 	full: number;
+}
+
+/** A glyph the office paints on a "doing" chip (director/doing.ts). */
+export type DoingIcon = "read" | "search" | "edit" | "run" | "test" | "web" | "hire" | "plan" | "ask" | "tool" | "idle" | "wait" | "done";
+
+/** What a character is doing right now, for the closer camera stops: a glyph, a short verb, and
+ * when the call in progress started. */
+export interface Doing {
+	icon: DoingIcon;
+	/** "reading", "editing", "running tests". */
+	word: string;
+	/** When the call in progress started, if one is. */
+	since?: number;
+	/** The call has run long enough to say how long. */
+	long: boolean;
 }

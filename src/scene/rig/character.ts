@@ -25,6 +25,16 @@ import { LOOKS } from "./data/vocab";
 type Cast = Map<string, RigCharacter>;
 
 const TRIGGER = { busy: "busy", idle: "idle", stalled: "stalled", done: "finished" } as const;
+
+/** A poke's reactions: a wave or a look up at you; poked again and again, a grump. */
+const POKE = {
+	reactions: ["wave", "lookUp", "nod"],
+	grumpy: ["grumpy"],
+	grumpyAfter: 3,
+	/** Pokes closer together than this count as "again". */
+	againMs: 4000,
+	minMs: 900,
+} as const;
 const MS_PER_TICK = 1000 / 60;
 
 const WALKING = {
@@ -63,6 +73,13 @@ class RigCharacter implements Character {
 	#plant = 0;
 	/** The gaze this walking code last set, so it only ever clears its own. */
 	#aimed?: readonly [number, number];
+	/** A poke's reaction playing: ms left of it, and how many pokes came close together. */
+	#poked = 0;
+	#pokes = 0;
+	#pokedAt = -Infinity;
+	#clock = 0;
+	/** Looking out at you for a photo until this time on `#clock`. */
+	#smileUntil = -Infinity;
 
 	constructor(atlas: Atlas, who: Who, cast: Cast = new Map()) {
 		this.#who = who;
@@ -77,10 +94,12 @@ class RigCharacter implements Character {
 			role,
 			accent: ACCENTS[hash(who.tint) % ACCENTS.length],
 			desk: false,
+			...(who.plump ? { plump: who.plump } : {}),
 			...(regular?.wear ? { wear: regular.wear } : {}),
 		});
 		this.#regular = regular;
 		this.#size();
+		this.puppet.weather = who.weather;
 		this.#act(who.mood, true);
 	}
 
@@ -114,6 +133,8 @@ class RigCharacter implements Character {
 		const prev = this.#who;
 		this.#who = who;
 		if (who.size !== prev.size) this.#size();
+		this.puppet.plump = who.plump;
+		this.puppet.weather = who.weather;
 		// With a director, cues choose the pose; on its own, the mood does.
 		if (!this.#cue && who.mood !== prev.mood) this.#act(who.mood, false);
 		this.puppet.alpha = who.mood === "done" ? 0.75 : 1;
@@ -165,11 +186,23 @@ class RigCharacter implements Character {
 			this.#turn = undefined;
 			this.#pose(first);
 		}
+		// A new hire buds off its boss: it swells from a bead as the hand-over starts.
+		if (first && cue.pose === "handover" && cue.as === "partner") this.puppet.bud();
 		this.#aim();
 	}
 
 	tick(dt: number): void {
 		const ms = dt * MS_PER_TICK;
+		this.#clock += ms;
+		if (this.#poked > 0) {
+			this.#poked -= ms;
+			// The reaction is over: back to the cue (or the mood) it was playing.
+			if (this.#poked <= 0 && !this.moving) {
+				this.#poked = 0;
+				if (this.#cue) this.#pose(false);
+				else this.#act(this.#who.mood, false);
+			}
+		}
 		const w = this.#cue?.walk;
 		if (w && !this.#gone && this.#walked < w.ms) {
 			this.#walked = Math.min(w.ms, this.#walked + ms);
@@ -226,6 +259,24 @@ class RigCharacter implements Character {
 		this.#aim();
 	}
 
+	/** Clicked: a jelly wobble, and a reaction picked by hashing the key, grumpy if poked
+	 * again and again. A walker only wobbles; the walk goes on. */
+	smile(ms: number): void {
+		this.#smileUntil = this.#clock + ms;
+		this.#look();
+	}
+
+	poke(): void {
+		this.puppet.jiggle();
+		if (this.moving || this.#gone) return;
+		this.#pokes = this.#clock - this.#pokedAt < POKE.againMs ? this.#pokes + 1 : 1;
+		this.#pokedAt = this.#clock;
+		const list = this.#pokes >= POKE.grumpyAfter ? POKE.grumpy : POKE.reactions;
+		const pose = list[hash(`${this.#who.key}:poke:${this.#pokes}`) % list.length]!;
+		this.puppet.play(pose, { loops: 1 });
+		this.#poked = Math.max(POKE.minMs, this.puppet.playMs);
+	}
+
 	inspect() {
 		const s = this.puppet.state();
 		const w = this.#cue?.walk;
@@ -234,6 +285,8 @@ class RigCharacter implements Character {
 			...(this.#regular ? { regular: this.#regular.key, name: this.#regular.name, wear: this.#regular.wear ?? "" } : {}),
 			size: Math.round(this.#who.size),
 			lift: Math.round(this.puppet.lift * 100) / 100,
+			plump: `${s.plump}${s.ripe ? " ripe" : ""}`,
+			weather: this.puppet.weather ?? "",
 			role: s.role,
 			pose: s.pose,
 			frame: s.frame,
@@ -271,6 +324,8 @@ class RigCharacter implements Character {
 	#look(): void {
 		// The walk's own looks (setting off, a turn, the plant on arrival) win while they last.
 		const walking = this.moving || this.#gone || this.#turn !== undefined || this.#plant > 0;
+		// Say cheese: out of the screen while a photo is taken.
+		if (!walking && this.#clock < this.#smileUntil) return this.puppet.aim(AT_VIEWER);
 		this.puppet.aim(walking ? undefined : this.#aimFor(this.#lookAt));
 	}
 

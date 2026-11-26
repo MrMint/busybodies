@@ -57,6 +57,9 @@ export interface Actor {
 	tempo: number;
 	/** The agent's task, or the session's title for a lead. */
 	task?: string;
+	/** Its context's fullness as a body (rig/data/plump.ts). */
+	plump?: Who["plump"];
+	weather?: Who["weather"];
 	/** On a brick run: the crew spot it goes back to. */
 	home?: string;
 	/** The pose it walks in, if not the plain walk (`carry` on the way to the build). */

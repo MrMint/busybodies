@@ -36,6 +36,10 @@ export interface Character {
 	/** Optional: back to the start of its pose, settled (the inspector's freeze, so step(n) is the
 	 * same however long the page ran first). */
 	rewind?(): void;
+	/** Optional: someone clicked it. It jiggles and reacts, then goes back to what it was doing. */
+	poke?(): void;
+	/** Optional: look out of the screen for `ms`, as for a photo, then back to the cue's look. */
+	smile?(ms: number): void;
 	destroy(): void;
 }
 
